@@ -1,0 +1,29 @@
+{
+  "skill_name": "migration-playbook",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Database Platform Migration Plan",
+      "prompt": "Create a migration plan for moving 12 PostgreSQL databases from bare-metal servers to VM-based infrastructure at a PE-backed consumer lender. The databases range from 10GB to 500GB. Three are in PCI-DSS scope. Two support the loan origination system. Use the migration-playbook skill.",
+      "expected_output": "Complete migration plan using Archetype 1 with: Phase 0 scope document with all 12 databases inventoried (size, criticality, regulatory scope), IN/OUT/DEFERRED boundaries, 80% disclaimer. Phase 1 foundation with shared connection libraries and staging validation. Phase 2 critical path starting with non-PCI databases as proving ground, then PCI databases with additional security review. Batch cutover approval template grouping databases by maintenance window. 30-day retention period on old servers. Rollback strategy using DNS-based routing. Timeline with per-phase estimates and buffers. PE-framed investment justification showing phase-gated spend. Regulatory compliance sections for SOX change management and PCI-DSS migration tooling review."
+    },
+    {
+      "id": 2,
+      "name": "Frontend Rebuild Migration Strategy",
+      "prompt": "Plan a migration strategy for rebuilding the customer-facing frontend of a consumer lending application from a legacy monolithic framework to a modern React-based architecture. The existing app serves 50K daily users and handles loan applications. Downtime means lost revenue. Use the migration-playbook skill.",
+      "expected_output": "Migration plan using Archetype 5 (Service Modernization) with strangler fig pattern. Phase 0 inventory of all frontend routes/pages with traffic volume and business criticality. Sequencing: build new frontend behind feature flags, route new traffic first, gradually migrate existing pages by criticality (low-traffic pages first). Parallel operation with both old and new frontends behind a router. Characterization tests for current behavior (Archetype 3 influence). No-downtime constraint as hard abort criteria. PE framing connecting frontend rebuild to conversion rate improvement and operational cost reduction. Communication plan with different messaging for leadership (ROI), engineering (technical approach), and product (feature timeline). Decommission checklist for legacy frontend."
+    },
+    {
+      "id": 3,
+      "name": "Vendor Platform Cutover",
+      "prompt": "Create a cutover plan for migrating from a legacy payment processor to a new payment processor at a consumer lender. The old processor handles $2M in daily loan payments. PCI-DSS scope. Zero tolerance for payment disruption. Use the migration-playbook skill.",
+      "expected_output": "Migration plan combining Archetype 2 (Provider Swap) and Archetype 3 (Component Swap). Scope document with payment flows inventoried, PCI-DSS constraints documented. Foundation phase building abstraction layer between application and payment processor. TDD approach: characterization tests for all payment flows against old processor, then swap to new processor behind tests. Parallel operation: both processors active, new processor handles test transactions first. Graduated traffic shift with abort criteria tied to payment success rate. Hard abort on any payment failure. Batch approval for cutover phases. 30-day parallel operation with old processor as fallback. Rollback strategy: instant DNS-level routing back to old processor. Communication plan including regulatory notification of payment processor change. SOX change management compliance. PE framing: processor consolidation savings, reduced per-transaction fees."
+    },
+    {
+      "id": 4,
+      "name": "Multi-System Platform Modernization Roadmap",
+      "prompt": "I've been asked to present a 12-month platform modernization roadmap to the CEO of a PE-backed consumer lender. The mandate covers: frontend rebuild, AI strategy implementation, and full platform modernization. The CEO views technology as a cost center. Create the migration plan and executive presentation materials. Use the migration-playbook skill.",
+      "expected_output": "Comprehensive modernization plan using Phase 0 full scope across all three mandates. Dependency ordering: platform infrastructure first (enables both frontend and AI), then frontend rebuild (strangler fig, highest user visibility), then AI strategy (depends on modern data platform). Phase-gated investment table showing quarterly spend and deliverables. Each phase has standalone business value. PE-framed executive summary: cost reduction projections, risk elimination timeline, revenue enablement milestones. 90-day cadence integrated with executive-framer skill. Migration archetypes applied: Archetype 5 for frontend, Archetype 4 for AI platform adoption, Archetype 2 for infrastructure. Anti-patterns explicitly avoided: no big-bang, no mixing migration types in one phase. The 80% pattern applied: roadmap presented as collaborative starting point. Cross-skill integration: architecture-assessor for initial state, decision-engine for key technology choices, executive-framer for board presentations, terraform-module-scaffold for new infrastructure, runbook-generator for each cutover."
+    }
+  ]
+}

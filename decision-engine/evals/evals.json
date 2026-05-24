@@ -1,0 +1,29 @@
+{
+  "skill_name": "decision-engine",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Database Platform Selection",
+      "prompt": "We're currently running PostgreSQL on-prem with manual DBA processes. The team wants to move to a managed database service. Use the decision-engine skill to create an ADR that evaluates RDS vs. Cloud SQL vs. staying on-prem, following my personal decision-making patterns. Include selection criteria, hybrid adoption considerations, and explicit rejection rationale.",
+      "expected_output": "Complete ADR following the template structure: Context with pressure point and primary drivers, Decision section with 2-3 destinations and selection criteria, Considered Alternatives with pros/cons, What We're NOT Doing section, Consequences, and TODOs"
+    },
+    {
+      "id": 2,
+      "name": "AI Agent Architecture Decision",
+      "prompt": "We're building an AI agent platform and need to decide between: (1) Building on AWS Bedrock with their managed tools, (2) Using LangChain/LangGraph with self-hosted deployment, (3) Adopting a vendor platform like Agent Core or Agent Garden. Apply my decision-making framework - specifically looking for hybrid adoption patterns and component-level evaluation rather than platform-level decisions.",
+      "expected_output": "ADR showing hybrid adoption pattern - evaluating components separately (memory, tools, deployment, protocol), explicit selection criteria for when to use each option, and clear documentation of what components to adopt vs. build vs. reject"
+    },
+    {
+      "id": 3,
+      "name": "Migration Strategy Formulation",
+      "prompt": "We need to migrate 50 legacy services from on-prem VMs to Kubernetes. Create an ADR for the migration strategy using my decision patterns. Should we do big-bang, incremental by service, or strangler fig pattern? Evaluate the tradeoff dimensions I typically use.",
+      "expected_output": "ADR with Context showing current operational burden, Decision choosing incremental approach with explicit rejection of big-bang, selection criteria for migration sequencing, and deprioritization rationale"
+    },
+    {
+      "id": 4,
+      "name": "Build vs Buy Evaluation",
+      "prompt": "We need a feature flag system. The team is debating building one vs. buying LaunchDarkly vs. using Flagsmith open source. Walk through my decision framework including the 6 primary drivers, status quo as alternative, and explicit 'What We're NOT Doing' documentation.",
+      "expected_output": "ADR evaluating all 3 options with structured pros/cons, selection criteria, rejection rationale for each option not chosen, and TODOs for implementation details"
+    }
+  ]
+}

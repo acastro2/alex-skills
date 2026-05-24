@@ -1,0 +1,29 @@
+{
+  "skill_name": "vendor-evaluator",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Cloud Database Provider Assessment",
+      "prompt": "Evaluate a cloud database provider (e.g., MongoDB Atlas) for storing customer transaction data. The vendor claims SOC2 Type II, 99.99% SLA, and global availability. Use the vendor-evaluator skill to: 1) Classify the risk tier based on data sensitivity (high - PII/financial) and business impact (critical), 2) Apply the appropriate Tier 1 comprehensive checklist, 3) Score across all 5 categories using the weighted rubric, 4) Calculate 5-year TCO including indirect costs and risk adjustment, 5) Produce a recommendation memo with conditions if applicable",
+      "expected_output": "Complete vendor assessment including: Risk tier classification (Tier 1), Tier 1 checklist results across 5 categories (Security 30%, Architecture 25%, Operations 20%, Viability 15%, Cost 10%), Weighted scorecard with category scores, 5-year TCO analysis with direct/indirect costs and risk adjustment, Recommendation memo with executive summary, strengths/concerns, risk assessment table, and approval signature block"
+    },
+    {
+      "id": 2,
+      "name": "Internal Tool Vendor (Tier 2 Evaluation)",
+      "prompt": "Evaluate a documentation/wiki SaaS (e.g., Notion alternative) for internal engineering team use only. No customer data, no PII, low business impact. Use the vendor-evaluator skill to: 1) Classify as Tier 2, 2) Apply abbreviated checklist focusing on critical must-haves and important factors, 3) Identify if any red flags trigger automatic disqualification, 4) Create a lighter-weight scorecard appropriate for standard risk, 5) Produce a streamlined recommendation",
+      "expected_output": "Tier 2 vendor assessment: Risk classification with tier rationale, Abbreviated checklist focusing on 6 critical must-haves and 5 important factors, Red flag check with pass/fail gates, Simplified scorecard (still weighted but fewer criteria), Streamlined recommendation memo appropriate for Tier 2 approval level (department head vs executive)"
+    },
+    {
+      "id": 3,
+      "name": "Vendor with Security Red Flags",
+      "prompt": "Evaluate an AI code completion tool that: 1) Processes code in their cloud (no on-prem option), 2) Has SOC2 Type I only (no Type II), 3) No data residency guarantees, 4) Sends proprietary code to third-party infrastructure. Use the vendor-evaluator skill to: 1) Identify which red flags are triggered, 2) Document why these are disqualifiers not discussion points, 3) Score honestly (will be low), 4) Produce a REJECT recommendation with clear rationale, 5) Suggest what would need to change for reconsideration",
+      "expected_output": "Red flag assessment: Intake red flags identified (data residency, attestation level), Tier 1 classification but with disqualifying findings, Honest low scores reflecting security gaps, REJECT recommendation with specific disqualifiers listed, Clear conditions for reconsideration (on-prem option, SOC2 Type II, data residency commitments)"
+    },
+    {
+      "id": 4,
+      "name": "Multi-Vendor Comparison Scorecard",
+      "prompt": "Compare 3 API gateway vendors (Kong, Apigee, AWS API Gateway) for a microservices platform handling customer traffic. Use the vendor-evaluator skill to: 1) Create intake templates for all 3, 2) Apply consistent Tier 1 evaluation criteria to each, 3) Build a comparison matrix showing all 3 side-by-side, 4) Score each using identical rubric, 5) Produce a recommendation with primary choice and runner-up, including specific selection criteria (when to choose each)",
+      "expected_output": "Multi-vendor comparison: 3 intake assessments with consistent format, 3 Tier 1 scorecards using identical criteria and weights, Side-by-side comparison matrix, Recommendation with primary choice and explicit 'when to choose each' decision tree, Clear rationale for ranking including specific gaps in non-selected vendors"
+    }
+  ]
+}

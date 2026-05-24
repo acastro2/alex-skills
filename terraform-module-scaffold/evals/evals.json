@@ -1,0 +1,29 @@
+{
+  "skill_name": "terraform-module-scaffold",
+  "evals": [
+    {
+      "id": 1,
+      "name": "PostgreSQL Database Module",
+      "prompt": "I need to create a new Terraform module for a PostgreSQL database cluster following my module standards. Use the terraform-module-scaffold skill to generate the complete module structure including: variables.tf with T-shirt sizing (xsmall-xlarge), outputs.tf with connection info, main.tf with proper resource naming, mandatory tagging, validation blocks, and tests/module.tftest.hcl. Follow all the universal conventions and domain-specific patterns for database modules.",
+      "expected_output": "Complete module directory with all required files: versions.tf, variables.tf with T-shirt sizing pattern and validation, outputs.tf with sensitive connection info, main.tf with descriptive resource names (pg_primary, pg_replica), locals.tf with computed values, tests/module.tftest.hcl with validation tests, and README.md following the documentation template"
+    },
+    {
+      "id": 2,
+      "name": "Kafka Topic Module",
+      "prompt": "Create a Terraform module for managing Kafka topics with the following requirements: Support creating multiple topics with different partition/replication configs, include access control for producers/consumers, add feature flags for topic compaction, follow my tagging and validation patterns. Use the terraform-module-scaffold skill to ensure all anti-patterns are avoided.",
+      "expected_output": "Module with: topics variable using structured object type, for_each resource creation, access control configuration, feature flags object for optional functionality, proper validation and preconditions, comprehensive tests, sanitized tag handling, and complete README"
+    },
+    {
+      "id": 3,
+      "name": "AWX/Ansible Integration Module",
+      "prompt": "Build a Terraform module that integrates with AWX/Ansible Tower for infrastructure provisioning. The module should: Create job templates dynamically, handle extra_vars JSON encoding, include proper error handling, support multiple node types, follow my infrastructure module patterns. Use the terraform-module-scaffold skill.",
+      "expected_output": "Module with: AWX provider configuration, job template resources with JSON extra_vars, error handling patterns, node configuration objects, Python test files in scripts/tests/, validation for AWX IDs, proper resource naming (awx_job, awx_inventory), and documentation showing AWX integration examples"
+    },
+    {
+      "id": 4,
+      "name": "Datadog Monitoring Module",
+      "prompt": "Create a Terraform module for Datadog monitoring that: Supports configurable monitors via map input, includes priority levels and thresholds, applies consistent tagging, handles monitor enable/disable, follows my monitoring module patterns. Ensure all anti-patterns are avoided.",
+      "expected_output": "Module with: monitors variable using map(object()) for type safety, for_each resource creation, threshold configuration objects, tag concatenation with common_tags, validation for monitor queries, tests validating monitor creation, and README showing monitor configuration examples"
+    }
+  ]
+}

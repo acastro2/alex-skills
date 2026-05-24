@@ -1,0 +1,57 @@
+{
+  "skill_name": "architecture-assessor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm evaluating a Terraform module that manages AWS RDS instances for my company's production databases. The module was built by a team that's no longer here. Can you help me assess the architecture? I need to understand if it's safe to use or if there are hidden risks. The module creates PostgreSQL instances with read replicas, handles backups, and sets up monitoring.",
+      "expected_output": "Assessment covering: module structure consistency, variable usage patterns, security group configurations, state management, backup/restore procedures, and specific red flags around production RDS usage",
+      "files": [],
+      "expectations": [
+        "Assessment covers Infrastructure as Code domain comprehensively",
+        "Includes specific checks for RDS/data infrastructure patterns",
+        "Identifies at least 3 first-level checks and 2 deeper-dive checks",
+        "Provides red flag triggers for each check",
+        "Acknowledges any blind spots in the assessment"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We're doing technical due diligence on a startup we're considering acquiring. They have an AI-powered recommendation engine that uses LLMs to process customer data. The system has been running in production for 18 months. What should I check to understand if the architecture is solid and scalable? I'm particularly worried about data privacy and system reliability.",
+      "expected_output": "Comprehensive AI/ML Ops assessment covering tool configurations, data flows, auth patterns, context management, and specific privacy/compliance risks",
+      "files": [],
+      "expectations": [
+        "Covers AI/ML Ops domain with specific LLM system checks",
+        "Addresses data privacy and compliance concerns",
+        "Includes checks for scalability and reliability",
+        "Identifies red flags specific to AI systems handling customer data",
+        "Provides actionable assessment framework"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I've been promoted to VP of Engineering and need to build my architecture assessment capabilities. I want to create a portable toolkit I can use when evaluating systems across different companies. Help me understand what domains I should focus on and how to structure my assessments so I'm consistent and credible.",
+      "expected_output": "Guidance on building assessment capabilities including domain coverage analysis, blind spot identification, maturity model positioning, and practical next steps for skill development",
+      "files": [],
+      "expectations": [
+        "Provides domain coverage analysis with clear blind spots",
+        "Includes maturity model for positioning current capabilities",
+        "Offers concrete next steps for skill development",
+        "Suggests prioritization framework for domains",
+        "Addresses credibility building for VP-level assessments"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Assess this Ansible repository that configures our PostgreSQL servers. I'm seeing intermittent failures during deployments and need to understand if the architecture is sound. The repo has about 15 roles covering everything from base setup to replication configuration. We use Molecule for testing but I'm not sure if the tests are comprehensive enough.",
+      "expected_output": "Configuration Management domain assessment focusing on role structure, idempotency, test coverage, alerting integration, and deployment failure patterns",
+      "files": [],
+      "expectations": [
+        "Covers Configuration Management domain specifically",
+        "Addresses idempotency and deployment reliability",
+        "Includes test infrastructure assessment",
+        "Identifies patterns that could cause intermittent failures",
+        "Provides prioritized recommendations"
+      ]
+    }
+  ]
+}

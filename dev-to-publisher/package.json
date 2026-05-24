@@ -1,0 +1,26 @@
+{
+  "name": "dev-to-publisher",
+  "version": "1.0.0",
+  "description": "MCP server for publishing Astro blog posts to dev.to",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["mcp", "dev.to", "blog", "publisher"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "glob": "^10.3.10",
+    "gray-matter": "^4.0.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
