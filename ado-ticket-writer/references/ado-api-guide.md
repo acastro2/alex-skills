@@ -7,7 +7,7 @@ Quick reference for common Azure DevOps work item API operations against `https:
 All requests use Basic Auth with empty username and a Personal Access Token:
 
 ```bash
-AUTH=(-u ":$AZURE_DEVOPS_EXT_PAT")
+AUTH=(-u ":$AZURE_DEVOPS_PAT")
 BASE="https://dev.azure.com/CuroFinTech/Tiger"
 ```
 
@@ -236,7 +236,7 @@ curl -s "${AUTH[@]}" -X POST -H "Content-Type: application/json" \
 | HTTP | Meaning | Fix |
 |------|---------|-----|
 | 200/201 | Success | — |
-| 302 → `_signin` | PAT missing/expired | Re-export `AZURE_DEVOPS_EXT_PAT` |
+| 302 → `_signin` | PAT missing/expired | Re-export `AZURE_DEVOPS_PAT` |
 | 401 | PAT lacks scope | Regenerate with `vso.work_write` |
 | 403 | Project permission denied | Check user is in project |
 | 404 | Wrong ID, wrong project, or item deleted | Verify in ADO UI |

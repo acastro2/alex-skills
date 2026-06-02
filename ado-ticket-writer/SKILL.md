@@ -164,7 +164,7 @@ Where possible, attach PRs and related work items as **link relations** instead 
 Always verify before API calls:
 
 ```bash
-AUTH=(-u ":$AZURE_DEVOPS_EXT_PAT")
+AUTH=(-u ":$AZURE_DEVOPS_PAT")
 BASE="https://dev.azure.com/CuroFinTech/Tiger"
 
 # Auto-detect Story-equivalent type (Agile / Scrum / Basic differ)
@@ -315,7 +315,7 @@ From `fix(api): resolve race condition in payment processing`:
 
 | Error | Resolution |
 |-------|------------|
-| HTTP 302 → `_signin` | PAT missing/expired in shell. Re-export `AZURE_DEVOPS_EXT_PAT` and restart opencode |
+| HTTP 302 → `_signin` | PAT missing/expired in shell. Re-export `AZURE_DEVOPS_PAT` and restart opencode |
 | HTTP 401 | PAT lacks `vso.work` / `vso.work_write` scope |
 | HTTP 404 | Confirm work item ID and project in ADO UI |
 | HTTP 400 invalid patch | Wrong content-type — use `application/json-patch+json` |
