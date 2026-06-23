@@ -29,6 +29,7 @@ Read the docs-writer skill first if you haven't already. That skill defines the 
 - So verbose that the useful info is buried
 - Broken commands, wrong config values, or unsafe snippets
 - AI voice throughout ("It's worth noting...", "Let's delve into...", "crucial aspect")
+- Fails `humanizer` skill audit: em dashes present, AI vocabulary clusters, significance inflation, manufactured punchlines, or other pattern violations (see humanizer patterns 1-33)
 - Missing critical warnings that could cause data loss or outages
 
 **⚠️ SIGNIFICANT** — Strongly recommend fixing
@@ -137,6 +138,7 @@ Friendly and human, but not a blog post. Casual enough to not feel like a legal 
 - Is it second-person throughout ("you" not "the user")?
 - Are opinions stated directly, not hedged into oblivion?
 - Are transitions natural, not forced?
+- Does it pass the `humanizer` skill's 33-pattern audit? (Load and apply the humanizer skill to check.)
 
 **Red flags:**
 
@@ -145,6 +147,11 @@ Friendly and human, but not a blog post. Casual enough to not feel like a legal 
 - Corporate-speak: "ensure alignment", "drive adoption", "synergize"
 - Hedge words everywhere: "might", "could", "perhaps", "arguably"
 - Reads like a template was filled in, not like a person wrote it
+- Em dashes (—), en dashes (–), or double hyphens as dashes anywhere in the doc
+- AI vocabulary clusters: "delve", "tapestry", "landscape", "underscore", "foster", "vibrant", "pivotal"
+- Significance inflation: "serves as a testament", "marks a pivotal moment", "crucial role"
+- Manufactured punchlines or staccato drama fragments stacked for effect
+- Rule-of-three overuse, negative parallelisms ("Not only...but..."), aphorism formulas
 
 ### Dimension 5: Technical Accuracy
 
@@ -231,8 +238,9 @@ Backstage + Material MkDocs markdown. Admonitions are great — when used right.
 
 1. Read the doc once without taking notes. Ask: "What question is this doc trying to answer? Does it?"
 2. Read again, noting issues by severity.
-3. Check against the docs-writer quality checklist (Content, Brevity, Voice & Language).
-4. Write your review with specific section references.
+3. Load and apply the `humanizer` skill to the full doc text. Flag any pattern violations as BLOCKER (if pervasive) or SIGNIFICANT (if isolated).
+4. Check against the docs-writer quality checklist (Content, Brevity, Voice & Language).
+5. Write your review with specific section references.
 
 ## Review Principles
 

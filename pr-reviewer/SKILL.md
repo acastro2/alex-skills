@@ -66,6 +66,47 @@ git diff
 - Look for high-risk markers:
   - auth, billing, data writes, concurrency, retries, caches, schema changes.
 
+### 2b) Delegate to elder-knowledge for graph-backed blast-radius analysis
+
+For non-trivial PRs (exported APIs, cross-repo shared code, schema changes), delegate
+graph investigation to the `elder-knowledge` subagent. You do NOT have blast-radius
+tools: the subagent owns them exclusively.
+
+**When to delegate:**
+- Changed files export public symbols consumed elsewhere
+- The PR touches shared libraries, SDKs, or API contracts
+- Schema/migration changes that downstream services depend on
+- More than a handful of files changed across module boundaries
+
+**When to skip (bypass the subagent):**
+- Typo/comment/formatting-only changes
+- Single-file leaf changes with no exports
+- Test-only changes
+- The blast-radius MCP server is known-offline or unindexed for the repo
+
+**How to delegate:**
+Invoke via the task tool with `subagent_type: "elder-knowledge"`, or use
+`@elder-knowledge` if the task tool doesn't expose it. Pass context EXPLICITLY
+(the subagent cannot see this conversation):
+
+```
+@elder-knowledge Produce a severity-ranked blast-radius briefing for this PR.
+
+Changed files:
+<paste file list from git diff --stat>
+
+Diff (or resolved symbols):
+<paste unified diff or summarized symbol changes>
+```
+
+**Consuming the briefing:**
+- Treat CRITICAL/HIGH findings as required review checkpoints.
+- For each co-change gap, confirm the PR handles it or flag it with the owner.
+- If the briefing says NO DATA / stale index, note in your review that blast-radius
+  could not be verified for those symbols: do not assume "safe."
+- Incorporate the briefing findings into your final review under a
+  "### Blast-Radius Risk" section.
+
 ### 3) Review by priority (blockers first)
 
 #### A. Blockers (do not merge)
@@ -153,6 +194,14 @@ When in doubt, frame as a question: "Is it intentional that X happens when Y?" r
 
 ### Summary
 <What changed + overall assessment>
+
+### Blast-Radius Risk
+<Include if elder-knowledge briefing was obtained>
+- Overall risk: <from briefing>
+- Key findings: <severity-ranked, from briefing>
+- Co-change gaps: <absent-but-historically-coupled files, with owners>
+- Owners to involve: <teams/people from briefing>
+- Data quality: <any NO DATA / stale-index caveats>
 
 ### Blockers
 - <Issue> — `path/to/file.ext:line`

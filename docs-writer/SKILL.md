@@ -86,11 +86,20 @@ These layer on top of the core voice principles:
 - Soften corporate-speak. Tighten vague phrasing. Add personality where it's flat.
 - Make sure transitions flow naturally, not like a list of disconnected sections.
 
-8) **Run the quality checklist**
+8) **Humanizer pass (mandatory)**
+
+- Load and apply the `humanizer` skill to the full doc text.
+- Scan for all 33 patterns: significance inflation, promotional language, -ing analyses, vague attributions, em dash overuse, rule of three, AI vocabulary, passive voice, negative parallelisms, filler phrases, sycophantic tone, manufactured punchlines, aphorism formulas, and the rest.
+- The humanizer's em dash rule is a hard constraint: the final doc contains zero em dashes (—), en dashes (–), or double hyphens used as dashes.
+- Preserve technical accuracy and meaning while removing AI tells.
+- If the doc references voice samples or has an established author voice, use the humanizer's voice calibration mode.
+
+9) **Run the quality checklist**
 
 - Verify it answers "what/who/why/how".
 - Verify examples and commands are complete and safe.
 - Verify voice is consistent throughout.
+- Verify the humanizer pass was applied (no em dashes, no AI vocabulary clusters, no pattern violations).
 
 ## Narrative Patterns
 
@@ -304,5 +313,6 @@ classDef neutral fill:#e0e0e0,color:#424242,stroke:#757575,stroke-width:1px
 ### Voice & Language
 
 - [ ] Passes voice checks from `shared/alex-voice-core.md` and `shared/alex-voice-docs.md`
+- [ ] Passes `humanizer` skill audit (no AI pattern clusters, no em dashes, no significance inflation)
 - [ ] Transitions flow naturally between sections
-- [ ] Technical depth is appropriate — not dumbed down, not gatekeeping
+- [ ] Technical depth is appropriate, not dumbed down, not gatekeeping
