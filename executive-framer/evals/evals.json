@@ -1,0 +1,29 @@
+{
+  "skill_name": "executive-framer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Database Platform Investment Proposal",
+      "prompt": "We're proposing to migrate from on-prem PostgreSQL to AWS RDS. The initiative will cost $150K in year 1 and $50K annually thereafter. We need leadership approval. Use the executive-framer skill to create an Investment Justification document following my patterns: frame as business outcome investment, include 3 alternatives (build on EC2, use RDS, stay on-prem), show TCO and payback period, and use 'what they win' language. Focus on: 3-week provisioning delays blocking projects, 40hrs/week DBA time that could be reallocated, and compliance audit readiness.",
+      "expected_output": "Complete Investment Justification following the template structure: Business Problem with quantified impact, Investment Thesis table (investment → outcome), Stakeholder wins for Engineering/Security/Finance, Alternatives table with rejection rationale, Timeline & Milestones, Risk Mitigation table, explicit Ask with budget breakdown, and What We're NOT Doing section"
+    },
+    {
+      "id": 2,
+      "name": "AI Tooling Dashboard Executive Summary",
+      "prompt": "Our AI Dashboard is now tracking 200+ engineers across the SDLC. I need an Executive Summary for the CTO review. The dashboard shows: AI tool usage by phase (Dev vs Review), authentication via SSO, and analytics split by team. Use my Executive Summary template: TL;DR paragraph, What the CTO Cares About section with features and adoption metrics, SDLC coverage breakdown, and decision points. Include my pattern of 'users first' analysis approach and separate views for leadership vs engineers.",
+      "expected_output": "Executive Summary following the template: One-paragraph TL;DR, What the CTO Cares About with 3 features and their business values, Adoption Metrics with numbers and context, SDLC Coverage phases with status, Technical Notes section (minimal), Analysis Approach noting users-first lens and separate views, 3 Decision Points with options/recommendations, and Next Steps timeline"
+    },
+    {
+      "id": 3,
+      "name": "5-Slide Platform Modernization Presentation",
+      "prompt": "Create a 5-slide leadership presentation for our database modernization initiative. Use my 5-slide structure: 1) Why (databases last pillar to modernize, strategic fit), 2) Problems (provisioning delays, manual processes, audit gaps), 3) Achievements (self-service in 30min, automation of 40hrs/week DBA time, standardization), 4) How (platform approach with milestones), 5) What You'll Need to Do (new DBs vs migration). Every slide must answer 'what's in it for them' and 'what they win'. Include speaking notes with 'small technical detail' markers.",
+      "expected_output": "5-Slide presentation structure with each slide's content: Slide 1 Why with context and strategic fit, Slide 2 Problems (max 3 pain points), Slide 3 Achievements with business value focus, Slide 4 How with high-level approach and timeline, Slide 5 explicit asks (new vs migration). Include speaking notes template for each slide using 'what's in it for you' and 'what you win' language"
+    },
+    {
+      "id": 4,
+      "name": "Technical Debt Risk Translation",
+      "prompt": "We need to flag critical technical debt in our legacy authentication service to leadership. Use the Risk Translation template: Start with business risk (not technical), quantify financial/operational/compliance/reputational impact, show current likelihood and time horizon, present 3 options (aggressive fix, moderate fix recommended, status quo), and make clear asks. The technical issue: legacy auth service with 15+ year old codebase, no test coverage, single point of failure. Business risk: if it fails during peak traffic, customer login disruption for 4-6 hours affecting revenue.",
+      "expected_output": "Risk Alert document following template: The Business Risk section leading with quantified financial and operational impact, Current State with likelihood/horizon/trend, Action table with owners/timelines, 3 Options with investment/outcome/trade-offs (Option B recommended), and clear Ask for investment approval or risk acceptance"
+    }
+  ]
+}

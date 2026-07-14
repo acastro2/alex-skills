@@ -1,0 +1,29 @@
+{
+  "skill_name": "runbook-generator",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Database Migration Runbook",
+      "prompt": "Create a comprehensive runbook for migrating a PostgreSQL database from on-prem to RDS using the runbook-generator skill. The runbook should include: pre-flight checks for replication lag and disk space, step-by-step migration procedure with validation after each step, rollback procedures for different failure points, error handling for common migration failures, and variables section for environment-specific values.",
+      "expected_output": "Complete runbook with: Metadata section, Purpose statement, Prerequisites and knowledge requirements, Pre-flight checklist with specific commands, Variables table, Step-by-step procedure with validation checkpoints after each step, Multiple rollback scenarios (early failure, post-migration failure, data sync failure), Common errors section with symptoms and fixes, Changelog"
+    },
+    {
+      "id": 2,
+      "name": "VM Clone Deployment Playbook",
+      "prompt": "Create an Ansible playbook-style runbook for cloning a VM with the following requirements from my patterns: Error-resilient (secondary services like Splunk must not block primary operation), Pre-flight validation of source VM and target capacity, Step-by-step cloning with validation, Rollback for clone failures, Post-clone validation. Use the runbook-generator skill.",
+      "expected_output": "Ansible-focused runbook with: Pre-flight checks for VM existence, datastore capacity, network config, Error-resilient design showing secondary vs primary service failure matrix, Step-by-step clone procedure with validation, Rollback scenarios (clone failure, boot failure, network failure), Variables section for hostname, environment, sizing tier, Common VM clone errors with resolution steps"
+    },
+    {
+      "id": 3,
+      "name": "Terraform Deployment Procedure",
+      "prompt": "Create a runbook for executing a Terraform deployment to production using the runbook-generator skill. The runbook should follow my patterns: Pre-flight validation sequence (validate, plan, review), Step-by-step apply procedure with state lock checks, Validation after each major resource creation, Rollback procedures for failed applies, Error handling for state lock issues and provider failures.",
+      "expected_output": "Terraform-specific runbook with: Pre-flight checklist including plan review requirements, Validation sequence (validate, plan, show, check locks), Step-by-step apply with -target options for large changes, State validation after each major resource group, Rollback procedures using state management, Common Terraform errors (lock conflicts, provider issues, state drift) with fixes, Variables for workspace, plan file path, approval status"
+    },
+    {
+      "id": 4,
+      "name": "Incident Response Runbook",
+      "prompt": "Create an incident response runbook for a database outage using the runbook-generator skill. The runbook should include: Pre-flight checks before taking action (confirming it's a real outage), Clear decision points (when to failover vs. restore), Step-by-step failover procedure with validation, Error handling for failover failures, Post-incident validation, Communication templates for stakeholders.",
+      "expected_output": "Incident response runbook with: Metadata with escalation contacts, Pre-flight confirmation steps (verify monitoring, confirm impact), Decision matrix (failover vs restore criteria), Step-by-step failover with timing and validation, Rollback for failed failover attempts, Communication templates for exec/team updates, Common incident errors (replication lag too high, connection limits, disk full) with fixes, Variables for incident ID, severity, primary/secondary nodes"
+    }
+  ]
+}

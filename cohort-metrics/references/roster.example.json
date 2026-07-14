@@ -1,0 +1,32 @@
+{
+  "_comment": "Copy this to cohort-config.json and edit `cohort` when the seat list changes. beta_start is the fixed kickoff date; snapshot/before windows are computed from today() at run time, so a weekly re-run needs no date edits. Add any unresolved GitHub logins to login_overrides (email -> login).",
+  "beta_start": "2026-06-25",
+  "snapshot_weeks": 13,
+  "baseline_weeks": 13,
+  "github_orgs": [
+    "Engineering-Attain-Finance",
+    "Data-Engineering-Attain-Finance",
+    "Risk-Analytics-Attain-Finance",
+    "Testing-Attain-Finance"
+  ],
+  "ado_base": "https://dev.azure.com/CuroFinTech/Tiger",
+  "login_overrides": {},
+  "cohort": [
+    {"name": "Alexandre Amado de Castro", "email": "alexandrecastro@attainfinance.com", "tier": "team_tier_1"},
+    {"name": "Adam Cantin", "email": "adamcantin@attainfinance.com", "tier": "team_standard"},
+    {"name": "Azharuddin Awez Mohammed", "email": "azharmohammed@attainfinance.com", "tier": "team_standard"},
+    {"name": "Brokk Morris", "email": "brokkmorris@attainfinance.com", "tier": "team_standard"},
+    {"name": "Chris Anilao", "email": "chrisanilao@attainfinance.com", "tier": "team_tier_1"},
+    {"name": "Flor Delgado Perez", "email": "flordelgado@attainfinance.com", "tier": "team_standard"},
+    {"name": "John Champion", "email": "johnchampion@attainfinance.com", "tier": "team_standard"},
+    {"name": "Mike Hague", "email": "mikehague@attainfinance.com", "tier": "team_standard"},
+    {"name": "Nargiza Talipova", "email": "nargizatalipova@attainfinance.com", "tier": "team_standard"},
+    {"name": "Pavan Kantipudi", "email": "pavankantipudi@attainfinance.com", "tier": "team_standard"},
+    {"name": "Priyanka Raja", "email": "priyankaraja@attainfinance.com", "tier": "team_standard"},
+    {"name": "Saugat Pandey", "email": "saugatpandey@attainfinance.com", "tier": "team_standard"},
+    {"name": "Steve Rake", "email": "stephenrake@attainfinance.com", "tier": "team_standard"},
+    {"name": "Thomas Hofstetter", "email": "thomashofstetter@attainfinance.com", "tier": "team_standard"},
+    {"name": "Tony Dyleuth", "email": "tonydyleuth@attainfinance.com", "tier": "team_standard"},
+    {"name": "Uday Parande", "email": "udayparande@attainfinance.com", "tier": "team_standard"}
+  ]
+}
