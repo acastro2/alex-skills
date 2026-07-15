@@ -16,7 +16,7 @@ Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_Portfo
 ## Field value shapes
 
 - **Choice** (`Theme`, `Status`, `DecisionNeeded`) — plain string, must exactly match an allowed value.
-- **Currency** (`ImpactUSD`) — plain number, no `$` or commas (e.g. `653000`). Omit the key entirely for blank; never send `0` to mean "unknown".
+- **Impact** (`Impact`) — single line of text; the documented impact, financial or not. Omit the key entirely for blank.
 - **Hyperlink** (`KeyArtifact`, `ExecutionLink`) — an `SP.FieldUrlValue`:
   ```json
   {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://...", "Description": "ADR-0002"}
@@ -37,7 +37,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "Theme": "Enterprise Architecture Projects",
   "Status": "Decision-Ready",
   "DecisionNeeded": "CTO",
-  "ImpactUSD": 653000,
+  "Impact": "$478K/yr documented savings",
   "KeyArtifact": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://.../ADR-0002.aspx", "Description": "ADR-0002 Privileged Access"},
   "ExecutionLink": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://dev.azure.com/CuroFinTech/Tiger/...", "Description": "ADO epic"},
   "NextMilestone": "Options memo to the CTO",
@@ -66,6 +66,6 @@ Send only the fields that changed. `If-Match: *` overwrites regardless of etag (
 ## Find an item Id for matching (idempotency)
 
 ```
-GET /_api/web/lists(guid'...')/items?$select=Id,Title,KeyArtifact,Status,DecisionNeeded,ImpactUSD,NextMilestone,MilestoneDate&$top=100
+GET /_api/web/lists(guid'...')/items?$select=Id,Title,KeyArtifact,Status,DecisionNeeded,Impact,NextMilestone,MilestoneDate&$top=100
 ```
 Match a candidate to an existing row by `Title` similarity + `KeyArtifact` Url. Match → UPDATE that `Id`; no match → CREATE.

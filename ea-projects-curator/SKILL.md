@@ -24,7 +24,7 @@ archeologist (+ ADO + GitHub)  →  curate: cluster · screen · shape  →  QUE
 
 Two invariants that override everything below:
 
-1. **Never invent.** No initiative that the evidence doesn't support; no dollar figure that isn't documented. An empty cell is better than a soft one.
+1. **Never invent.** No initiative the evidence doesn't support; no impact claim that isn't documented. An empty cell is better than a soft one.
 2. **Never write unconfirmed.** The list is readable by the entire Technology org. The question gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
 
 ## The board you write to
@@ -40,10 +40,10 @@ Columns (internal name → type → allowed values). Use internal names for any 
 | Internal | Display | Type | Values / rule |
 |---|---|---|---|
 | `Title` | Initiative | Text | Outcome title (see field mapping) |
-| `Theme` | Theme | Choice | `Remediation Closure` / `Enterprise Architecture Projects` / `AI Program` / `Governance` / `Observability` |
+| `Theme` | Theme | Choice | `Security Hardening` / `Enterprise Architecture Projects` / `AI Program` / `Governance` / `Observability` |
 | `Status` | Status | Choice | `Proposed` / `In Analysis` / `Decision-Ready` / `In Flight` / `Verifying` / `Closed` (default `Proposed`) |
 | `DecisionNeeded` | Decision Needed | Choice | `None` / `CTO` / `Advisory Board` / `Business Owner` (default `None`) |
-| `ImpactUSD` | $ Impact | Currency | Documented figure or blank |
+| `Impact` | Impact | Text (single line) | Documented impact, financial or non-financial, or blank |
 | `KeyArtifact` | Key Artifact | Hyperlink | One canonical ADR/SAD URL |
 | `ExecutionLink` | Execution Link | Hyperlink | ADO epic/feature or GitHub URL |
 | `NextMilestone` | Next Milestone | Text | Outcome, one line |
@@ -82,7 +82,7 @@ Columns (internal name → type → allowed values). Use internal names for any 
 - **Theme** — exactly one value. If two fit, pick by the *current* center of gravity, not where the work started.
 - **Status** — `Decision-Ready` requires a costed or documented options analysis to actually exist; aspiration doesn't qualify. Work executed but not yet evidence-verified is `Verifying`, not `Closed`.
 - **Decision Needed** — set `CTO` only when the decision is genuinely his to make. Inflating this column burns credibility fast; when unsure, `None`.
-- **$ Impact (`ImpactUSD`)** — documented figures only, traceable to an ADR, a costed analysis, or an invoice delta. No estimates, no "up to", no aspirational targets dressed as savings. If a source says "target ≤ $200K from $653K", record the documented current figure and link the ADR — never the hoped-for number. Blank beats soft.
+- **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the mechanical metric or the money.** "Unblocks the upgrade to the latest .NET" beats "$699/dev license avoided"; "democratizes code with auditable role-based access" beats "485 repos internal-by-default". Pattern: *outcome first, evidence metric in parens as support* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). The evidence must still be documented — traceable to an ADR, costed analysis, invoice delta, or a stated metric; no estimates, no "up to", no aspirational targets dressed as results. If the outcome isn't obvious from the sources, ASK the user "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission, quotable in audit or breach discovery) or commercial/negotiating posture ("ends vendor lock-in" telegraphs intent to Procurement and vendor-friendly readers). Describe what the work closes or unlocks, not the live hole or the leverage play.
 - **Key Artifact (`KeyArtifact`)** — one canonical link: the ADR/SAD itself, not the folder. Screen for personal-OneDrive URLs (`-my.sharepoint.com`) and flag them for re-homing to an org-shared location before using — a personal link will 403 for the org audience.
 - **Execution Link (`ExecutionLink`)** — the ADO epic/feature or GitHub location. Omit if none exists; never create a shadow ticket just to fill the column.
 - **Next Milestone (`NextMilestone`) + Milestone Date (`MilestoneDate`)** — phrase the milestone as an outcome a non-architect can parse, and put the date in the date column. "Options memo to the CTO" + `2026-07-25`, not "Finalize Raft topology".
@@ -156,4 +156,4 @@ After the gate and the write, emit three markdown tables so the run is auditable
 
 ## Safety recap
 
-Org-visible list. The question gate is the mandatory review. Never invent initiatives or dollar figures — empty beats soft. Never write an unconfirmed row. Run the exclusion screen on every candidate and on every title the user edits. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions.
+Org-visible list. The question gate is the mandatory review. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row. Run the exclusion screen on every candidate and on every title the user edits. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions.

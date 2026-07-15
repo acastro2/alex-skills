@@ -1,0 +1,140 @@
+{
+  "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
+  "site": "https://attainfinance.sharepoint.com/sites/Architecture",
+  "last_run": "2026-07-14",
+  "rows": {
+    "1": {
+      "initiative": "Privileged Access Renewal",
+      "theme": "Enterprise Architecture Projects",
+      "status": "Decision-Ready",
+      "sources": [
+        "ado:251970",
+        "adr:SAD-Cyberark-Replacement.docx"
+      ]
+    },
+    "2": {
+      "initiative": "Observability Platform",
+      "theme": "Observability",
+      "status": "Verifying",
+      "sources": [
+        "gh:Engineering-Attain-Finance/tf-aws-grafana-infra",
+        "ado:245905",
+        "doc:Grafana_LGTM_Platform_Engineering_Reference.docx"
+      ]
+    },
+    "3": {
+      "initiative": "GitHub Access Governance",
+      "theme": "Governance",
+      "status": "Verifying",
+      "sources": [
+        "adr:ADR-0004-GitHub-Access-Governance-via-Entra-Synced-Teams.docx",
+        "gh:github-team-migrations"
+      ]
+    },
+    "4": {
+      "initiative": "Architecture Advisory Board",
+      "theme": "Governance",
+      "status": "In Flight",
+      "sources": [
+        "doc:ARF Master Plan.docx",
+        "repo:enterprise-architecture"
+      ]
+    },
+    "5": {
+      "initiative": "Delivery & Change-Control Redesign",
+      "theme": "Governance",
+      "status": "Decision-Ready",
+      "sources": [
+        "repo:ado-restructuring"
+      ]
+    },
+    "6": {
+      "initiative": "Secure Access (SASE) Strategy",
+      "theme": "Enterprise Architecture Projects",
+      "status": "In Analysis",
+      "sources": [
+        "adr:ADR-0001-SASE-Strategy.docx"
+      ]
+    },
+    "7": {
+      "initiative": "Workflow Orchestration Platform",
+      "theme": "Enterprise Architecture Projects",
+      "status": "Proposed",
+      "sources": [
+        "ado:251969"
+      ]
+    },
+    "8": {
+      "initiative": "Technology AI Program",
+      "theme": "AI Program",
+      "status": "Decision-Ready",
+      "sources": [
+        "doc:Attain GenAI Policy.docx"
+      ]
+    },
+    "9": {
+      "initiative": "PDF/Image Viewer Modernization",
+      "theme": "Enterprise Architecture Projects",
+      "status": "Proposed",
+      "sources": [
+        "doc:pdf-image-viewer-replacement-recommendation.docx"
+      ]
+    },
+    "10": {
+      "initiative": "Snowflake Access & Masking Standardization",
+      "theme": "Security Hardening",
+      "status": "Verifying",
+      "sources": [],
+      "note": "sanitized/breach-adjacent — artifact intentionally omitted"
+    },
+    "11": {
+      "initiative": "Snowflake Auto-DLP",
+      "theme": "Security Hardening",
+      "status": "In Analysis",
+      "sources": [],
+      "note": "sanitized/breach-adjacent — artifact intentionally omitted"
+    },
+    "12": {
+      "initiative": "AWS Organization Security Hardening",
+      "theme": "Security Hardening",
+      "status": "Verifying",
+      "sources": [],
+      "note": "sanitized/breach-adjacent — artifact intentionally omitted"
+    },
+    "13": {
+      "initiative": "Vendor Due-Diligence: Canada Expansion",
+      "theme": "Governance",
+      "status": "In Analysis",
+      "sources": [
+        "repo:digifi"
+      ],
+      "note": "vendor name neutralized in title"
+    },
+    "14": {
+      "initiative": "Data-Engineer Hiring Process",
+      "theme": "Governance",
+      "status": "Closed",
+      "sources": [
+        "sharepoint:Data Engineer Universal Interview Process"
+      ]
+    },
+    "15": {
+      "initiative": "Live-Check Endorsement Validation",
+      "theme": "AI Program",
+      "status": "In Flight",
+      "key_artifact_url": null,
+      "sources": [
+        "cc:70689baa-fad3-4060-8cb7-084ee7a863e0",
+        "gh:AlexandreCastro_attain/live-check"
+      ],
+      "last_curated": "2026-07-14",
+      "note": "ExecutionLink is a personal-account GitHub repo — re-home to an Attain org; no ADR/SAD yet (KeyArtifact blank)"
+    }
+  },
+  "excluded": {
+    "Data Warehouse Platform Strategy": "user-excluded this run (ADR-0003; vendor-sensitive)",
+    "GPS / Servicing App Access Modernization": "user-skipped this run",
+    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE — breach-forensics / counsel-touched",
+    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE — litigation-adjacent, loan-level PII"
+  }
+}
