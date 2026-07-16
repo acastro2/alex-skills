@@ -1,7 +1,7 @@
 {
   "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
   "site": "https://attainfinance.sharepoint.com/sites/Architecture",
-  "last_run": "2026-07-14",
+  "last_run": "2026-07-16",
   "rows": {
     "1": {
       "initiative": "Privileged Access Renewal",
@@ -34,7 +34,7 @@
     "4": {
       "initiative": "Architecture Advisory Board",
       "theme": "Governance",
-      "status": "In Flight",
+      "status": "In Progress",
       "sources": [
         "doc:ARF Master Plan.docx",
         "repo:enterprise-architecture"
@@ -121,7 +121,7 @@
     "15": {
       "initiative": "Live-Check Endorsement Validation",
       "theme": "AI Program",
-      "status": "In Flight",
+      "status": "In Progress",
       "key_artifact_url": null,
       "sources": [
         "cc:70689baa-fad3-4060-8cb7-084ee7a863e0",
@@ -129,6 +129,28 @@
       ],
       "last_curated": "2026-07-14",
       "note": "ExecutionLink is a personal-account GitHub repo — re-home to an Attain org; no ADR/SAD yet (KeyArtifact blank)"
+    },
+    "16": {
+      "initiative": "Open-Source License Governance",
+      "theme": "Governance",
+      "status": "In Analysis",
+      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/r/sites/Architecture/Shared%20Documents/RFC-002%20OSS%20License%20Acceptance%20Policy.docx?d=w9a99315cd42b41e690744b10f20ca954&csf=1&web=1&e=zit1c6",
+      "sources": [
+        "doc:RFC-002 OSS License Acceptance Policy.docx",
+        "user:2026-07-16 direct add"
+      ],
+      "last_curated": "2026-07-16"
+    },
+    "17": {
+      "initiative": "EA Documentation Framework",
+      "theme": "Governance",
+      "status": "In Analysis",
+      "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/RFC-001_Adopt_EA_Documentation_Framework.docx",
+      "sources": [
+        "doc:RFC-001_Adopt_EA_Documentation_Framework.docx",
+        "user:2026-07-16 direct add"
+      ],
+      "last_curated": "2026-07-16"
     }
   },
   "excluded": {

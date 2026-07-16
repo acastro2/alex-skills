@@ -761,6 +761,31 @@
     }
 
     // ---- Render outputs ----
+    // .html outputs are meant to be seen rendered, not read as source.
+    // Shows the page in an iframe with a header toggle to flip to source.
+    function renderHtmlOutput(header, dlBtn, content, file) {
+      const toggle = document.createElement("a");
+      toggle.className = "dl-btn";
+      toggle.href = "#";
+      toggle.textContent = "View source";
+      header.insertBefore(toggle, dlBtn);
+      const iframe = document.createElement("iframe");
+      iframe.srcdoc = file.content;
+      iframe.style.height = "75vh";
+      const pre = document.createElement("pre");
+      pre.textContent = file.content;
+      pre.style.display = "none";
+      toggle.onclick = (e) => {
+        e.preventDefault();
+        const showSrc = pre.style.display === "none";
+        pre.style.display = showSrc ? "" : "none";
+        iframe.style.display = showSrc ? "none" : "";
+        toggle.textContent = showSrc ? "View rendered" : "View source";
+      };
+      content.appendChild(iframe);
+      content.appendChild(pre);
+    }
+
     function renderOutputs(run) {
       const container = document.getElementById("outputs-body");
       container.innerHTML = "";
@@ -792,7 +817,9 @@
         const content = document.createElement("div");
         content.className = "output-file-content";
 
-        if (file.type === "text") {
+        if (file.type === "text" && /\.html?$/i.test(file.name)) {
+          renderHtmlOutput(header, dlBtn, content, file);
+        } else if (file.type === "text") {
           const pre = document.createElement("pre");
           pre.textContent = file.content;
           content.appendChild(pre);
@@ -952,7 +979,9 @@
         const fc = document.createElement("div");
         fc.className = "output-file-content";
 
-        if (file.type === "text") {
+        if (file.type === "text" && /\.html?$/i.test(file.name)) {
+          renderHtmlOutput(header, dlBtn, fc, file);
+        } else if (file.type === "text") {
           const pre = document.createElement("pre");
           pre.textContent = file.content;
           fc.appendChild(pre);

@@ -24,6 +24,43 @@ Common Mermaid shapes: `flowchart LR/TD`, `sequenceDiagram`, `stateDiagram-v2`,
 `erDiagram`. Keep node labels to real symbol/file names. If the CDN is blocked
 the raw text still reads as an indented outline (acceptable degradation).
 
+## chart: quantitative comparisons, Mermaid-native
+
+Same `.diagram` container, no extra dependency. Use `xychart-beta` for
+bar/line comparisons (latency before/after, cost per option, rows per table),
+`pie` for share-of-total, `gantt` for phased timelines. Only chart numbers
+you actually measured or counted during research; a chart of invented data
+is worse than no chart. Label axes with real units.
+
+```html
+<div class="diagram">
+  <pre class="mermaid">
+xychart-beta
+  title "p95 latency by approach (ms)"
+  x-axis ["current", "cached", "precomputed"]
+  y-axis "ms" 0 --> 900
+  bar [850, 320, 45]
+  </pre>
+</div>
+```
+
+Read `design.md` before styling any chart; charts follow the same restraint
+rules as diagrams (one per decision, no decoration).
+
+## image: screenshots and exported figures
+
+For a current-state screenshot, a mock exported as PNG, or any raster figure.
+Keep the file self-contained: small images (under ~200KB) go inline as a
+`data:` URI; bigger ones sit next to the HTML and use a relative `src`
+(note in the caption that the file must travel with the plan).
+
+```html
+<figure class="fig">
+  <img src="data:image/png;base64,..." alt="Current widget list, empty state">
+  <figcaption>Current empty state: no guidance, dead end for new users.</figcaption>
+</figure>
+```
+
 ## steps: the plan itself
 
 Numbered, one concern each. Lead with what each step **reuses** before what it

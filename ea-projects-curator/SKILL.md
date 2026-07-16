@@ -41,7 +41,7 @@ Columns (internal name → type → allowed values). Use internal names for any 
 |---|---|---|---|
 | `Title` | Initiative | Text | Outcome title (see field mapping) |
 | `Theme` | Theme | Choice | `Security Hardening` / `Enterprise Architecture Projects` / `AI Program` / `Governance` / `Observability` |
-| `Status` | Status | Choice | `Proposed` / `In Analysis` / `Decision-Ready` / `In Flight` / `Verifying` / `Closed` (default `Proposed`) |
+| `Status` | Status | Choice | `Proposed` / `In Analysis` / `Decision-Ready` / `In Progress` / `Verifying` / `Closed` (default `Proposed`) |
 | `DecisionNeeded` | Decision Needed | Choice | `None` / `CTO` / `Advisory Board` / `Business Owner` (default `None`) |
 | `Impact` | Impact | Text (single line) | Documented impact, financial or non-financial, or blank |
 | `KeyArtifact` | Key Artifact | Hyperlink | One canonical ADR/SAD URL |

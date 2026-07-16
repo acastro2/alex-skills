@@ -11,9 +11,14 @@ inline CSS and one Mermaid CDN script for diagrams.
 
 - `SKILL.md`: when to use, the workflow, document-quality bar, self-review pass.
 - `references/template.html`: the scaffold to copy and fill. Inline CSS, dark/light
-  aware, print-friendly, Mermaid via CDN.
-- `references/blocks.md`: the block vocabulary (diagram, steps, file-tree, code,
-  diff, data-model, api-endpoint, wireframe, callout, open-questions) as HTML.
+  aware, print-friendly, Mermaid via CDN (version-pinned with an SRI hash).
+- `references/blocks.md`: the block vocabulary (diagram, chart, image, steps,
+  file-tree, code, diff, data-model, api-endpoint, wireframe, callout,
+  open-questions) as HTML.
+- `references/design.md`: what makes the page read well: layout, color
+  discipline, chart/diagram rules, the self-check.
+- `scripts/check_plan.py`: fast structural validation (leftover slots, tag
+  balance, Mermaid sanity) so the model does not re-read the file by hand.
 
 ## Flow
 

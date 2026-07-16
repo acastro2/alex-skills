@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PLAN_TITLE · Plan</title>
 <!--
-  Single-file visual plan. Everything inline except the Mermaid CDN script.
+  Single-file visual plan. Everything inline except the Mermaid CDN script,
+  which is pinned to an exact version with an SRI integrity hash.
   Fill the slots marked {{ ... }} and delete any blocks you don't use.
   Mermaid needs internet the first time the file is opened; diagrams degrade
-  to readable text if the CDN is blocked.
+  to readable text if the CDN is blocked. To bump the Mermaid version,
+  recompute the hash: curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A
 -->
 <style>
   :root {
@@ -99,6 +101,11 @@
   ol.steps > li { position: relative; padding: 14px 0 14px 44px; border-top: 1px solid var(--border); }
   ol.steps > li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: 14px; width: 28px; height: 28px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--accent); font-weight: 700; display: grid; place-items: center; font-size: 14px; }
   ol.steps .reuses { color: var(--accent-2); font-size: 13px; }
+
+  /* Images / figures (screenshots, exported diagrams) */
+  figure.fig { margin: 18px 0; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  figure.fig img { max-width: 100%; display: block; border-radius: 6px; margin: 0 auto; }
+  figure.fig figcaption { color: var(--muted); font-size: 12.5px; margin-top: 8px; text-align: center; }
 
   /* Callouts */
   .callout { border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 var(--radius) var(--radius) 0; padding: 12px 16px; margin: 16px 0; }
@@ -266,7 +273,9 @@ src/
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.min.js"
+        integrity="sha384-T/0lMUdJpd2S1ZHtRiofG3htU3xPCrFVeAQ1UUE2TJwlEJSV5NUwn30kP28n238E"
+        crossorigin="anonymous"></script>
 <script>
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });

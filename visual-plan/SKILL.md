@@ -41,8 +41,14 @@ change. Never pad a plan with filler and never ship a single-step plan.
 1. **Research first (read-only).** Inspect the real files, actions, schema, and
    patterns before drafting. Name actual files, symbols, and data shapes, never
    invent them. Check existing `actions/`/helpers before proposing new ones.
-   Delegate wide exploration to a sub-agent (`Explore`). Make **no source edits**
-   while planning.
+   Scale the depth to the stakes: a contained feature needs minutes of targeted
+   reading, and only hard-to-reverse decisions justify a deep dive. Fire
+   independent lookups (file map, existing patterns, schema, current live state)
+   as parallel `Explore` sub-agents instead of reading serially in your own
+   context; the grounding comes from what you find, not from how long you read.
+   Read-only queries of live systems (dashboards, MCP tools, CLIs) are fair game
+   when they anchor the plan in reality. Make **no source edits and no live
+   mutations** while planning.
 2. **Lead with reuse.** For each step, name what it reuses (existing actions,
    schema, components, helpers) before what it adds, so the plan shows the genuinely
    new delta instead of redescribing what exists.
@@ -50,12 +56,17 @@ change. Never pad a plan with filler and never ship a single-step plan.
    expensive-to-undo decisions right in the plan (wire format, public ids,
    data-model shape, auth/ownership boundaries), then scope to the smallest first
    cut that proves the approach, stating what is in and what is explicitly deferred.
-4. **Compose the HTML.** Copy `references/template.html`, fill the slots, and keep
-   only the blocks that earn their place. Read `references/blocks.md` for the block
-   vocabulary (diagram, steps, file-tree, code, diff, data-model, api-endpoint,
-   wireframe, callout, open-questions). Prose is the default; a block is for what
-   prose explains badly.
-5. **Write the file and open it.**
+4. **Compose the HTML.** `cp` `references/template.html` to the destination and
+   edit the slots in place; retyping the whole file wastes time and invites
+   markup mistakes. Keep only the blocks that earn their place. Read
+   `references/blocks.md` for the block vocabulary (diagram, chart, image, steps,
+   file-tree, code, diff, data-model, api-endpoint, wireframe, callout,
+   open-questions) and `references/design.md` for what makes the page read well.
+   Prose is the default; a block is for what prose explains badly.
+5. **Validate, write, open.**
+   - **Validate:** run `python3 scripts/check_plan.py <file>` after writing. It
+     catches leftover `{{ }}` slots, unbalanced tags, and broken Mermaid blocks
+     in one pass, so do not re-read the whole document by hand for those.
    - **Path:** scratchpad for a throwaway review; the project's `./plans/` dir
      when the plan should persist or be checked in. Name it `plan-<slug>.html`.
    - **Open it:** macOS `open <file>`, Linux `xdg-open <file>`, WSL
@@ -73,7 +84,12 @@ change. Never pad a plan with filler and never ship a single-step plan.
 - **Standalone.** A reader who never saw the chat understands it. If the user
   pasted an existing plan, treat it as source material and rewrite a clean
   proposal, with no revision language ("unlike the previous version", "this
-  revision changes...").
+  revision changes..."). No first-person ("I count", "I found"): state facts as
+  facts. No em dashes; use colons or commas.
+- **Headings name the content.** Rename the template's section headings to what
+  the section actually shows ("Rendering pipeline: before/after", not
+  "Architecture / Flow"). A generic heading left verbatim is a sign the slot was
+  filled, not thought about.
 - **Right altitude.** For broad framework/product changes, separate the core
   abstraction from motivating examples; label examples as examples. Lead with one
   concrete product example near the top when the concept is abstract.
@@ -113,10 +129,11 @@ before major implementation steps.
 
 ## Diagrams & offline note
 
-Diagrams use Mermaid loaded from `cdn.jsdelivr.net` (one `<script>` in the
-template), which needs internet the first time the file is opened. If the CDN is
-blocked, raw Mermaid text still degrades to a readable indented outline. For a
-hardened/offline setup, the user can pin the script to an exact version with an
-`integrity="sha384-..."` SRI hash, or vendor `mermaid.min.js` next to the HTML and
-point the `src` at the local copy. Default leaves it unpinned so patch releases
-do not break rendering.
+Diagrams and charts use Mermaid loaded from `cdn.jsdelivr.net` (one `<script>`
+in the template), which needs internet the first time the file is opened. The
+template pins an exact version with an `integrity="sha384-..."` SRI hash so a
+compromised or altered CDN response cannot execute; keep the pin and hash when
+copying. If the CDN is blocked, raw Mermaid text still degrades to a readable
+indented outline. For fully offline use, vendor `mermaid.min.js` next to the
+HTML and point the `src` at the local copy. To bump the version, recompute the
+hash (command in the template's head comment).
