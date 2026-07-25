@@ -31,13 +31,18 @@ Three frames govern it:
 - KB folder: `<vault>/Bard/` (flat)
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`
+- Weekly TODO board: `<vault>/Bard/TODO.md` (the one living note both Alex and bard edit — see **Weekly TODO board** below)
 
 ## Hard constraints (never violate)
 
 - On-demand only. No scheduler, no autonomous run.
-- Never `git`, never run a server, never commit. (User does that outside.)
+- Never `git`, never run a server, never commit. (User does that outside.) The
+  `obsidian` CLI reload/sync at the end of a sweep is allowed — it drives the
+  already-running Obsidian app, it does not start a server (see **Vault sync**).
 - Write ONLY inside `Bard/`. Never edit a hub or an existing note during a sweep
-  (note→hub direction means hubs never need rewriting).
+  (note→hub direction means hubs never need rewriting). **One exception:** `Bard/TODO.md`,
+  the weekly board, is the single existing file bard updates in place each sweep (see
+  **Weekly TODO board**). Knowledge notes and hubs stay append-only/never-touched.
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
   verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the `ado` agent
   for a real work item, Exa for a public doc) and cite it. If retrieval finds
@@ -73,6 +78,7 @@ so it is derived from real work and ratified by Alex.
 4. On approval, scaffold (write into `Bard/`):
    - one minimal hub note per approved hub (see `references/obsidian-setup.md`),
    - `Bard.base` (copy from `references/obsidian-setup.md`),
+   - `TODO.md`, the weekly board (template in `references/obsidian-setup.md`),
    - initialise `.bard-state.json` with `{ "last_run": null, "watermark": null }`.
 5. Tell Alex to apply the one-time **graph color groups** (documented in
    `references/obsidian-setup.md`) — bard never writes `.obsidian/graph.json`.
@@ -103,11 +109,20 @@ so it is derived from real work and ratified by Alex.
 4. Run the **Generation prompt** (below) over the raw material.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
-6. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
+6. **Update the weekly TODO board** (`Bard/TODO.md`) — see **Weekly TODO board**.
+   In one Edit pass over the existing file: move items the swept sessions show
+   finished into `## Done` (dated), and append genuinely-new candidate tasks to
+   `## Next week`. This is the ONLY existing file bard edits.
+7. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
    session-start timestamp swept this run.
-7. **Report**: per note `created | updated | skipped` + reason, plus any
-   `bard/unreviewed` flags raised (notes that found no fitting hub). Alex reviews in
-   Obsidian via the `Bard.base` dashboard + health view.
+8. **Sync the vault** — bard writes files on disk outside the app, so tell the
+   running Obsidian to re-index and confirm Obsidian Sync flushed them (see
+   **Vault sync** below): `obsidian reload vault=Alex` then `obsidian sync:status
+   vault=Alex`. Report the final status line.
+9. **Report**: per note `created | updated | skipped` + reason, plus any
+   `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
+   summary of TODO-board changes (N added, M marked done), and the vault sync
+   status. Alex reviews in Obsidian via the `Bard.base` dashboard + health view.
 
 > **First real sweep — prove the pipe before trusting it.** The discover→read-raw
 > path (step 3) is the load-bearing untested assumption. On the very first run,
@@ -255,5 +270,56 @@ must equal the canonical `title`. Sanitize illegal chars (`/`, `:`, `#`, `^`, `|
 assistant timestamps — ~50% are null in Cortex). Read at the start of a sweep to
 bound lookback; write the newest session-start swept after a successful run.
 
-See `references/obsidian-setup.md` for the `Bard.base`, hub-note template, and the
-one-time graph-color-group setup.
+## Weekly TODO board
+
+`Bard/TODO.md` is a living operational board — the one existing file bard edits in
+place. It's Alex's shortlist, seeded by bard from the week's swept sessions. It is
+NOT knowledge (it's `type: board`, excluded from `Bard.base` like hubs), so it never
+counts as an orphan.
+
+Two buckets: `## Next week` (open work to pick up) and `## Done` (finished, newest
+first). Both Alex and bard edit it; Alex is the curator, bard is the scribe.
+
+What bard does to it each sweep (step 6 above), in a single Edit pass:
+
+- **Seed `## Next week` from real deferred threads only.** The task fuel is exactly
+  the ephemera the Generation prompt DROPS from notes: unanswered "want me to X?"
+  offers, flagged follow-ups, `PARKED`/`DRAFTED`/gated items, open questions, and
+  "someone else owns this" handoffs. Each new line gets a one-line source breadcrumb
+  (`(session <id> · <repo>)`) so it's traceable. **Never invent a task** — same rule
+  as never-invent-provenance; if the session didn't defer it, it doesn't go on the
+  board.
+- **Move finished items to `## Done`** when a swept session clearly shows them
+  completed (merged PR, applied change, shipped report), with the date.
+- **Dedupe** against lines already on the board — never add a task that's already
+  there (done or pending).
+- **Curation is Alex's.** bard appends and marks done; it does not delete `Next week`
+  items Alex hasn't actioned (they're Alex's to prune). Prune `## Done` entries older
+  than ~4 weeks so the board stays a shortlist, not an archive.
+- Confidentiality still applies: keep secrets/PII/regulated specifics off the board,
+  same as notes. The board isn't a knowledge note, so no `up`, no per-item type — just
+  checkboxes.
+
+## Vault sync
+
+bard writes files straight to disk, outside the Obsidian app. Obsidian only indexes
+(and Obsidian Sync only pushes) files it knows changed, so end every sweep by nudging
+the already-running app via the `obsidian` CLI (installed at `/usr/local/bin/obsidian`;
+the vault is named `Alex`):
+
+```bash
+obsidian reload vault=Alex        # re-index the vault so on-disk writes are picked up
+obsidian sync:status vault=Alex   # confirm; expect "status: synced"
+```
+
+- `reload` reloads/re-indexes the vault (it does NOT restart or launch anything — the
+  app must already be open; if the CLI errors that no vault is running, just tell Alex
+  to open Obsidian and skip sync, don't try to launch it).
+- There is **no explicit "push now" command** — Obsidian Sync flushes automatically
+  once the files are indexed. `sync:status` returning `synced` is the confirmation;
+  if it shows pending/syncing, report that rather than claiming it's done.
+- Never use `sync off` / `restart` / destructive `sync:restore` in a sweep. Only
+  `reload` + `sync:status` (read-only) are part of the flow.
+
+See `references/obsidian-setup.md` for the `TODO.md`, `Bard.base`, hub-note template,
+and the one-time graph-color-group setup.

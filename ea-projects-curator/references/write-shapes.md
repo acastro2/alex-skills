@@ -34,7 +34,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
 {
   "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListListItem"},
   "Title": "Privileged Access Renewal",
-  "Theme": "Enterprise Architecture Projects",
+  "Theme": "Platform Foundations",
   "Status": "Decision-Ready",
   "DecisionNeeded": "CTO",
   "Impact": "$478K/yr documented savings",
@@ -62,6 +62,35 @@ Headers: ...odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | I
 }
 ```
 Send only the fields that changed. `If-Match: *` overwrites regardless of etag (fine for a single-owner board); use the real etag if you want optimistic concurrency. A successful MERGE returns `204 No Content`.
+
+## Comments on an item (narrative layer)
+
+Modern list-item comments API. Same cookie auth; POST needs `X-RequestDigest`.
+
+**Read existing comments first** (idempotency + pick up replies others left):
+
+```
+GET /_api/web/lists(guid'd2c0a30a-dab4-40a7-bc63-7268736473f2')/items(<itemId>)/Comments
+Headers: Accept: application/json;odata=nometadata
+```
+Response `value[]`: each has `id`, `text`, `author.email`, `createdDate`, `isReply`. Newest first.
+
+**Post a comment** (plain text only — no @-mentions, no HTML):
+
+```
+POST /_api/web/lists(guid'd2c0a30a-dab4-40a7-bc63-7268736473f2')/items(<itemId>)/Comments
+Headers: Content-Type: application/json;odata=verbose | Accept: application/json;odata=verbose | X-RequestDigest: <digest>
+```
+```json
+{"text": "Verification evidence gathered; on track for the 07-25 options memo."}
+```
+201 returns the created comment (record `createdDate` + text in `curated.json` under the row's `comments` array).
+
+Gotchas:
+- Comments are **org-visible** like the row — the full exclusion screen applies to `text`.
+- **Append-only policy**: never DELETE or edit comments, a correction is a new comment. (The API allows `DELETE .../Comments(<id>)` on your own — don't use it.)
+- If the endpoint 404s or errors with comments disabled, the list has `CommentsDisabled=true` — report it, don't try to flip the setting.
+- `@`-mention markup (`<a data-sp-mention-user-id=...>`) exists but sends email notifications — never emit it.
 
 ## Find an item Id for matching (idempotency)
 

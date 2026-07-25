@@ -20,6 +20,7 @@ filters:
     - 'file.inFolder("Bard")'
     - 'file.ext == "md"'
     - 'type != "hub"'
+    - 'type != "board"'
 views:
   - type: table
     name: Dashboard
@@ -56,8 +57,8 @@ views:
 > - Grouping is `groupBy: {property, direction}` (an object), not `group_by:` (string).
 > - There is no separate row-`sort:` key in the documented schema — `order` lists
 >   columns; sort rows in-GUI by clicking a column header.
-> - **Hubs (`type: hub`) are excluded base-wide** so they don't false-positive as
->   orphans.
+> - **Hubs (`type: hub`) and the board (`type: board`) are excluded base-wide** so
+>   they don't false-positive as orphans (neither carries an `up`).
 > - **The orphan signal is the `bard/unreviewed` tag**, tested with the documented
 >   `file.hasTag("bard/unreviewed")`. A no-hub note OMITS `up` and is always tagged
 >   `bard/unreviewed`, so the tag arm catches it (empty/null `up` testing isn't in
@@ -106,6 +107,43 @@ views:
 Note: a hub itself has no `up` (it is the top of its spoke), which is why the
 `Bard.base` filter excludes `type == "hub"` base-wide — otherwise every hub would
 read as a false orphan.
+
+---
+
+## 2b. Weekly TODO board template
+
+Write once to `<vault>/Bard/TODO.md`. `type: board` keeps it out of `Bard.base`
+(excluded base-wide alongside hubs), so it never reads as an orphan. Both Alex and
+bard edit it; bard appends candidate tasks + marks done items each sweep, Alex curates.
+No `up`, no per-item type — just two checkbox buckets.
+
+```markdown
+---
+type: board
+title: TODO
+description: Weekly operational board — next-week tasks and recently done. Alex + bard both edit.
+tags: [bard/board]
+---
+
+# TODO
+
+Weekly board for the work bard sees in swept sessions. **Alex curates; bard is the
+scribe** (appends candidate tasks with a source breadcrumb, moves finished items to
+Done). Curate freely — delete anything stale.
+
+## Next week
+
+_Open threads and follow-ups. bard seeds these from deferred "want me to…" offers,
+parked/gated items, and open questions in the week's sessions._
+
+- [ ] _(nothing yet — first sweep will populate this)_
+
+## Done
+
+_Finished, newest first. Prune entries older than ~4 weeks._
+
+- [ ] _(nothing yet)_
+```
 
 ---
 
