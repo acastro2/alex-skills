@@ -10,6 +10,8 @@ metadata:
 
 # Performance Report Skill
 
+This produces an individual's performance material. Treat output as 1:1/manager material: confirm a legitimate purpose before running it on a colleague, and don't share per-person results beyond that purpose.
+
 Generate a data-driven 6-month activity report for any Attain Finance engineer.
 
 ## When to Use

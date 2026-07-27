@@ -3,6 +3,7 @@ name: agent-creator
 description: Create or update OpenCode subagent definitions stored as Markdown files under @agent/. Use when asked to add a new agent, modify an existing agent's prompt/config, or adjust tools/permissions.
 license: MIT
 compatibility: opencode
+disable-model-invocation: true
 metadata:
   audience: maintainers
   workflow: agent-management
@@ -10,7 +11,7 @@ metadata:
 
 # Agent Creator
 
-Create and maintain agent definition files in `@agent/` (backed by `/Users/aamado/.config/opencode/agent/`). Each agent is a single Markdown file with YAML frontmatter that configures tools/permissions plus a prompt body.
+Create and maintain agent definition files in `@agent/` (backed by `/Users/alexandrecastro/.config/opencode/agents/`). Each agent is a single Markdown file with YAML frontmatter that configures tools/permissions plus a prompt body.
 
 ## Output target
 

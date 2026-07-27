@@ -1,7 +1,7 @@
 {
   "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
   "site": "https://attainfinance.sharepoint.com/sites/Architecture",
-  "last_run": "2026-07-22",
+  "last_run": "2026-07-27",
   "rows": {
     "1": {
       "initiative": "Privileged Access Renewal",
@@ -178,9 +178,11 @@
       "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/RFC-001_Adopt_EA_Documentation_Framework.docx",
       "sources": [
         "doc:RFC-001_Adopt_EA_Documentation_Framework.docx",
+        "gh:Platform-Attain-Finance/Enterprise-Architecture",
         "user:2026-07-16 direct add"
       ],
-      "last_curated": "2026-07-20"
+      "last_curated": "2026-07-27",
+      "note": "docs migrated to markdown in GitHub 2026-07-27 (docs-as-code alongside Word originals); ExecutionLink = repo docs tree"
     },
     "18": {
       "initiative": "Generative AI Governance",

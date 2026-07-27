@@ -8,7 +8,7 @@ description: >-
   to turn past decisions/lessons/patterns into notes. On-demand only. Reads
   sessions via the archeologist agent; writes OKF-envelope markdown notes. Never
   commits, never runs a server, never invents provenance.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Task, mcp__exa__web_search_advanced_exa
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa
 ---
 
 # bard — session history → Obsidian knowledge base

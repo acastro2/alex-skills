@@ -12,8 +12,11 @@ description: >-
   live data capture in running service, debug without redeploying. Applies to CloudWatch,
   alarms, dashboards, EMF, X-Ray, traces, CloudTrail,  ADOT, monitoring, synthetics/canaries,
   OR enabling/onboarding/instrumenting a service for Application Signals. Not for
-  app logging or security threat detection.
+  app logging or security threat detection. Defer to the attain-observability skills
+  for Grafana/Loki/Prometheus-based monitoring; this skill is for AWS-native
+  CloudWatch/X-Ray/Application Signals only.
 version: 2
+disable-model-invocation: true
 ---
 
 # AWS Observability
