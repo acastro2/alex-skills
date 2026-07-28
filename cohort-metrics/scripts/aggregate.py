@@ -122,8 +122,14 @@ snapshot = {
     "ado": {"cohort": ado_group("snapshot", cohort_emails),
             "rest": ado_group("snapshot", rest_emails)},
 }
+# The rest-of-org before/after is what turns a raw "+69% since kickoff" into a
+# controlled claim. Without it you cannot tell a tool effect from the whole org
+# simply having a faster quarter. Kept as extra keys so existing consumers of
+# beforeafter[w]["github"] (the cohort) keep working.
 beforeafter = {w: {"github": github_group(w, cohort_logins),
-                   "ado": ado_group(w, cohort_emails)}
+                   "ado": ado_group(w, cohort_emails),
+                   "rest_github": github_group(w, rest_logins),
+                   "rest_ado": ado_group(w, rest_emails)}
                for w in ("before", "after")}
 
 metrics = {
