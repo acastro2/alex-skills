@@ -35,7 +35,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListListItem"},
   "Title": "Privileged Access Renewal",
   "Theme": "Platform Foundations",
-  "Status": "Decision-Ready",
+  "Status": "3. Decision-Ready",
   "DecisionNeeded": "CTO",
   "Impact": "$478K/yr documented savings",
   "KeyArtifact": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://.../ADR-0002.aspx", "Description": "ADR-0002 Privileged Access"},
@@ -55,7 +55,7 @@ Headers: ...odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | I
 ```json
 {
   "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListListItem"},
-  "Status": "In Flight",
+  "Status": "4. In Progress",
   "DecisionNeeded": "None",
   "NextMilestone": "Rollout to first team",
   "MilestoneDate": "2026-08-08T12:00:00Z"

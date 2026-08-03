@@ -1,279 +1,312 @@
 {
-  "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
-  "site": "https://attainfinance.sharepoint.com/sites/Architecture",
-  "last_run": "2026-07-27",
-  "rows": {
-    "1": {
-      "initiative": "Privileged Access Renewal",
-      "theme": "Platform Foundations",
-      "status": "6. Closed",
-      "sources": [
-        "ado:251970",
-        "adr:SAD-Privileged-Access-Consolidation.docx"
-      ],
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "last_curated": "2026-07-20",
-      "comments": [
-        {
-          "date": "2026-07-20",
-          "text": "Consolidation design completed and shared with Security for validation; endpoint pilots progressing (managed elevation live on Windows, jumpbox-free database access validated end-to-end). Remaining design decisions scoped: session recording, remote access path, macOS elevation."
-        },
-        {
-          "date": "2026-07-22",
-          "text": "Superseded: split into rows 21-24 per SAD workstreams (Chris approved the breakdown per Steve Rake Teams chat 2026-07-22)"
-        }
-      ],
-      "outcome": "Superseded"
+ "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
+ "site": "https://attainfinance.sharepoint.com/sites/Architecture",
+ "last_run": "2026-07-28",
+ "rows": {
+  "1": {
+   "initiative": "Privileged Access Renewal",
+   "theme": "Platform Foundations",
+   "status": "6. Closed",
+   "sources": [
+    "ado:251970",
+    "adr:SAD-Privileged-Access-Consolidation.docx"
+   ],
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
+   "last_curated": "2026-07-20",
+   "comments": [
+    {
+     "date": "2026-07-20",
+     "text": "Consolidation design completed and shared with Security for validation; endpoint pilots progressing (managed elevation live on Windows, jumpbox-free database access validated end-to-end). Remaining design decisions scoped: session recording, remote access path, macOS elevation."
     },
-    "2": {
-      "initiative": "Observability Platform",
-      "theme": "Observability",
-      "status": "5. Verifying",
-      "sources": [
-        "gh:Engineering-Attain-Finance/tf-aws-grafana-infra",
-        "ado:245905",
-        "doc:Grafana_LGTM_Platform_Engineering_Reference.docx"
-      ],
-      "last_curated": "2026-07-20"
-    },
-    "3": {
-      "initiative": "GitHub Access Governance",
-      "theme": "Security Hardening",
-      "status": "5. Verifying",
-      "sources": [
-        "adr:ADR-0004-GitHub-Access-Governance-via-Entra-Synced-Teams.docx",
-        "gh:github-team-migrations"
-      ],
-      "last_curated": "2026-07-20"
-    },
-    "4": {
-      "initiative": "Architecture Advisory Board",
-      "theme": "Governance",
-      "status": "4. In Progress",
-      "sources": [
-        "doc:ARF Master Plan.docx",
-        "repo:enterprise-architecture"
-      ]
-    },
-    "5": {
-      "initiative": "Delivery & Change-Control Redesign",
-      "theme": "Governance",
-      "status": "3. Decision-Ready",
-      "sources": [
-        "repo:ado-restructuring",
-        "ado:RestructureSandbox project"
-      ],
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:p:/s/Architecture/IQDVNpDuL9HmQLaeJ8IN8cRYAUgfSBB_qqnhEvKayVQRMd4?e=B7de17"
-    },
-    "6": {
-      "initiative": "Secure Access (SASE) Strategy",
-      "theme": "Security Hardening",
-      "status": "2. In Analysis",
-      "sources": [
-        "adr:ADR-0001-SASE-Strategy.docx"
-      ],
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQAnwxUGG-VWTbsICnOTN28pAW-sowPQh2StleSLMqsIfsM?e=Q8iF5D"
-    },
-    "7": {
-      "initiative": "Workflow Orchestration Platform",
-      "theme": "Platform Foundations",
-      "status": "1. Proposed",
-      "sources": [
-        "ado:251969"
-      ]
-    },
-    "8": {
-      "initiative": "Technology AI Program",
-      "theme": "AI Program",
-      "status": "4. In Progress",
-      "sources": [
-        "doc:Attain GenAI Policy.docx",
-        "doc:Claude_POC_Opportunity_Brief.docx"
-      ],
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture/IQDtHiVCaHlPT6XVtGusZ8iXAcGZrHgC59Gn2PvEko_xa44?e=l9V7Fs",
-      "last_curated": "2026-07-20"
-    },
-    "9": {
-      "initiative": "PDF/Image Viewer Modernization",
-      "theme": "Modernization Enablement",
-      "status": "4. In Progress",
-      "sources": [
-        "doc:pdf-image-viewer-replacement-recommendation.docx"
-      ],
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQAGctXVnoX9R46iDiD4eG3GAcYP63jxeyQJ0lmWF-WweyU?e=yYaitl"
-    },
-    "10": {
-      "initiative": "Snowflake Access & Masking Standardization",
-      "theme": "Security Hardening",
-      "status": "5. Verifying",
-      "sources": [],
-      "note": "breach-adjacent: KeyArtifact is an ACL-gated Architecture-M365-Internal link; description kept neutral; 403s for non-members. Milestone reworded 2026-07-20 to effect-side ('complete ownership model + masking coverage').",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCaWKlOG_81Sa5iuIJPoOIOAa45PLAqvfPAsBkvdb7t25k?e=deovFZ",
-      "last_curated": "2026-07-20"
-    },
-    "11": {
-      "initiative": "Snowflake Auto-DLP",
-      "theme": "Security Hardening",
-      "status": "3. Decision-Ready",
-      "sources": [],
-      "note": "breach-adjacent: KeyArtifact = org-shared sanitized proposal; description kept neutral",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture/IQAmxpHCn_JNQZmEOTIj502eAXQxIy0OeZrq9uxAY8Lvqt4?e=bRZt9B"
-    },
-    "12": {
-      "initiative": "AWS Organization Security Hardening",
-      "theme": "Security Hardening",
-      "status": "5. Verifying",
-      "sources": [],
-      "note": "breach-adjacent: KeyArtifact is an ACL-gated Architecture-M365-Internal link; description kept neutral; 403s for non-members. Milestone reworded 2026-07-20 to effect-side ('extend baseline coverage to runtime and legacy instances').",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQB62tMZdQM_SKWQ3-E3OsTUAegXC1Qcxe7h8jQe9MIO7do?e=mFWdhm",
-      "last_curated": "2026-07-20"
-    },
-    "13": {
-      "initiative": "Vendor Due-Diligence: Canada Expansion",
-      "theme": "Business Initiatives",
-      "status": "2. In Analysis",
-      "sources": [
-        "repo:digifi"
-      ],
-      "note": "vendor name neutralized in title+label (folder URL contains it, unavoidable); KeyArtifact is a working FOLDER, no ADR/SAD yet - swap to canonical doc when produced",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:f:/r/sites/Initiatives884/Shared%20Documents/Digifi%20Canada%20Transition?csf=1&web=1&e=qh7gLJ"
-    },
-    "14": {
-      "initiative": "Data-Engineer Hiring Process",
-      "theme": "Tech Recruiting",
-      "status": "6. Closed",
-      "sources": [
-        "sharepoint:Data Engineer Universal Interview Process"
-      ],
-      "outcome": "Delivered",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/sites/techrecruiting/SitePages/Data-Engineer-Interview-Playbook.aspx"
-    },
-    "15": {
-      "initiative": "Live-Check Endorsement Validation",
-      "theme": "AI Program",
-      "status": "5. Verifying",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:fl:/g/contentstorage/CSP_e4446fb0-86f0-437f-96ab-82c54fb82206/IQA5a5dFVPPASLa91pGSTduMARscrM15eaZEzS0u-lel3ys?e=wEkfip",
-      "sources": [
-        "cc:70689baa-fad3-4060-8cb7-084ee7a863e0",
-        "gh:Engineering-Attain-Finance/live-check"
-      ],
-      "last_curated": "2026-07-20",
-      "note": "ExecutionLink re-homed to Engineering-Attain-Finance/live-check 2026-07-20 (was personal AlexandreCastro_attain repo); KeyArtifact = Loop page"
-    },
-    "16": {
-      "initiative": "Open-Source License Governance",
-      "theme": "Governance",
-      "status": "4. In Progress",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/r/sites/Architecture/Shared%20Documents/RFC-002%20OSS%20License%20Acceptance%20Policy.docx?d=w9a99315cd42b41e690744b10f20ca954&csf=1&web=1&e=zit1c6",
-      "sources": [
-        "doc:RFC-002 OSS License Acceptance Policy.docx",
-        "user:2026-07-16 direct add"
-      ],
-      "last_curated": "2026-07-16"
-    },
-    "17": {
-      "initiative": "EA Documentation Framework",
-      "theme": "Platform Foundations",
-      "status": "3. Decision-Ready",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/RFC-001_Adopt_EA_Documentation_Framework.docx",
-      "sources": [
-        "doc:RFC-001_Adopt_EA_Documentation_Framework.docx",
-        "gh:Platform-Attain-Finance/Enterprise-Architecture",
-        "user:2026-07-16 direct add"
-      ],
-      "last_curated": "2026-07-27",
-      "note": "docs migrated to markdown in GitHub 2026-07-27 (docs-as-code alongside Word originals); ExecutionLink = repo docs tree"
-    },
-    "18": {
-      "initiative": "Generative AI Governance",
-      "theme": "AI Program",
-      "status": "3. Decision-Ready",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQBDbpJZylGhRIQ7dhHleKMzAb9XOtme1X0bofRaIHSPFpk?e=g0Rn3E",
-      "sources": [
-        "doc:GenAI Policy & Enforcement Standard v0.2 (Architects-Internal)",
-        "user:2026-07-16 direct add"
-      ],
-      "last_curated": "2026-07-16",
-      "note": "separate row from Technology AI Program (row 8) by design: 8 = adoption program, 18 = governance standard; artifact is Internal-ACL link (403 for non-members)"
-    },
-    "19": {
-      "initiative": "Internal Developer Portal",
-      "theme": "Platform Foundations",
-      "status": "2. In Analysis",
-      "sources": [
-        "ado:250652"
-      ],
-      "last_curated": "2026-07-20",
-      "note": "Backstage/RHDH on EKS provisioning (ADO 250652, under Security Tasking epic); user confirmed owner-of-record 2026-07-20"
-    },
-    "20": {
-      "initiative": "Self-Hosted CI Runners",
-      "key_artifact_url": "",
-      "sources": [
-        "teams:dan-jd-chat-2026-07-22",
-        "gh:https://github.com/Engineering-Attain-Finance/tf-aws-eks-infra"
-      ],
-      "status": "4. In Progress",
-      "last_curated": "2026-07-22",
-      "comments": []
-    },
-    "21": {
-      "initiative": "Endpoint Privilege Management",
-      "theme": "Platform Foundations",
-      "status": "4. In Progress",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "sources": [
-        "split-from:row1",
-        "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
-        "adr:SAD (Architects-Internal)"
-      ],
-      "last_curated": "2026-07-22"
-    },
-    "22": {
-      "initiative": "Secrets Management Vault",
-      "theme": "Platform Foundations",
-      "status": "2. In Analysis",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "sources": [
-        "split-from:row1",
-        "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
-        "adr:SAD (Architects-Internal)"
-      ],
-      "last_curated": "2026-07-22",
-      "note": "design constraint from Steve Rake 2026-07-22: no all-access vault roles (Terraform-sees-everything concern); involve Jeremy on SSH secrets | 2026-07-23: cloud team already standing up OpenBao in parallel (context only, kept off the org-visible row); EA comparison of proposed solutions due end of Aug"
-    },
-    "23": {
-      "initiative": "Privileged Remote Access",
-      "theme": "Platform Foundations",
-      "status": "2. In Analysis",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "sources": [
-        "split-from:row1",
-        "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
-        "adr:SAD (Architects-Internal)"
-      ],
-      "last_curated": "2026-07-22"
-    },
-    "24": {
-      "initiative": "Legacy PAM Retirement",
-      "theme": "Platform Foundations",
-      "status": "1. Proposed",
-      "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "sources": [
-        "split-from:row1",
-        "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
-        "adr:SAD (Architects-Internal)"
-      ],
-      "last_curated": "2026-07-22"
+    {
+     "date": "2026-07-22",
+     "text": "Superseded: split into rows 21-24 per SAD workstreams (Chris approved the breakdown per Steve Rake Teams chat 2026-07-22)"
     }
+   ],
+   "outcome": "Superseded"
   },
-  "excluded": {
-    "Data Warehouse Platform Strategy": "user-excluded (ADR-0003; vendor-sensitive)",
-    "GPS / Servicing App Access Modernization": "user-skipped",
-    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE — breach-forensics / counsel-touched",
-    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE — litigation-adjacent, loan-level PII",
-    "legal-summary incident-remediation workstream": "HARD EXCLUDE — counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
-    "ADO 250863 Export of Data for Snowflake": "breach-adjacent data movement (2026-07-20 run)",
-    "Admin Account Tiering": "not owner-of-record — Security-Engineering-owned per Alex's own delivery inventory"
+  "2": {
+   "initiative": "Observability Platform",
+   "theme": "Observability",
+   "status": "5. Verifying",
+   "sources": [
+    "gh:Engineering-Attain-Finance/tf-aws-grafana-infra",
+    "ado:245905",
+    "doc:Grafana_LGTM_Platform_Engineering_Reference.docx"
+   ],
+   "last_curated": "2026-07-20"
+  },
+  "3": {
+   "initiative": "GitHub Access Governance",
+   "theme": "Security Hardening",
+   "status": "5. Verifying",
+   "sources": [
+    "adr:ADR-0004-GitHub-Access-Governance-via-Entra-Synced-Teams.docx",
+    "gh:github-team-migrations"
+   ],
+   "last_curated": "2026-07-20"
+  },
+  "4": {
+   "initiative": "Architecture Advisory Board",
+   "theme": "Governance",
+   "status": "4. In Progress",
+   "sources": [
+    "doc:ARF Master Plan.docx",
+    "repo:enterprise-architecture"
+   ]
+  },
+  "5": {
+   "initiative": "Delivery & Change-Control Redesign",
+   "theme": "Governance",
+   "status": "4. In Progress",
+   "sources": [
+    "repo:ado-restructuring",
+    "ado:RestructureSandbox project"
+   ],
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:p:/s/Architecture/IQDVNpDuL9HmQLaeJ8IN8cRYAUgfSBB_qqnhEvKayVQRMd4?e=B7de17",
+   "last_curated": "2026-07-28"
+  },
+  "6": {
+   "initiative": "Secure Access (SASE) Strategy",
+   "theme": "Security Hardening",
+   "status": "2. In Analysis",
+   "sources": [
+    "adr:ADR-0001-SASE-Strategy.docx"
+   ],
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQAnwxUGG-VWTbsICnOTN28pAW-sowPQh2StleSLMqsIfsM?e=Q8iF5D"
+  },
+  "7": {
+   "initiative": "Workflow Orchestration Platform",
+   "theme": "Platform Foundations",
+   "status": "1. Proposed",
+   "sources": [
+    "ado:251969"
+   ]
+  },
+  "8": {
+   "initiative": "Technology AI Program",
+   "theme": "AI Program",
+   "status": "4. In Progress",
+   "sources": [
+    "doc:Attain GenAI Policy.docx",
+    "doc:Claude_POC_Opportunity_Brief.docx"
+   ],
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture/IQDtHiVCaHlPT6XVtGusZ8iXAcGZrHgC59Gn2PvEko_xa44?e=l9V7Fs",
+   "last_curated": "2026-07-20"
+  },
+  "9": {
+   "initiative": "PDF/Image Viewer Modernization",
+   "theme": "Modernization Enablement",
+   "status": "4. In Progress",
+   "sources": [
+    "doc:pdf-image-viewer-replacement-recommendation.docx"
+   ],
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQAGctXVnoX9R46iDiD4eG3GAcYP63jxeyQJ0lmWF-WweyU?e=yYaitl"
+  },
+  "10": {
+   "initiative": "Snowflake Access & Masking Standardization",
+   "theme": "Security Hardening",
+   "status": "6. Closed",
+   "sources": [
+    "ado:250863"
+   ],
+   "note": "breach-adjacent: KeyArtifact is an ACL-gated Architecture-M365-Internal link; description kept neutral; 403s for non-members. Milestone reworded 2026-07-20 to effect-side ('complete ownership model + masking coverage').",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCaWKlOG_81Sa5iuIJPoOIOAa45PLAqvfPAsBkvdb7t25k?e=deovFZ",
+   "last_curated": "2026-07-28",
+   "outcome": "Delivered"
+  },
+  "11": {
+   "initiative": "Snowflake Auto-DLP",
+   "theme": "Security Hardening",
+   "status": "4. In Progress",
+   "sources": [
+    "ado:250863"
+   ],
+   "note": "breach-adjacent: KeyArtifact = org-shared sanitized proposal; description kept neutral",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture/IQAmxpHCn_JNQZmEOTIj502eAXQxIy0OeZrq9uxAY8Lvqt4?e=bRZt9B",
+   "last_curated": "2026-07-28"
+  },
+  "12": {
+   "initiative": "AWS Organization Security Hardening",
+   "theme": "Security Hardening",
+   "status": "5. Verifying",
+   "sources": [],
+   "note": "breach-adjacent: KeyArtifact is an ACL-gated Architecture-M365-Internal link; description kept neutral; 403s for non-members. Milestone reworded 2026-07-20 to effect-side ('extend baseline coverage to runtime and legacy instances').",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQB62tMZdQM_SKWQ3-E3OsTUAegXC1Qcxe7h8jQe9MIO7do?e=mFWdhm",
+   "last_curated": "2026-07-20"
+  },
+  "13": {
+   "initiative": "Vendor Due-Diligence: Canada Expansion",
+   "theme": "Business Initiatives",
+   "status": "2. In Analysis",
+   "sources": [
+    "repo:digifi"
+   ],
+   "note": "vendor name neutralized in title+label (folder URL contains it, unavoidable); KeyArtifact is a working FOLDER, no ADR/SAD yet - swap to canonical doc when produced",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:f:/r/sites/Initiatives884/Shared%20Documents/Digifi%20Canada%20Transition?csf=1&web=1&e=qh7gLJ"
+  },
+  "14": {
+   "initiative": "Data-Engineer Hiring Process",
+   "theme": "Tech Recruiting",
+   "status": "6. Closed",
+   "sources": [
+    "sharepoint:Data Engineer Universal Interview Process"
+   ],
+   "outcome": "Delivered",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/sites/techrecruiting/SitePages/Data-Engineer-Interview-Playbook.aspx"
+  },
+  "15": {
+   "initiative": "Live-Check Endorsement Validation",
+   "theme": "AI Program",
+   "status": "5. Verifying",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:fl:/g/contentstorage/CSP_e4446fb0-86f0-437f-96ab-82c54fb82206/IQA5a5dFVPPASLa91pGSTduMARscrM15eaZEzS0u-lel3ys?e=wEkfip",
+   "sources": [
+    "cc:70689baa-fad3-4060-8cb7-084ee7a863e0",
+    "gh:Engineering-Attain-Finance/live-check"
+   ],
+   "last_curated": "2026-07-20",
+   "note": "ExecutionLink re-homed to Engineering-Attain-Finance/live-check 2026-07-20 (was personal AlexandreCastro_attain repo); KeyArtifact = Loop page"
+  },
+  "16": {
+   "initiative": "Open-Source License Governance",
+   "theme": "Governance",
+   "status": "4. In Progress",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/r/sites/Architecture/Shared%20Documents/RFC-002%20OSS%20License%20Acceptance%20Policy.docx?d=w9a99315cd42b41e690744b10f20ca954&csf=1&web=1&e=zit1c6",
+   "sources": [
+    "doc:RFC-002 OSS License Acceptance Policy.docx",
+    "user:2026-07-16 direct add"
+   ],
+   "last_curated": "2026-07-16"
+  },
+  "17": {
+   "initiative": "EA Documentation Framework",
+   "theme": "Platform Foundations",
+   "status": "3. Decision-Ready",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/RFC-001_Adopt_EA_Documentation_Framework.docx",
+   "sources": [
+    "doc:RFC-001_Adopt_EA_Documentation_Framework.docx",
+    "gh:Platform-Attain-Finance/Enterprise-Architecture",
+    "user:2026-07-16 direct add"
+   ],
+   "last_curated": "2026-07-27",
+   "note": "docs migrated to markdown in GitHub 2026-07-27 (docs-as-code alongside Word originals); ExecutionLink = repo docs tree"
+  },
+  "18": {
+   "initiative": "Generative AI Governance",
+   "theme": "AI Program",
+   "status": "3. Decision-Ready",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQBDbpJZylGhRIQ7dhHleKMzAb9XOtme1X0bofRaIHSPFpk?e=g0Rn3E",
+   "sources": [
+    "doc:GenAI Policy & Enforcement Standard v0.2 (Architects-Internal)",
+    "user:2026-07-16 direct add"
+   ],
+   "last_curated": "2026-07-28",
+   "note": "separate row from Technology AI Program (row 8) by design: 8 = adoption program, 18 = governance standard; artifact is Internal-ACL link (403 for non-members)",
+   "comments": [
+    {
+     "date": "2026-07-28",
+     "text": "Policy v1.0 and the one-page executive summary went to the CTO for review and approval on 27 July. AAB review follows approval."
+    }
+   ]
+  },
+  "19": {
+   "initiative": "Internal Developer Portal",
+   "theme": "Platform Foundations",
+   "status": "2. In Analysis",
+   "sources": [
+    "ado:250652"
+   ],
+   "last_curated": "2026-07-20",
+   "note": "Backstage/RHDH on EKS provisioning (ADO 250652, under Security Tasking epic); user confirmed owner-of-record 2026-07-20"
+  },
+  "20": {
+   "initiative": "Self-Hosted CI Runners",
+   "key_artifact_url": "",
+   "sources": [
+    "teams:dan-jd-chat-2026-07-22",
+    "gh:https://github.com/Engineering-Attain-Finance/tf-aws-eks-infra",
+    "ado:252751"
+   ],
+   "status": "4. In Progress",
+   "last_curated": "2026-07-28",
+   "comments": [
+    {
+     "date": "2026-07-28",
+     "text": "Runner pool is live in EKS. Test workflows are blocked on outbound firewall rules for public package registries; a firewall change request is open: https://awsuse2pfiremon01.speedycash.ict/policyplanner/#/domain/1/workflow/4/ticket/17288/view/changes"
+    }
+   ]
+  },
+  "21": {
+   "initiative": "Endpoint Privilege Management",
+   "theme": "Security Hardening",
+   "status": "2. In Analysis",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
+   "sources": [
+    "split-from:row1",
+    "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
+    "adr:SAD (Architects-Internal)"
+   ],
+   "last_curated": "2026-07-28"
+  },
+  "22": {
+   "initiative": "Secrets Management Vault",
+   "theme": "Security Hardening",
+   "status": "1. Proposed",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
+   "sources": [
+    "split-from:row1",
+    "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
+    "adr:SAD (Architects-Internal)",
+    "ado:251970"
+   ],
+   "last_curated": "2026-07-28",
+   "note": "design constraint from Steve Rake 2026-07-22: no all-access vault roles (Terraform-sees-everything concern); involve Jeremy on SSH secrets | 2026-07-23: cloud team already standing up OpenBao in parallel (context only, kept off the org-visible row); EA comparison of proposed solutions due end of Aug"
+  },
+  "23": {
+   "initiative": "Privileged Remote Access",
+   "theme": "Security Hardening",
+   "status": "4. In Progress",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
+   "sources": [
+    "split-from:row1",
+    "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
+    "adr:SAD (Architects-Internal)"
+   ],
+   "last_curated": "2026-07-28"
+  },
+  "24": {
+   "initiative": "Legacy PAM Retirement",
+   "theme": "Security Hardening",
+   "status": "2. In Analysis",
+   "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
+   "sources": [
+    "split-from:row1",
+    "teams:Steve Rake 1:1 2026-07-22 (Chris approved breakdown)",
+    "adr:SAD (Architects-Internal)"
+   ],
+   "last_curated": "2026-07-28"
   }
+ },
+ "excluded": {
+  "Data Warehouse Platform Strategy": "user-excluded (ADR-0003; vendor-sensitive)",
+  "GPS / Servicing App Access Modernization": "user-skipped",
+  "FulcrumSec data-exfiltration incident": "HARD EXCLUDE \u2014 breach-forensics / counsel-touched",
+  "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE \u2014 litigation-adjacent, loan-level PII",
+  "legal-summary incident-remediation workstream": "HARD EXCLUDE \u2014 counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
+  "ADO 250863 Export of Data for Snowflake": "breach-adjacent data movement (2026-07-20 run)",
+  "Admin Account Tiering": "not owner-of-record \u2014 Security-Engineering-owned per Alex's own delivery inventory"
+ },
+ "open_items": [
+  "Row 20 Self-Hosted CI Runners: MilestoneDate still 2026-07-31 and now WRONG - runners are live, real milestone is egress firewall approval (FireMon 17288). Alex has not supplied a new date.",
+  "Row 19 Internal Developer Portal: work confirmed live (team working the linked ticket) but Impact/NextMilestone/MilestoneDate/KeyArtifact still blank.",
+  "Row 3 GitHub Access Governance: no ExecutionLink - needs an org GitHub URL (work was local ~/Developer/github-team-migrations). Skipped by Alex 2026-07-28.",
+  "GPS Application Access Modernization (Verified Access + AppStream tech briefs, 2026-06-29): candidate row, skipped by Alex 2026-07-28."
+ ],
+ "not_doing": [
+  {
+   "what": "ADR-0003 Data Warehouse Platform Strategy (Snowflake->Redshift migration)",
+   "decided": "2026-07-28",
+   "note": "Staying on Snowflake - Alex: 'we ain't going to redshift, ignore that idea'. Declined even a Closed/Killed record row. Never re-propose; Snowflake investment rows are coherent, not contradictory."
+  }
+ ]
 }
