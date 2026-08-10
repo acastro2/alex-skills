@@ -11,7 +11,7 @@ Payloads for writing curated rows to the **EA Projects** list. Hand these to the
 ```
 GET /_api/web/lists(guid'd2c0a30a-dab4-40a7-bc63-7268736473f2')?$select=ListItemEntityTypeFullName
 ```
-Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_PortfolioListListItem`, but read it live) as `__metadata.type` below.
+Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_PortfolioListItem`, but read it live) as `__metadata.type` below.
 
 ## Field value shapes
 
@@ -32,7 +32,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
 ```
 ```json
 {
-  "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListListItem"},
+  "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListItem"},
   "Title": "Privileged Access Renewal",
   "Theme": "Platform Foundations",
   "Status": "3. Decision-Ready",
@@ -54,7 +54,7 @@ Headers: ...odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | I
 ```
 ```json
 {
-  "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListListItem"},
+  "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListItem"},
   "Status": "4. In Progress",
   "DecisionNeeded": "None",
   "NextMilestone": "Rollout to first team",
@@ -79,8 +79,10 @@ Response `value[]`: each has `id`, `text`, `author.email`, `createdDate`, `isRep
 
 ```
 POST /_api/web/lists(guid'd2c0a30a-dab4-40a7-bc63-7268736473f2')/items(<itemId>)/Comments
-Headers: Content-Type: application/json;odata=verbose | Accept: application/json;odata=verbose | X-RequestDigest: <digest>
+Headers: Content-Type: application/json;odata=nometadata | Accept: application/json;odata=nometadata | X-RequestDigest: <digest>
 ```
+> **Use `nometadata` here, NOT `odata=verbose`** (verified 2026-08-03). The comments endpoint takes a bare `{"text": ...}` body with no `__metadata`, so verbose mode rejects it with `400 InvalidClientQueryException: "An entry without a type name was found, but no expected type was specified."` Item MERGE/create above still needs verbose.
+
 ```json
 {"text": "Verification evidence gathered; on track for the 07-25 options memo."}
 ```
@@ -98,3 +100,69 @@ Gotchas:
 GET /_api/web/lists(guid'...')/items?$select=Id,Title,KeyArtifact,Status,DecisionNeeded,Impact,NextMilestone,MilestoneDate&$top=100
 ```
 Match a candidate to an existing row by `Title` similarity + `KeyArtifact` Url. Match → UPDATE that `Id`; no match → CREATE.
+
+---
+
+# AAB Intake — REST read/write shapes
+
+Second list Alex curates alongside EA Projects — the Architecture Advisory Board forum queue. Same site, same cookie auth. **Read-only checks power the Weekly AAB control; any field write still goes through the review table.**
+
+- List GUID: `80c68e54-eadf-4cf3-946a-3c0e432056a5`
+- Entity type: `SP.Data.AAB_x0020_IntakeListItem` (expected — read it live before every write)
+- Fields used by the weekly control: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime with `Format="DateOnly"`), `Outcomenotes` (Note/text), `Modified`
+- Site timezone: Central Time (US and Canada), verified 2026-08-10. Read `RegionalSettings/TimeZone` each run and use DST-aware UTC bounds for America/Chicago calendar dates.
+
+## Read: metadata and timezone
+
+```
+GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')?$select=ListItemEntityTypeFullName
+GET /_api/web/RegionalSettings?$select=TimeZone/Id,TimeZone/Description&$expand=TimeZone
+```
+If the site timezone no longer maps to America/Chicago, mark date-based checks UNVERIFIED rather than guessing.
+
+## Read: intake items for session selection and close-out check
+
+```
+GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor,Outcomenotes,Modified&$top=100&$orderby=Scheduledfor desc
+```
+Use this to find the latest due session and every item scheduled for that exact site-local session date. Treat a date scheduled for today as due only when the exact-date recap or same-day outcome data shows the session happened; otherwise verify the previous session and report today as upcoming/UNVERIFIED.
+
+## Read: every stale scheduled item
+
+Replace `<today-start-utc>` with site-local midnight converted to UTC, including the current DST offset.
+
+```
+GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor,Outcomenotes,Modified&$filter=Status eq 'Scheduled' and Scheduledfor lt datetime'<today-start-utc>'&$orderby=Scheduledfor asc
+```
+This dedicated query catches past-dated `Scheduled` rows that both normal views hide. Follow `d.__next` until absent; never treat the first page as the full result.
+
+## Read: next calendar week's schedule
+
+Replace both placeholders with the DST-aware UTC instants for next Monday and the following Monday in America/Chicago.
+
+```
+GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor&$filter=Status eq 'Scheduled' and Scheduledfor ge datetime'<next-monday-utc>' and Scheduledfor lt datetime'<following-monday-utc>'&$orderby=Scheduledfor asc
+```
+No returned item after all pages are read means ALERT: Alex must schedule the forum or confirm there is no session.
+
+## Read: published recap evidence
+
+```
+GET /_api/web/GetFolderByServerRelativeUrl('/sites/Architecture/SitePages/Recaps')/Files?$select=Name,ServerRelativeUrl,TimeLastModified,ListItemAllFields/Id,ListItemAllFields/PromotedState,ListItemAllFields/FirstPublishedDate,ListItemAllFields/Modified,ListItemAllFields/OData__ModerationStatus&$expand=ListItemAllFields&$orderby=Name desc&$top=20
+```
+Match the exact file name `<session-date>-AAB-Recap.aspx`. PASS only when `PromotedState=2`, `OData__ModerationStatus=0`, and `FirstPublishedDate` is present. A missing file, a draft, or a file that is not promoted News is an ALERT; a failed live read is UNVERIFIED.
+
+## MERGE: apply approved intake field changes (Status / Outcomenotes / Scheduledfor only)
+
+```
+POST /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items(<itemId>)
+Headers: Content-Type: application/json;odata=verbose | Accept: application/json;odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | If-Match: *
+```
+```json
+{
+  "__metadata": {"type": "SP.Data.AAB_x0020_IntakeListItem"},
+  "Status": "Decided",
+  "Outcomenotes": "Approved for pilot; Security to confirm scope by 08-20."
+}
+```
+Send only the fields Alex approved in the review table — never invent `Outcomenotes` text or a `Scheduledfor` date. For a `Scheduledfor` write, use noon UTC (`2026-08-19T12:00:00Z`) to avoid a timezone rollback. A successful MERGE returns `204 No Content`; **verify with a follow-up GET** on the changed fields before reporting the write as done.

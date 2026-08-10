@@ -4,8 +4,11 @@ description: >
   Curate, update, or audit the EA Projects SharePoint board (also called the "EA Portfolio") on
   /sites/Architecture. Use for any board request: populate or refresh rows from recent work / ADRs /
   ADO tickets / PRs, the weekly maintenance pass, a full audit ("is the board missing or
-  misrepresenting anything?"), or posting row comments. Everything is user-approved via a review
-  table before writing to the org-visible list.
+  misrepresenting anything?"), or posting row comments. Also covers the second surface Alex
+  curates alongside it — the AAB Intake list (not just the recap page) and the weekly AAB recap
+  News post — including checking that the latest due forum got a published recap, that due AAB
+  Intake items were closed out, and that next week has something scheduled. Everything is
+  user-approved via a review table before writing to either org-visible list.
 ---
 
 # EA Projects Curator
@@ -15,6 +18,8 @@ Turn the scattered evidence of what Enterprise Architecture actually did — pri
 ```
 archeologist (+ ADO + GitHub)  →  curate: cluster · screen · shape  →  REVIEW TABLE (one table, every proposed change, user approves by line)  →  write  →  report (WRITTEN / UPDATED / COMMENTED / EXCLUDED)
 ```
+
+**If the input is pasted Architecture Review Forum / advisory-board notes, the board is the SECOND deliverable.** The first is that week's News recap page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx` — Alex calls it "the newsletter"): render the pasted text verbatim per the template in `~/.claude/agents/sharepoint.md`, stage it as an unpublished draft with `PromotedState=1` set via CSOM, and hand Alex the link — he publishes org-visible comms himself. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
 
 Two invariants that override everything below:
 
@@ -105,6 +110,12 @@ REST shapes for reading/posting comments live in `references/write-shapes.md`.
 
 ## Retrieval — where candidates come from
 
+**Auth preflight FIRST (2026-08-10 lesson):** before any retrieval, check the cookie cache age —
+`stat -f %m ~/.claude/scripts/sharepoint/.cookies.json` vs `date +%s`; TTL is ~7h. If it's older
+than ~6h, ask Alex to run `python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+NOW and run the live-list read + writes after he confirms — while retrieval (ADO/GitHub/archeologist
+sweeps) runs in parallel. Reactively discovering a 403 after the sweep wastes the whole run.
+
 Always **read the live list first** (existing rows) so curation produces UPDATEs, not duplicates.
 
 - **archeologist** (primary). Ask it a scoped question, e.g. *"What architecture initiatives, ADRs/SADs, and decisions has Alex driven in the last N weeks?"* It returns a markdown briefing with predictable headers — `### Referenced Files` (Obsidian / Developer / OneDrive-Architecture), `### Evidence Chain` (a table), and `### Verification Status` (HIGH / MEDIUM / LOW). Parse loosely by header. The Evidence Chain and Referenced Files are your initiative candidates and your Key-Artifact candidates (ADR/SAD paths, especially OneDrive/Architecture `.docx`). Treat **LOW confidence** findings as questions to ask, never as asserted fact.
@@ -170,19 +181,48 @@ Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a s
 - **`open_items`** — gaps a run couldn't close (a date only Alex knows, an empty row he's handling himself). Read them at the start of every run and re-surface any still open; resolve or re-write them at the end.
 - **`not_doing`** — decisions to keep something OFF the board (evaluated-and-rejected initiatives, declined candidates). Check it before proposing any NEW row; never re-propose an entry. This is what stops every fresh session from re-discovering the same dead idea.
 
+## Weekly AAB control — the second operating surface
+
+Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter", covered above for pasted-notes input — publishing that page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
+
+- **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime stored as **DateOnly**), `Outcomenotes` (text), `Modified`.
+- **Recaps folder:** `/sites/Architecture/SitePages/Recaps` — page name pattern `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
+- **Timezone/week:** read SharePoint `RegionalSettings/TimeZone` live; verified 2026-08-10 as Central Time (America/Chicago). A calendar week is Monday–Sunday. If the site timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
+
+**1. Pick the session to verify — dynamically, never a hard-coded weekday.** Use site-local dates. Normally select the latest `Scheduledfor` before today: prefer the current week, otherwise the previous week's latest. Treat a session scheduled for **today** as due only when live evidence shows it has happened (the exact-date recap exists, or an intake item already carries a same-day forum outcome); otherwise label today upcoming/UNVERIFIED and verify the previous session so a morning run does not raise three false alerts. If neither current nor previous week has a date, derive the expected forum date from the cadence of the most recent 3–4 published recap filenames and flag that the intake list has no anchor — don't silently skip the check.
+
+**2. Verify the recap was actually published, not staged.** A filename existing under `Recaps/` is not enough — check the page is real News: `PromotedState=2`, `OData__ModerationStatus=0`, and `FirstPublishedDate` present. `PromotedState=1` is still a draft (see the newsletter section above) — report it as unpublished, don't treat it as done.
+
+**3. Verify every intake item for that session was closed out.** For each item whose site-local `Scheduledfor` date equals the selected session date, require a forum outcome: non-empty `Outcomenotes`, a status other than `New`/`Triaged`, and no past-dated `Scheduled` state. The site-local `Modified` date must be on or after the session date as a sanity check, but it does not prove the exact meeting time. Normal outcome is `Decided`; `Parked`/`Deflected` are valid with explanatory notes. A future re-`Scheduled` item is valid only when item version history or the ledger proves it moved from the selected session date and the notes explain why; otherwise report UNVERIFIED. **Separately, always query and flag every item globally where `Status=Scheduled` and `Scheduledfor` is in the past** — SharePoint's own agenda and decision-log views both hide this state (agenda filters `>= today`, log filters `Status=Decided`), so it's invisible unless this check catches it.
+
+**4. Alert if next calendar week has nothing scheduled.** Check for at least one `AAB Intake` item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule the forum or confirm there isn't one. Never auto-schedule or invent a date.
+
+**Report before EA Projects findings under this exact heading:**
+
+## AAB WEEKLY CONTROL
+
+| Check | Result | Evidence |
+|---|---|---|
+| Recap published | PASS / ALERT / UNVERIFIED | date, page Id/URL, PromotedState |
+| Intake close-out | PASS / ALERT / UNVERIFIED | item Ids/titles still open, with Status/Scheduledfor |
+| Next-week schedule | PASS / ALERT / UNVERIFIED | next-week range and items found, or none |
+
+Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification) — same idempotency discipline as EA Projects. **Intake field changes are writes to an org-visible list**: propose them through the same numbered review table as board changes, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` text or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
+
 ## Weekly maintenance mode (`--maintain`)
 
-Skip discovery of new initiatives; only true up what exists. Still gate every proposed change through the review table, and write only what the user confirms:
+Skip discovery of new EA Projects initiatives; only true up what exists. Still gate every proposed change through the review table, and write only what the user confirms:
 
-1. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
-2. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
-3. Flag `3. Decision-Ready` rows older than 30 days that still have a `Decision Needed` set — decision rot; surface them for the 1:1.
-4. Flag `1. Proposed` rows older than ~6 weeks — the black-hole state; propose "analyze or kill" for each.
-5. Flag any `6. Closed` row with a blank `Outcome` — closing requires one (Delivered/Killed/Superseded).
-6. Flag any row whose promise is contradicted by its linked ticket or fresher comms evidence (milestone in days, ticket still `New`; "next milestone: X review" when X was already sent for approval) — the board understating done work is as bad as overstating it.
-7. Flag any `4. In Progress` row with empty Impact + milestone + artifact — the emptiest-looking row is the one a reader clicks.
-8. For rows with a meaningful weekly signal but no column change, propose a narrative comment (see Comments section) instead of forcing a field move. Read each row's existing comments first — both to avoid repeating and to pick up replies/questions others left on the row.
-9. Re-surface every ledger `open_items` entry still unresolved (undated milestones, empty rows Alex said he'd handle).
+1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
+2. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
+3. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
+4. Flag `3. Decision-Ready` rows older than 30 days that still have a `Decision Needed` set — decision rot; surface them for the 1:1.
+5. Flag `1. Proposed` rows older than ~6 weeks — the black-hole state; propose "analyze or kill" for each.
+6. Flag any `6. Closed` row with a blank `Outcome` — closing requires one (Delivered/Killed/Superseded).
+7. Flag any row whose promise is contradicted by its linked ticket or fresher comms evidence (milestone in days, ticket still `New`; "next milestone: X review" when X was already sent for approval) — the board understating done work is as bad as overstating it.
+8. Flag any `4. In Progress` row with empty Impact + milestone + artifact — the emptiest-looking row is the one a reader clicks.
+9. For rows with a meaningful weekly signal but no column change, propose a narrative comment (see Comments section) instead of forcing a field move. Read each row's existing comments first — both to avoid repeating and to pick up replies/questions others left on the row.
+10. Re-surface every ledger `open_items` entry still unresolved (undated milestones, empty rows Alex said he'd handle).
 
 ## Full audit mode (`--audit`, or "look at everything we're doing — is the board missing or misrepresenting anything?")
 

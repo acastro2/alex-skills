@@ -100,12 +100,23 @@ so it is derived from real work and ratified by Alex.
      carry reliable session-start times:
      - Claude Code: `~/.claude/history.jsonl` (`.timestamp` epoch-ms; `.sessionId`, `.project`).
      - Cortex: `~/.snowflake/cortex/conversations/<uuid>.json` → `.created_at`.
+     - Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
+       timestamp is the session start (UTC ISO). Pi dir names start with `--`, so
+       glob with a `./` prefix or absolute paths: bare `--...` paths are parsed as
+       options by `head`/`jq`/`ls`/`find` and silently return nothing.
      - opencode (legacy, first/`full` sweep only): `session.time_archived`.
-     Optionally spawn **archeologist** to rank/cluster which of those sessions hold
-     durable material — but treat its output as a LEAD, not as quotable content.
+     Optionally rank/cluster the candidates with the **archeologist skill** (spawn a
+     `delegate`/`scout` subagent with skill `archeologist` — there is no archeologist
+     *agent* in pi) — but treat its output as a LEAD, not as quotable content. For
+     small windows, skip it: inline reading is faster.
    - **Read raw** the candidate transcripts directly (Read/Bash on the `.jsonl` /
-     SQLite, per the patterns in `~/.claude/agents/archeologist.md`) so STEP 1–5
-     operate on real text and quotes are verbatim.
+     SQLite, per the patterns in the archeologist skill) so STEP 1–5 operate on real
+     text and quotes are verbatim. Two pitfalls: sessions can span the watermark —
+     filter entries by per-message timestamps (CC/Pi `.timestamp`, Cortex
+     `user_sent_time`), don't trust session-start alone; and a sweep will rediscover
+     its own prior bard sessions (first user message = this skill's text) — skip
+     them as mechanics, and expect Cortex sidecar files (`*.history.jsonl`) to be
+     JSONL, one object per line, not a JSON array.
 4. Run the **Generation prompt** (below) over the raw material.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
