@@ -23,7 +23,7 @@ skill-name/
 ## Key patterns
 
 - **SKILL.md frontmatter** always has `name` and `description`. Some skills add `allowed-tools` to restrict what the skill may call, and `disable-model-invocation: true` to make a skill manual-only.
-- **shared/alex-voice-*.md** files define the "Alex" voice used across writing skills — Brazilian-born platform engineer, warm/direct, conversational, opinionated with receipts. Reference the appropriate one when touching prose skills.
+- **shared/alex-voice.md** defines Alex's voice for docs, comms, chat, and general prose. **shared/alex-blogger.md** adds blog-specific guidance. Use only these two voice files.
 - **skill-creator/** is the meta-skill with the most infrastructure: eval loops (`scripts/run_loop.py` uses `claude -p` CLI), grading subagents (`agents/analyzer.md`, `comparator.md`, `grader.md`), benchmark aggregation, and description optimization.
 - **pptx/ and docx/** have Python helpers for Office file manipulation (markitdown, thumbnail.py, office/unpack.py, package.py).
 
@@ -35,6 +35,6 @@ skill-name/
 
 ## Conventions
 
-- Skills that produce prose should reference the appropriate `shared/alex-voice-*.md` for tone.
+- Skills that produce prose should reference `shared/alex-voice.md`; blog skills should also reference `shared/alex-blogger.md`.
 - When creating or editing a skill, follow the schema in `skill-creator/references/schemas.md`.
 - 7 skills have `evals/evals.json` test cases. When modifying those skills, run their evals if possible.

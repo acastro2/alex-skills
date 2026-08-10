@@ -12,12 +12,10 @@ This puts each skill at `~/.agents/skills/<name>/SKILL.md`, which opencode disco
 
 Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/skills/` — see [opencode skills docs](https://opencode.ai/docs/skills/).
 
-s### Shared resources
+### Shared resources
 
-- `shared/alex-voice-core.md` — Alex's writing voice (core)
-- `shared/alex-voice-blog.md` — Alex's voice for blog posts
-- `shared/alex-voice-comms.md` — Alex's voice for comms
-- `shared/alex-voice-docs.md` — Alex's voice for docs
+- `shared/alex-voice.md` — Alex's voice for docs, comms, chat, and general prose
+- `shared/alex-blogger.md` — Alex's blog-specific voice
 
 ## Skill anatomy
 

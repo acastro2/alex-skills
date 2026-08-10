@@ -109,7 +109,7 @@ If the answer is "maybe" or "sort of" - that's a problem. "Maybe" doesn't get ca
 - Are transitions smooth?
 - Is it the right length? (not padded, not rushed)
 
-**Voice check:** Apply the voice checklist and never-use list from `shared/alex-voice-core.md`, plus the blog-specific self-review checklist from `shared/alex-voice-blog.md`.
+**Voice check:** Apply the voice checklist and never-use list from `shared/alex-voice.md`, plus the blog-specific self-review checklist from `shared/alex-blogger.md`.
 
 **Red flags specific to blog reviews:**
 
