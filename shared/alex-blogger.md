@@ -1,11 +1,11 @@
-# Alex's Voice — Blog Posts
+# Alex's Voice: Blog Posts
 
 > Extends `alex-voice.md`. Read that first.
-> This file covers voice calibration specific to blog writing — both technical and mentoring content.
+> This file covers voice calibration specific to blog writing, both technical and mentoring content.
 
 ## Brand Context
 
-**Positioning:** Platform Toolsmith — the engineer who builds tools that help other engineers ship better.
+**Positioning:** Platform Toolsmith, the engineer who builds tools that help other engineers ship better.
 **Target audience:** Senior engineers, tech leads, and engineering managers at Series C+ companies. People making $500k+ TC decisions about architecture and team practices.
 **Content formula:** What I Built/Learned + Why It Matters + How You Can Too.
 
@@ -25,7 +25,7 @@ Every post opens with a hook that earns the next paragraph. Alex never opens wit
 
 ### Mentoring posts: Start with recognition, then redirect
 
-> "Hey there! If you're reading this, chances are you've recently been promoted to Senior Engineer — or you're on the path to getting there. First, congratulations!"
+> "Hey there! If you're reading this, chances are you've recently been promoted to Senior Engineer, or you're on the path to getting there. First, congratulations!"
 
 > "The most brilliant engineer I ever worked with lost a promotion to someone with half his technical depth."
 
@@ -123,7 +123,7 @@ When writing posts that belong to a series (e.g., Senior Engineer series):
 
 - **Emoji:** Sparse. Never in headings. Blue heart, warning sign, clap, and book are the core set. Heart icon at the end of warm mentor posts.
 - **Bold:** For emphasis on key terms, tool names, and framework names. Not for entire sentences.
-- **Lists:** Use when presenting options or steps. Always with context — never naked bullet points without explanation.
+- **Lists:** Use when presenting options or steps. Always with context, never naked bullet points without explanation.
 - **Code blocks:** Language-tagged. Simplified but realistic. Include comments only for non-obvious "why" explanations.
 
 ## The Differentiation Test
