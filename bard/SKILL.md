@@ -2,7 +2,8 @@
 name: bard
 description: >-
   Mine AI-coding session history and distill it into durable, graph-native notes
-  in the personal Obsidian knowledge base at obsidian/Alex/Bard. Use when the user
+  in the personal Obsidian knowledge base at obsidian/Alex/Bard, and copy authored
+  deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
   to sweep recent sessions into the knowledge base, to bootstrap the bard hubs, or
   to turn past decisions/lessons/patterns into notes. On-demand only. Reads
@@ -32,6 +33,7 @@ Three frames govern it:
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`
 - Weekly TODO board: `<vault>/Bard/TODO.md` (the one living note both Alex and bard edit — see **Weekly TODO board** below)
+- Evidence folder: `<vault>/Evidence/` (authored deliverables copied from repos/OneDrive — see **Evidence capture** below)
 
 ## Hard constraints (never violate)
 
@@ -39,10 +41,11 @@ Three frames govern it:
 - Never `git`, never run a server, never commit. (User does that outside.) The
   `obsidian` CLI reload/sync at the end of a sweep is allowed — it drives the
   already-running Obsidian app, it does not start a server (see **Vault sync**).
-- Write ONLY inside `Bard/`. Never edit a hub or an existing note during a sweep
-  (note→hub direction means hubs never need rewriting). **One exception:** `Bard/TODO.md`,
-  the weekly board, is the single existing file bard updates in place each sweep (see
-  **Weekly TODO board**). Knowledge notes and hubs stay append-only/never-touched.
+- Write ONLY inside `Bard/` and `Evidence/`. Never edit a hub or an existing note during
+  a sweep (note→hub direction means hubs never need rewriting). **Two exceptions:**
+  `Bard/TODO.md`, the weekly board, is the single existing file bard updates in place each
+  sweep (see **Weekly TODO board**); and `Evidence/README.md` is updated in place to match
+  what was copied (see **Evidence capture**). Knowledge notes and hubs stay append-only/never-touched.
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
   verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the `ado` agent
   for a real work item, Exa for a public doc) and cite it. If retrieval finds
@@ -123,17 +126,23 @@ so it is derived from real work and ratified by Alex.
 6. **Update the weekly TODO board** (`Bard/TODO.md`) — see **Weekly TODO board**.
    In one Edit pass over the existing file: move items the swept sessions show
    finished into `## Done` (dated), and append genuinely-new candidate tasks to
-   `## Next week`. This is the ONLY existing file bard edits.
-7. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
+   `## Next week`. This is one of the TWO existing files bard edits in place.
+7. **Capture evidence files** — when the sweep's file scan surfaces authored
+   deliverables not yet in `Evidence/`, copy them per **Evidence capture** (see
+   below). Update `Evidence/README.md` to match. This is the other existing file
+   bard edits in place.
+8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
    session-start timestamp swept this run.
-8. **Sync the vault** — bard writes files on disk outside the app, so tell the
+9. **Sync the vault** — bard writes files on disk outside the app, so tell the
    running Obsidian to re-index and confirm Obsidian Sync flushed them (see
    **Vault sync** below): `obsidian reload vault=Alex` then `obsidian sync:status
    vault=Alex`. Report the final status line.
-9. **Report**: per note `created | updated | skipped` + reason, plus any
+10. **Report**: per note `created | updated | skipped` + reason, plus any
    `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
-   summary of TODO-board changes (N added, M marked done), and the vault sync
-   status. Alex reviews in Obsidian via the `Bard.base` dashboard + health view.
+   summary of TODO-board changes (N added, M marked done), a line for evidence
+   files copied (N added, and any PII files deliberately excluded), and the vault
+   sync status. Alex reviews in Obsidian via the `Bard.base` dashboard + health
+   view.
 
 > **First real sweep — prove the pipe before trusting it.** The discover→read-raw
 > path (step 3) is the load-bearing untested assumption. On the very first run,
@@ -310,6 +319,53 @@ What bard does to it each sweep (step 6 above), in a single Edit pass:
 - Confidentiality still applies: keep secrets/PII/regulated specifics off the board,
   same as notes. The board isn't a knowledge note, so no `up`, no per-item type — just
   checkboxes.
+
+## Evidence capture
+
+Alongside the knowledge sweep, copy **authored deliverable files** into `<vault>/Evidence/`
+when a swept session or the sweep's file scan surfaces them. This is Alex's personal work
+record — the artifacts that back up the knowledge notes (decks, ADRs, reports, plans).
+
+### What qualifies (copy when it makes sense)
+
+Authored deliverables Alex produced or co-authored, from local repos or OneDrive
+(Architecture - Documents and the OneDrive root). Copy ONLY when:
+- it's a **deliverable** (deck, ADR/SAD/SIP/RFC, report, plan/proposal, SOW, tech brief,
+  template), and
+- Alex authored/co-authored it (swept session, git authorship, or file metadata shows
+  him as the creator), and
+- it's not already in `Evidence/` (dedupe by filename — copy = ADD only, never overwrite
+  an existing copy, never move/delete the source).
+
+### Folder layout
+
+`Evidence/` is organized by artifact type, not by topic:
+- `Decks/` — .pptx/.pdf presentations
+- `ADRs/` — Architecture Decision Records
+- `Reports/` — audit/baseline/activity reports (html/docx/pdf)
+- `Plans-Proposals/` — plans, proposals, SOWs, remediation plans
+- `RFCs/` — RFCs
+- `Tech-Briefs/` — tech briefs, opportunity briefs, reference docs
+- `Templates/` — templates Alex built
+- `Confidential/` — ⚠️ incident-related and internal-sensitive material (see below)
+
+### Confidentiality (hard rule, same as notes)
+
+- **Never copy consumer-PII datafiles** (loan documents, consumer-count datafiles,
+  candidate resumes, watchlist extracts, any file whose content is third-party personal
+  data) into the vault at all — record the work as a Bard note instead. This is a hard
+  line, not a judgment call: a personal-sync vault is not a place for other people's data.
+- Incident-related / internal-sensitive deliverables (incident briefings, security
+  incident summaries, PII access reviews, legal hold notices, exec-only updates) go into
+  `Evidence/Confidential/` and get flagged in `Evidence/README.md`. The CURO/Attain
+  matter is **"an incident," never "a breach"** — never reframe, never widen audience.
+- Nothing confidential ever goes to Exa or any public web tool (same boundary as notes).
+
+### README
+
+Keep `Evidence/README.md` current in place (the one file bard updates alongside
+`Bard/TODO.md`): list each category, note the PII boundary, and flag the Confidential
+folder with a do-not-share warning.
 
 ## Vault sync
 
