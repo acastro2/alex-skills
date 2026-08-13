@@ -135,12 +135,14 @@ for person in CFG["cohort"]:
 # 2. Authored merged PRs across the org universe (weekly chunks)
 print("Fetching authored merged PRs...", file=sys.stderr)
 authored = defaultdict(dict)
+authored_created = defaultdict(dict)
+authored_title = defaultdict(dict)
 truncated = []
 for org in ORGS:
     for a, b in weekly_windows(FULL_START, TODAY):
         rng = f"{a}..{b}"
         rows = gh_json(["search", "prs", "--owner", org, "--merged",
-                        "--merged-at", rng, "--json", "author,closedAt,url",
+                        "--merged-at", rng, "--json", "author,closedAt,createdAt,url,title",
                         "--limit", "1000"])
         time.sleep(SEARCH_SLEEP)
         if rows is None:
@@ -151,6 +153,8 @@ for org in ORGS:
             if is_bot(pr.get("author")):
                 continue
             authored[pr["author"]["login"]][pr["url"]] = pr.get("closedAt")
+            authored_created[pr["author"]["login"]][pr["url"]] = pr.get("createdAt")
+            authored_title[pr["author"]["login"]][pr["url"]] = pr.get("title")
 print(f"  authors with >=1 merged PR: {len(authored)}", file=sys.stderr)
 if truncated:
     print(f"  WARNING truncated chunks (raise chunk granularity): {truncated}", file=sys.stderr)
@@ -178,7 +182,9 @@ for i, login in enumerate(sorted(active)):
 out = {
     "resolved": resolved, "resolve_method": resolve_method,
     "cohort_logins": sorted(cohort_logins),
-    "authored": dict(authored), "reviewed": dict(reviewed),
+    "authored": dict(authored), "authored_created": dict(authored_created),
+    "authored_title": dict(authored_title),
+    "reviewed": dict(reviewed),
     "member_count": len(member_logins),
     "truncated_chunks": truncated, "review_truncated": rev_trunc,
     "windows": W,

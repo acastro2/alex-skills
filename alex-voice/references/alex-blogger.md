@@ -1,6 +1,6 @@
 # Alex's Voice: Blog Posts
 
-> Extends `alex-voice.md`. Read that first.
+> Extends `../SKILL.md`. Read that first.
 > This file covers voice calibration specific to blog writing, both technical and mentoring content.
 
 ## Brand Context
@@ -144,6 +144,6 @@ Before finalizing any blog post:
 - [ ] States at least one opinion directly (not hedged)
 - [ ] Includes honest tradeoffs (not just the happy path)
 - [ ] Has mermaid diagrams (technical) or concept frameworks (mentor)
-- [ ] Passes the Never-Use List from `alex-voice.md`
+- [ ] Passes the Never-Use List from `../SKILL.md`
 - [ ] Ends with a clear next step or CTA
 - [ ] Read aloud: sounds like Alex talking, not a blog template

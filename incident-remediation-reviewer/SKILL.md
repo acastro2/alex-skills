@@ -24,7 +24,7 @@ The core test is:
 
 Accuracy matters more than brevity. Preserve important qualifications, dates, scope boundaries, and uncertainty even when they make the text longer.
 
-When writing review prose, apply `../shared/alex-voice.md` if available. Keep the tone neutral, direct, and factual. Do not make counsel-facing text casual.
+When writing review prose, apply `../alex-voice/SKILL.md` if available. Keep the tone neutral, direct, and factual. Do not make counsel-facing text casual.
 
 ## Scope
 
