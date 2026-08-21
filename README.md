@@ -30,6 +30,22 @@ skill-name/
 └── LICENSE.txt     # Per-skill license
 ```
 
+## Development and validation
+
+Install the pre-commit hooks:
+
+```bash
+pre-commit install
+```
+
+Run all hooks on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+The local validator checks top-level skill frontmatter, directory and name agreement, and sibling relative references.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).

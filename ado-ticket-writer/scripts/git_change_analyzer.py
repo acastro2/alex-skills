@@ -48,7 +48,7 @@ def get_commits_in_branch(base_branch: str = "main") -> List[str]:
     output = run_git_command(cmd)
     if not output:
         return []
-    
+
     commits = []
     for line in output.split("\n"):
         if line.strip():
@@ -56,7 +56,7 @@ def get_commits_in_branch(base_branch: str = "main") -> List[str]:
             parts = line.split(" ", 1)
             if len(parts) == 2:
                 commits.append(parts[1])
-    
+
     return commits
 
 
@@ -72,14 +72,14 @@ def parse_conventional_commit(message: str) -> Dict[str, str]:
     # Pattern: type(scope): subject
     pattern = r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?: (?P<subject>.+)$"
     match = re.match(pattern, message)
-    
+
     if match:
         return {
             "type": match.group("type"),
             "scope": match.group("scope") or "",
             "subject": match.group("subject")
         }
-    
+
     return {"type": "", "scope": "", "subject": message}
 
 
@@ -108,7 +108,7 @@ def analyze_changes(base_branch: str = "main") -> ChangeIntent:
     """Analyze git changes and extract intent"""
     commits = get_commits_in_branch(base_branch)
     files = get_changed_files(base_branch)
-    
+
     if not commits:
         return ChangeIntent(
             action="Unknown",
@@ -119,21 +119,21 @@ def analyze_changes(base_branch: str = "main") -> ChangeIntent:
             commits=[],
             files_changed=files
         )
-    
+
     # Analyze first commit (usually the main one)
     first_commit = commits[0]
     parsed = parse_conventional_commit(first_commit)
-    
+
     action = determine_action(parsed["type"])
     scope = parsed["scope"] or infer_scope_from_files(files)
     target = parsed["subject"]
-    
+
     # Infer motivation from commit body or files
     motivation = infer_motivation(commits, files)
-    
+
     # Infer impact from action and target
     impact = infer_impact(action, target, files)
-    
+
     return ChangeIntent(
         action=action,
         target=target,
@@ -149,17 +149,17 @@ def infer_scope_from_files(files: List[str]) -> str:
     """Infer component scope from changed files"""
     if not files:
         return "Unknown"
-    
+
     # Extract directory names
     dirs = set()
     for f in files:
         parts = f.split("/")
         if len(parts) > 1:
             dirs.add(parts[0])
-    
+
     if dirs:
         return ", ".join(sorted(dirs))
-    
+
     return "General"
 
 
@@ -176,19 +176,19 @@ def infer_motivation(commits: List[str], files: List[str]) -> str:
         "security": "to address security concerns",
         "perf": "to improve performance"
     }
-    
+
     for commit in commits:
         lower_commit = commit.lower()
         for keyword, motivation in motivation_keywords.items():
             if keyword in lower_commit:
                 return motivation
-    
+
     # Default based on file types
     if any("test" in f.lower() for f in files):
         return "to improve test coverage"
     if any("doc" in f.lower() for f in files):
         return "to improve documentation"
-    
+
     return "to implement required changes"
 
 
@@ -209,7 +209,7 @@ def infer_impact(action: str, target: str, files: List[str]) -> str:
 def main():
     """Main entry point"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Analyze git changes and extract intent for Azure DevOps work items"
     )
@@ -223,11 +223,11 @@ def main():
         action="store_true",
         help="Output as JSON"
     )
-    
+
     args = parser.parse_args()
-    
+
     intent = analyze_changes(args.base_branch)
-    
+
     if args.json:
         print(json.dumps(asdict(intent), indent=2))
     else:

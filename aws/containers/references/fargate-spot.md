@@ -142,7 +142,7 @@ When AWS reclaims Fargate Spot capacity, the following sequence occurs:
 ```
 Time 0:00  ─── AWS sends SIGTERM to all containers in the task
                 ECS fires a task state change event (stoppedReason: "Your Spot Task was interrupted.")
-                
+
 Time 0:00 to stopTimeout ─── Application performs graceful shutdown
                               (drain connections, flush buffers, save state)
 

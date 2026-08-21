@@ -37,4 +37,5 @@ skill-name/
 
 - Skills that produce prose should reference `../alex-voice/SKILL.md`; blog skills should also reference `../alex-voice/references/alex-blogger.md`.
 - When creating or editing a skill, follow the schema in `skill-creator/references/schemas.md`.
-- 7 skills have `evals/evals.json` test cases. When modifying those skills, run their evals if possible.
+- Run `pre-commit run --all-files` before you commit.
+- When a skill has `evals/evals.json`, run its evals.
