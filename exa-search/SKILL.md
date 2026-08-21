@@ -9,7 +9,7 @@ description: "Call Exa Search directly with cURL or raw HTTP. Use when an agent 
 >
 > Header: `x-api-key: $EXA_API_KEY`
 
-Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. Start with `type: "auto"` for general retrieval. Add `contents` only when the caller needs page text, highlights, summaries, freshness-controlled crawling, subpages, or extracted links.
+Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. This CLI skill replaces both basic and advanced MCP search. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to `exa-agent`. Route known-URL extraction to `exa-contents`.
 
 ## Quick Start (cURL)
 
@@ -97,7 +97,7 @@ Use this endpoint when the agent needs search results. If the agent already has 
 | `query` | string | Yes | - | Natural-language search query. Long, semantically rich descriptions work well. |
 | `type` | string | No | `auto` | Search method: `auto`, `fast`, `instant`, `deep-lite`, `deep`, or `deep-reasoning`. |
 | `numResults` | integer | No | `10` | Number of results to return. Use small values for agent loops; maximum is 100. |
-| `category` | string | No | - | Specialized result type: `company`, `people`, `research paper`, `news`, `personal site`, or `financial report`. |
+| `category` | string | No | - | Known categories: `company`, `publication`, `news`, `personal site`, `financial report`, or `people`. Other strings are only category hints. |
 | `includeDomains` | string[] | No | - | Only return results from these domains, paths, or wildcard patterns. Max 1200. |
 | `excludeDomains` | string[] | No | - | Exclude these domains, paths, or wildcard patterns. Max 1200. |
 | `startPublishedDate` | string | No | - | ISO 8601 lower bound for result publication date. |
@@ -109,6 +109,13 @@ Use this endpoint when the agent needs search results. If the agent already has 
 | `outputSchema` | object | No | - | JSON Schema controlling `output.content`. Adds synthesized output and grounding. |
 | `stream` | boolean | No | `false` | If `true`, returns SSE instead of a single JSON response. |
 | `compliance` | string | No | - | Enterprise-only compliance mode, such as `hipaa`, when enabled for the account. |
+
+### Differences from the old advanced MCP tool
+
+The old MCP tool exposed fields that the current REST OpenAPI does not support:
+
+- `startCrawlDate` and `endCrawlDate` are deprecated and ignored.
+- `includeText` and `excludeText` are not REST request fields. Put text constraints in the query. If they must be exact, request page text and filter the returned results locally.
 
 ### Content parameters nested under `contents`
 
@@ -281,7 +288,7 @@ Treat streaming as SSE rather than JSON. Each `data:` frame contains an OpenAI-c
 - Do not send `tokensNum`; use `contents.text.maxCharacters` to cap extracted text.
 - Do not use `useAutoprompt`, `numSentences`, or `highlightsPerUrl` in new requests.
 - Use `contents.maxAgeHours` instead of `livecrawl`.
-- Use documented categories only: `company`, `people`, `research paper`, `news`, `personal site`, and `financial report`.
-- Avoid invalid category/filter combinations. `company` and `people` do not support `startPublishedDate` or `endPublishedDate`. `company` supports `excludeDomains`; `people` does not, and `people` only accepts LinkedIn domains in `includeDomains`.
+- Use known categories only: `company`, `publication`, `news`, `personal site`, `financial report`, and `people`. Other strings are only category hints.
+- Avoid invalid category/filter combinations. `company` and `people` do not support `startPublishedDate`, `endPublishedDate`, or `excludeDomains`. The `people` category only accepts LinkedIn domains in `includeDomains`.
 - Pick one of `contents.highlights`, `contents.text`, or `contents.summary` by default. Stack modes only when the caller truly needs multiple views of each page.
 - Expect SSE only when `stream: true` is paired with `outputSchema`; otherwise `/search` returns its normal JSON response.
