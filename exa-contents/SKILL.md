@@ -9,6 +9,23 @@ description: "Call Exa Contents directly with cURL or raw HTTP. Use when an agen
 >
 > Header: `x-api-key: $EXA_API_KEY`
 
+## Set up authentication
+
+Use `EXA_API_KEY` first, then `~/.config/exa/key`. Never print the key or use `set -x`.
+
+```bash
+set -euo pipefail
+
+if [[ -z "${EXA_API_KEY:-}" && -r "$HOME/.config/exa/key" ]]; then
+  IFS= read -r EXA_API_KEY < "$HOME/.config/exa/key" || [[ -n "$EXA_API_KEY" ]]
+fi
+
+if [[ -z "${EXA_API_KEY:-}" ]]; then
+  printf '%s\n' 'Exa API key not found. Set EXA_API_KEY or create ~/.config/exa/key.' >&2
+  exit 1
+fi
+```
+
 Use `POST https://api.exa.ai/contents` when the agent already knows the URLs and needs clean, LLM-ready extraction without running a new search. Start with one content mode: `highlights` for compact agent context, `text` for broad page context, or `summary` for Exa-side compression.
 
 ## Quick Start (cURL)

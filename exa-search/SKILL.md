@@ -9,6 +9,23 @@ description: "Call Exa Search directly with cURL or raw HTTP. Use when an agent 
 >
 > Header: `x-api-key: $EXA_API_KEY`
 
+## Set up authentication
+
+Use `EXA_API_KEY` first, then `~/.config/exa/key`. Never print the key or use `set -x`.
+
+```bash
+set -euo pipefail
+
+if [[ -z "${EXA_API_KEY:-}" && -r "$HOME/.config/exa/key" ]]; then
+  IFS= read -r EXA_API_KEY < "$HOME/.config/exa/key" || [[ -n "$EXA_API_KEY" ]]
+fi
+
+if [[ -z "${EXA_API_KEY:-}" ]]; then
+  printf '%s\n' 'Exa API key not found. Set EXA_API_KEY or create ~/.config/exa/key.' >&2
+  exit 1
+fi
+```
+
 Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. This CLI skill replaces both basic and advanced MCP search. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to `exa-agent`. Route known-URL extraction to `exa-contents`.
 
 ## Quick Start (cURL)
@@ -289,6 +306,6 @@ Treat streaming as SSE rather than JSON. Each `data:` frame contains an OpenAI-c
 - Do not use `useAutoprompt`, `numSentences`, or `highlightsPerUrl` in new requests.
 - Use `contents.maxAgeHours` instead of `livecrawl`.
 - Use known categories only: `company`, `publication`, `news`, `personal site`, `financial report`, and `people`. Other strings are only category hints.
-- Avoid invalid category/filter combinations. `company` and `people` do not support `startPublishedDate`, `endPublishedDate`, or `excludeDomains`. The `people` category only accepts LinkedIn domains in `includeDomains`.
+- Avoid invalid category/filter combinations. `company` and `people` do not support `startPublishedDate`, `endPublishedDate`, or `excludeDomains`. The `people` category does not support `includeDomains` either.
 - Pick one of `contents.highlights`, `contents.text`, or `contents.summary` by default. Stack modes only when the caller truly needs multiple views of each page.
 - Expect SSE only when `stream: true` is paired with `outputSchema`; otherwise `/search` returns its normal JSON response.
