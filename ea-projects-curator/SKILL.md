@@ -7,8 +7,14 @@ description: >
   misrepresenting anything?"), or posting row comments. Also covers the second surface Alex
   curates alongside it — the AAB Intake list (not just the recap page) and the weekly AAB recap
   News post — including checking that the latest due forum got a published recap, that due AAB
-  Intake items were closed out, and that next week has something scheduled. Everything is
-  user-approved via a review table before writing to either org-visible list.
+  Intake items were closed out, and that next week has something scheduled. It writes the weekly
+  Architecture Weekly recap itself: it finds the Architecture Advisory Board meeting on the
+  calendar, pulls that session's Microsoft Teams meeting transcript, and generates the structured
+  post-meeting forum recap (objective, outcome, decisions, action items, topics, open questions,
+  artifacts) alongside the evidence-backed "What Architecture shipped" section (merged PRs, ADO
+  movement, board changes). Use it whenever asked to recap, summarize, or write up an
+  Architecture Review Forum / AAB / advisory-board meeting, or to get a meeting transcript for one.
+  Everything is user-approved via a review table before writing to either org-visible list.
 ---
 
 # EA Projects Curator
@@ -16,10 +22,15 @@ description: >
 Turn the scattered evidence of what Enterprise Architecture actually did — prior AI sessions, ADRs/SADs, ADO epics, GitHub PRs — into a small set of executive-legible rows on the EA Projects board. You are a **filter and transformer**, not a retriever and not a scribe: you receive raw signals, decide what qualifies, shape it for a non-architect CTO, and then **ask** before you write.
 
 ```
-archeologist (+ ADO + GitHub)  →  curate: cluster · screen · shape  →  REVIEW TABLE (one table, every proposed change, user approves by line)  →  write  →  report (WRITTEN / UPDATED / COMMENTED / EXCLUDED)
+Teams transcript  ─┐
+archeologist       ├→ curate: cluster · screen · shape →  REVIEW TABLE  →  write  →  report
+ADO + GitHub      ─┘   (forum recap + shipped panel      (one table,        (stage    (WRITTEN / UPDATED /
+                        + board rows)                     approve by line)   + MERGE)  COMMENTED / EXCLUDED)
 ```
 
-**If the input is pasted Architecture Review Forum / advisory-board notes, the board is the SECOND deliverable.** The first is that week's News recap page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx` — Alex calls it "the newsletter"): render the pasted text verbatim per the template in `~/.claude/agents/sharepoint.md`, stage it as an unpublished draft with `PromotedState=1` set via CSOM, and hand Alex the link — he publishes org-visible comms himself. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+**Every weekly run owes TWO deliverables, and the board is the SECOND one.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility): the **Forum recap** component plus the generated evidence-backed **What Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM. Hand Alex the link; he publishes org-visible comms himself. Gather evidence once, compose both components, use one review table, and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+
+**The Forum recap component is GENERATED from the Teams meeting transcript by default** — you fetch the transcript yourself, you do not wait for Alex to paste notes. See **Forum recap — generate it from the meeting transcript** below for how to find the meeting, pull the transcript, and the exact recap prompt. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no transcript exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
 Two invariants that override everything below:
 
@@ -183,11 +194,218 @@ Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a s
 
 ## Weekly AAB control — the second operating surface
 
-Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter", covered above for pasted-notes input — publishing that page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
+Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter" — you generate its forum recap from the meeting transcript, and publishing the page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
 
 - **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime stored as **DateOnly**), `Outcomenotes` (text), `Modified`.
 - **Recaps folder:** `/sites/Architecture/SitePages/Recaps` — page name pattern `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
 - **Timezone/week:** read SharePoint `RegionalSettings/TimeZone` live; verified 2026-08-10 as Central Time (America/Chicago). A calendar week is Monday–Sunday. If the site timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
+
+## Forum recap — generate it from the meeting transcript
+
+The forum's own record is the Teams meeting transcript. Fetch it and write the recap yourself; do
+not wait for pasted notes. Verified end-to-end 2026-08-28 against the 2026-08-26 forum.
+
+### Step 1 — find the meeting (calendar, not SharePoint)
+
+The M365 connector tools are deferred: load them first with
+`ToolSearch("select:mcp__claude_ai_Microsoft_365__outlook_calendar_search,mcp__claude_ai_Microsoft_365__read_resource")`.
+
+**The calendar subject is `Architecture Advisory Board`, NOT "Architecture Review Forum."** Searching
+the forum's public name returns zero events and reads like the meeting never happened. Search the
+real subject, or use `query: "*"` with a one-day `afterDateTime`/`beforeDateTime` window around the
+session date and pick it out of the day's events.
+
+The forum runs **Wednesdays, 3:00–4:00pm Central** (verified cadence across 8 sessions), organizer
+Alex, location Microsoft Teams Meeting. It regularly runs over; the 08-26 session ran 85 minutes.
+
+### Step 2 — get the transcript URL from the event
+
+`read_resource` on `calendar:///events/{eventId}` returns a **`meetingTranscriptUrl`** field. Pass
+that value **verbatim** to `read_resource`. It looks like
+`meeting-transcript:///events/{base64urlJoinUrlToken}?start={iso}&end={iso}` — the `start`/`end`
+params scope a recurring series to the one occurrence. **Keep them.** Drop them and you get the most
+recent transcripts of the whole series, capped, and you will summarize the wrong meeting.
+
+### Step 3 — expect the response to be too big, and parse it
+
+The transcript comes back as JSON (~114KB for 85 minutes), which exceeds the tool output limit, so
+the harness saves it to a file and tells you the path. Do NOT `Read` that file: it is one enormous
+line and offset/limit will not help. Parse it with python.
+
+Shape: `{"meeting": {...}, "transcripts": [{"createdDateTime", "endDateTime", "content"}]}` where
+`content` is WEBVTT with `<v Speaker Name>text</v>` cues.
+
+> **The outer `meeting.startDateTime` is the SERIES start date, not this occurrence.** On the 08-26
+> run it read `2026-07-08`. Confirm which session you actually have from
+> `transcripts[].createdDateTime` / `endDateTime`, never from the outer object.
+
+Parse into a readable transcript before reasoning over it: extract each cue's timestamp, speaker and
+text, then **merge consecutive cues from the same speaker into one turn**. Teams emits one cue per
+breath (729 cues collapsed to 409 turns on 08-26), and unmerged cues read as noise.
+
+Use the bundled parser rather than rewriting it:
+
+```bash
+python3 references/parse-teams-transcript.py <saved-raw.json> <out.txt>
+```
+
+It prints the occurrence window, cue/turn counts and speaker list to stderr so you can confirm you
+have the right session, and warns if you got the whole series instead of one occurrence. **Then read
+the output file in full before drafting** — the recap has to be faithful, so do not summarize from
+grep hits. The speaker list is also your attendance line; it is who actually spoke, which is not the
+same as who was invited.
+
+### Do not chase the OneDrive recordings
+
+`~/Library/CloudStorage/OneDrive-Attainfinance.com/Recordings/` holds
+`Architecture Advisory Board-<YYYYMMDD>_<HHMMSS>UTC-Meeting Recording.mp4` files, and they are a
+dead end for transcription: **every AAB recording has no audio stream at all** (verified with
+`ffprobe -select_streams a` across all 8; they are video-only static screen-shares, ~1.4MB for 85
+minutes). There is no `.vtt` on disk and `sharepoint_search` does not index the transcripts either.
+The connector path above is the only working route. Do not offer local transcription as a fallback.
+
+### Teams garbles proper nouns — verify or omit, never publish a guess
+
+Auto-transcription mangles names, and a garbled proper noun in an org-visible post is worse than no
+noun. Observed on 08-26: `loose chart`/`LCLC` → Lucidchart, `fire monitor`/`fire money`/`fire mall`
+→ FireMon, `Avanti`/`Vivanti` → Ivanti, `SC` → SE, `ADL` → ADO, `Creo` → CURO, `five nine` → Five9,
+`Broz book` → the feature-flag system (still unidentified — so it stayed unnamed in the recap).
+Correct only what you can confirm; otherwise describe the thing without naming it. The transcript
+may also end mid-sentence, as 08-26 did. Say so in the recap footer rather than inventing an ending.
+
+### The recap prompt (Alex's wording — use it as-is)
+
+> Create a shareable post-meeting recap for the Architecture Review Forum. Be concise and factual —
+> pull only from what was actually said. Use this exact structure and these headings:
+>
+> **Architecture Review Forum — [Meeting Date]**
+> Put the actual meeting date on this header line.
+>
+> **Objective** — 1-2 sentences: what this session set out to accomplish.
+>
+> **Outcome** — one line stating whether the objective was met: [Achieved] / [Partially achieved] /
+> [Not achieved], followed by a one-sentence why. If the objective was never clearly stated, write
+> "No explicit objective set" and infer the de facto purpose from the discussion.
+>
+> **TL;DR** — 2-3 sentences: the most important thing that happened and what it means for the group.
+>
+> **Decisions Made** — a table with columns: Decision | Rationale | Owner. Include only firm
+> decisions, not discussion. If none, write "No formal decisions this session."
+>
+> **Action Items** — a table with columns: Action | Owner | Due (if stated). List every commitment
+> made, with the named owner. Mark owner as "Unassigned" if no one was named.
+>
+> **Topics Discussed** — one bullet per topic. For each: a one-line summary, then the outcome tag in
+> brackets — [Decided], [Needs follow-up], or [Parked]. Keep each to two sentences max.
+>
+> **Open Questions / Risks** — bullets for anything raised but unresolved, including who needs to
+> weigh in to close it.
+>
+> **Artifacts Referenced** — list any docs, decks, diagrams, or links mentioned, with the file name.
+>
+> Rules: Attribute decisions and actions to the specific person who owns them. Do not invent owners
+> or dates. Skip pleasantries, tangents, and status updates that led nowhere. Write in plain, direct
+> prose — no filler like "the team discussed the importance of." Keep the whole recap under one
+> screen.
+
+Load the `alex-voice` skill (comms register) before drafting: this is internal comms in Alex's name.
+No em dashes.
+
+### Recap gates (on top of the prompt)
+
+- **The full exclusion screen applies to every line of the recap**, same as board rows. The forum
+  discusses live security detail; the recap is org-visible. Keep it effect-side: never name a
+  specific exposed endpoint, a live unremediated weakness, vendor-commercial posture, or personnel
+  criticism. Where a topic cannot be described safely, drop it and tell Alex why in your report
+  rather than softening it onto the page.
+- **Decision versus discussion is the highest-risk call.** Promoting an uncontested assertion into
+  "Decided" misleads everyone who reads it. If Alex asserted a scope boundary and nobody objected,
+  that is not the same as the group deciding; say what actually happened. When the session ends with
+  "let's circle back next week," the Outcome is at best [Partially achieved].
+- **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers.
+  Attribute to the person who actually spoke the commitment.
+- Put the recap through the **same review table** as everything else (`Row` = `Recap page`,
+  `Field` = `forum recap`), and flag any judgment call you want Alex to own as its own line. Stage
+  with `PromotedState=1`; publishing stays his click. Re-screen anything he edits.
+- A generated recap also gives you the real `Outcomenotes` for that session's AAB Intake items and
+  the evidence to close them out. Propose those as review-table lines too, never write them blind.
+
+### Verify the draft against the transcript before showing it to Alex
+
+Every one of these was a real error in the first generated recap (2026-08-26), caught by an
+adversarial pass, not by re-reading. Run the check; do not trust the draft.
+
+- **No spoken name means Unassigned.** "Take one person from your team and ask them to try it" said
+  to the room is not an assignment to the four managers you infer were present. Never derive an
+  owner from who attended, who runs a team, or who the ask logically lands on. Only a name actually
+  spoken in connection with the commitment becomes an owner.
+- **Read the turns AFTER an apparent decision before recording it.** A scope boundary Alex states
+  can be reversed in the very next turn. In the 08-26 draft "firewall changes stay out of ITCC" was
+  recorded as decided while the next speaker offered to move firewall tracking IN and drop the
+  separate product, which made the recap contradict itself.
+- **Cross-check the Decisions table against the Action Items table.** If a row says something is
+  settled and an action item says someone is looking into changing it, one of them is wrong. That
+  contradiction is the cheapest error to catch and the most embarrassing to publish.
+- **Conditional agreement is not agreement.** "I agree, but it still needs X" is a condition; carry
+  the condition or do not claim the agreement.
+- **Driving the screen is not authorship.** Alex demoing someone's ticket does not make it his, and
+  someone answering questions about their own artifact did not necessarily present it.
+- **Never stitch two remarks into one quote.** If the phrasing spans utterances minutes apart, write
+  it as prose, not as a quotation.
+- **Carry the counter-evidence, not just the loudest thread.** A recap that reports only the
+  pushback misrepresents the room. The 08-26 draft omitted the emergency change type, the fact the
+  ticket never blocks the work, and that PCI already requires recording cardholder-environment
+  changes; all three narrow the overhead objection it led with.
+- **A speaker with no visible contribution is a smell.** Diff the transcript's speaker list against
+  the names appearing in the recap. On 08-26 that gap hid the originator of an action item, credited
+  to Alex instead. Either credit them or knowingly decide they added nothing.
+- **Leadership criticism goes ownerless.** "Rick asked me why we didn't know before they did" names
+  a senior leader challenging a named manager over a security miss. Keep the question, drop the
+  people: "leadership has asked how we catch this ourselves."
+
+Cheapest reliable form of this check: spawn independent verifiers with distinct lenses (attribution,
+numbers and quotes, decision-versus-discussion, omissions and confidentiality), each given the
+transcript path and told to find errors rather than approve. Fix what they confirm, and tell Alex
+what you changed and why.
+
+## Weekly newsletter — Architecture Weekly
+
+Every weekly page carries TWO components under the title **Architecture Weekly — Month D, YYYY**.
+Component 1 is the **Forum recap** (generated from the transcript per the section above, or Alex's
+pasted notes rendered verbatim when he supplies them). Component 2 is the generated **What
+Architecture shipped** panel at the bottom. They answer different questions: the forum record says
+what the group decided; the delivery panel says what EA shipped. Drop any delivery item that
+restates the forum recap.
+
+**Sources — reuse the run's retrieval sweep, never double-fetch:** the curation run's own WRITTEN /
+UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub
+retrieval (`gh search prs --author "@me" --updated ">=$SINCE"` plus commit lookup when needed),
+ADO epic/feature movement, and verified artifacts found by the archeologist. The archeologist does
+not provide a complete GitHub activity feed; query GitHub directly. Use the same auth preflight as
+everything else.
+
+**Shape:** use the approved light-blue information surface (`#C9E7F4`), Venice Blue left edge
+(`#094682`), dark text (`#1D3E50`), and Deck Slate evidence text (`#325477`). Add 3–6 items; a thin
+week gets 2 or none. Each item contains:
+- One bold, outcome-first sentence, ≤ ~20 words and exec-legible in the same voice as
+  `NextMilestone`. No session IDs, ticket IDs, or technical provenance in the sentence.
+- An `Evidence:` line with one or two descriptive, underlined Venice Blue links. Link directly to
+  the primary org-readable record: merged PR, closed ADO item, current portfolio row, ADR, or
+  equivalent artifact. Labels describe the destination (`Runtime migration`, `Portfolio outcome`),
+  never raw URLs, `click here`, or naked IDs.
+
+**Gates (all mandatory):**
+- Full exclusion screen applies to the sentence and every linked artifact: no privileged/counsel
+  references, sensitive vendor naming, current-weakness specifics, personnel, personal-OneDrive
+  links, or access-restricted evidence. If no safe evidence link exists, drop the item.
+- Put each complete item through the review table as one line (`Row` = `Recap page`, `Field` =
+  `shipped item`), including the exact sentence, link labels, and target URLs. Apply only approved
+  lines and re-screen anything Alex edits.
+- Stage with `--stage` / `PromotedState=1`; publishing stays Alex's click. Never re-stage a page
+  whose `FirstPublishedDate` is already set because that demotes a live News post.
+- Build the delivery-only draft, and flag clearly that it contains no forum record, ONLY when the
+  forum genuinely produced nothing to recap: no transcript exists (meeting not recorded, or it did
+  not run) and Alex pasted no notes. A transcript you have not tried to fetch is not an absence.
 
 **1. Pick the session to verify — dynamically, never a hard-coded weekday.** Use site-local dates. Normally select the latest `Scheduledfor` before today: prefer the current week, otherwise the previous week's latest. Treat a session scheduled for **today** as due only when live evidence shows it has happened (the exact-date recap exists, or an intake item already carries a same-day forum outcome); otherwise label today upcoming/UNVERIFIED and verify the previous session so a morning run does not raise three false alerts. If neither current nor previous week has a date, derive the expected forum date from the cadence of the most recent 3–4 published recap filenames and flag that the intake list has no anchor — don't silently skip the check.
 
@@ -214,15 +432,16 @@ Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after liv
 Skip discovery of new EA Projects initiatives; only true up what exists. Still gate every proposed change through the review table, and write only what the user confirms:
 
 1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
-2. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
-3. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
-4. Flag `3. Decision-Ready` rows older than 30 days that still have a `Decision Needed` set — decision rot; surface them for the 1:1.
-5. Flag `1. Proposed` rows older than ~6 weeks — the black-hole state; propose "analyze or kill" for each.
-6. Flag any `6. Closed` row with a blank `Outcome` — closing requires one (Delivered/Killed/Superseded).
-7. Flag any row whose promise is contradicted by its linked ticket or fresher comms evidence (milestone in days, ticket still `New`; "next milestone: X review" when X was already sent for approval) — the board understating done work is as bad as overstating it.
-8. Flag any `4. In Progress` row with empty Impact + milestone + artifact — the emptiest-looking row is the one a reader clicks.
-9. For rows with a meaningful weekly signal but no column change, propose a narrative comment (see Comments section) instead of forcing a field move. Read each row's existing comments first — both to avoid repeating and to pick up replies/questions others left on the row.
-10. Re-surface every ledger `open_items` entry still unresolved (undated milestones, empty rows Alex said he'd handle).
+2. If the control shows the latest due forum has no published recap, **fetch that session's transcript and draft the recap now** (see **Forum recap — generate it from the meeting transcript**), and carry it into the same review table. A missing recap is work to do this run, not just a line item to report. The transcript is also the truth-check for whether the forum actually ran: a past-dated `Scheduled` intake item plus a real transcript means the close-out was missed, not the meeting.
+3. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
+4. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
+5. Flag `3. Decision-Ready` rows older than 30 days that still have a `Decision Needed` set — decision rot; surface them for the 1:1.
+6. Flag `1. Proposed` rows older than ~6 weeks — the black-hole state; propose "analyze or kill" for each.
+7. Flag any `6. Closed` row with a blank `Outcome` — closing requires one (Delivered/Killed/Superseded).
+8. Flag any row whose promise is contradicted by its linked ticket or fresher comms evidence (milestone in days, ticket still `New`; "next milestone: X review" when X was already sent for approval) — the board understating done work is as bad as overstating it.
+9. Flag any `4. In Progress` row with empty Impact + milestone + artifact — the emptiest-looking row is the one a reader clicks.
+10. For rows with a meaningful weekly signal but no column change, propose a narrative comment (see Comments section) instead of forcing a field move. Read each row's existing comments first — both to avoid repeating and to pick up replies/questions others left on the row.
+11. Re-surface every ledger `open_items` entry still unresolved (undated milestones, empty rows Alex said he'd handle).
 
 ## Full audit mode (`--audit`, or "look at everything we're doing — is the board missing or misrepresenting anything?")
 
@@ -240,3 +459,5 @@ After the gate and the write, emit four markdown tables so the run is auditable:
 ## Safety recap
 
 Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that specific line. Run the exclusion screen on every candidate, on every title the user edits, and on every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing new rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions.
+
+The forum recap carries the same stakes and one extra risk: it is built from a verbatim transcript of a room where people speak freely about live security gaps, vendors and each other. **Quote nothing that the exclusion screen would block as a board row.** Attribute only what a named person actually said, never publish a garbled proper noun, never promote uncontested discussion into "Decided", and never invent an owner or a date. The recap goes out staged (`PromotedState=1`) for Alex to publish, and any line you are unsure about belongs in the review table as its own question, not softened onto the page.

@@ -1,7 +1,7 @@
 {
   "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
   "site": "https://attainfinance.sharepoint.com/sites/Architecture",
-  "last_run": "2026-08-10",
+  "last_run": "2026-08-21",
   "rows": {
     "1": {
       "initiative": "Privileged Access Renewal",
@@ -36,9 +36,10 @@
       "sources": [
         "gh:Engineering-Attain-Finance/tf-aws-grafana-infra",
         "ado:245905",
-        "doc:Grafana_LGTM_Platform_Engineering_Reference.docx"
+        "doc:Grafana_LGTM_Platform_Engineering_Reference.docx",
+        "gh:https://github.com/Engineering-Attain-Finance/tf-aws-grafana-infra/pull/84"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-21",
       "comments": [
         {
           "date": "2026-08-10",
@@ -47,6 +48,10 @@
         {
           "date": "2026-08-14",
           "text": "Operational service owner verified: SRE (14 Aug) - on-call and paging run through GoAlert per the platform reference."
+        },
+        {
+          "date": "2026-08-21",
+          "text": "Grafana 13.2 and direct plugin delivery merged on 19 Aug. The Snowflake datasource remains open, so the 15 Aug milestone needs a new date."
         }
       ]
     },
@@ -71,12 +76,14 @@
     "4": {
       "initiative": "Architecture Advisory Board",
       "theme": "Governance",
-      "status": "Verifying",
+      "status": "5. Verifying",
       "sources": [
         "doc:ARF Master Plan.docx",
-        "repo:enterprise-architecture"
+        "repo:enterprise-architecture",
+        "aab:2026-08-19-forum"
       ],
-      "last_curated": "2026-08-14"
+      "last_curated": "2026-08-21",
+      "milestone": "Publish Aug 19 recap and schedule the next forum"
     },
     "5": {
       "initiative": "Delivery & Change-Control Redesign",
@@ -84,11 +91,12 @@
       "status": "4. In Progress",
       "sources": [
         "repo:ado-restructuring",
-        "ado:RestructureSandbox project"
+        "ado:RestructureSandbox project",
+        "aab:2026-08-19-forum"
       ],
       "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/ADO_Restructuring_Proposal.pptx",
-      "last_curated": "2026-08-14",
-      "milestone": "Alpha team pilot check-in",
+      "last_curated": "2026-08-21",
+      "milestone": "Alpha pilot sprint 4 ships",
       "comments": [
         {
           "date": "2026-08-14",
@@ -97,6 +105,10 @@
         {
           "date": "2026-08-14",
           "text": "Absorbed the ADO restructuring and access-governance thread into this initiative - same proposal deck, one program. Compliance sign-off on change-control mechanics and the access-model audit wired to CI follow the pilot."
+        },
+        {
+          "date": "2026-08-21",
+          "text": "The 19 Aug forum supported the Alpha pilot direction. The next design step is to complete the pilot and define IT-specific work item types and workflow gates before broader adoption."
         }
       ],
       "note": "Merged row 26 (ADO Restructuring & Access Governance) into this row 2026-08-14 - same Key Artifact file (sourcedoc ee9036d5-d12f-40e6-b69e-27c20df1c458 = ADO_Restructuring_Proposal.pptx), same theme, both In Progress."
@@ -238,25 +250,31 @@
         "cc:70689baa-fad3-4060-8cb7-084ee7a863e0",
         "gh:Engineering-Attain-Finance/live-check"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-21",
       "note": "ExecutionLink re-homed to Engineering-Attain-Finance/live-check 2026-07-20 (was personal AlexandreCastro_attain repo); KeyArtifact = Loop page",
       "outcome": "Delivered",
-      "milestone": "Design follow-up scope with Delta"
+      "milestone": "Design follow-up scope with Delta",
+      "decision_needed": "None"
     },
     "16": {
       "initiative": "Open-Source License Governance",
       "theme": "Governance",
-      "status": "4. In Progress",
+      "status": "2. In Analysis",
       "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/r/sites/Architecture/Shared%20Documents/RFC-002%20OSS%20License%20Acceptance%20Policy.docx?d=w9a99315cd42b41e690744b10f20ca954&csf=1&web=1&e=zit1c6",
       "sources": [
         "doc:RFC-002 OSS License Acceptance Policy.docx",
-        "user:2026-07-16 direct add"
+        "user:2026-07-16 direct add",
+        "pi:01a011a7 (2026-08-18 GitHub Enterprise)"
       ],
-      "last_curated": "2026-08-10",
+      "last_curated": "2026-08-21",
       "comments": [
         {
           "date": "2026-08-03",
           "text": "Legal and Compliance have completed their review of the license-acceptance policy, and the RFC is now open to the wider group for feedback."
+        },
+        {
+          "date": "2026-08-21",
+          "text": "Enterprise license scanning runs continuously, while an enforcing ruleset controls merge blocking. Approved-license ownership and rollout posture remain open."
         }
       ],
       "milestone": "GitHub-level license blocking starts; legal confirms the approved license list"
@@ -264,14 +282,14 @@
     "17": {
       "initiative": "EA Documentation Framework",
       "theme": "Platform Foundations",
-      "status": "Closed",
+      "status": "6. Closed",
       "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/RFC-001_Adopt_EA_Documentation_Framework.docx",
       "sources": [
         "doc:RFC-001_Adopt_EA_Documentation_Framework.docx",
         "gh:Platform-Attain-Finance/Enterprise-Architecture",
         "user:2026-07-16 direct add"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-21",
       "note": "docs migrated to markdown in GitHub 2026-07-27 (docs-as-code alongside Word originals); ExecutionLink = repo docs tree",
       "comments": [
         {
@@ -288,7 +306,8 @@
         }
       ],
       "milestone": "Adoption evidence gathered - framework in use across teams",
-      "outcome": "Delivered"
+      "outcome": "Delivered",
+      "decision_needed": "None"
     },
     "18": {
       "initiative": "Generative AI Governance",
@@ -319,9 +338,15 @@
       "sources": [
         "ado:250652"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-21",
       "note": "Backstage/RHDH on EKS provisioning (ADO 250652, under Security Tasking epic); user confirmed owner-of-record 2026-07-20",
-      "milestone": "Backstage on EKS infrastructure provisioned (ticket active this sprint)"
+      "milestone": "Backstage on EKS infrastructure provisioned (ticket active this sprint)",
+      "comments": [
+        {
+          "date": "2026-08-21",
+          "text": "Developer portal infrastructure implementation started, with its first delivery PR linked on 21 Aug. The 25 Aug milestone remains active."
+        }
+      ]
     },
     "20": {
       "initiative": "Self-Hosted CI Runners",
@@ -331,8 +356,8 @@
         "gh:https://github.com/Engineering-Attain-Finance/tf-aws-eks-infra",
         "ado:252751"
       ],
-      "status": "5. Verifying",
-      "last_curated": "2026-08-10",
+      "status": "6. Closed",
+      "last_curated": "2026-08-21",
       "comments": [
         {
           "date": "2026-07-28",
@@ -343,7 +368,8 @@
           "text": "Egress firewall rules approved - runner ticket closed 08-10. Pipeline migration tracked under CI/CD Platform Migration."
         }
       ],
-      "milestone": "Verification tests complete; close-out review"
+      "milestone": "Verification tests complete; close-out review",
+      "outcome": "Delivered"
     },
     "21": {
       "initiative": "Endpoint Privilege Management",
@@ -411,14 +437,23 @@
     "25": {
       "initiative": "CI/CD Platform Migration",
       "theme": "Platform Foundations",
-      "status": "2. In Analysis",
+      "status": "4. In Progress",
       "sources": [
         "gh:Engineering-Attain-Finance/reusable-workflows/pull/72",
-        "ado:252751"
+        "ado:252751",
+        "gh:https://github.com/Engineering-Attain-Finance/reusable-workflows/pull/77",
+        "ado:253307",
+        "ado:253309"
       ],
       "execution_link": "https://github.com/Engineering-Attain-Finance/reusable-workflows/pull/72",
       "milestone": "Canary green on the rebuilt workflow catalog; first ADO pipeline migration decision",
-      "last_curated": "2026-08-14"
+      "last_curated": "2026-08-21",
+      "comments": [
+        {
+          "date": "2026-08-21",
+          "text": "The shared workflow catalog now includes semantic releases and pull-request title controls. The Cloud repository also gained scoped infrastructure planning; canary work remains active."
+        }
+      ]
     },
     "26": {
       "initiative": "ADO Restructuring & Access Governance",
@@ -467,54 +502,65 @@
       "initiative": "Grafana AI Assistant",
       "key_artifact_url": null,
       "sources": [
-        "pi:01a0009e (2026-08-14 grafana-improvements)"
+        "pi:01a0009e (2026-08-14 grafana-improvements)",
+        "ado:253981",
+        "pi:01a025e2 (2026-08-21 grafana-improvements)"
       ],
-      "status": "4. In Progress",
-      "last_curated": "2026-08-14",
+      "status": "6. Closed",
+      "last_curated": "2026-08-21",
       "comments": [
         {
           "date": "2026-08-14",
           "text": "Plugin deployed 14 Aug; SRE owns rollout. Blocked on outbound egress to Grafana Cloud - network allowlist ticket prepared."
+        },
+        {
+          "date": "2026-08-21",
+          "text": "Assistant stabilization and AI telemetry passed acceptance tests on 20 Aug. Production access was verified with a standard Viewer account on 21 Aug."
         }
-      ]
+      ],
+      "outcome": "Delivered"
+    },
+    "30": {
+      "initiative": "GitHub Policy Automation",
+      "theme": "Security Hardening",
+      "status": "4. In Progress",
+      "decision_needed": "None",
+      "impact": "Keeps repository and branch controls consistent across every active GitHub organization.",
+      "execution_link": "https://github.com/Engineering-Attain-Finance/safesettings",
+      "milestone": "Complete the ruleset migration and verify policy synchronization across every active organization.",
+      "sources": [
+        "gh:https://github.com/Engineering-Attain-Finance/safesettings/pull/24",
+        "gh:https://github.com/Engineering-Attain-Finance/safesettings/pull/25",
+        "gh:https://github.com/Engineering-Attain-Finance/tf-aws-safesettings-infra/pull/17",
+        "pi:01a0259e (2026-08-21 Engineering-Attain-Finance/admin)"
+      ],
+      "last_curated": "2026-08-21",
+      "comments": []
     }
   },
   "excluded": {
     "Data Warehouse Platform Strategy": "user-excluded (ADR-0003; vendor-sensitive)",
     "GPS / Servicing App Access Modernization": "user-skipped",
-    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE \u2014 breach-forensics / counsel-touched",
-    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE \u2014 litigation-adjacent, loan-level PII",
-    "legal-summary incident-remediation workstream": "HARD EXCLUDE \u2014 counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
+    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE — breach-forensics / counsel-touched",
+    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE — litigation-adjacent, loan-level PII",
+    "legal-summary incident-remediation workstream": "HARD EXCLUDE — counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
     "ADO 250863 Export of Data for Snowflake": "breach-adjacent data movement (2026-07-20 run)",
-    "Admin Account Tiering": "not owner-of-record \u2014 Security-Engineering-owned per Alex's own delivery inventory",
+    "Admin Account Tiering": "not owner-of-record — Security-Engineering-owned per Alex's own delivery inventory",
     "Devo Prospector Studio / agentic SOAR platform": "attendance + not owner-of-record (ARF 2026-07-29) - Jeremy Sands authored the proposal and owns the SOW, Chris Goodrich owns the vendor thread; Alex reviewed and raised the Bedrock/private-link question. Lives in the newsletter, not the board. Would need neutral naming if ever added."
   },
   "open_items": [
-    "Row 5 Delivery & Change-Control: ExecutionLink fixed to SE Ops-Alpha epic (253422) 08-14 - milestone 'Alpha pilot sprint 4 ships' 08-25 from ticket iteration (sprint label, verify end date). Sandbox comment (08-14) superseded by correction comment.",
-    "Row 25 CI/CD Platform Migration (NEW 08-10): MilestoneDate blank - Alex approved row but gave no date.",
-    "Row 20 Self-Hosted CI Runners: MilestoneDate 2026-08-17 derived from Alex's 'likely close next week' - confirm/adjust.",
-    "Row 16 OSS License Governance: milestone rewritten (GitHub-level blocking + legal license list), date cleared - Alex to email legal follow-up + supply date. No evidence of blocking started or email sent as of 08-10.",
-    "Row 5 Delivery & Change-Control: pilot approval (08-08) unconfirmed by Alex; ADO_Restructuring_Proposal.pptx updated 08-04 - may be the pilot vehicle.",
-    "Row 22 Secrets Management Vault: ticket 251970 New since 07-01 (40d) vs milestone 08-28 - unconfirmed by Alex.",
-    "Row 2 Observability: ADO 245905 New since 06-10 (61d) while row 5. Verifying - unconfirmed by Alex.",
-    "Prospector Studio (AAB intake #6): RESOLVED - recap 07-29 published 08-03; decision documented.",
-    "Row 4 AAB: 08-05 recap published (Alex). Sponsor review/relaunch talk still owed - Alex: 'need to look at the ARF document'.",
-    "Row 15 Live-Check: CLOSED Delivered; follow-up with Delta to be designed - future new row when scoped.",
-    "Row 2 Observability: ticket 245905 (Cloud Infrastructure Alerting, Feature, New since 06-10, Alex-assigned) - Alex asked for ticket details, decision pending (close or re-date).",
-    "AWS DevOps Agent: NEW row declined 08-14 ('haven't done anything there'). Revisit when EA delivers (CloudTrail access review, Sept validation read).",
-    "Intake 8 RFC-002 license policy: needs a forum date (Triaged since 08-03).",
-    "AAB next week (08-17 week): nothing scheduled - Alex to book or confirm none (Astronomer follow-up owed).",
-    "Recap 2026-08-12: staged draft PromotedState=1, page 17 - Alex publishes (PromotedState=2).",
-    "Row 2 Observability: milestone 'Name operational service owner' due 08-15; evidence points to SRE (GoAlert on-call, RFC-004) but no named owner - Alex confirms. Alerting ticket 245905 still New since 06-10 - go or close?",
-    "Row 20 Self-Hosted CI Runners: 08-17 close-out unconfirmed - no workflow runs since 08-10.",
-    "Row 22 Secrets Management Vault: ticket 251970 untouched since 07-01 (44d) vs comparison milestone 08-31 - Alex confirms on track.",
-    "Row 16 OSS Licenses: legal email unverifiable (M365 unavailable); milestone date needed.",
-    "Row 25 CI/CD Platform Migration: MilestoneDate needed.",
-    "Row 4 AAB: sponsor review + relaunch talk owed (milestone 08-01, 13d late).",
-    "Row 15 Live-Check: follow-up with Delta to be designed - future new row when scoped.",
-    "Row 27 Marketing GitHub Migration: MilestoneDate needed (milestone text set 08-14, no date given).",
-    "Row 28 Service Authentication Modernization: Impact intentionally blank until the design exists; do not fill from aspiration.",
-    "Row 5 Delivery & Change-Control: absorbed row 26 (Superseded 08-14). Access-model audit wired to CI + compliance sign-off now tracked as follow-on milestones here."
+    "Recap 2026-08-19: staged News draft PromotedState=1, page 30 - Alex must open and publish it.",
+    "AAB next week (2026-08-24 through 2026-08-30): no intake item scheduled - Alex must schedule or confirm no forum.",
+    "AAB intake 8 RFC-002: Status=Decided but Scheduledfor and Outcomenotes are blank - actual forum decision needed before any correction.",
+    "Row 4 Architecture Advisory Board: MilestoneDate is still 2026-08-01; replace it with the next forum date.",
+    "Row 2 Observability Platform: milestone date 2026-08-15 passed; Snowflake datasource remains New and needs a replacement date.",
+    "Row 25 CI/CD Platform Migration: MilestoneDate is blank.",
+    "Row 27 Marketing Technology GitHub Migration: MilestoneDate is blank.",
+    "Row 16 Open-Source License Governance: approved-license ownership, rollout posture, and milestone date remain open.",
+    "Row 18 Generative AI Governance: CTO decision milestone dated 2026-08-15 is overdue; outcome is unverified.",
+    "Row 22 Secrets Management Vault: ticket 251970 remains stale against the 2026-08-31 comparison milestone - confirm on track.",
+    "Row 15 Live-Check: follow-up with Delta becomes a new row only when scoped.",
+    "Row 30 GitHub Policy Automation: MilestoneDate is blank - Alex must supply the ruleset-migration target date."
   ],
   "not_doing": [
     {
@@ -539,10 +585,13 @@
     "published": [
       "2026-07-08 (page 4)",
       "2026-07-15 (page 7)",
-      "2026-07-22 (page 10)"
+      "2026-07-22 (page 10)",
+      "2026-07-29 (page 13)",
+      "2026-08-05 (page 15)",
+      "2026-08-12 (page 17)"
     ],
-    "staged": "2026-07-29 (page 13) - DRAFT Level=2, PromotedState=1, awaiting Alex's publish",
-    "note": "MISSED on the 2026-07-28 run - board was updated, recap never created. Newsletter comes FIRST on any pasted forum notes; Alex publishes it himself."
+    "staged": "2026-08-19 (page 30) - News draft PromotedState=1, awaiting Alex publish",
+    "note": "Recap pages are staged first; Alex publishes org-visible News after review."
   },
   "aab_intake": {
     "list_guid": "80c68e54-eadf-4cf3-946a-3c0e432056a5",
@@ -560,7 +609,12 @@
     "flags": [
       "item 6 Pre-read is a personal OneDrive link (jeremysands) - will 403 for the org, ask him to re-home",
       "off-list choice values in use: Your domain 'Enterprise Architecture'/'AI', Affected domains 'All'/'AI'",
-      "Conditional Access naming standard has no intake item - owner is Steve Rake, not Alex's to file"
+      "Conditional Access naming standard has no intake item - owner is Steve Rake, not Alex's to file",
+      "item 8 RFC-002 is Decided with no Scheduledfor or Outcomenotes - unverified decision record",
+      "no AAB intake item is scheduled for 2026-08-24 through 2026-08-30"
+    ],
+    "closed_2026-08-21": [
+      "11 Azure Starlink Automation -> Decided with forum outcome"
     ]
   }
 }
