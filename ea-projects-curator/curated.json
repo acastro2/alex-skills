@@ -1,7 +1,7 @@
 {
   "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
   "site": "https://attainfinance.sharepoint.com/sites/Architecture",
-  "last_run": "2026-08-21",
+  "last_run": "2026-08-28",
   "rows": {
     "1": {
       "initiative": "Privileged Access Renewal",
@@ -12,7 +12,7 @@
         "adr:SAD-Privileged-Access-Consolidation.docx"
       ],
       "key_artifact_url": "https://attainfinance.sharepoint.com/:w:/s/Architecture-M365-Internal/IQCtLAr7nF47RousY8SzHTo-AfFBtJSsZOLu2oFRVUA5YGU?e=AcNNnM",
-      "last_curated": "2026-07-20",
+      "last_curated": "2026-08-28",
       "comments": [
         {
           "date": "2026-07-20",
@@ -63,7 +63,7 @@
         "adr:ADR-0004-GitHub-Access-Governance-via-Entra-Synced-Teams.docx",
         "gh:github-team-migrations"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-28",
       "execution_link": "https://github.com/Engineering-Attain-Finance/tf-aws-github-roles-infra",
       "comments": [
         {
@@ -82,7 +82,7 @@
         "repo:enterprise-architecture",
         "aab:2026-08-19-forum"
       ],
-      "last_curated": "2026-08-21",
+      "last_curated": "2026-08-28",
       "milestone": "Publish Aug 19 recap and schedule the next forum"
     },
     "5": {
@@ -95,7 +95,7 @@
         "aab:2026-08-19-forum"
       ],
       "key_artifact_url": "https://attainfinance.sharepoint.com/sites/Architecture/Shared%20Documents/ADO_Restructuring_Proposal.pptx",
-      "last_curated": "2026-08-21",
+      "last_curated": "2026-08-28",
       "milestone": "Alpha pilot sprint 4 ships",
       "comments": [
         {
@@ -109,6 +109,10 @@
         {
           "date": "2026-08-21",
           "text": "The 19 Aug forum supported the Alpha pilot direction. The next design step is to complete the pilot and define IT-specific work item types and workflow gates before broader adoption."
+        },
+        {
+          "date": "2026-08-28",
+          "text": "Change-control workflow redesign is live in the process: a Ready gate, an Operational Work item type, and release approval derived from a restricted-group transition instead of an editable field. The plain-language explanation is documented as RFC-005."
         }
       ],
       "note": "Merged row 26 (ADO Restructuring & Access Governance) into this row 2026-08-14 - same Key Artifact file (sourcedoc ee9036d5-d12f-40e6-b69e-27c20df1c458 = ADO_Restructuring_Proposal.pptx), same theme, both In Progress."
@@ -318,7 +322,7 @@
         "doc:GenAI Policy & Enforcement Standard v0.2 (Architects-Internal)",
         "user:2026-07-16 direct add"
       ],
-      "last_curated": "2026-08-03",
+      "last_curated": "2026-08-28",
       "note": "separate row from Technology AI Program (row 8) by design: 8 = adoption program, 18 = governance standard; artifact is Internal-ACL link (403 for non-members)",
       "comments": [
         {
@@ -328,6 +332,10 @@
         {
           "date": "2026-08-03",
           "text": "First agentic AI platform reviewed under the governance standard - AI-initiated actions stay human-approved rather than autonomous. The review set the follow-up requirements: administrator visibility into AI interaction logs, data isolation, and keeping AI-provider connectivity inside our own AWS environment."
+        },
+        {
+          "date": "2026-08-28",
+          "text": "CTO review comments are in and going into the next policy revision. Approval and Advisory Board review follow."
         }
       ]
     },
@@ -338,13 +346,17 @@
       "sources": [
         "ado:250652"
       ],
-      "last_curated": "2026-08-21",
+      "last_curated": "2026-08-28",
       "note": "Backstage/RHDH on EKS provisioning (ADO 250652, under Security Tasking epic); user confirmed owner-of-record 2026-07-20",
       "milestone": "Backstage on EKS infrastructure provisioned (ticket active this sprint)",
       "comments": [
         {
           "date": "2026-08-21",
           "text": "Developer portal infrastructure implementation started, with its first delivery PR linked on 21 Aug. The 25 Aug milestone remains active."
+        },
+        {
+          "date": "2026-08-28",
+          "text": "Developer portal deployment automation merged 28 Aug. Non-production image promotion is now automated and gated."
         }
       ]
     },
@@ -357,7 +369,7 @@
         "ado:252751"
       ],
       "status": "6. Closed",
-      "last_curated": "2026-08-21",
+      "last_curated": "2026-08-28",
       "comments": [
         {
           "date": "2026-07-28",
@@ -394,7 +406,7 @@
         "adr:SAD (Architects-Internal)",
         "ado:251970"
       ],
-      "last_curated": "2026-08-14",
+      "last_curated": "2026-08-28",
       "note": "design constraint from Steve Rake 2026-07-22: no all-access vault roles (Terraform-sees-everything concern); involve Jeremy on SSH secrets | 2026-07-23: cloud team already standing up OpenBao in parallel (context only, kept off the org-visible row); EA comparison of proposed solutions due end of Aug",
       "comments": [
         {
@@ -447,11 +459,15 @@
       ],
       "execution_link": "https://github.com/Engineering-Attain-Finance/reusable-workflows/pull/72",
       "milestone": "Canary green on the rebuilt workflow catalog; first ADO pipeline migration decision",
-      "last_curated": "2026-08-21",
+      "last_curated": "2026-08-28",
       "comments": [
         {
           "date": "2026-08-21",
           "text": "The shared workflow catalog now includes semantic releases and pull-request title controls. The Cloud repository also gained scoped infrastructure planning; canary work remains active."
+        },
+        {
+          "date": "2026-08-28",
+          "text": "Rebuilt workflow catalog merged 25 Aug, followed by three hardening merges through 28 Aug: release gate, live-path defect fixes, and GitOps auto-merge. Canary infrastructure remains active."
         }
       ]
     },
@@ -534,22 +550,26 @@
         "gh:https://github.com/Engineering-Attain-Finance/tf-aws-safesettings-infra/pull/17",
         "pi:01a0259e (2026-08-21 Engineering-Attain-Finance/admin)"
       ],
-      "last_curated": "2026-08-21",
-      "comments": []
+      "last_curated": "2026-08-28",
+      "comments": [
+        {
+          "date": "2026-08-28",
+          "text": "Branch-protection rules moved to rulesets across the pilot and follow-on organizations. The final migration and classic-protection purge merged 28 Aug."
+        }
+      ]
     }
   },
   "excluded": {
     "Data Warehouse Platform Strategy": "user-excluded (ADR-0003; vendor-sensitive)",
     "GPS / Servicing App Access Modernization": "user-skipped",
-    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE — breach-forensics / counsel-touched",
-    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE — litigation-adjacent, loan-level PII",
-    "legal-summary incident-remediation workstream": "HARD EXCLUDE — counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
+    "FulcrumSec data-exfiltration incident": "HARD EXCLUDE \u2014 breach-forensics / counsel-touched",
+    "TILA / legal consumer-count / customer-deletion PR": "HARD EXCLUDE \u2014 litigation-adjacent, loan-level PII",
+    "legal-summary incident-remediation workstream": "HARD EXCLUDE \u2014 counsel-touched (2026-07-20 run); rows 3/10/12 remain its only non-privileged surface",
     "ADO 250863 Export of Data for Snowflake": "breach-adjacent data movement (2026-07-20 run)",
-    "Admin Account Tiering": "not owner-of-record — Security-Engineering-owned per Alex's own delivery inventory",
+    "Admin Account Tiering": "not owner-of-record \u2014 Security-Engineering-owned per Alex's own delivery inventory",
     "Devo Prospector Studio / agentic SOAR platform": "attendance + not owner-of-record (ARF 2026-07-29) - Jeremy Sands authored the proposal and owns the SOW, Chris Goodrich owns the vendor thread; Alex reviewed and raised the Bedrock/private-link question. Lives in the newsletter, not the board. Would need neutral naming if ever added."
   },
   "open_items": [
-    "Recap 2026-08-19: staged News draft PromotedState=1, page 30 - Alex must open and publish it.",
     "AAB next week (2026-08-24 through 2026-08-30): no intake item scheduled - Alex must schedule or confirm no forum.",
     "AAB intake 8 RFC-002: Status=Decided but Scheduledfor and Outcomenotes are blank - actual forum decision needed before any correction.",
     "Row 4 Architecture Advisory Board: MilestoneDate is still 2026-08-01; replace it with the next forum date.",
@@ -560,7 +580,16 @@
     "Row 18 Generative AI Governance: CTO decision milestone dated 2026-08-15 is overdue; outcome is unverified.",
     "Row 22 Secrets Management Vault: ticket 251970 remains stale against the 2026-08-31 comparison milestone - confirm on track.",
     "Row 15 Live-Check: follow-up with Delta becomes a new row only when scoped.",
-    "Row 30 GitHub Policy Automation: MilestoneDate is blank - Alex must supply the ruleset-migration target date."
+    "Row 30 GitHub Policy Automation: MilestoneDate is blank - Alex must supply the ruleset-migration target date.",
+    "AAB intake 8 RFC-002: Status=Decided with blank Scheduledfor AND blank Outcomenotes. Alex approved fixing it but has not supplied the forum date or the outcome text - cannot invent either.",
+    "Recap 2026-08-26: staged News draft PromotedState=1 (page 35) - Alex must open and publish it.",
+    "AAB next week 2026-08-31..09-06: nothing scheduled. ALERT ONLY - never create an intake item (Alex, 2026-08-28).",
+    "Row 5: ExecutionLink points at ADO epic 253422 'Ops - Alpha', which ADO shows is a Five9/dialer operational bucket, not change-control work. Needs the correct epic/repo from Alex; NextMilestone rewrite blocked on it (sprint 4 closed 08-25).",
+    "Row 30: ruleset migration COMPLETE (admin PR #465 merged 2026-08-28). NextMilestone still describes it as pending, Status may warrant 4->5 Verifying, MilestoneDate blank. All need Alex.",
+    "MilestoneDate still needed from Alex: row 2 (was 08-15, +13d), row 4 (was 08-01, +27d), row 7 (due today), row 16 (blank), row 19 (was 08-25), row 21 (due today), row 23 (was 08-22), row 25 (blank), row 30 (blank).",
+    "Row 18 Generative AI Governance: decision rot - Decision-Ready + CTO since 27 Jul (32 days). 1:1 item.",
+    "Analyze-or-kill pending Alex: row 22 Secrets Management Vault (ADO 251970 untouched 58 days vs 08-31 milestone), row 28 Service Authentication Modernization (all fields blank), row 27 Marketing Technology GitHub Migration (no artifact/link/date).",
+    "Row 12 AWS Organization Security Hardening: verification gap found off-board (automated firewall-manager rollout attached a managed WebACL to an internal ALB; unproven whether it displaced existing protection). Not publishable per exclusion screen. May justify 5->4 step-back. No ADO ticket tracks this work."
   ],
   "not_doing": [
     {
@@ -577,6 +606,11 @@
       "what": "Separate ADO Restructuring & Access Governance row",
       "decided": "2026-08-14",
       "note": "Collapsed into Delivery & Change-Control Redesign (row 5) - same proposal deck and program. Do not re-propose as its own row."
+    },
+    {
+      "what": "Creating AAB Intake items to schedule the forum",
+      "decided": "2026-08-28",
+      "note": "Alex rejected outright: the intake list is where PEOPLE submit their own topics, it is their to-do queue. An empty next week is an ALERT ONLY, never a proposed row. Curator writes to that list are limited to closing out items someone else raised."
     }
   ],
   "newsletter": {

@@ -1,20 +1,15 @@
 ---
 name: ea-projects-curator
 description: >
-  Curate, update, or audit the EA Projects SharePoint board (also called the "EA Portfolio") on
-  /sites/Architecture. Use for any board request: populate or refresh rows from recent work / ADRs /
-  ADO tickets / PRs, the weekly maintenance pass, a full audit ("is the board missing or
-  misrepresenting anything?"), or posting row comments. Also covers the second surface Alex
-  curates alongside it — the AAB Intake list (not just the recap page) and the weekly AAB recap
-  News post — including checking that the latest due forum got a published recap, that due AAB
-  Intake items were closed out, and that next week has something scheduled. It writes the weekly
-  Architecture Weekly recap itself: it finds the Architecture Advisory Board meeting on the
-  calendar, pulls that session's Microsoft Teams meeting transcript, and generates the structured
-  post-meeting forum recap (objective, outcome, decisions, action items, topics, open questions,
-  artifacts) alongside the evidence-backed "What Architecture shipped" section (merged PRs, ADO
-  movement, board changes). Use it whenever asked to recap, summarize, or write up an
-  Architecture Review Forum / AAB / advisory-board meeting, or to get a meeting transcript for one.
-  Everything is user-approved via a review table before writing to either org-visible list.
+  Curate, update, or audit Alex's EA Projects SharePoint board (EA Portfolio) and AAB operating
+  surfaces on /sites/Architecture. Use for board population, weekly maintenance, full audits, row
+  comments, AAB Intake close-outs, forum checks, Architecture Weekly recap creation, or requests to
+  recap an Architecture Review Forum or AAB meeting. Finds the Architecture Advisory Board calendar
+  event, pulls and verifies its Teams transcript, drafts the structured forum recap and the
+  evidence-backed "What Enterprise Architecture shipped" section, checks that due recaps are
+  published, closes due intake items, and flags an empty next-week schedule. Collects evidence from
+  ADRs, ADO, GitHub, prior sessions, and Microsoft 365. Requires a numbered user-review table before
+  any org-visible list write; recap pages are staged as drafts for Alex to publish.
 ---
 
 # EA Projects Curator
@@ -22,13 +17,15 @@ description: >
 Turn the scattered evidence of what Enterprise Architecture actually did — prior AI sessions, ADRs/SADs, ADO epics, GitHub PRs — into a small set of executive-legible rows on the EA Projects board. You are a **filter and transformer**, not a retriever and not a scribe: you receive raw signals, decide what qualifies, shape it for a non-architect CTO, and then **ask** before you write.
 
 ```
-Teams transcript  ─┐
-archeologist       ├→ curate: cluster · screen · shape →  REVIEW TABLE  →  write  →  report
-ADO + GitHub      ─┘   (forum recap + shipped panel      (one table,        (stage    (WRITTEN / UPDATED /
-                        + board rows)                     approve by line)   + MERGE)  COMMENTED / EXCLUDED)
+Teams transcript ─→ recap ─→ verify vs transcript ─→ docs-reviewer ─→ fix ─→ STAGE ─→ hand back link
+archeologist     ─┐
+ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLE ─→ write ─→ report
+                       (board rows, intake, comments)     (approve by line)
 ```
+The recap goes straight to a staged SharePoint draft; only board/intake/comment writes wait on the
+numbered table. Never paste the recap into the terminal.
 
-**Every weekly run owes TWO deliverables, and the board is the SECOND one.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility): the **Forum recap** component plus the generated evidence-backed **What Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM. Hand Alex the link; he publishes org-visible comms himself. Gather evidence once, compose both components, use one review table, and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+**Every weekly run owes TWO deliverables, and the board is the SECOND one.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility): the **Forum recap** component plus the generated evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM. Hand Alex the link; he publishes org-visible comms himself. Gather evidence once, compose both components, use one review table, and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
 
 **The Forum recap component is GENERATED from the Teams meeting transcript by default** — you fetch the transcript yourself, you do not wait for Alex to paste notes. See **Forum recap — generate it from the meeting transcript** below for how to find the meeting, pull the transcript, and the exact recap prompt. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no transcript exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
@@ -324,9 +321,18 @@ No em dashes.
   "let's circle back next week," the Outcome is at best [Partially achieved].
 - **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers.
   Attribute to the person who actually spoke the commitment.
-- Put the recap through the **same review table** as everything else (`Row` = `Recap page`,
-  `Field` = `forum recap`), and flag any judgment call you want Alex to own as its own line. Stage
-  with `PromotedState=1`; publishing stays his click. Re-screen anything he edits.
+- **Do not print the recap into the terminal.** Alex does not read it there, and a 1,300-word page
+  pasted into a CLI is noise. Generate it, verify it against the transcript, run `docs-reviewer`,
+  address the findings, stage it to SharePoint, and hand back **the link plus a short summary of
+  what you fixed**. The staged draft is the review surface: he reads it rendered, where the layout
+  problems are actually visible, and clicks Publish there. Reading back the stored
+  `CanvasContent1` is not a substitute for him seeing it.
+- The recap therefore does **not** go through the numbered review table line by line; staging it is
+  safe because `PromotedState=1` is a draft nobody else sees, and he approves by publishing. What
+  still goes in the review table: **intake close-outs, board rows, comments, and any recap judgment
+  call you could not resolve yourself** (a confidentiality trade-off, a finding that conflicts with
+  a house rule, a decision-versus-discussion call you are not sure about). Everything else you fix
+  and report.
 - A generated recap also gives you the real `Outcomenotes` for that session's AAB Intake items and
   the evidence to close them out. Propose those as review-table lines too, never write them blind.
 
@@ -368,11 +374,47 @@ numbers and quotes, decision-versus-discussion, omissions and confidentiality), 
 transcript path and told to find errors rather than approve. Fix what they confirm, and tell Alex
 what you changed and why.
 
+### Then run `docs-reviewer`, and address everything, before it goes anywhere
+
+**Mandatory, every recap, no exceptions.** Transcript verification proves the recap is *true*;
+`docs-reviewer` proves it is *readable*. They catch different things: the adversarial pass never
+noticed that the Decisions table claimed four decisions while Topics Discussed tagged zero as
+`[Decided]`, and it never noticed the recap was three times its own stated length limit.
+
+Run it via the Skill tool (`attain-docs:docs-reviewer`) against the assembled page content, not the
+markdown draft, so the shipped panel and the rendered structure are in scope. Then **fix every
+BLOCKER and SIGNIFICANT finding before staging.** Do not hand Alex a review and ask what to do with
+it; he asked for the finished thing. Bring him a decision only when a finding conflicts with an
+established house rule (see the em-dash exception below) or when fixing it would change what the
+meeting actually decided.
+
+Known findings this review reliably surfaces on a first draft, so pre-empt them:
+
+- **Outcome tags must actually vary.** If every topic is `[Needs follow-up]`, the tag carries no
+  information. Any topic matching a Decisions row is `[Decided]`; make the tables and the tags agree.
+- **Every Decisions row needs a matching topic bullet**, or the decision only exists in a table
+  nobody reads twice.
+- **Honour the "under one screen" line in the prompt.** A faithful record of a 90-minute meeting will
+  not hit 400 words, but it should not hit 1,500 either. Merge topics that are one thread (the
+  release model and the approval gap are the same story), and fold an open question into the topic
+  that already covers it rather than saying it twice.
+- **Do not bold both the topic lead-in and the tag** on every bullet. That is the inline-header
+  vertical-list tell (humanizer 15 and 16). Lead-in bold, tag in muted Deck Slate.
+- **Do not repeat "Not stated" down a whole column.** Leave the cell empty and put one footnote under
+  the table.
+- **Keep attribution out of the action text.** "Proposed by X" belongs in the Owner cell.
+
+> **Documented em-dash exception.** `docs-reviewer` flags every em dash as a BLOCKER, and the
+> humanizer rule behind it is correct for prose. The `<h1>` title is the one allowed exception:
+> `Architecture Weekly &mdash; Month D, YYYY` is the house format, fixed by the template and by
+> Alex's own recap prompt, and eight published issues already use it. Keep it there and keep prose
+> free of them. Do not re-litigate this every week; note the exception in your report and move on.
+
 ## Weekly newsletter — Architecture Weekly
 
 Every weekly page carries TWO components under the title **Architecture Weekly — Month D, YYYY**.
 Component 1 is the **Forum recap** (generated from the transcript per the section above, or Alex's
-pasted notes rendered verbatim when he supplies them). Component 2 is the generated **What
+pasted notes rendered verbatim when he supplies them). Component 2 is the generated **What Enterprise
 Architecture shipped** panel at the bottom. They answer different questions: the forum record says
 what the group decided; the delivery panel says what EA shipped. Drop any delivery item that
 restates the forum recap.
@@ -395,6 +437,13 @@ week gets 2 or none. Each item contains:
   never raw URLs, `click here`, or naked IDs.
 
 **Gates (all mandatory):**
+- **Scope is EA's own delivery, and the heading says so.** The panel is titled **What Enterprise
+  Architecture shipped**, never "What Architecture shipped" (corrected 2026-08-28). Bare
+  "Architecture" reads as every architect in the company, and the other architects ship work that is
+  not in this panel. Only include items EA owns or drove: Alex-authored PRs, EA-owned ADO
+  epics/features, EA board rows that moved, EA-authored artifacts. If another architect or team owns
+  the delivery, it does not go in, however good it is. Claiming someone else's output on an
+  org-visible page is both wrong and the kind of thing that gets noticed.
 - Full exclusion screen applies to the sentence and every linked artifact: no privileged/counsel
   references, sensitive vendor naming, current-weakness specifics, personnel, personal-OneDrive
   links, or access-restricted evidence. If no safe evidence link exists, drop the item.
@@ -414,6 +463,13 @@ week gets 2 or none. Each item contains:
 **3. Verify every intake item for that session was closed out.** For each item whose site-local `Scheduledfor` date equals the selected session date, require a forum outcome: non-empty `Outcomenotes`, a status other than `New`/`Triaged`, and no past-dated `Scheduled` state. The site-local `Modified` date must be on or after the session date as a sanity check, but it does not prove the exact meeting time. Normal outcome is `Decided`; `Parked`/`Deflected` are valid with explanatory notes. A future re-`Scheduled` item is valid only when item version history or the ledger proves it moved from the selected session date and the notes explain why; otherwise report UNVERIFIED. **Separately, always query and flag every item globally where `Status=Scheduled` and `Scheduledfor` is in the past** — SharePoint's own agenda and decision-log views both hide this state (agenda filters `>= today`, log filters `Status=Decided`), so it's invisible unless this check catches it.
 
 **4. Alert if next calendar week has nothing scheduled.** Check for at least one `AAB Intake` item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule the forum or confirm there isn't one. Never auto-schedule or invent a date.
+
+> **Never create an AAB Intake item. Ever.** (Corrected 2026-08-28, after a run proposed one as a
+> review-table line and Alex rejected it outright.) The intake list is **the queue people submit
+> their own topics to** — it is their to-do surface, not a scheduling table for the curator to
+> populate. An empty next week is an **alert only**; it never becomes a proposed row, not even a
+> gated one. The curator's writes to this list are limited to closing out items that already exist:
+> `Status`, `Outcomenotes`, and `Scheduledfor` on an item somebody else raised.
 
 **Report before EA Projects findings under this exact heading:**
 
