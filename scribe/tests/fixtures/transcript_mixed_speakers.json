@@ -1,0 +1,21 @@
+{
+  "schema": "scribe.transcript/1",
+  "source": "hidock",
+  "title": "Partly Labelled Recording",
+  "start": "2026-08-26T20:01:12Z",
+  "end": "2026-08-26T20:10:00Z",
+  "speakers": ["Ana Silva", "Bruno Costa"],
+  "turns": [
+    {"start": 0.0, "speaker": "Ana Silva", "text": "Hello."},
+    {"start": 1.0, "speaker": "Ana Silva", "text": "Let's begin."},
+    {"start": 2.0, "speaker": null, "text": "inaudible"},
+    {"start": 3.0, "speaker": null, "text": "more inaudible"},
+    {"start": 4.0, "speaker": "Bruno Costa", "text": "Sounds good."},
+    {"start": 5.0, "speaker": "Bruno Costa", "text": "Let's continue."}
+  ],
+  "provenance": {
+    "hidock_file": "REC002.wav",
+    "audio_sha256": "cafebabe",
+    "asr_model": "whisper-large-v3"
+  }
+}

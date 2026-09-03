@@ -1,0 +1,48 @@
+{
+  "schema": "scribe.transcript/1",
+  "source": "teams",
+  "title": "Architecture Advisory Board",
+  "start": "2026-08-26T20:01:12Z",
+  "end": "2026-08-26T21:26:40Z",
+  "speakers": [
+    "Ana Silva",
+    "Bruno Costa"
+  ],
+  "turns": [
+    {
+      "start": 0.0,
+      "speaker": "Ana Silva",
+      "text": "Hi everyone, um let's start the meeting."
+    },
+    {
+      "start": 5.5,
+      "speaker": "Bruno Costa",
+      "text": "Sounds good. The the SC compliance topic is first."
+    },
+    {
+      "start": 8.0,
+      "speaker": "Bruno Costa",
+      "text": "We need to review the SCOPE document too."
+    },
+    {
+      "start": 11.5,
+      "speaker": "Ana Silva",
+      "text": "uh"
+    },
+    {
+      "start": 14.5,
+      "speaker": "Bruno Costa",
+      "text": "Let's move to the next item."
+    },
+    {
+      "start": 20.5,
+      "speaker": "Ana Silva",
+      "text": "Noted, thanks."
+    }
+  ],
+  "provenance": {
+    "teams_event_id": "AAMkAGI1AAA=",
+    "transcript_uri": "meeting-transcript:///events/AAMkAGI1AAA=",
+    "cue_count": 8
+  }
+}

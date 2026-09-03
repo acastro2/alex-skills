@@ -354,6 +354,15 @@ Personal knowledge base. Search alongside Claude Code transcripts and Cortex (Ti
 
 **Path**: `~/Developer/obsidian/Alex/`
 
+Two sub-folders matter most: `Bard/` (distilled decisions, lessons, patterns) and
+`Scribe/Meetings/Transcripts/` (one note per meeting since 2026-09-01, written by the
+`scribe` skill from Teams transcripts and HiDock call recordings, each with a summary,
+decisions, actions, and the verbatim transcript). For "who said", "when did we meet",
+or "what was decided in <meeting>" questions, search `Scribe/Meetings/Transcripts/`
+BEFORE the Microsoft 365 connector: it is local, already cleaned, and covers calls Teams
+never transcribed. Note filenames start with the meeting date and local time
+(`2026-09-02 1500 Architecture Advisory Board.md`).
+
 ## Strategy D1: Triage (find matching notes)
 ```bash
 rg -l -i "<kw>" ~/Developer/obsidian/Alex/ 2>/dev/null

@@ -1,13 +1,14 @@
 ---
 name: bard
 description: >-
-  Mine AI-coding session history and distill it into durable, graph-native notes
+  Mine AI-coding session history and scribe meeting transcript notes
+  (Scribe/Meetings/Transcripts) and distill them into durable, graph-native notes
   in the personal Obsidian knowledge base at obsidian/Alex/Bard, and copy authored
   deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
-  to sweep recent sessions into the knowledge base, to bootstrap the bard hubs, or
-  to turn past decisions/lessons/patterns into notes, and to maintain the root-vault
-  `Todo.md` board. On-demand only. Reads sessions via the archeologist agent; writes
+  to sweep recent sessions or meetings into the knowledge base, to bootstrap the bard
+  hubs, or to turn past decisions/lessons/patterns into notes, and to maintain the
+  root-vault `Todo.md` board. On-demand only. Reads sessions via the archeologist agent; writes
   OKF-envelope markdown notes. Never commits, never runs a server, never invents
   provenance.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa
@@ -124,6 +125,20 @@ so it is derived from real work and ratified by Alex.
        glob with a `./` prefix or absolute paths: bare `--...` paths are parsed as
        options by `head`/`jq`/`ls`/`find` and silently return nothing.
      - opencode (legacy, first/`full` sweep only): `session.time_archived`.
+     - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
+       one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
+       call recordings). Frontmatter `date` is the meeting start (UTC ISO): sweep notes
+       with `date` newer than `watermark`. They are the meeting-side twin of the coding
+       sessions: same STEP 1-5, same quote rule. Read the whole note; `## Summary`,
+       `## Decisions`, `## Actions` are scribe's digest, `## Transcript` is the verbatim
+       source and the only thing you may quote. Provenance is the note path
+       (`Obsidian: Scribe/Meetings/Transcripts/<file>`) plus the frontmatter
+       `provenance` block; never invent more. HiDock notes have no speaker labels
+       (`speakers: []`): never attribute a line to a person unless the transcript names
+       them. `## Actions` lines owned by Alex are board candidates for `Todo.md`; the
+       others are context, not tasks. scribe writes everything, including standups and
+       1:1s: the half-life filter in STEP 1 is where the noise dies, so expect to drop
+       most of them.
      Optionally rank/cluster the candidates with the **archeologist skill** (spawn a
      `delegate`/`scout` subagent with skill `archeologist` — there is no archeologist
      *agent* in pi) — but treat its output as a LEAD, not as quotable content. For

@@ -5,7 +5,7 @@ description: >
   surfaces on /sites/Architecture. Use for board population, weekly maintenance, full audits, row
   comments, AAB Intake close-outs, forum checks, Architecture Weekly recap creation, or requests to
   recap an Architecture Review Forum or AAB meeting. Finds the Architecture Advisory Board calendar
-  event, pulls and verifies its Teams transcript, drafts the structured forum recap and the
+  event, reads the scribe transcript note for it, drafts the structured forum recap and the
   evidence-backed "What Enterprise Architecture shipped" section, checks that due recaps are
   published, closes due intake items, and flags an empty next-week schedule. Collects evidence from
   ADRs, ADO, GitHub, prior sessions, and Microsoft 365. Requires a numbered user-review table before
@@ -17,7 +17,7 @@ description: >
 Turn the scattered evidence of what Enterprise Architecture actually did — prior AI sessions, ADRs/SADs, ADO epics, GitHub PRs — into a small set of executive-legible rows on the EA Projects board. You are a **filter and transformer**, not a retriever and not a scribe: you receive raw signals, decide what qualifies, shape it for a non-architect CTO, and then **ask** before you write.
 
 ```
-Teams transcript ─→ recap ─→ verify vs transcript ─→ docs-reviewer ─→ fix ─→ STAGE ─→ hand back link
+scribe note ─→ recap ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ STAGE ─→ hand back link
 archeologist     ─┐
 ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLE ─→ write ─→ report
                        (board rows, intake, comments)     (approve by line)
@@ -27,7 +27,7 @@ numbered table. Never paste the recap into the terminal.
 
 **Every weekly run owes TWO deliverables, and the board is the SECOND one.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility): the **Forum recap** component plus the generated evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM. Hand Alex the link; he publishes org-visible comms himself. Gather evidence once, compose both components, use one review table, and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
 
-**The Forum recap component is GENERATED from the Teams meeting transcript by default** — you fetch the transcript yourself, you do not wait for Alex to paste notes. See **Forum recap — generate it from the meeting transcript** below for how to find the meeting, pull the transcript, and the exact recap prompt. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no transcript exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
+**The Forum recap component is GENERATED from the scribe transcript note by default** — you read the note the `scribe` skill already wrote, you do not fetch or parse the Teams transcript yourself, and you do not wait for Alex to paste notes. See **Forum recap — generate it from the scribe transcript note** below for how to find the note and the exact recap prompt. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no scribe note exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
 Two invariants that override everything below:
 
@@ -41,7 +41,7 @@ Live target (verify against the list if a write is rejected — schema can drift
 
 - Site: `https://attainfinance.sharepoint.com/sites/Architecture` (group Team site, already org-readable).
 - List display name **EA Projects**, GUID `d2c0a30a-dab4-40a7-bc63-7268736473f2`, URL slug still `/Lists/EA Portfolio` (internal name `EA_x0020_PortfolioList`).
-- Page: `SitePages/EA-Portfolio.aspx`. Default view **CTO view** (`2c97ee1e-b6ab-4835-bb44-2b8e6ffb8663`); reference view **Full projects** (`3589d875-06f1-4d2a-b05e-28ce16b97851`).
+- Page: `SitePages/EA-Portfolio.aspx`. List default view is **All Items** (unfiltered, keep it default — Alex's rule). Curated leadership view **CTO view** (`2c97ee1e-b6ab-4835-bb44-2b8e6ffb8663`); reference view **Full projects** (`3589d875-06f1-4d2a-b05e-28ce16b97851`); themed view **AI Program** (`25d2983e-48b7-404e-913e-701266410ec3`, URL `/Lists/EA Portfolio/AI Program.aspx`) — CAML filter `Theme eq 'AI Program'`, sorted by Status then TargetDate, columns Title/Status/DecisionNeeded/Sponsor/Impact/TargetDate/NextMilestone/MilestoneDate/KeyArtifact/Who is Responsible. Added 2026-09-03 as the leadership-facing AI stack-rank view. Modern SharePoint orders view tabs alphabetically with no order setting (verified 2026-09-03), so tab order is All Items > AI Program > CTO view > Full projects only by name; an AI initiative that is not tagged `Theme = AI Program` is invisible there, so check the Theme on every AI row.
 
 Columns (internal name → type → allowed values). Use internal names for any write:
 
@@ -52,11 +52,16 @@ Columns (internal name → type → allowed values). Use internal names for any 
 | `Status` | Status | Choice | `1. Proposed` / `2. In Analysis` / `3. Decision-Ready` / `4. In Progress` / `5. Verifying` / `6. Closed` (default `1. Proposed`; numbered so alphabetical sort = lifecycle order; `3. Decision-Ready` is the commitment point — before it "should we?", after it "we're doing it") |
 | `DecisionNeeded` | Decision Needed | Choice | `None` / `CTO` / `Advisory Board` / `Business Owner` / `Process Owner` (default `None`) |
 | `Outcome` | Outcome | Choice | `Delivered` / `Killed` / `Superseded` — set ONLY when a row reaches `6. Closed`, blank otherwise. Shows the portfolio actually kills bad ideas. |
-| `Impact` | Impact | Text (single line) | Documented impact, financial or non-financial, or blank |
+| `Impact` | Impact | Text (single line) | Documented impact, financial or non-financial; OR a forward-looking target prefixed `Target:` while the initiative is pre-Closed; blank if neither |
 | `KeyArtifact` | Key Artifact | Hyperlink | One canonical ADR/SAD URL |
 | `ExecutionLink` | Execution Link | Hyperlink | ADO epic/feature or GitHub URL |
 | `NextMilestone` | Next Milestone | Text | Outcome, one line |
 | `MilestoneDate` | Milestone Date | Date | The date that milestone is due |
+| `Who_x0020_is_x0020_Responsible` | Who is Responsible | Person (multi) | The people doing the work (EA lead plus named collaborators). Pre-existing column, present in both views; it is the *doers*, not the sponsor |
+| `Sponsor` | Sponsor | Person (single) | The business or technology leader who owns the outcome and answers for it; blank if EA is the only stakeholder. Distinct from Who is Responsible (doers) |
+| `TargetDate` | Target Date | Date | The finish line for the whole initiative (FY-level), distinct from the next milestone |
+
+> `Sponsor` and `TargetDate` were added to the schema on 2026-09-03 for the FY27 stack-rank (leadership asks per initiative: goal, sponsor, impact, finish date). If a write to either is rejected, the column has not been created in the list yet — create it first, never silently drop the value.
 
 > Note: `Theme` value `Platform Foundations` replaced an earlier `Decision-Ready` theme (it collided with the Status value of the same name). If you ever see `Decision-Ready` proposed as a *theme*, that's stale — it is a Status only.
 
@@ -91,10 +96,13 @@ Columns (internal name → type → allowed values). Use internal names for any 
 - **Theme** — exactly one value. If two fit, pick by the *current* center of gravity, not where the work started.
 - **Status** — `3. Decision-Ready` requires a costed or documented options analysis to actually exist; aspiration doesn't qualify. Work executed but not yet evidence-verified is `5. Verifying`, not `6. Closed`. Exit criteria: 1→2 when the problem justifies analysis time; 2→3 when a decision-maker could act without further digging; 3→4 when the named owner says yes; 4→5 when the change is live; 5→6 when the outcome is checked against what was promised. A `5. Verifying` → `4. In Progress` step-back is legitimate when verification finds gaps (honest reporting beats forward-only); only `6. Closed` is immutable. Closing a row REQUIRES setting `Outcome`. Blocked-ness is never a status — decision blocks live in `DecisionNeeded`; if a non-decision block (vendor, dependency) ever needs tracking, add a `Blocked` yes/no attribute per the rationale doc, not a state.
 - **Decision Needed** — set `CTO` only when the decision is genuinely his to make. Inflating this column burns credibility fast; when unsure, `None`. `Business Owner` = the P&L/budget holder; `Process Owner` = the person who owns the process/workflow being changed (sometimes not the budget holder) — pick whichever actually owes the answer. **Convention: `3. Decision-Ready` + `None` = EA decides** (advice process — no external party owes anything, the proposer decides). Never add an "EA" value to this column: waiting-on-yourself reads as stalling on an org-visible board, and it would split one meaning across two encodings.
-- **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the mechanical metric or the money.** "Unblocks the upgrade to the latest .NET" beats "$699/dev license avoided"; "democratizes code with auditable role-based access" beats "485 repos internal-by-default". Pattern: *outcome first, evidence metric in parens as support* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). The evidence must still be documented — traceable to an ADR, costed analysis, invoice delta, or a stated metric; no estimates, no "up to", no aspirational targets dressed as results. If the outcome isn't obvious from the sources, ASK the user "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission, quotable in audit or breach discovery) or commercial/negotiating posture ("ends vendor lock-in" telegraphs intent to Procurement and vendor-friendly readers). Describe what the work closes or unlocks, not the live hole or the leverage play.
+- **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the mechanical metric or the money.** "Unblocks the upgrade to the latest .NET" beats "$699/dev license avoided"; "democratizes code with auditable role-based access" beats "485 repos internal-by-default". Pattern: *outcome first, evidence metric in parens as support* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). Two kinds of entry share this column, and the prefix keeps them apart. **Documented impact** (no prefix): traceable to an ADR, costed analysis, invoice delta, or a stated metric; no estimates, no "up to". **Target impact** (prefix `Target:`): the forward-looking claim a pre-Closed initiative is being funded or staffed for, in the same outcome-first pattern, traceable to a BRIEF, RFC, or costed options analysis (e.g. "Target: Live-Check follow-up scope in production with measured exception yield, within 90 days of the AI Engineer's start"). A target never loses its prefix by the passage of time — only when the evidence exists, at which point the entry is rewritten as documented impact. Never mix the two in one cell, and never write a target without a `TargetDate`. If the outcome isn't obvious from the sources, ASK the user "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission, quotable in audit or breach discovery) or commercial/negotiating posture ("ends vendor lock-in" telegraphs intent to Procurement and vendor-friendly readers). Describe what the work closes or unlocks, not the live hole or the leverage play.
 - **Key Artifact (`KeyArtifact`)** — one canonical link: the ADR/SAD itself, not the folder. Screen for personal-OneDrive URLs (`-my.sharepoint.com`) and flag them for re-homing to an org-shared location before using — a personal link will 403 for the org audience.
 - **Execution Link (`ExecutionLink`)** — the ADO epic/feature or GitHub location. Omit if none exists; never create a shadow ticket just to fill the column.
 - **Next Milestone (`NextMilestone`) + Milestone Date (`MilestoneDate`)** — phrase the milestone as an outcome a non-architect can parse, and put the date in the date column. "Options memo to the CTO" + `2026-07-25`, not "Finalize Raft topology".
+- **Who is Responsible (`Who_x0020_is_x0020_Responsible`, multi-person)** — everyone doing the work, EA lead first, then named collaborators from other teams. Set from evidence of actual work (ADR authorship, PRs, a runbook, a named workstream), not attendance. Keep it to people who would be asked "how is it going?", not everyone consulted.
+- **Sponsor (`Sponsor`, person)** — the leader who owns the outcome and would be asked about it by name: the P&L/budget holder for business-facing work, the technology VP for platform work. Never the EA lead (that is the whole board), never a delegate or working-level contact. Only set from evidence — a BRIEF sponsor line, an AAB recap, a written commitment; a name mentioned in a meeting is not a sponsor. Leave blank rather than guess.
+- **Target Date (`TargetDate`)** — the initiative's finish line, i.e. when the `Target:` impact is expected to be documented. FY-level horizon, set from a BRIEF/RFC timeline or a stated leadership deadline; move it only with a comment saying why. Distinct from `MilestoneDate`, which is the next step. A `Target:` impact without a `TargetDate` is incomplete — propose both together.
 
 ## Comments — the narrative layer
 
@@ -191,84 +199,46 @@ Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a s
 
 ## Weekly AAB control — the second operating surface
 
-Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter" — you generate its forum recap from the meeting transcript, and publishing the page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
+Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter" — you generate its forum recap from the scribe transcript note, and publishing the page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
 
 - **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime stored as **DateOnly**), `Outcomenotes` (text), `Modified`.
 - **Recaps folder:** `/sites/Architecture/SitePages/Recaps` — page name pattern `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
 - **Timezone/week:** read SharePoint `RegionalSettings/TimeZone` live; verified 2026-08-10 as Central Time (America/Chicago). A calendar week is Monday–Sunday. If the site timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
 
-## Forum recap — generate it from the meeting transcript
+## Forum recap — generate it from the scribe transcript note
 
-The forum's own record is the Teams meeting transcript. Fetch it and write the recap yourself; do
-not wait for pasted notes. Verified end-to-end 2026-08-28 against the 2026-08-26 forum.
+The forum's own record is the note the `scribe` skill writes from the Teams meeting transcript. Read
+that note and write the recap from it; do not wait for pasted notes, and do not fetch or parse the
+Teams transcript yourself — that job belongs to `scribe` now.
 
-### Step 1 — find the meeting (calendar, not SharePoint)
+### Step 1 — read the scribe transcript note
 
-The M365 connector tools are deferred: load them first with
-`ToolSearch("select:mcp__claude_ai_Microsoft_365__outlook_calendar_search,mcp__claude_ai_Microsoft_365__read_resource")`.
+Path pattern: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <Meeting title>.md`, where the
+date/time is the meeting start in America/Chicago and the title is the calendar subject — e.g.
+`2026-09-02 1500 Architecture Advisory Board.md`.
 
-**The calendar subject is `Architecture Advisory Board`, NOT "Architecture Review Forum."** Searching
-the forum's public name returns zero events and reads like the meeting never happened. Search the
-real subject, or use `query: "*"` with a one-day `afterDateTime`/`beforeDateTime` window around the
-session date and pick it out of the day's events.
+Find the right occurrence by the forum's actual date: it runs **Wednesdays, 3:00–4:00pm Central**
+(verified cadence across 8 sessions), subject **`Architecture Advisory Board`** — not "Architecture
+Review Forum," that public name never appears on the note. Match on the Wednesday date of the forum
+you're recapping.
 
-The forum runs **Wednesdays, 3:00–4:00pm Central** (verified cadence across 8 sessions), organizer
-Alex, location Microsoft Teams Meeting. It regularly runs over; the 08-26 session ran 85 minutes.
+**Read the `## Transcript` section in full before drafting** — the recap has to be faithful, so do
+not summarize from grep hits. The frontmatter `speakers` list is your attendance line; it is who
+actually spoke, which is not the same as who was invited.
 
-### Step 2 — get the transcript URL from the event
-
-`read_resource` on `calendar:///events/{eventId}` returns a **`meetingTranscriptUrl`** field. Pass
-that value **verbatim** to `read_resource`. It looks like
-`meeting-transcript:///events/{base64urlJoinUrlToken}?start={iso}&end={iso}` — the `start`/`end`
-params scope a recurring series to the one occurrence. **Keep them.** Drop them and you get the most
-recent transcripts of the whole series, capped, and you will summarize the wrong meeting.
-
-### Step 3 — expect the response to be too big, and parse it
-
-The transcript comes back as JSON (~114KB for 85 minutes), which exceeds the tool output limit, so
-the harness saves it to a file and tells you the path. Do NOT `Read` that file: it is one enormous
-line and offset/limit will not help. Parse it with python.
-
-Shape: `{"meeting": {...}, "transcripts": [{"createdDateTime", "endDateTime", "content"}]}` where
-`content` is WEBVTT with `<v Speaker Name>text</v>` cues.
-
-> **The outer `meeting.startDateTime` is the SERIES start date, not this occurrence.** On the 08-26
-> run it read `2026-07-08`. Confirm which session you actually have from
-> `transcripts[].createdDateTime` / `endDateTime`, never from the outer object.
-
-Parse into a readable transcript before reasoning over it: extract each cue's timestamp, speaker and
-text, then **merge consecutive cues from the same speaker into one turn**. Teams emits one cue per
-breath (729 cues collapsed to 409 turns on 08-26), and unmerged cues read as noise.
-
-Use the bundled parser rather than rewriting it:
-
-```bash
-python3 references/parse-teams-transcript.py <saved-raw.json> <out.txt>
-```
-
-It prints the occurrence window, cue/turn counts and speaker list to stderr so you can confirm you
-have the right session, and warns if you got the whole series instead of one occurrence. **Then read
-the output file in full before drafting** — the recap has to be faithful, so do not summarize from
-grep hits. The speaker list is also your attendance line; it is who actually spoke, which is not the
-same as who was invited.
-
-### Do not chase the OneDrive recordings
-
-`~/Library/CloudStorage/OneDrive-Attainfinance.com/Recordings/` holds
-`Architecture Advisory Board-<YYYYMMDD>_<HHMMSS>UTC-Meeting Recording.mp4` files, and they are a
-dead end for transcription: **every AAB recording has no audio stream at all** (verified with
-`ffprobe -select_streams a` across all 8; they are video-only static screen-shares, ~1.4MB for 85
-minutes). There is no `.vtt` on disk and `sharepoint_search` does not index the transcripts either.
-The connector path above is the only working route. Do not offer local transcription as a fallback.
+**If the note does not exist, stop the recap** and tell Alex to run `/scribe teams` for that date.
+Do not fetch the transcript yourself as a fallback — a note you have not looked for is not an
+absence.
 
 ### Teams garbles proper nouns — verify or omit, never publish a guess
 
-Auto-transcription mangles names, and a garbled proper noun in an org-visible post is worse than no
-noun. Observed on 08-26: `loose chart`/`LCLC` → Lucidchart, `fire monitor`/`fire money`/`fire mall`
-→ FireMon, `Avanti`/`Vivanti` → Ivanti, `SC` → SE, `ADL` → ADO, `Creo` → CURO, `five nine` → Five9,
-`Broz book` → the feature-flag system (still unidentified — so it stayed unnamed in the recap).
-Correct only what you can confirm; otherwise describe the thing without naming it. The transcript
-may also end mid-sentence, as 08-26 did. Say so in the recap footer rather than inventing an ending.
+`scribe` already applies the glossary at `<vault>/Scribe/Glossary.md` to known garbles (Lucidchart,
+FireMon, Ivanti, ADO, CURO, Five9, SE), so most of the noise is gone before you read the note. You
+still verify every remaining proper noun in the note against what you can confirm — correct only
+what you can confirm, otherwise describe the thing without naming it — and if you confirm a new
+garble the glossary missed, append it to `<vault>/Scribe/Glossary.md` as a `- wrong => Right` line.
+That glossary file is the one scribe-owned file the curator may append to. The note may also end
+mid-sentence if the source transcript did. Say so in the recap footer rather than inventing an ending.
 
 ### The recap prompt (Alex's wording — use it as-is)
 
@@ -322,7 +292,7 @@ No em dashes.
 - **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers.
   Attribute to the person who actually spoke the commitment.
 - **Do not print the recap into the terminal.** Alex does not read it there, and a 1,300-word page
-  pasted into a CLI is noise. Generate it, verify it against the transcript, run `docs-reviewer`,
+  pasted into a CLI is noise. Generate it, verify it against the note, run `docs-reviewer`,
   address the findings, stage it to SharePoint, and hand back **the link plus a short summary of
   what you fixed**. The staged draft is the review surface: he reads it rendered, where the layout
   problems are actually visible, and clicks Publish there. Reading back the stored
@@ -336,7 +306,7 @@ No em dashes.
 - A generated recap also gives you the real `Outcomenotes` for that session's AAB Intake items and
   the evidence to close them out. Propose those as review-table lines too, never write them blind.
 
-### Verify the draft against the transcript before showing it to Alex
+### Verify the draft against the note before showing it to Alex
 
 Every one of these was a real error in the first generated recap (2026-08-26), caught by an
 adversarial pass, not by re-reading. Run the check; do not trust the draft.
@@ -362,7 +332,7 @@ adversarial pass, not by re-reading. Run the check; do not trust the draft.
   pushback misrepresents the room. The 08-26 draft omitted the emergency change type, the fact the
   ticket never blocks the work, and that PCI already requires recording cardholder-environment
   changes; all three narrow the overhead objection it led with.
-- **A speaker with no visible contribution is a smell.** Diff the transcript's speaker list against
+- **A speaker with no visible contribution is a smell.** Diff the note's speaker list against
   the names appearing in the recap. On 08-26 that gap hid the originator of an action item, credited
   to Alex instead. Either credit them or knowingly decide they added nothing.
 - **Leadership criticism goes ownerless.** "Rick asked me why we didn't know before they did" names
@@ -371,12 +341,12 @@ adversarial pass, not by re-reading. Run the check; do not trust the draft.
 
 Cheapest reliable form of this check: spawn independent verifiers with distinct lenses (attribution,
 numbers and quotes, decision-versus-discussion, omissions and confidentiality), each given the
-transcript path and told to find errors rather than approve. Fix what they confirm, and tell Alex
+note path and told to find errors rather than approve. Fix what they confirm, and tell Alex
 what you changed and why.
 
 ### Then run `docs-reviewer`, and address everything, before it goes anywhere
 
-**Mandatory, every recap, no exceptions.** Transcript verification proves the recap is *true*;
+**Mandatory, every recap, no exceptions.** Note verification proves the recap is *true*;
 `docs-reviewer` proves it is *readable*. They catch different things: the adversarial pass never
 noticed that the Decisions table claimed four decisions while Topics Discussed tagged zero as
 `[Decided]`, and it never noticed the recap was three times its own stated length limit.
@@ -413,7 +383,7 @@ Known findings this review reliably surfaces on a first draft, so pre-empt them:
 ## Weekly newsletter — Architecture Weekly
 
 Every weekly page carries TWO components under the title **Architecture Weekly — Month D, YYYY**.
-Component 1 is the **Forum recap** (generated from the transcript per the section above, or Alex's
+Component 1 is the **Forum recap** (generated from the scribe note per the section above, or Alex's
 pasted notes rendered verbatim when he supplies them). Component 2 is the generated **What Enterprise
 Architecture shipped** panel at the bottom. They answer different questions: the forum record says
 what the group decided; the delivery panel says what EA shipped. Drop any delivery item that
@@ -453,8 +423,8 @@ week gets 2 or none. Each item contains:
 - Stage with `--stage` / `PromotedState=1`; publishing stays Alex's click. Never re-stage a page
   whose `FirstPublishedDate` is already set because that demotes a live News post.
 - Build the delivery-only draft, and flag clearly that it contains no forum record, ONLY when the
-  forum genuinely produced nothing to recap: no transcript exists (meeting not recorded, or it did
-  not run) and Alex pasted no notes. A transcript you have not tried to fetch is not an absence.
+  forum genuinely produced nothing to recap: no scribe note exists (meeting not recorded, or it did
+  not run) and Alex pasted no notes. A note you have not looked for is not an absence.
 
 **1. Pick the session to verify — dynamically, never a hard-coded weekday.** Use site-local dates. Normally select the latest `Scheduledfor` before today: prefer the current week, otherwise the previous week's latest. Treat a session scheduled for **today** as due only when live evidence shows it has happened (the exact-date recap exists, or an intake item already carries a same-day forum outcome); otherwise label today upcoming/UNVERIFIED and verify the previous session so a morning run does not raise three false alerts. If neither current nor previous week has a date, derive the expected forum date from the cadence of the most recent 3–4 published recap filenames and flag that the intake list has no anchor — don't silently skip the check.
 
@@ -488,9 +458,10 @@ Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after liv
 Skip discovery of new EA Projects initiatives; only true up what exists. Still gate every proposed change through the review table, and write only what the user confirms:
 
 1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
-2. If the control shows the latest due forum has no published recap, **fetch that session's transcript and draft the recap now** (see **Forum recap — generate it from the meeting transcript**), and carry it into the same review table. A missing recap is work to do this run, not just a line item to report. The transcript is also the truth-check for whether the forum actually ran: a past-dated `Scheduled` intake item plus a real transcript means the close-out was missed, not the meeting.
+2. If the control shows the latest due forum has no published recap, **read that session's scribe note and draft the recap now** (see **Forum recap — generate it from the scribe transcript note**), and carry it into the same review table. A missing recap is work to do this run, not just a line item to report. If the note itself is missing, tell Alex to run `/scribe teams` for that date instead of fetching the transcript yourself. The note is also the truth-check for whether the forum actually ran: a past-dated `Scheduled` intake item plus a real note means the close-out was missed, not the meeting.
 3. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
 4. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
+4a. Flag any row whose `TargetDate` is in the past and Status is not `6. Closed`, and any pre-Closed row with a `Target:` impact but no `TargetDate` (or the reverse). Flag any `6. Closed` row whose Impact still carries the `Target:` prefix — closing requires the target be rewritten as documented impact or the Outcome set to Killed/Superseded.
 5. Flag `3. Decision-Ready` rows older than 30 days that still have a `Decision Needed` set — decision rot; surface them for the 1:1.
 6. Flag `1. Proposed` rows older than ~6 weeks — the black-hole state; propose "analyze or kill" for each.
 7. Flag any `6. Closed` row with a blank `Outcome` — closing requires one (Delivered/Killed/Superseded).
@@ -516,4 +487,4 @@ After the gate and the write, emit four markdown tables so the run is auditable:
 
 Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that specific line. Run the exclusion screen on every candidate, on every title the user edits, and on every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing new rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions.
 
-The forum recap carries the same stakes and one extra risk: it is built from a verbatim transcript of a room where people speak freely about live security gaps, vendors and each other. **Quote nothing that the exclusion screen would block as a board row.** Attribute only what a named person actually said, never publish a garbled proper noun, never promote uncontested discussion into "Decided", and never invent an owner or a date. The recap goes out staged (`PromotedState=1`) for Alex to publish, and any line you are unsure about belongs in the review table as its own question, not softened onto the page.
+The forum recap carries the same stakes and one extra risk: it is built from a verbatim scribe transcript note of a room where people speak freely about live security gaps, vendors and each other. **Quote nothing that the exclusion screen would block as a board row.** Attribute only what a named person actually said, never publish a garbled proper noun, never promote uncontested discussion into "Decided", and never invent an owner or a date. The recap goes out staged (`PromotedState=1`) for Alex to publish, and any line you are unsure about belongs in the review table as its own question, not softened onto the page.

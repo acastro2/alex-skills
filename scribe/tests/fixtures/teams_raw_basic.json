@@ -1,0 +1,13 @@
+{
+  "meeting": {
+    "subject": "Architecture Advisory Board",
+    "startDateTime": "2026-01-05T20:00:00Z"
+  },
+  "transcripts": [
+    {
+      "createdDateTime": "2026-08-26T20:01:12Z",
+      "endDateTime": "2026-08-26T21:26:40Z",
+      "content": "WEBVTT\r\n\r\n00:00:00.000 --> 00:00:02.000\r\n<v Ana Silva>Hi everyone,</v>\r\n\r\n00:00:02.500 --> 00:00:05.000\r\n<v Ana Silva>let's start the meeting.</v>\r\n\r\n00:00:05.500 --> 00:00:08.000\r\n<v Bruno Costa>Sounds good.</v>\r\n\r\n00:00:08.500 --> 00:00:11.000\r\n<v Bruno Costa>I have the agenda ready.</v>\r\n\r\n00:00:11.500 --> 00:00:14.000\r\n<v Ana Silva>Great, let's begin.</v>\r\n\r\n00:00:14.500 --> 00:00:17.000\r\n<v Bruno Costa>First topic is SC compliance.</v>\r\n\r\n00:00:17.500 --> 00:00:20.000\r\n<v Bruno Costa>We need to review it.</v>\r\n\r\n00:00:20.500 --> 00:00:23.000\r\n<v Ana Silva>Noted, thanks.</v>"
+    }
+  ]
+}

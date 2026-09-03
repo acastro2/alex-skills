@@ -1,0 +1,18 @@
+{
+  "schema": "scribe.transcript/1",
+  "source": "hidock",
+  "title": "Unlabelled HiDock Recording",
+  "start": "2026-08-26T20:01:12Z",
+  "end": "2026-08-26T20:05:00Z",
+  "speakers": [],
+  "turns": [
+    {"start": 0.0, "speaker": null, "text": "First unlabelled turn."},
+    {"start": 3.0, "speaker": null, "text": "Second unlabelled turn."},
+    {"start": 6.0, "speaker": null, "text": "Third unlabelled turn."}
+  ],
+  "provenance": {
+    "hidock_file": "REC001.wav",
+    "audio_sha256": "deadbeef",
+    "asr_model": "whisper-large-v3"
+  }
+}
