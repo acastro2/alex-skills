@@ -1,7 +1,8 @@
 # bard — one-time Obsidian setup assets
 
-Scaffolding written once during `/bard bootstrap`. After that bard only writes
-notes; it never rewrites these.
+Scaffolding written once during `/bard bootstrap`. Create `Done Archive.md` from its
+template even when it has no entries, so the board link resolves. After that bard
+maintains the root `Todo.md` board per `SKILL.md`; it does not rewrite these setup assets.
 
 > Verified against the live vault: `bases: true`, `properties: true`, `sync: true`,
 > wikilinks default, no community plugins (no Dataview — Bases only).
@@ -57,8 +58,10 @@ views:
 > - Grouping is `groupBy: {property, direction}` (an object), not `group_by:` (string).
 > - There is no separate row-`sort:` key in the documented schema — `order` lists
 >   columns; sort rows in-GUI by clicking a column header.
-> - **Hubs (`type: hub`) and the board (`type: board`) are excluded base-wide** so
+> - **Hubs (`type: hub`) and board notes inside `Bard/` are excluded base-wide** so
 >   they don't false-positive as orphans (neither carries an `up`).
+> - The root `<vault>/Todo.md` is outside `file.inFolder("Bard")`, so it is already
+>   excluded and `Bard.base` needs no filter change.
 > - **The orphan signal is the `bard/unreviewed` tag**, tested with the documented
 >   `file.hasTag("bard/unreviewed")`. A no-hub note OMITS `up` and is always tagged
 >   `bard/unreviewed`, so the tag arm catches it (empty/null `up` testing isn't in
@@ -110,40 +113,119 @@ read as a false orphan.
 
 ---
 
-## 2b. Weekly TODO board template
+## 2b. Root TODO board (`Todo.md`) template
 
-Write once to `<vault>/Bard/TODO.md`. `type: board` keeps it out of `Bard.base`
-(excluded base-wide alongside hubs), so it never reads as an orphan. Both Alex and
-bard edit it; bard appends candidate tasks + marks done items each sweep, Alex curates.
-No `up`, no per-item type — just two checkbox buckets.
+Write once to `<vault>/Todo.md`, the root of the vault. The exact filename is `Todo.md`
+(capital T only), not `TODO.md`. This is Alex's file: it gets **no frontmatter**, and
+bard must not add YAML to it. The `Bard.base` block above already uses
+`file.inFolder("Bard")`; that filter excludes a root-level `<vault>/Todo.md`, so
+`Bard.base` needs no filter change.
+
+Everything above the `<!-- BARD:START -->` marker belongs to Alex. bard never edits,
+reorders, or reads it as task input. bard edits only from the marker down. If the marker
+is absent, append the whole block at the END of the file, never at the top. Alex curates;
+bard is the scribe. New items go at the top of their topic group within the derived
+horizon. Finished items move to the top of flat `## Done`. Items older than ~4 weeks roll
+to `Bard/Done Archive.md`; moving replaces pruning, and nothing is deleted.
+
+```markdown
+<!-- BARD:START — bard owns everything below this line. Alex owns everything above. -->
+
+# BARD List
+
+_Seeded by `/bard` from swept sessions. Newest first in each topic group. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
+
+## Open
+
+### 🔥 This week
+#### 📊 Grafana
+- [ ] Send Tyler the alerting done message `(01a025e2)` ⏫
+#### 🔐 Security
+- [ ] Rotate the Snowflake SCIM token `(8bf834c5)` 🔺
+
+### 📅 This month
+#### 🏛️ Enterprise Architecture
+- [ ] Fix the 5 overdue EA milestones `(da41d7ea)` 🔼
+
+### ⏳ Waiting on others
+#### ☁️ AWS
+- [ ] Bucket-policy owner repoints aws:SourceVpce `(aa2f6ad0)` 🔼
+
+### 🧊 Someday
+#### 🔐 Security
+- [ ] Scope the org-wide Firemon decommission `(f1fd2740)` 🔽
+
+## Done
+
+_Last ~4 weeks. Older rolls to [[Done Archive]]._
+
+- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
+```
+
+Apply the horizon derivation table and fixed topic-map order in `SKILL.md`. Test
+`⏳ Waiting on others` first. Omit empty horizon and topic headings.
+
+Open lines use this exact format:
+
+```text
+- [ ] <short imperative description> `(<session id>)` <priority emoji>
+```
+
+Done lines use this exact format:
+
+```text
+- [x] <topic emoji> <short description> `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
+```
+
+Descriptions are short imperatives. Target 80 characters or fewer; hard cap 90. Drop
+detail — the session id is the record. The breadcrumb is the session id only, backticked.
+It has no `session ` prefix, repo, or ` · ` separator. The `####` heading carries the
+topic emoji, so open lines have no topic emoji. The priority emoji is the last token on an
+open line. On a done line, the priority emoji and `✅ YYYY-MM-DD` are the last two fields.
+The installed Obsidian Tasks plugin (v8.3.0) uses `$`-anchored trailing-field regexes in a
+loop. Any text after the priority emoji stops it parsing. Put the breadcrumb before the
+priority, never after it. Every line carries exactly one priority emoji.
+
+Priority symbols: 🔺 Highest, ⏫ High, 🔼 Medium, 🔽 Low, ⏬ Lowest. Use the meanings in
+`SKILL.md`. Reuse the fixed topic map in `SKILL.md`; never invent a topic emoji.
+
+Optional priority-sorted view for the root board:
+
+```tasks
+not done
+path includes Todo.md
+sort by priority
+```
+
+
+---
+
+## 2c. Done Archive (`Done Archive.md`) template
+
+Write rollover entries to `<vault>/Bard/Done Archive.md`. This is a board file inside
+`Bard/`, not a knowledge note. Use frontmatter `type: board`. The verified `Bard.base`
+filter includes `file.inFolder("Bard")` and excludes `type == "board"`, so the archive
+stays out of the base by type. The folder filter excludes the root `<vault>/Todo.md`, not
+the archive.
+
+Use `# Done Archive`, then `## YYYY-MM` sections. List months newest first. List items
+newest first inside each month. Keep the same flat Done line format as `## Done`.
 
 ```markdown
 ---
 type: board
-title: TODO
-description: Weekly operational board — next-week tasks and recently done. Alex + bard both edit.
-tags: [bard/board]
 ---
 
-# TODO
+# Done Archive
 
-Weekly board for the work bard sees in swept sessions. **Alex curates; bard is the
-scribe** (appends candidate tasks with a source breadcrumb, moves finished items to
-Done). Curate freely — delete anything stale.
+## 2026-08
 
-## Next week
-
-_Open threads and follow-ups. bard seeds these from deferred "want me to…" offers,
-parked/gated items, and open questions in the week's sessions._
-
-- [ ] _(nothing yet — first sweep will populate this)_
-
-## Done
-
-_Finished, newest first. Prune entries older than ~4 weeks._
-
-- [ ] _(nothing yet)_
+- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
 ```
+
+Rolling over means moving, not deleting. A future full retrospective rebuild writes its
+finished-work haul here, never into `Todo.md`. The roll-over/prune step never deletes
+archive content.
 
 ---
 

@@ -6,9 +6,10 @@ description: >-
   deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
   to sweep recent sessions into the knowledge base, to bootstrap the bard hubs, or
-  to turn past decisions/lessons/patterns into notes. On-demand only. Reads
-  sessions via the archeologist agent; writes OKF-envelope markdown notes. Never
-  commits, never runs a server, never invents provenance.
+  to turn past decisions/lessons/patterns into notes, and to maintain the root-vault
+  `Todo.md` board. On-demand only. Reads sessions via the archeologist agent; writes
+  OKF-envelope markdown notes. Never commits, never runs a server, never invents
+  provenance.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa
 ---
 
@@ -32,7 +33,9 @@ Three frames govern it:
 - KB folder: `<vault>/Bard/` (flat)
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`
-- Weekly TODO board: `<vault>/Bard/TODO.md` (the one living note both Alex and bard edit — see **Weekly TODO board** below)
+- Root TODO board: `<vault>/Todo.md` (the one living board both Alex and bard edit — see **Root TODO board (`Todo.md`)** below; verified to exist)
+- Done archive: `<vault>/Bard/Done Archive.md` (completed items older than ~4 weeks; see **Root TODO board (`Todo.md`)** below)
+- Retired board pointer: `<vault>/Bard/TODO.md` (pointer stub only; never treat it as the board)
 - Evidence folder: `<vault>/Evidence/` (authored deliverables copied from repos/OneDrive — see **Evidence capture** below)
 
 ## Hard constraints (never violate)
@@ -41,11 +44,16 @@ Three frames govern it:
 - Never `git`, never run a server, never commit. (User does that outside.) The
   `obsidian` CLI reload/sync at the end of a sweep is allowed — it drives the
   already-running Obsidian app, it does not start a server (see **Vault sync**).
-- Write ONLY inside `Bard/` and `Evidence/`. Never edit a hub or an existing note during
-  a sweep (note→hub direction means hubs never need rewriting). **Two exceptions:**
-  `Bard/TODO.md`, the weekly board, is the single existing file bard updates in place each
-  sweep (see **Weekly TODO board**); and `Evidence/README.md` is updated in place to match
-  what was copied (see **Evidence capture**). Knowledge notes and hubs stay append-only/never-touched.
+- Write ONLY inside `Bard/` and `Evidence/`, with the root vault `Todo.md` as the
+  named board exception. Never edit a hub or an existing knowledge note during a sweep
+  (note→hub direction means hubs never need rewriting). `Todo.md`,
+  `Bard/Done Archive.md`, and `Evidence/README.md` are the only existing files bard
+  updates in place. `Bard/Done Archive.md` is inside the existing `Bard/` scope; no
+  additional write-scope exception is needed. On `Todo.md`, bard edits ONLY from the
+  `<!-- BARD:START -->` marker down: never edit, reorder, or read as task input anything
+  above it, and never add frontmatter to that file. The retired `Bard/TODO.md` is a
+  pointer stub only; bard never writes it. Knowledge notes and hubs stay
+  append-only/never-touched.
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
   verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the `ado` agent
   for a real work item, Exa for a public doc) and cite it. If retrieval finds
@@ -78,10 +86,18 @@ so it is derived from real work and ratified by Alex.
    AWS, Terraform, Snowflake, hiring, security — NOT by note `type`).
 3. **Present the candidate hub list to Alex and STOP for approval/edits.** Do not
    proceed until ratified.
-4. On approval, scaffold (write into `Bard/`):
+4. On approval, scaffold:
    - one minimal hub note per approved hub (see `references/obsidian-setup.md`),
    - `Bard.base` (copy from `references/obsidian-setup.md`),
-   - `TODO.md`, the weekly board (template in `references/obsidian-setup.md`),
+   - the BARD List block in the root `<vault>/Todo.md` (template in
+     `references/obsidian-setup.md`). Use the two-level `## Open` structure: a derived
+     horizon heading, then a fixed-map topic heading. Insert new items at the top of
+     their topic group, using the short open and Done-line formats. Keep only the last ~4 weeks
+     in `## Done`; roll older items to `<vault>/Bard/Done Archive.md`, never delete
+     them. If `<!-- BARD:START -->` is already present, leave the block alone;
+     otherwise append the whole block at the end of the file,
+   - create `<vault>/Bard/Done Archive.md` from the archive template if it is absent,
+     so the `[[Done Archive]]` board link resolves,
    - initialise `.bard-state.json` with `{ "last_run": null, "watermark": null }`.
 5. Tell Alex to apply the one-time **graph color groups** (documented in
    `references/obsidian-setup.md`) — bard never writes `.obsidian/graph.json`.
@@ -123,13 +139,20 @@ so it is derived from real work and ratified by Alex.
 4. Run the **Generation prompt** (below) over the raw material.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
-6. **Update the weekly TODO board** (`Bard/TODO.md`) — see **Weekly TODO board**.
-   In one Edit pass over the existing file: move items the swept sessions show
-   finished into `## Done` (dated), and append genuinely-new candidate tasks to
-   `## Next week`. This is one of the TWO existing files bard edits in place.
+6. **Update the root TODO board** (`<vault>/Todo.md`) — see **Root TODO board
+   (`Todo.md`)**. Use one Edit pass over the existing file. Preserve everything above
+   `<!-- BARD:START -->`; if the marker is absent, append the whole BARD List block at
+   the END of the file. Dedupe against every existing board line, open and done. Derive
+   each new item's horizon from the rules below, place it under its fixed-map topic
+   heading, and insert it at the top of that topic group. Use the short open-line format
+   with no topic emoji on open lines. Re-check every open item against the swept sessions;
+   auto-complete clearly finished items, restore its topic emoji, move it to the top of
+   flat `## Done`, and append the ISO date. Roll `## Done` entries older than ~4 weeks
+   to `<vault>/Bard/Done Archive.md`; move them, never delete them. This is one of the
+   existing files bard edits in place.
 7. **Capture evidence files** — when the sweep's file scan surfaces authored
    deliverables not yet in `Evidence/`, copy them per **Evidence capture** (see
-   below). Update `Evidence/README.md` to match. This is the other existing file
+   below). Update `Evidence/README.md` to match. This is another existing file
    bard edits in place.
 8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
    session-start timestamp swept this run.
@@ -139,10 +162,10 @@ so it is derived from real work and ratified by Alex.
    vault=Alex`. Report the final status line.
 10. **Report**: per note `created | updated | skipped` + reason, plus any
    `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
-   summary of TODO-board changes (N added, M marked done), a line for evidence
-   files copied (N added, and any PII files deliberately excluded), and the vault
-   sync status. Alex reviews in Obsidian via the `Bard.base` dashboard + health
-   view.
+   summary of TODO-board changes (N added by horizon and topic, M marked done, R rolled
+   over to `Done Archive.md`), a line for evidence files copied (N added, and any PII
+   files deliberately excluded), and the vault sync status. Alex reviews in Obsidian
+   via the `Bard.base` dashboard + health view.
 
 > **First real sweep — prove the pipe before trusting it.** The discover→read-raw
 > path (step 3) is the load-bearing untested assumption. On the very first run,
@@ -290,35 +313,196 @@ must equal the canonical `title`. Sanitize illegal chars (`/`, `:`, `#`, `^`, `|
 assistant timestamps — ~50% are null in Cortex). Read at the start of a sweep to
 bound lookback; write the newest session-start swept after a successful run.
 
-## Weekly TODO board
+## Root TODO board (`Todo.md`)
 
-`Bard/TODO.md` is a living operational board — the one existing file bard edits in
-place. It's Alex's shortlist, seeded by bard from the week's swept sessions. It is
-NOT knowledge (it's `type: board`, excluded from `Bard.base` like hubs), so it never
-counts as an orphan.
+`<vault>/Todo.md` is the root-vault operational board. The exact filename is `Todo.md`
+(capital T only), not `TODO.md`. It is Alex's file, seeded from swept sessions. Alex
+curates; bard is the scribe. It has no frontmatter and is not a knowledge note.
 
-Two buckets: `## Next week` (open work to pick up) and `## Done` (finished, newest
-first). Both Alex and bard edit it; Alex is the curator, bard is the scribe.
+**Ownership split is a hard rule.** Everything above the
+`<!-- BARD:START -->` marker belongs to Alex. bard never edits it, reorders it, or
+reads it as task input. bard edits ONLY from the marker down and never adds frontmatter
+to this file. If the marker is absent, bard appends the whole block at the END of the
+file — never at the top. The retired `Bard/TODO.md` is a pointer stub only; it is not
+the board.
 
-What bard does to it each sweep (step 6 above), in a single Edit pass:
+The block below the marker has this structure:
 
-- **Seed `## Next week` from real deferred threads only.** The task fuel is exactly
-  the ephemera the Generation prompt DROPS from notes: unanswered "want me to X?"
-  offers, flagged follow-ups, `PARKED`/`DRAFTED`/gated items, open questions, and
-  "someone else owns this" handoffs. Each new line gets a one-line source breadcrumb
-  (`(session <id> · <repo>)`) so it's traceable. **Never invent a task** — same rule
-  as never-invent-provenance; if the session didn't defer it, it doesn't go on the
-  board.
-- **Move finished items to `## Done`** when a swept session clearly shows them
-  completed (merged PR, applied change, shipped report), with the date.
-- **Dedupe** against lines already on the board — never add a task that's already
-  there (done or pending).
-- **Curation is Alex's.** bard appends and marks done; it does not delete `Next week`
-  items Alex hasn't actioned (they're Alex's to prune). Prune `## Done` entries older
-  than ~4 weeks so the board stays a shortlist, not an archive.
-- Confidentiality still applies: keep secrets/PII/regulated specifics off the board,
-  same as notes. The board isn't a knowledge note, so no `up`, no per-item type — just
-  checkboxes.
+```markdown
+<!-- BARD:START — bard owns everything below this line. Alex owns everything above. -->
+
+# BARD List
+
+_Seeded by `/bard` from swept sessions. Newest first in each topic group. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
+
+## Open
+
+### 🔥 This week
+#### 📊 Grafana
+- [ ] Send Tyler the alerting done message `(01a025e2)` ⏫
+#### 🔐 Security
+- [ ] Rotate the Snowflake SCIM token `(8bf834c5)` 🔺
+
+### 📅 This month
+#### 🏛️ Enterprise Architecture
+- [ ] Fix the 5 overdue EA milestones `(da41d7ea)` 🔼
+
+### ⏳ Waiting on others
+#### ☁️ AWS
+- [ ] Bucket-policy owner repoints aws:SourceVpce `(aa2f6ad0)` 🔼
+
+### 🧊 Someday
+#### 🔐 Security
+- [ ] Scope the org-wide Firemon decommission `(f1fd2740)` 🔽
+
+## Done
+
+_Last ~4 weeks. Older rolls to [[Done Archive]]._
+
+- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
+```
+
+### Line format and parser constraint
+
+Open lines are exactly:
+
+```text
+- [ ] <short imperative description> `(<session id>)` <priority emoji>
+```
+
+Done lines are exactly:
+
+```text
+- [x] <topic emoji> <short description> `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
+```
+
+Descriptions are short imperatives. Target 80 characters or fewer; hard cap 90. Drop
+detail — the session id is the record. The breadcrumb is the session id only, backticked.
+It has no `session ` prefix, repo, or ` · ` separator. The `####` heading carries the
+topic emoji, so open lines have no topic emoji. The priority emoji is the last token on
+an open line. On a done line, the priority emoji and `✅ YYYY-MM-DD` are the last two
+fields. The installed Obsidian Tasks plugin (v8.3.0) parses trailing fields with
+`$`-anchored regexes in a loop. Any text after the priority emoji stops it parsing. Put
+the breadcrumb before the priority, never after it. Every line carries exactly one
+priority emoji.
+
+### Priority
+
+Use Obsidian Tasks native symbols:
+
+| emoji | level | when |
+|---|---|---|
+| 🔺 | Highest | a hard deadline within ~7 days **whether or not a date string appears** ("needs it today", "2.1 days before retention", "before Friday's freeze"); an exposed credential or secret; production broken; a legal, regulatory, or counsel deliverable |
+| ⏫ | High | a **named person or team is waiting on you** (Jeremy, Tyler, counsel, CAB, the DBAs); OR it blocks a specific PR, ticket, or someone else's work; OR it is tied to a real-world event — townhall, forum, review, release — even with no written date |
+| 🔼 | Medium | real work, nobody named is waiting, no deadline |
+| 🔽 | Low | cleanup or hygiene, no consequence if it slips a month |
+| ⏬ | Lowest | someday/maybe, parked with no owner |
+
+Grade from the EVIDENCE, not the wording. A deadline counts even when it is implied
+rather than written as a date. A person counts when they are named anywhere in the
+thread, not only when the session proves they are blocked.
+
+**Spread check — both directions.** A one-sided cap fails: capping only the top drains
+everything into 🔼, which is just as useless as marking everything ⏫. After grading,
+check the distribution against these targets and re-grade before writing if it misses:
+
+| priority | target share of open items |
+|---|---|
+| 🔺 | 5–12% |
+| ⏫ | 15–25% |
+| 🔼 | 45–65% |
+| 🔽 + ⏬ | the remainder |
+
+**⏫ must never be 0.** Zero high means the bar was read as demanding proof no real
+board ever has. Report the final distribution in the sweep report.
+
+### Topic emoji
+
+Fixed map. Reuse these symbols. Never invent a new one:
+
+`☁️` AWS / cloud · `❄️` Snowflake · `🏗️` Terraform / IaC · `📊` Grafana /
+observability · `🔐` security / access / credentials · `🏛️` enterprise architecture /
+governance / docs · `🎫` Azure DevOps / process · `🐙` GitHub · `🧪` testing / QA · `🤖`
+AI / agents / skills · `👥` people / hiring / comms · `💰` cost / licensing · `🗄️`
+databases / SQL Server · `📦` anything else.
+
+### Horizon derivation and seeding
+
+Horizon is DERIVED, never guessed from prose. The fixed horizon set and order are:
+`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`, `### 🧊 Someday`.
+Test `⏳ Waiting on others` FIRST — ownership beats priority.
+
+| horizon | rule |
+|---|---|
+| 🔥 This week | priority 🔺 or ⏫ AND the next action is Alex's |
+| 📅 This month | priority 🔼 AND the next action is Alex's |
+| ⏳ Waiting on others | the next action belongs to someone else, at any priority |
+| 🧊 Someday | priority 🔽 or ⏬, or parked with no owner |
+
+Topic sub-headings use the fixed topic-emoji map, written as `#### <emoji> <name>`
+(e.g. `#### ❄️ Snowflake`). Order them in fixed map order for predictable scanning,
+not by size. Omit any heading with zero items — horizon and topic alike. The board never
+shows an empty section.
+
+Use high recall. Seed everything bard seeds today: Alex's commitments, unanswered
+"want me to X?" offers, `PARKED`/`DRAFTED`/gated items, open questions, and handoffs.
+Never invent a task. If the session did not defer it, it does not go on the board.
+
+### Ordering, completion, and curation
+
+A new item goes at the TOP of its `####` topic group, never appended at the bottom. Create
+horizon and topic headings only when they contain an item. Keep both heading levels in
+fixed order. `## Done` stays flat; insert a newly completed item at the top of `## Done`.
+On every sweep, bard re-checks every open item against the swept sessions. When a session
+clearly shows an item finished — for example, a merged PR, applied change, shipped report,
+or sent message — bard checks the box, restores the topic emoji from its `####` heading,
+appends `✅ <ISO date>`, and MOVES the line to the top of `## Done`. This is mandatory,
+not best effort.
+
+`## Done` holds only the last ~4 weeks. Anything older rolls over to
+`<vault>/Bard/Done Archive.md`; pruning now means moving, not deleting. The archive is
+never deleted or shortened. It has frontmatter `type: board`, `# Done Archive`, and
+`## YYYY-MM` month sections, newest month first, with newest items first inside each
+month. Archive lines use the same flat Done format. The verified `Bard.base` filter uses
+`file.inFolder("Bard")` and excludes `type == "board"`, so the archive stays out of the
+base by type; that folder filter excludes the root `<vault>/Todo.md`, not the archive.
+A future full retrospective rebuild writes its finished-work haul into `Done Archive.md`,
+never into `Todo.md`. The roll-over/prune step never deletes archive content.
+
+bard adds items, marks done, and rolls over old `## Done` entries. It never deletes an
+open item Alex has not actioned. Secrets, PII, and regulated specifics stay off the board,
+the same as notes.
+
+### Alex edits this board by hand — re-read it immediately before writing
+
+`Todo.md` is a live file Alex works in Obsidian between sweeps. He ticks items off
+himself, adds his own, and edits text. **Never write the board from state read earlier in
+the run.** Re-read it as the last step before the write, and diff against what the sweep
+started with.
+
+- An item Alex checked himself is a REAL completion. Keep his `✅ <date>` and move it to
+  `## Done`. Never revert it to `- [ ]`, and never restamp it with a different date.
+- An item Alex added by hand stays, even with no breadcrumb and no priority emoji. Grade
+  and file it, do not delete it for failing the format.
+- An item Alex edited keeps his wording.
+
+This is a data-loss class, not a style rule: a sweep that trusts stale state silently
+erases work Alex already did.
+
+### Bulk clear ("the board is mostly done, start fresh")
+
+When Alex asks to clear the board, archive it — do not mark it done.
+
+- Items he actually checked keep their real `✅` date and file under `## YYYY-MM`.
+- Everything else moves to `Bard/Done Archive.md` under a
+  `## Cleared <ISO date> — bulk, not individually verified (N items)` section, staying
+  `- [ ]` with NO `✅` date, topic emoji restored to the line, grouped by topic.
+- Say plainly in that section that the items were not checked one by one, and that the
+  session id is the record for re-opening any of them.
+
+**"Mostly done" is not done.** Stamping a completion date bard did not observe writes
+false provenance into the knowledge base and destroys the difference between real
+completed work and a bulk clear. Same rule as never inventing provenance.
 
 ## Evidence capture
 
@@ -363,9 +547,9 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
 
 ### README
 
-Keep `Evidence/README.md` current in place (the one file bard updates alongside
-`Bard/TODO.md`): list each category, note the PII boundary, and flag the Confidential
-folder with a do-not-share warning.
+Keep `Evidence/README.md` current in place (it is updated alongside `Todo.md` and
+`Bard/Done Archive.md`): list each category, note the PII boundary, and flag the
+Confidential folder with a do-not-share warning.
 
 ## Vault sync
 
@@ -388,5 +572,5 @@ obsidian sync:status vault=Alex   # confirm; expect "status: synced"
 - Never use `sync off` / `restart` / destructive `sync:restore` in a sweep. Only
   `reload` + `sync:status` (read-only) are part of the flow.
 
-See `references/obsidian-setup.md` for the `TODO.md`, `Bard.base`, hub-note template,
-and the one-time graph-color-group setup.
+See `references/obsidian-setup.md` for the root `Todo.md`, `Bard.base`, hub-note
+template, and the one-time graph-color-group setup.

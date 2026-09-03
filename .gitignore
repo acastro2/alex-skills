@@ -3,6 +3,9 @@
 cohort-out/
 snapshots/
 
+# Skill evals (fixtures, eval sets, run output) — local only, any skill
+evals/
+
 # Python
 __pycache__/
 *.pyc
