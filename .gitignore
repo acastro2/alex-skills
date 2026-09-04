@@ -2,6 +2,7 @@
 .skill-workspace/
 cohort-out/
 snapshots/
+ea-projects-curator/curated.json
 
 # Skill evals (fixtures, eval sets, run output) — local only, any skill
 evals/
