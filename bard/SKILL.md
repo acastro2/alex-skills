@@ -43,8 +43,9 @@ Three frames govern it:
 
 - On-demand only. No scheduler, no autonomous run.
 - Never `git`, never run a server, never commit. (User does that outside.) The
-  `obsidian` CLI reload/sync at the end of a sweep is allowed — it drives the
-  already-running Obsidian app, it does not start a server (see **Vault sync**).
+  read-only `obsidian sync:status` at the end of a sweep is allowed — it queries the
+  already-running Obsidian app, it does not start a server. `obsidian reload` is
+  BANNED: it hangs and wedges the CLI (see **Vault sync**).
 - Write ONLY inside `Bard/` and `Evidence/`, with the root vault `Todo.md` as the
   named board exception. Never edit a hub or an existing knowledge note during a sweep
   (note→hub direction means hubs never need rewriting). `Todo.md`,
@@ -123,7 +124,14 @@ so it is derived from real work and ratified by Alex.
      - Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
        timestamp is the session start (UTC ISO). Pi dir names start with `--`, so
        glob with a `./` prefix or absolute paths: bare `--...` paths are parsed as
-       options by `head`/`jq`/`ls`/`find` and silently return nothing.
+       options by `head`/`jq`/`ls`/`find` and silently return nothing. The record
+       shape is NOT the same as Claude Code's: a Pi turn is
+       `{"type":"message","message":{"role":"user","content":[{"type":"text","text":...}]}}`,
+       so the selector is `select(.type=="message" and .message.role=="user")` and the
+       text is under `.message.content[]`. A jq filter written against the Claude Code
+       shape returns an empty string per line, which looks exactly like "this session
+       had no user messages" — verify with `jq -r '.type' <file> | sort | uniq -c`
+       before concluding a session is empty.
      - opencode (legacy, first/`full` sweep only): `session.time_archived`.
      - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
        one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
@@ -175,11 +183,19 @@ so it is derived from real work and ratified by Alex.
    below). Update `Evidence/README.md` to match. This is another existing file
    bard edits in place.
 8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
-   session-start timestamp swept this run.
-9. **Sync the vault** — bard writes files on disk outside the app, so tell the
-   running Obsidian to re-index and confirm Obsidian Sync flushed them (see
-   **Vault sync** below): `obsidian reload vault=Alex` then `obsidian sync:status
-   vault=Alex`. Report the final status line.
+   session-start timestamp swept this run. It must be a **real session-start you
+   actually swept**, copied from the index — never a rounded day boundary. A watermark
+   of `...T00:00:00Z` re-sweeps that whole day on the next run (seen on 2026-09-04,
+   where the prior run left `2026-09-03T00:00:00Z`). **Then read the file back and
+   confirm.** Alex's zsh has `noclobber` set, so a plain `> state.json` fails with
+   `file exists` and leaves the OLD watermark in place — the sweep looks successful and
+   the next one redoes everything. Write it with `>|`, a heredoc into `python3`, or the
+   Write tool, and `cat` it afterwards.
+9. **Sync the vault** — Obsidian watches the filesystem, so on-disk writes are picked
+   up on their own. Run ONLY `obsidian sync:status vault=Alex` (see **Vault sync**
+   below) and report the status line. Do NOT run `obsidian reload`: it prints
+   `Reloading...` and never returns, and it leaves the CLI wedged so the `sync:status`
+   after it times out too (verified 2026-09-03 by scribe, again 2026-09-04 by bard).
 10. **Report**: per note `created | updated | skipped` + reason, plus any
    `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
    summary of TODO-board changes (N added by horizon and topic, M marked done, R rolled
@@ -443,6 +459,17 @@ check the distribution against these targets and re-grade before writing if it m
 **⏫ must never be 0.** Zero high means the bar was read as demanding proof no real
 board ever has. Report the final distribution in the sweep report.
 
+**Count the spread in Python, never with `grep -o`.** BSD `grep -o '🔺\|⏫\|🔼'` does not
+alternate correctly over these multi-byte symbols: on 2026-09-04 it reported all 115
+open items as ⏫, and only the implausibility of a 100% result caught it. A subtly wrong
+count would have "confirmed" a bad board. Read the file, take the LAST priority symbol
+on each `- [ ]` line, and tally with `collections.Counter`.
+
+**Re-grading moves the item.** Horizon is derived from priority, so demoting ⏫→🔼 to
+land inside the band also moves that line out of `🔥 This week` into `📅 This month`
+(or into `⏳ Waiting on others` if the next action turned out to be someone else's).
+Do the spread pass BEFORE placing lines, or re-place every line you re-graded.
+
 ### Topic emoji
 
 Fixed map. Reuse these symbols. Never invent a new one:
@@ -580,24 +607,27 @@ Confidential folder with a do-not-share warning.
 
 ## Vault sync
 
-bard writes files straight to disk, outside the Obsidian app. Obsidian only indexes
-(and Obsidian Sync only pushes) files it knows changed, so end every sweep by nudging
-the already-running app via the `obsidian` CLI (installed at `/usr/local/bin/obsidian`;
-the vault is named `Alex`):
+bard writes files straight to disk, outside the Obsidian app. Obsidian watches the
+filesystem, so it picks those writes up on its own; the only thing left is to confirm
+Obsidian Sync flushed them, via the `obsidian` CLI (installed at
+`/usr/local/bin/obsidian`; the vault is named `Alex`):
 
 ```bash
-obsidian reload vault=Alex        # re-index the vault so on-disk writes are picked up
-obsidian sync:status vault=Alex   # confirm; expect "status: synced"
+obsidian sync:status vault=Alex   # expect "status: synced"
 ```
 
-- `reload` reloads/re-indexes the vault (it does NOT restart or launch anything — the
-  app must already be open; if the CLI errors that no vault is running, just tell Alex
-  to open Obsidian and skip sync, don't try to launch it).
-- There is **no explicit "push now" command** — Obsidian Sync flushes automatically
-  once the files are indexed. `sync:status` returning `synced` is the confirmation;
-  if it shows pending/syncing, report that rather than claiming it's done.
-- Never use `sync off` / `restart` / destructive `sync:restore` in a sweep. Only
-  `reload` + `sync:status` (read-only) are part of the flow.
+- **Never run `obsidian reload`.** It prints `Reloading...` and never returns. Worse, it
+  wedges the CLI: a `sync:status` issued after it also times out, so the sweep ends with
+  no sync confirmation at all. Verified 2026-09-03 (scribe) and again 2026-09-04 (bard).
+  It is not needed — the filesystem watcher already indexes on-disk writes.
+- Wrap the call in a 20 s timeout (macOS has no `timeout` binary; use `python3 -c` with
+  `subprocess.run(..., timeout=20)`). A timeout means Obsidian is not running: say so
+  and skip sync, never try to launch it.
+- There is **no explicit "push now" command** — Obsidian Sync flushes automatically.
+  `sync:status` returning `synced` is the confirmation; if it shows pending/syncing,
+  report that rather than claiming it's done.
+- Never use `sync off` / `reload` / `restart` / destructive `sync:restore` in a sweep.
+  Only `sync:status` (read-only) is part of the flow.
 
 See `references/obsidian-setup.md` for the root `Todo.md`, `Bard.base`, hub-note
 template, and the one-time graph-color-group setup.
