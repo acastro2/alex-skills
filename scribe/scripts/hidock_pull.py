@@ -58,6 +58,10 @@ class DeviceNotFoundError(Exception):
     pass
 
 
+class DeviceNoResponseError(Exception):
+    """The device took the command but never sent a frame back."""
+
+
 class UsbClaimError(Exception):
     pass
 
@@ -257,8 +261,12 @@ class JensenClient:
         require_progress: bool,
         budget_s: float,
         expected_size: int | None = None,
-    ) -> list[bytes]:
+    ) -> tuple[list[bytes], bool]:
+        """Return (bodies, answered). `answered` is False when no frame for `cmd`
+        arrived at all, which is how a silent device differs from one that
+        replied with an explicit empty end-of-stream frame."""
         bodies: list[bytes] = []
+        answered = False
         carry = b""
         empty_streak = 0
         received = 0
@@ -273,7 +281,7 @@ class JensenClient:
             if not chunk:
                 empty_streak += 1
                 if received > 0 or (empty_streak >= self._IDLE_READS and not require_progress):
-                    return bodies
+                    return bodies, answered
                 continue
             empty_streak = 0
             carry += chunk
@@ -281,23 +289,31 @@ class JensenClient:
             for frame_cmd, _seq, body in frames:
                 if frame_cmd != cmd:
                     continue
+                answered = True
                 if not body:
-                    return bodies  # explicit end-of-stream frame
+                    return bodies, answered  # explicit end-of-stream frame
                 bodies.append(body)
                 received += len(body)
             if expected_size is not None and received >= expected_size:
-                return bodies
-        return bodies
+                return bodies, answered
+        return bodies, answered
 
     def get_file_list(self, budget_s: float = 30.0) -> list[FileEntry]:
-        self._send(CMD_GET_FILE_LIST)
-        bodies = self._read_bodies(CMD_GET_FILE_LIST, require_progress=False, budget_s=budget_s)
-        return parse_file_list_entries(b"".join(bodies))
+        # On 2026-09-04 the first list after plugging in came back silent and was
+        # reported as "No recordings found", hiding a full day of calls. One
+        # retry covers that warm-up; a second silence is an error, not an empty
+        # device.
+        for _attempt in range(2):
+            self._send(CMD_GET_FILE_LIST)
+            bodies, answered = self._read_bodies(CMD_GET_FILE_LIST, require_progress=False, budget_s=budget_s)
+            if answered:
+                return parse_file_list_entries(b"".join(bodies))
+        raise DeviceNoResponseError("device did not answer the file-list request")
 
     def download_file(self, filename: str, expected_size: int, budget_s: float | None = None) -> bytes:
         self._send(CMD_TRANSFER_FILE, filename.encode("ascii"))
         budget = budget_s if budget_s is not None else max(30.0, expected_size / (64 * 1024))
-        bodies = self._read_bodies(
+        bodies, _answered = self._read_bodies(
             CMD_TRANSFER_FILE, require_progress=True, budget_s=budget, expected_size=expected_size
         )
         return b"".join(bodies)
@@ -485,6 +501,10 @@ def main(argv: list[str] | None = None, transport_factory: Callable[[int, int], 
         print(f"USB claim error: {exc}", file=sys.stderr)
         print("Close the HiNotes tab in your browser -- it likely holds the WebUSB claim on the device.", file=sys.stderr)
         return 3
+    except DeviceNoResponseError as exc:
+        print(f"No response: {exc}", file=sys.stderr)
+        print("The P1 is connected but silent. Unplug and replug it, close HiNotes, then retry.", file=sys.stderr)
+        return 4
     finally:
         transport.close()
 

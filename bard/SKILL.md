@@ -151,6 +151,11 @@ so it is derived from real work and ratified by Alex.
      its own prior bard sessions (first user message = this skill's text) — skip
      them as mechanics, and expect Cortex sidecar files (`*.history.jsonl`) to be
      JSONL, one object per line, not a JSON array.
+   - **AI attention pass** — before distillation, explicitly scan every candidate for
+     durable AI work even when AI was not the session's main topic: model or tool
+     choices, agents, skills, prompts, evals, context or memory, governance, security,
+     cost, adoption, and measured outcomes or failures. Do not rely only on the session
+     title or repo name to surface it.
 4. Run the **Generation prompt** (below) over the raw material.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
@@ -216,6 +221,13 @@ outcome that mattered). DROP ephemera: routine fixes, transient debugging, one-o
 lookups — anything where you cannot state in one line why it'll matter later
 (Hofmann's test). On the first sweep, when unsure, DROP. Easier to add later than
 to prune a graveyard.
+
+**AI gets special attention.** Treat durable AI decisions, lessons, patterns,
+artifacts, and impact as high-value candidates. Look for model or tool choices,
+agents, skills, prompts, evals, context or memory, governance, security, cost,
+adoption, and measured outcomes or failures. AI relevance raises review priority;
+it does not override the half-life filter. DROP routine model use, generated
+boilerplate, and AI chatter with no reusable insight.
 
 ### STEP 2 — DISTILL (knowledge, not log)
 

@@ -293,6 +293,30 @@ def test_cli_sync_skips_recordings_already_transcribed_in_done_dir(file_list_byt
     assert len(transport.written) == 1
 
 
+# --- silent device vs empty device ----------------------------------------------
+
+def test_get_file_list_retries_once_when_the_first_request_gets_no_frames(file_list_bytes):
+    transport = FakeTransport([[], [file_list_bytes]])
+    entries = hp.JensenClient(transport).get_file_list(budget_s=5.0)
+    assert len(entries) == 17
+    assert len(transport.written) == 2
+
+
+def test_cli_list_exits_4_when_the_device_stays_silent(capsys):
+    code = hp.main(["list"], transport_factory=_factory(FakeTransport([[], []])))
+    captured = capsys.readouterr()
+    assert code == 4
+    assert "No recordings found" not in captured.out
+    assert "silent" in captured.err
+
+
+def test_cli_list_reports_no_recordings_when_the_device_answers_with_an_empty_frame(capsys):
+    end_frame = hp.build_frame(hp.CMD_GET_FILE_LIST, 1)
+    code = hp.main(["list"], transport_factory=_factory(FakeTransport([[end_frame]])))
+    assert code == 0
+    assert "No recordings found" in capsys.readouterr().out
+
+
 # --- CLI: connection errors ----------------------------------------------------
 
 def test_cli_exits_2_with_hint_when_device_not_found(capsys):

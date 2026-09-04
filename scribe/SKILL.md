@@ -108,14 +108,33 @@ Verified end to end by ea-projects-curator on 2026-08-28; the mechanics moved he
 2. Find candidate meetings: `outlook_calendar_search` with `query: "*"` and a
    `afterDateTime`/`beforeDateTime` window covering the requested days. Search by the **real
    calendar subject** (the AAB forum is `Architecture Advisory Board`, not "Architecture Review
-   Forum"). Skip events already present in state under `teams`.
-3. For each event, `read_resource` on `calendar:///events/{eventId}`. Only events with a
-   `meetingTranscriptUrl` were transcribed; the rest are skipped with reason `no-transcript`.
-4. `read_resource` on that URL **verbatim**. It looks like
-   `meeting-transcript:///events/{token}?start={iso}&end={iso}`. Keep `start`/`end`: they pin
-   a recurring series to one occurrence. Without them you get the whole series.
-5. The payload is big (~114 KB per 85 minutes). The harness saves it to a file and gives you the
-   path. Do not `Read` it (one giant line). Copy it to `~/.scribe/raw/<eventId>.json`, then:
+   Forum"). The search returns 25 events per page; when the result ends with `nextOffset`,
+   call again with `offset` until it is gone (two working days already exceed one page). Skip
+   events already present in state under `teams`.
+3. For each event, `read_resource` on `calendar:///events/{eventId}` to get its
+   `meetingTranscriptUrl`. Every Teams meeting carries one, so its presence proves nothing.
+4. `read_resource` on that URL. It looks like
+   `meeting-transcript:///events/{token}?start={iso}&end={iso}`. Recurring occurrences carry
+   `start`/`end`, which pin the series to one occurrence; keep them. **One-off meetings carry no
+   window**: append `?start=<event start>&end=<event end>` yourself, converted to UTC
+   (`2026-09-04T09:00 Central` → `start=2026-09-04T14%3A00%3A00.000Z`). Without a window the read
+   returns "the most recent transcripts of the series, capped", which is the wrong occurrence
+   for a series and works only by luck for a one-off.
+   `NOT_FOUND transcripts_empty`, `NOT_FOUND 3004`, and `FORBIDDEN 3003` all mean no transcript
+   for that occurrence: record `no-transcript` for that event. **Check every occurrence, every
+   run.** A standup that had no transcript yesterday is not evidence about today; the read costs
+   one call, and inferring from history was a mistake made on 2026-09-04.
+5. The payload comes back two ways. Above roughly 50 KB (an 85-minute AAB is ~114 KB) the
+   harness saves it to a file and gives you the path: do not `Read` it (one giant line), copy it
+   to `~/.scribe/raw/<eventId>.json`. Below that it arrives **inline** in the tool result, and
+   the only way to disk is to write it yourself. Write the `content` (WEBVTT) to
+   `~/.scribe/raw/<eventId>.vtt` with the Write tool **exactly as received**: every cue, every
+   "Yeah.", every garble. Do not drop filler, do not fix names inline; the cleaner drops filler
+   and the glossary fixes names, and the raw file is the record that lets anyone check the note.
+   Then wrap it into the payload shape (`{"meeting": {...}, "transcripts": [{"createdDateTime",
+   "endDateTime", "content"}]}`) with a short Python snippet. Pass the **real** URI, with the
+   window, as `--transcript-uri`; it lands in provenance, and a placeholder there is a false
+   record. Then:
 
    ```bash
    cd ~/.agents/skills/scribe/scripts
@@ -147,19 +166,29 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 
    Exit 2 = not plugged in. Exit 3 = USB claim error: another process holds the device. Tell
    Alex to close the HiNotes tab in Edge and any other scribe/pytest run, then retry once.
-2. Pull new recordings (skips files already present with the same size; skips short clips):
+   Exit 4 = the device is connected but never answered the list request, even after the script's
+   own retry: unplug, replug, retry. `No recordings found.` (exit 0) means the device answered
+   with an empty list; if state shows recordings from yesterday, that is still suspicious, since
+   HiNotes is the only thing that deletes. Run `list` again before believing it. On 2026-09-04
+   a silent first request was reported as an empty device and nearly cost a day of calls.
+2. Pull and transcribe in one go:
+
+   ```bash
+   ./hidock_batch.sh <YYYY-MM-DD of watermark>
+   ```
+
+   It runs `hidock_pull.py sync` (skips files already present with the same size, already
+   transcribed in `--done-dir`, shorter than 120 s, or older than the date), then
+   `transcribe.py` on each new MP3, and deletes the MP3 once its JSON exists. One JSON line per
+   file from the sync (`downloaded` or `skipped` + reason), then one `=== transcribing <stem> ===`
+   per file on stderr. ~7 MB/s download; a 40-minute call downloads in a few seconds. Every
+   download is size- and magic-byte-checked. `--done-dir` is what stops re-downloads once the
+   local audio is gone: a recording is done when `<stem>.json` exists there.
+3. If you need the steps apart (one file, a re-run), the pieces are:
 
    ```bash
    uv run --with pyusb python hidock_pull.py sync -o ~/.scribe/audio \
-     --done-dir ~/.scribe/transcripts --since <YYYY-MM-DD of watermark> --min-seconds 120
-   ```
-
-   One JSON line per file (`downloaded` or `skipped` + reason). ~7 MB/s; a 40-minute call is a
-   few seconds. Every download is size- and magic-byte-checked. `--done-dir` is what stops
-   re-downloads once the local audio is gone: a recording is done when `<stem>.json` exists there.
-3. Transcribe each new MP3 that is not yet in state under `hidock`:
-
-   ```bash
+     --done-dir ~/.scribe/transcripts --since <YYYY-MM-DD> --min-seconds 120
    uv run --with mlx-whisper python transcribe.py ~/.scribe/audio/<stem>.mp3 \
      -o ~/.scribe/transcripts/<stem>.json
    ```
@@ -292,6 +321,10 @@ scribe_schema: scribe.transcript/1
 
 ## Known limits
 
+- An inline Teams payload reaches disk only through the model writing it out, so the raw file is
+  a copy, not a download. The cue count on stderr from `teams_transcript.py` is the only check;
+  compare it against the payload if a note looks thin.
+
 - No speaker diarization on HiDock audio. Follow-up candidate: pyannote or a channel split if a
   future firmware records stereo.
 - Whisper still garbles names. The glossary fixes the known ones; the summary step catches the
@@ -306,6 +339,6 @@ scribe_schema: scribe.transcript/1
 cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
 ```
 
-56 tests: protocol parsing on a real captured device listing, Teams VTT parsing, cleaning,
-note layout, transcription grouping, and one real-device listing that auto-skips when the P1 is
-not plugged in.
+59 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
+Teams VTT parsing, cleaning, note layout, transcription grouping, and one real-device listing
+that auto-skips when the P1 is not plugged in.
