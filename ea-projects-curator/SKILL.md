@@ -127,10 +127,13 @@ REST shapes for reading/posting comments live in `references/write-shapes.md`.
 ## Retrieval — where candidates come from
 
 **Auth preflight FIRST (2026-08-10 lesson):** before any retrieval, check the cookie cache age —
-`stat -f %m ~/.claude/scripts/sharepoint/.cookies.json` vs `date +%s`; TTL is ~7h. If it's older
-than ~6h, ask Alex to run `python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
-NOW and run the live-list read + writes after he confirms — while retrieval (ADO/GitHub/archeologist
-sweeps) runs in parallel. Reactively discovering a 403 after the sweep wastes the whole run.
+`stat -f %m ~/.claude/scripts/sharepoint/.cookies.json` vs `date +%s`, then **probe** with one
+live GET on the EA Projects list (`$top=1`). The cookie lifetime is not a fixed 7h: on 2026-09-04
+a 28h-old cookie read, staged a page, and MERGEd rows without a single 401. Ask Alex to run
+`python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+only when the probe fails (401/403), and say so at the top of the report so he can do it while
+retrieval (ADO/GitHub/archeologist sweeps) runs in parallel. Reactively discovering a 403 after the
+sweep wastes the whole run; asking for a refresh the probe shows is unnecessary wastes his.
 
 Always **read the live list first** (existing rows) so curation produces UPDATEs, not duplicates.
 
@@ -150,11 +153,11 @@ Always **read the live list first** (existing rows) so curation produces UPDATEs
 
 ## The review gate — one table, approve by line
 
-This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex's confirmed preference (2026-07-28, after rejecting an `AskUserQuestion` batch): **give him everything in a single numbered markdown table** he can scan in seconds and answer with line numbers ("1 to 13 are good, 15 skip").
+This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex's confirmed preference (2026-07-28, after rejecting an `AskUserQuestion` batch): **numbered markdown tables** he can scan in seconds and answer with line numbers ("1 to 13 are good, 15 skip"). Refined 2026-09-04 after he rejected a 32-line merged table ("makes it confusing for me... I need it break down by recap, aab intake updates and ea portfolio updates"): **one table per surface, never one merged list.**
 
 1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking.
 
-2. **Emit ONE consolidated table.** Columns: `# | Row | Field | Now | → Proposed | Why | Needs you?`. One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
+2. **Emit THREE sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **EA Projects updates**: lines numbered `E1, E2, ...`. Same columns in (b) and (c): `# | Row | Field | Now | → Proposed | Why | Needs you?`. He answers per table ("A: all. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
 
 3. **He answers by line number.** Apply exactly the approved lines. A line needing input he didn't give (e.g. "yes" to a milestone rewrite but no date) → apply what you can, keep the gap on the open-items list; never fill it with a guess.
 
@@ -164,7 +167,7 @@ This is the point of the skill. The board is org-visible and the user must own w
 
 ## Writing to the list
 
-Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a small confirmed batch, write inline with the helper (`sys.path` → `~/.claude/scripts/sharepoint`, `make_session()` — no args — + `get_request_digest(session, site)`); one script MERGE-ing all approved items beats N agent round-trips. Payloads and field shapes (hyperlink, currency, date, the `ListItemEntityTypeFullName` — read it live, don't hardcode; create vs MERGE-update) are documented in `references/write-shapes.md`; read it before writing. **Verify every write:** MERGE → 204, comment POST → 201, then GET the changed fields back. Ensure auth is fresh (the helper's cookies have a ~7h TTL); if a call 401/403s, tell the user to run `python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh` (headed passkey — a human step). **Never change list or site permissions.**
+Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a small confirmed batch, write inline with the helper (`sys.path` → `~/.claude/scripts/sharepoint`, module is **`sharepoint_api`** — there is no `sharepoint_helper` — `make_session()` no args + `get_request_digest(session, site)`; the CLI verbs like `sharepoint_api.py create` need `SHAREPOINT_SITE_URL` exported or they exit with "Set SHAREPOINT_SITE_URL"); one script MERGE-ing all approved items beats N agent round-trips. Payloads and field shapes (hyperlink, currency, date, the `ListItemEntityTypeFullName` — read it live, don't hardcode; create vs MERGE-update) are documented in `references/write-shapes.md`; read it before writing. **Verify every write:** MERGE → 204, comment POST → 201, then GET the changed fields back. Ensure auth is fresh (the helper's cookies have a ~7h TTL); if a call 401/403s, tell the user to run `python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh` (headed passkey — a human step). **Never change list or site permissions.**
 
 **If the network dies mid-batch** (TLS/connection aborts — GETs and POSTs both failing, curl showing TCP connect then HTTP 000 — usually the corporate security stack, not auth): don't lose confirmed-but-unwritten changes. Save them as an idempotent script in the scratchpad (checks existing comments before posting, safe to re-run twice), tell the user exactly which writes landed (verified) and which are pending, and re-run the script when connectivity returns. A write is only "done" once verified.
 
@@ -328,6 +331,16 @@ adversarial pass, not by re-reading. Run the check; do not trust the draft.
   someone answering questions about their own artifact did not necessarily present it.
 - **Never stitch two remarks into one quote.** If the phrasing spans utterances minutes apart, write
   it as prose, not as a quotation.
+- **Decisions `Owner` = who made the call, not who will execute it.** On 2026-09-02 the draft
+  credited Thomas Hofstetter with "audit log to Loki" and "signing keys in Secrets Manager", and Job
+  Lali with the check-in cadence; the transcript shows Alex dictating all three and them saying
+  "makes sense" / "gotcha". The Action Items table is where the executor's name belongs. When one
+  person proposed and another accepted with conditions, name both with what each contributed
+  ("Thomas Hofstetter (OpenIddict), Alexandre Castro (JWTs alongside)").
+- **When the room contradicts itself about what a system IS, do not pick a side silently.** The
+  presenter called Tiger Auth "internal only"; Flor said it also authenticates customers. A recap
+  that repeats the first as fact is wrong on the record. Describe the system per the correction and
+  attribute the correction, or leave the scope out.
 - **Carry the counter-evidence, not just the loudest thread.** A recap that reports only the
   pushback misrepresents the room. The 08-26 draft omitted the emergency change type, the fact the
   ticket never blocks the work, and that PCI already requires recording cardholder-environment
@@ -339,10 +352,14 @@ adversarial pass, not by re-reading. Run the check; do not trust the draft.
   a senior leader challenging a named manager over a security miss. Keep the question, drop the
   people: "leadership has asked how we catch this ourselves."
 
-Cheapest reliable form of this check: spawn independent verifiers with distinct lenses (attribution,
-numbers and quotes, decision-versus-discussion, omissions and confidentiality), each given the
-note path and told to find errors rather than approve. Fix what they confirm, and tell Alex
-what you changed and why.
+Cheapest reliable form of this check (verified 2026-09-04): spawn **one** `general-purpose`
+subagent on `sonnet` with the note path, the plain-text draft path, and all four lenses
+(attribution, decision-versus-discussion, numbers and quotes, omissions and confidentiality), told
+to return a `# | Lens | Recap text | Problem | Transcript evidence [hh:mm:ss] | Severity` table and
+to find errors rather than approve. One agent with four lenses caught three attribution BLOCKERs
+in ~2 minutes for ~95K tokens; four agents would have re-read the same 43-minute transcript four
+times. Keep the draft as plain text (strip the HTML) so the verifier reads what a reader reads.
+Fix what it confirms, and tell Alex what you changed and why.
 
 ### Then run `docs-reviewer`, and address everything, before it goes anywhere
 
@@ -417,6 +434,10 @@ week gets 2 or none. Each item contains:
 - Full exclusion screen applies to the sentence and every linked artifact: no privileged/counsel
   references, sensitive vendor naming, current-weakness specifics, personnel, personal-OneDrive
   links, or access-restricted evidence. If no safe evidence link exists, drop the item.
+- **Every number and every "each" in a shipped sentence is checked against the live list, not
+  the plan.** The 09-02 draft said "14 initiatives with a sponsor, target impact and finish line
+  each"; the list had 18 AI Program rows and 11 of them had no TargetDate. Count from the dump you
+  already pulled; if a column is partly blank, the sentence cannot say "each".
 - Put each complete item through the review table as one line (`Row` = `Recap page`, `Field` =
   `shipped item`), including the exact sentence, link labels, and target URLs. Apply only approved
   lines and re-screen anything Alex edits.
@@ -434,6 +455,12 @@ week gets 2 or none. Each item contains:
 
 **4. Alert if next calendar week has nothing scheduled.** Check for at least one `AAB Intake` item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule the forum or confirm there isn't one. Never auto-schedule or invent a date.
 
+> **Scheduling is Alex's, by default.** (2026-09-04: "don't touch the other stuff I will schedule
+> it manually.") An empty next week and any unscheduled `New` items are an **alert** listing the
+> candidates. Propose `Scheduledfor` + `Status=Scheduled` on an existing item only when Alex has
+> already named the date himself (in the forum, in chat, or in this run), and even then as its own
+> `A#` line marked **Needs you**. Never infer a date from cadence.
+>
 > **Never create an AAB Intake item. Ever.** (Corrected 2026-08-28, after a run proposed one as a
 > review-table line and Alex rejected it outright.) The intake list is **the queue people submit
 > their own topics to** — it is their to-do surface, not a scheduling table for the curator to
@@ -453,7 +480,10 @@ week gets 2 or none. Each item contains:
 
 Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification) — same idempotency discipline as EA Projects. **Intake field changes are writes to an org-visible list**: propose them through the same numbered review table as board changes, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` text or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
 
-## Weekly maintenance mode (`--maintain`)
+## Weekly maintenance mode (`--maintain`, and the default for a bare `/ea-projects-curator`)
+
+A bare invocation with no argument runs this mode. Only `--audit` (or "is the board missing
+anything?") widens to discovery.
 
 Skip discovery of new EA Projects initiatives; only true up what exists. Still gate every proposed change through the review table, and write only what the user confirms:
 

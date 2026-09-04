@@ -23,6 +23,16 @@ Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_Portfo
   ```
 - **Date** (`MilestoneDate`) — ISO 8601. Send **noon UTC** (`2026-07-25T12:00:00Z`) not midnight, so a timezone offset can't roll the displayed date back a day. Omit the key for no date.
 - **Text** (`Title`, `NextMilestone`) — plain string.
+- **Person, multi** (`Who_x0020_is_x0020_Responsible`) — write the `...Id` field with an int collection, and
+  resolve each person first with `POST /_api/web/ensureuser` body `{"logonName": "i:0#.f|membership|<email>"}`
+  (verbose headers) → `d.Id`. Verified 2026-09-04:
+  ```json
+  "Who_x0020_is_x0020_ResponsibleId": {"__metadata": {"type": "Collection(Edm.Int32)"}, "results": [12, 34]}
+  ```
+  Sending `Who_x0020_is_x0020_Responsible` (no `Id` suffix) or names as strings is rejected. The list
+  replaces the whole set, so include existing members you want to keep. **Person, single** (`Sponsor`):
+  `"SponsorId": <int>`.
+- **Date** (`TargetDate`) — same noon-UTC rule as `MilestoneDate`.
 
 ## Create a NEW row
 
