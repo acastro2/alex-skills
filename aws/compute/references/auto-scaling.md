@@ -73,18 +73,23 @@ Hooks pause instances at `Pending:Wait` (launch) or `Terminating:Wait` (terminat
 ## Attaching a load balancer target group
 Attach the **target group** to the ASG (not the instances) — the ASG auto-registers/deregisters:
 
+Read the current ASG traffic sources, show the exact target group and rollback, and get approval before attaching it:
+
 ```bash
-aws autoscaling attach-traffic-sources --auto-scaling-group-name my-asg \
-  --traffic-sources Identifier=<target-group-arn>
+AWS_PROFILE="$PROFILE" aws autoscaling attach-traffic-sources \
+  --region "$REGION" \
+  --auto-scaling-group-name "$ASG_NAME" \
+  --traffic-sources Identifier="$TARGET_GROUP_ARN" \
+  --no-cli-pager
 ```
 
 - Target group **target type must be `instance`** (not `ip`) for an ASG. LB, target group, and ASG must share account/VPC/Region.
 - Don't manually register instances — the ASG owns registration.
 - Deregistration delay (connection draining) defaults to 300s; premature termination during draining causes client 5xx.
 - The launch template's security group must allow inbound from the load balancer; apply launch-template changes to existing instances via instance refresh.
-- For a public web fleet, terminate TLS on the load balancer with an ACM certificate (HTTPS listener, redirect HTTP→HTTPS) so client traffic is encrypted in transit; the listener/ALB configuration itself belongs to `aws-networking`.
-- For a public web fleet, also set security response headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options) via an ALB response header policy or application middleware; the detailed ALB setup belongs to `aws-networking`.
-- For a public web fleet, front the ALB with AWS WAF for defense in depth against common web exploits (SQL injection, XSS, bot traffic); the detailed WAF rule configuration belongs to `aws-networking`.
+- For a public web fleet, terminate TLS on the load balancer with an ACM certificate (HTTPS listener, redirect HTTP→HTTPS) so client traffic is encrypted in transit. Use `aws-networking` to investigate the live listener; new listener architecture follows its owning infrastructure design.
+- Also set approved security response headers through the ALB or application. Header-policy design is outside this compute module.
+- Front the ALB with the approved AWS WAF controls. Use `aws-security-operations` for WAF evidence; new WAF rule-set design is outside that operational module.
 
 ## Monitoring
 Enable ASG group metrics (`enable-metrics-collection`) plus detailed instance monitoring in the launch template, and alarm on key metrics (`GroupInServiceInstances`, unhealthy host count) and ASG activity notifications (to a KMS-encrypted SNS topic) so scaling failures surface early.

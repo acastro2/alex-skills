@@ -35,7 +35,7 @@ Combines states of other alarms with Boolean logic.
 - **Action suppression**: `ActionsSuppressor` alarm can suppress composite alarm actions during known events (deployments, maintenance)
 
 ### PromQL Alarm (OpenTelemetry metrics)
-Monitors OTel metrics using PromQL instant queries with duration-based pending/recovery periods. Use for metrics sent via OTLP (150 labels, 30-day retention).
+Monitors OTel metrics using PromQL instant queries with duration-based pending/recovery periods. CloudWatch OTel metrics support up to 150 labels, PromQL alarms, and 15 months of storage. Verify current regional feature availability before production use.
 
 ---
 

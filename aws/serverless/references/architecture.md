@@ -56,7 +56,7 @@ Multi-step workflows, saga transactions, approval chains, data pipelines, AI age
 
 | Decision | Default | Alternative |
 |---|---|---|
-| Workflow type | Standard (exactly-once, ≤ 1 year) | Express (< 5 min, high-volume) |
+| Workflow type | Standard (exactly-once workflow execution unless `Retry` is configured; ≤ 1 year) | Express (< 5 min, high-volume) |
 | Simple transforms | JSONata (inline, no Lambda) | Lambda task (complex logic) |
 | Service calls | Direct SDK integration (200+ services) | Lambda intermediary (only if business logic needed) |
 | Human approval | `.waitForTaskToken` | Lambda durable functions `waitForCallback` |

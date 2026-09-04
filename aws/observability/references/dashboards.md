@@ -8,7 +8,7 @@ Widget types, cross-account/region patterns, dynamic labels, and recommended def
 - [Dynamic labels](#dynamic-labels)
 - [Dashboard variables](#dashboard-variables)
 - [Sharing constraints](#sharing-constraints)
-- [Recommended defaults](#recommended-defaults)
+- [Best-practice defaults](#best-practice-defaults)
 - [CDK patterns](#cdk-patterns)
 
 ---

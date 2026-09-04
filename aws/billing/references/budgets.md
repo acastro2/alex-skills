@@ -15,17 +15,35 @@ Use `FORECASTED` notification type to catch runaway costs before they hit thresh
 
 ## Create Budget with Alerts
 
+Budget creation changes account state and can notify real recipients. Prove the caller, list existing budgets, validate the payload files, and get confirmation before creation.
+
 ```bash
-aws budgets create-budget --region us-east-1 \
-  --account-id 123456789012 \
-  --budget '{"BudgetName":"Monthly-Total","BudgetLimit":{"Amount":"1000","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}' \
-  --notifications-with-subscribers '[
-    {"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"team@example.com"}]},
-    {"Notification":{"NotificationType":"FORECASTED","ComparisonOperator":"GREATER_THAN","Threshold":100,"ThresholdType":"PERCENTAGE"},"Subscribers":[{"SubscriptionType":"SNS","Address":"arn:aws:sns:us-east-1:123456789012:budget-alerts"}]}
-  ]'
+jq -n '{
+  BudgetName: "Monthly-Total",
+  BudgetLimit: {Amount: "1000", Unit: "USD"},
+  TimeUnit: "MONTHLY",
+  BudgetType: "COST"
+}' > budget.json
+
+jq -n \
+  --arg email "$BUDGET_EMAIL" \
+  --arg topic "$BUDGET_SNS_TOPIC_ARN" \
+  '[
+    {Notification: {NotificationType: "ACTUAL", ComparisonOperator: "GREATER_THAN", Threshold: 80, ThresholdType: "PERCENTAGE"}, Subscribers: [{SubscriptionType: "EMAIL", Address: $email}]},
+    {Notification: {NotificationType: "FORECASTED", ComparisonOperator: "GREATER_THAN", Threshold: 100, ThresholdType: "PERCENTAGE"}, Subscribers: [{SubscriptionType: "SNS", Address: $topic}]}
+  ]' > notifications.json
+
+jq -e '.' budget.json notifications.json >/dev/null
+
+AWS_PROFILE="$PROFILE" aws budgets create-budget \
+  --region us-east-1 \
+  --account-id "$ACCOUNT_ID" \
+  --budget file://budget.json \
+  --notifications-with-subscribers file://notifications.json \
+  --no-cli-pager
 ```
 
-Each threshold is a separate entry in `NotificationsWithSubscribers`. Do NOT put multiple thresholds in one notification object.
+Each threshold is a separate entry in `NotificationsWithSubscribers`. Do not put multiple thresholds in one notification object.
 
 ## Tag-Based Budget
 
@@ -36,7 +54,14 @@ Use `CostFilters` with `TagKeyValue` key and `tag-key$tag-value` format:
 
 ## Budget Actions
 
-Automatically apply IAM deny policies or SCPs when threshold is breached. Use for hard spending limits. Budget Actions cannot directly stop EC2 instances — use SNS → Lambda for custom actions.
+Budget Actions are optional responses to a threshold, not automatic hard spending limits. Each action needs an IAM execution role and an explicit approval model:
+
+- `MANUAL`: AWS waits for an authorized approval before execution.
+- `AUTOMATIC`: AWS runs the approved action when the threshold is met.
+
+Supported definitions include attaching an IAM policy, attaching an Organizations SCP, or targeting EC2 or RDS resources. SCP attachment must be created from the Organizations management account. Budget evaluation is periodic, so an action cannot prevent all spend beyond a threshold.
+
+Before creating an action, show the threshold, approval model, execution role, exact targets, blast radius, recovery path, and notification recipients. Get confirmation. Prefer notification-only budgets unless the user has approved tested enforcement behavior.
 
 ## Gotchas
 

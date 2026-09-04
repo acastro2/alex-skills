@@ -1,83 +1,102 @@
 ---
 name: signing-in-to-aws
 description: >-
-  Gets AWS credentials for CLI/SDK access via `aws login`. Activates when a developer
-  needs to authenticate to AWS for local development, when an AWS operation fails
-  due to missing or expired credentials, or when someone asks about setting up AWS
-  access. Triggers: "set up AWS", "configure AWS", "aws login", "get credentials",
-  "authenticate", "session expired", "token expired", "no credentials", "AccessDeniedException"
-  with no configured credentials.
-version: 1
+  Gets AWS credentials for CLI/SDK access through an existing IAM Identity Center
+  profile (`aws sso login`) or `aws login` when no SSO profile applies. Activates for
+  local AWS authentication, missing or expired credentials, caller verification,
+  profile selection, or setup requests. Triggers: "set up AWS", "configure AWS",
+  "aws login", "aws sso login", "get credentials", "authenticate", "session expired",
+  "token expired", "no credentials", or AccessDeniedException with no valid caller.
+version: 2
 ---
 
-# Sign In — Get CLI/SDK Credentials
+# Sign In: Get CLI/SDK Credentials
 
-Help developers get AWS credentials for local development using `aws login`. This provides short-term, auto-rotating credentials that refresh every 15 minutes and remain valid for up to 12 hours.
+Help developers use the credential flow already configured on the machine. Prefer an existing IAM Identity Center profile with `aws sso login --profile <profile>`. Use `aws login` only when no established SSO profile fits the task. Both flows provide short-term credentials; neither belongs in CI.
 
 **Important:**
-- You MUST run `aws login` and `aws --version` in the user's local shell — NOT via MCP/API tools.
-- You MUST ask the user for confirmation before running `aws login`. Do not tell the user to run the command themselves — ask if YOU should run it (e.g., "Ready for me to run `aws login`?" or "Shall I proceed with `aws login`?"). Wait for their response before proceeding.
+- Run `aws --version`, profile discovery, login, and identity checks in the user's local shell, not through MCP or API tools.
+- Ask for confirmation before any interactive login command. State the exact profile or session that the command will use, then wait.
+- Do not guess a profile when more than one account can match the request.
 
 ## Prerequisites
 
-The `aws login` command requires **AWS CLI version 2.32.0 or later**.
-
-Check the installed version:
+Check the installed version first:
 
 ```bash
 aws --version
 ```
 
-If the CLI is not installed or is below 2.32.0, inform the user and ask if they'd like to install/update (link them to the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)), or if they'd prefer to continue without this skill's guidance. If they choose to continue without upgrading, respond to their original request as you normally would without this skill.
+Existing IAM Identity Center profiles use `aws sso login`. The generic `aws login` command requires **AWS CLI version 2.32.0 or later**.
+
+If the CLI is missing, point the user to the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and stop. If `aws login` is the selected flow and the CLI is below 2.32.0, ask whether to update it. Do not block an established `aws sso login` workflow only because `aws login` is unavailable.
 
 ## Flow
 
-### Lead with the recommendation
+### Lead with the selected flow
 
-In your first response, always tell the user that `aws login` is the fix — explain that it provides short-term, auto-rotating credentials and that it requires AWS CLI 2.32.0 or later. Do not stop at "let me check your CLI version" — name the remediation up front so the user knows where this is going, then describe the precondition checks you'll run before invoking it.
+Name the remediation before you run checks:
 
-### Precondition checks (run silently before asking confirmation)
+- Existing SSO profile: `aws sso login --profile <profile>`.
+- Named SSO session: `aws sso login --sso-session <session>`.
+- No established SSO profile: `aws login` or `aws login --profile <name>`, if supported.
 
-Run these via the local shell to inform your plan. Report what you find, but do not gate the recommendation on user-supplied output:
+### Precondition checks
 
-1. `aws --version` — confirm the CLI is 2.32.0 or later. If not installed or too old, point the user to the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and stop.
-2. `aws sts get-caller-identity` — check current credentials.
-   - **Succeeds**: Show the user their Account and Arn. Ask whether to keep these or set up different credentials. If they want to switch, recommend `aws login --profile <name>` so the existing default isn't overwritten.
-   - **Fails** (missing or expired): proceed with `aws login` on the default profile.
-3. *(Only if Step 2 succeeded and the user wants different credentials)* `aws configure list` — if `access_key` starts with `AKIA`, explain that long-term access keys are less secure (never expire, persist on disk as secrets, grant indefinite access if leaked) and that `aws login` provides short-term credentials that auto-rotate every 15 minutes, expire automatically, and require no manual rotation.
+Run these in the local shell before asking for login confirmation:
 
-### Confirm and run aws login
+1. `aws --version`: confirm the CLI exists.
+2. `aws configure list-profiles`: discover configured profiles. Do not construct a profile name from an account ID.
+3. For a likely profile, inspect `aws configure get sso_session --profile <profile>` and `aws configure get sso_start_url --profile <profile>`. Either setting proves the profile uses IAM Identity Center.
+4. Run `aws sts get-caller-identity --profile <profile> --query '[Account,Arn]' --output text` when a profile is selected. Use the unqualified command only when the user explicitly wants the default profile.
+   - **Succeeds:** Show the caller and ask whether it is the intended target.
+   - **Fails with an expired SSO token:** Use `aws sso login --profile <profile>`.
+   - **Fails with no configured SSO profile:** Consider `aws login`.
+   - **Fails with `AccessDeniedException` after identity succeeds:** This is authorization, not authentication. Do not repeat login.
+5. If the active credential source is a long-term `AKIA` access key, explain the risk and recommend the approved short-term SSO or login flow.
 
-Once preconditions are clear, ask the user for confirmation specifically for the `aws login` invocation — and only there. Do not tell the user to run the command themselves; ask if you should run it (e.g., "Ready for me to run `aws login`?" or "Shall I proceed with `aws login --profile staging`?"). Wait for their response, then run `aws login` (or `aws login --profile <name>`).
+### Confirm and run the login
+
+State the exact command and ask for confirmation. After approval, run one of:
+
+```bash
+# Choose exactly one approved flow.
+aws sso login --profile "$PROFILE"
+# aws sso login --sso-session "$SSO_SESSION"
+# aws login --profile "$PROFILE"
+```
+
+Use plain `aws login` only when the user wants the default profile and no established SSO profile should be preserved.
 
 ### Verify
 
-After `aws login` completes, run `aws sts get-caller-identity` (with `--profile` if used) to confirm success. If a named profile was used, remind the user to pass `--profile` or set `AWS_PROFILE`.
+After login, rerun `aws sts get-caller-identity` with the same profile and show the caller. For later commands, keep the profile explicit with `--profile` or command-scoped `AWS_PROFILE=<profile>`.
 
 ## Handling Errors
 
 ### "command not found" or version too old
 
-The CLI is not installed or below 2.32.0. Direct the user to install or update: [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
+If the CLI is missing, direct the user to the [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). If `aws login` is the selected flow and the CLI is below 2.32.0, update it. Do not reject a working SSO-capable CLI only because it is below the separate `aws login` minimum.
 
 ### Browser doesn't open
 
-Suggest `aws login --remote` which provides a URL and code for cross-device authentication (e.g., when using a remote server without a browser).
+For generic `aws login`, suggest `aws login --remote`, which provides a URL and code for cross-device authentication. For IAM Identity Center, keep the configured SSO flow and use its device authorization path instead of changing credential methods.
 
-### Permission error after login
+### Permission error after generic `aws login`
 
-The IAM identity needs the `SignInLocalDevelopmentAccess` managed policy attached (to the user, role, or group). Root users do not need it. Tell the user to ask their administrator to add it, or attach it themselves if they have IAM permissions.
+The IAM identity needs the `SignInLocalDevelopmentAccess` managed policy attached to the user, role, or group. Root users do not need it. Tell the user to ask their administrator to add it, or attach it themselves if they have IAM permissions. This policy is not the fix for an IAM Identity Center profile; SSO permissions come from its assigned permission set.
 
 ### GovCloud or China regions
 
 `aws login` is not available in AWS GovCloud (US) or AWS China regions. Do not mention this exception proactively — only relevant if the user explicitly states they are in one of these partitions.
 
-## Users With Existing `aws sso login` Workflows
+## Existing `aws sso login` Workflows
 
-If the user mentions `aws sso login` or has an existing SSO configuration, do NOT redirect them to `aws login`. These are different commands for different situations:
+Prefer an existing IAM Identity Center profile over starting a new generic `aws login` flow, even when the user only says that the session expired. This is a workflow choice, not AWS CLI precedence: command-line options and credential or configuration environment variables can override profile settings. Clear unintended overrides before testing the profile.
 
-- `aws sso login` is for users whose organization has configured AWS IAM Identity Center (SSO). They have profiles in `~/.aws/config` pointing at an SSO start URL. Respect their established workflow.
-- If their `aws sso login` is failing, help troubleshoot within their context: expired SSO session, revoked authorization, cached token issues (`~/.aws/sso/cache/`), or Identity Center configuration changes.
+- Use `aws sso login --profile <profile>` for profiles in `~/.aws/config` that contain `sso_session` or `sso_start_url`.
+- If SSO login fails, troubleshoot the selected profile: expired session, revoked authorization, cached token, or Identity Center configuration change.
+- Do not delete SSO cache files without explaining the effect and getting confirmation.
 
 ## Fallback to `aws configure`
 
@@ -90,12 +109,14 @@ When offering it, explain that long-term access keys are less secure: they persi
 
 ## When NOT to Use This Skill
 
-- User is setting up CI/CD credentials — they need IAM roles or OIDC federation, not `aws login`
+- User is setting up CI/CD credentials: use an IAM role or OIDC federation, not an interactive login
 
 ## Key Points
 
-- Do not front-load troubleshooting — keep the initial response simple and address errors only if they occur
-- `aws login` works with root users, IAM users and federation with IAM
+- Preserve configured SSO profiles. Do not replace working organization access with a new generic login.
+- Verify the caller after every login and before every state-changing command.
+- Do not front-load troubleshooting. Keep the initial response simple and address errors only if they occur.
+- `aws login` works with root users, IAM users, and IAM federation when no established SSO flow applies.
 
 ## Additional Resources
 

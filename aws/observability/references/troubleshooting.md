@@ -116,7 +116,7 @@ Error → cause → fix for CloudWatch, X-Ray, and CloudTrail issues. Start with
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Event not in Event History | Data event (S3 GetObject, Lambda Invoke) | Enable data events on trail (additional cost) |
-| Event older than 90 days | Event History only keeps 90 days | Create a trail to S3 for long-term retention |
-| Can't see events from other accounts | Single-account trail | Create organization trail |
-| Network activity not logged | Not enabled by default | Enable network activity events on trail |
+| Event not in Event History | Event is a data, Insights, or network activity event; wrong account or Region; or older than 90 days | Query the approved centralized trail or event data store. Add a scoped event selector only through the reviewed security procedure. |
+| Event older than 90 days | Event History only keeps 90 days | Query the existing S3 trail or CloudTrail Lake store. Creating or changing one needs owner approval and a retention design. |
+| Can't see events from other accounts or Regions | Event History is single-account and single-Region | Query the centralized organization trail or event data store. Do not create a second trail as an incident shortcut. |
+| Network activity not logged | Not enabled by default | Use the reviewed selector-change procedure; confirm supported resource type, cost, retention, and test event first. |

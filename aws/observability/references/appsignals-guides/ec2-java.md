@@ -56,7 +56,7 @@ For Docker-based deployments:
 
 - `{{PORT}}` - Docker port mapping. **Example:** `8080`
 - `{{APP_NAME}}` - Container name. **Example:** `java-springboot-app`
-- `{{IMAGE_URI}}` - Docker image. **Example:** `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest`
+- `{{IMAGE_URI}}` - Docker image pinned by digest. **Example:** `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app@sha256:<64-hex-digest>`
 
 ### Step 3: Identify Instance OS
 

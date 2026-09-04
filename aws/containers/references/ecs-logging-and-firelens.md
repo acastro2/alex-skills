@@ -6,7 +6,7 @@
 - [awslogs Driver](#awslogs-driver)
 - [Blocking vs Non-Blocking Mode](#blocking-vs-non-blocking-mode)
 - [Multiline Logs](#multiline-logs)
-- [FireLens / Fluent Bit Setup](#firelens--fluent-bit-setup)
+- [FireLens / Fluent Bit Setup](#firelens-fluent-bit-setup)
 - [When to Use Which](#when-to-use-which)
 
 ---
@@ -190,6 +190,8 @@ FireLens routes container logs through a Fluent Bit (or Fluentd) sidecar, enabli
 
 ### Task Definition Structure
 
+Resolve, scan, and pin both `$IMAGE_URI` and `{{FLUENT_BIT_IMAGE_DIGEST}}` before registration. Do not use floating image tags.
+
 ```json
 {
   "family": "$TASK_FAMILY",
@@ -202,7 +204,7 @@ FireLens routes container logs through a Fluent Bit (or Fluentd) sidecar, enabli
   "containerDefinitions": [
     {
       "name": "log-router",
-      "image": "public.ecr.aws/aws-observability/aws-for-fluent-bit:3",
+      "image": "public.ecr.aws/aws-observability/aws-for-fluent-bit@sha256:{{FLUENT_BIT_IMAGE_DIGEST}}",
       "essential": true,
       "firelensConfiguration": {
         "type": "fluentbit"

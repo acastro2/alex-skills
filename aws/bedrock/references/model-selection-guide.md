@@ -18,9 +18,19 @@ Agents consistently get these wrong. Four patterns:
 | Application inference profile | ARN | `arn:aws:bedrock:<region>:<account-id>:inference-profile/<id>` |
 | Provisioned throughput | ARN | `arn:aws:bedrock:<region>:<account-id>:provisioned-model/<id>` |
 
-Always look up current model IDs: `aws bedrock list-foundation-models --region <region>` and `aws bedrock list-inference-profiles --region <region>`, or refer to the latest [Bedrock supported models](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
+Always look up current model IDs in the runtime account and Region:
 
-**Critical**: Some models do not support on-demand invocation with base model IDs and require an inference profile ID instead. Before using a model, check `aws bedrock list-inference-profiles --region <region>` — if an inference profile exists for the model, use the inference profile ID. If you get `ValidationException: on-demand throughput isn't supported`, switch to the inference profile ID.
+```bash
+AWS_PROFILE="$PROFILE" aws bedrock list-foundation-models --region "$REGION"
+AWS_PROFILE="$PROFILE" aws bedrock list-inference-profiles --region "$REGION"
+AWS_PROFILE="$PROFILE" aws bedrock get-inference-profile \
+  --region "$REGION" \
+  --inference-profile-identifier "$INFERENCE_PROFILE_ID"
+```
+
+Use the returned ID or ARN. Never construct an inference profile ARN from a model name, display name, account ID, or assumed format. A guessed ARN can look valid and still name no resource.
+
+**Critical**: Some models do not support on-demand invocation with base model IDs and require an inference profile. Do not choose a profile only because it exists for the model. Inspect each candidate with `get-inference-profile` and verify its type, geography, destination models, and every destination Region. A geographic profile keeps processing inside its geography, but prompts and results can leave the source Region and AWS can store content in a destination Region for abuse detection. IAM policies and SCPs must permit the profile and every required destination; a deny on one destination can fail the request. Use a global profile only when global routing is approved. If the residency requirement is missing or more than one candidate fits, stop and ask. If you get `ValidationException: on-demand throughput isn't supported`, select an approved looked-up profile instead of constructing one.
 
 ## Model Access Provisioning
 
@@ -31,7 +41,7 @@ Most serverless models are automatically available without manual enablement. Us
 - **Third-party Marketplace models**: A subset of models require AWS Marketplace subscription, which is created automatically on first invocation if the caller has `aws-marketplace:Subscribe` permission.
 - **EULAs**: Some models still require EULA acceptance. Review EULAs at the [model card in Model Catalog](https://console.aws.amazon.com/bedrock/) or the [Bedrock third-party model terms](https://aws.amazon.com/legal/bedrock/third-party-models/).
 
-**Access control**: Use IAM policies (`bedrock:InvokeModel` scoped to specific resource ARNs) and SCPs to control which models can be used. Use `bedrock:ListFoundationModels` for listing models and `bedrock:GetFoundationModel` for getting details about a specific model. The IAM Resource ARN format depends on the model ID type:
+**Access control**: Use IAM policies (`bedrock:InvokeModel` scoped to specific resource ARNs) and SCPs to control which models can be used. Use `bedrock:ListFoundationModels` for listing models and `bedrock:GetFoundationModel` for getting details about a specific model. The formats below explain policy structure; they are not instructions to construct a live profile ARN. Read the actual inference profile ARN from AWS first. The IAM Resource ARN format depends on the model ID type:
 - Inference profile ID → `arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>`
 - Base model ID → `arn:aws:bedrock:<region>::foundation-model/<model-id>`
 - These are different ARN formats and are not interchangeable. See [Bedrock IAM resource types](https://docs.aws.amazon.com/service-authorization/latest/reference/list_amazonbedrock.html#amazonbedrock-resources-for-iam-policies)

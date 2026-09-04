@@ -54,7 +54,7 @@ Best experience with the AWS MCP server; also works with the AWS CLI alone — n
 
 ## Common Workflows
 
-**"Stand up an autoscaling web fleet"** → Create a launch template (AMI, type, IMDSv2), then an ASG referencing it with `--health-check-type ELB` and a target-tracking policy, see [auto-scaling.md](references/auto-scaling.md). For the public entry point, secure the load balancer (TLS/ACM, WAF, security response headers) per the Security Considerations below and the load-balancer notes in [auto-scaling.md](references/auto-scaling.md) — the load-balancer build itself belongs to `aws-networking`.
+**"Stand up an autoscaling web fleet"** → Create a launch template (AMI, type, IMDSv2), then an ASG referencing it with `--health-check-type ELB` and a target-tracking policy, see [auto-scaling.md](references/auto-scaling.md). For the public entry point, secure the load balancer with TLS, application response headers, and the approved WAF controls. Use `aws-networking` to investigate live ALB topology and `aws-security-operations` for WAF evidence; these modules do not replace the owning infrastructure design.
 
 **"Roll out a new AMI to my fleet"** → New launch template version → instance refresh; pin a numeric launch-template version so rollback works, see [auto-scaling.md](references/auto-scaling.md).
 
@@ -84,7 +84,7 @@ Full tables and more errors in [troubleshooting.md](references/troubleshooting.m
 - **Use instance profiles, never embedded credentials**; scope the role to least privilege.
 - **Encrypt EBS/AMIs**; to share an encrypted AMI cross-account, re-encrypt under a customer-managed KMS key (the default `aws/ebs` key can't be shared).
 - **Enable CloudTrail** in all Regions to audit EC2/ASG/SSM API activity, and alarm on sensitive actions (security-group changes, `RunInstances`/`TerminateInstances` from unexpected principals) so unauthorized changes surface.
-- **For public-facing web fleets**, encrypt traffic in transit with an ACM certificate on the load balancer's HTTPS listener and add AWS WAF for defense in depth against common web exploits — the load-balancer/WAF setup itself lives in `aws-networking`.
+- **For public-facing web fleets**, encrypt traffic in transit with an ACM certificate on the load balancer's HTTPS listener and add approved AWS WAF controls. Use `aws-networking` for live listener investigation and `aws-security-operations` for WAF evidence; new edge architecture must follow its owning infrastructure design.
 - For hardening beyond this guidance, see [AWS EC2 security best practices](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security.html) and CIS Benchmarks for the guest OS.
 
 ## Not Covered By This Skill
@@ -93,5 +93,6 @@ Full tables and more errors in [troubleshooting.md](references/troubleshooting.m
 - **Creating IAM roles / instance profiles for EC2** → use the `setting-up-ec2-instance-profiles` skill
 - **Building AMIs with an Image Builder pipeline** → use the `creating-ec2-image-builder-pipeline` skill
 - **Lambda / serverless** → `aws-serverless`; **ECS/Fargate** → `aws-containers`; **EKS/Kubernetes** → `kubernetes`
-- **VPC, subnets, ALB/NLB, endpoints** → `aws-networking` or built-in knowledge
-- **IAM policy logic and CloudWatch dashboards/agent setup** → `aws-iam`, `aws-observability`
+- **Live VPC, Transit Gateway, Route 53, endpoint, security-group, and ALB investigation** → `aws-networking`; new network architecture is not covered here
+- **IAM, KMS, secret-access, and WAF evidence** → `aws-security-operations`; full policy authoring is not covered
+- **CloudWatch dashboards and agent setup** → `aws-observability`

@@ -18,9 +18,12 @@ building.
 - **protocol** (required): `http` | `mcp` | `a2a` | `ag-ui` — see [runtime reference](agentcore-runtime.md) for selection guide
 - **framework** (optional): `fastapi` | `express` | `flask` | `custom`
 - **ecr_repo** (required): ECR repository URI
+- **aws_profile** and **region** (required): confirmed push target
+- **image_tag** (required): immutable release identifier such as an approved version or source commit
+- **python_base_image_digest** (required for the Python examples): approved ARM64 digest for the shown Python base image
 
 **Constraints for parameter acquisition:**
-- You MUST ask for all required parameters (`protocol`, `ecr_repo`) upfront in a single prompt
+- You MUST ask for all required parameters (`protocol`, `ecr_repo`, `aws_profile`, `region`, `image_tag`, and the base-image digest when using the Python examples) upfront in a single prompt
 - You MUST confirm successful acquisition before proceeding to Step 1
 - You SHOULD ask about the optional `framework` parameter in the same prompt
 
@@ -61,7 +64,7 @@ building.
 **Example Dockerfile (HTTP/FastAPI):**
 
 ```dockerfile
-FROM --platform=linux/arm64 python:3.12.4-slim AS builder
+FROM --platform=linux/arm64 python:3.12.4-slim@sha256:{{PYTHON_BASE_IMAGE_DIGEST}} AS builder
 WORKDIR /app
 RUN python -m venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
@@ -69,7 +72,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-FROM --platform=linux/arm64 python:3.12.4-slim
+FROM --platform=linux/arm64 python:3.12.4-slim@sha256:{{PYTHON_BASE_IMAGE_DIGEST}}
 RUN useradd -r -u 1001 appuser
 WORKDIR /app
 COPY --from=builder /app /app
@@ -185,34 +188,111 @@ Refer to the latest AWS documentation on AgentCore A2A protocol and AG-UI protoc
 ### 4. Build and Push to ECR
 
 **Constraints:**
-- You MUST build for ARM64: `docker buildx build --platform linux/arm64 --load -t <tag> .`
-- You MUST authenticate to ECR before pushing:
+- Prove the caller and repository first. This production path fails closed unless the repository is `IMMUTABLE` and the selected tag is unused. Do not change repository mutability inside this workflow.
+- Replace every quoted placeholder with an approved value. Get confirmation for the named repository and tag before the push.
+- Build for ARM64, push one immutable tag, then read the authoritative registry digest. Never push `latest` as a rollback mechanism:
   ```bash
-  aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+  set -euo pipefail
+  PROFILE="<confirmed-profile>"
+  REGION="<confirmed-region>"
+  ECR_REPO_URI="<account>.dkr.ecr.<region>.amazonaws.com/<repository>"
+  ECR_REGISTRY=${ECR_REPO_URI%%/*}
+  ECR_REPOSITORY_NAME=${ECR_REPO_URI#*/}
+  IMAGE_TAG="<approved-version-or-source-sha>"
+  IMAGE="$ECR_REPO_URI:$IMAGE_TAG"
+
+  AWS_PROFILE="$PROFILE" aws sts get-caller-identity --output json --no-cli-pager
+  REPOSITORY_JSON=$(AWS_PROFILE="$PROFILE" aws ecr describe-repositories \
+    --region "$REGION" \
+    --repository-names "$ECR_REPOSITORY_NAME" \
+    --output json \
+    --no-cli-pager)
+
+  ACTUAL_REPO_URI=$(jq -er '.repositories[0].repositoryUri' <<<"$REPOSITORY_JSON")
+  TAG_MUTABILITY=$(jq -er '.repositories[0].imageTagMutability' <<<"$REPOSITORY_JSON")
+  [[ "$ACTUAL_REPO_URI" == "$ECR_REPO_URI" ]]
+  if [[ "$TAG_MUTABILITY" != "IMMUTABLE" ]]; then
+    printf 'Refusing push: repository tag mutability is %s, not IMMUTABLE\n' \
+      "$TAG_MUTABILITY" >&2
+    exit 1
+  fi
+
+  set +e
+  TAG_LOOKUP=$(AWS_PROFILE="$PROFILE" aws ecr describe-images \
+    --region "$REGION" \
+    --repository-name "$ECR_REPOSITORY_NAME" \
+    --image-ids imageTag="$IMAGE_TAG" \
+    --output json \
+    --no-cli-pager 2>&1)
+  TAG_LOOKUP_STATUS=$?
+  set -e
+  if [[ "$TAG_LOOKUP_STATUS" -eq 0 ]]; then
+    printf 'Refusing push: image tag already exists: %s\n' "$IMAGE_TAG" >&2
+    exit 1
+  fi
+  if [[ "$TAG_LOOKUP" != *ImageNotFoundException* ]]; then
+    printf '%s\n' "$TAG_LOOKUP" >&2
+    exit "$TAG_LOOKUP_STATUS"
+  fi
+
+  AWS_PROFILE="$PROFILE" aws ecr get-login-password --region "$REGION" \
+    | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+  docker buildx build --platform linux/arm64 --load --tag "$IMAGE" .
+  docker push "$IMAGE"
+
+  IMAGE_DIGEST=$(AWS_PROFILE="$PROFILE" aws ecr describe-images \
+    --region "$REGION" \
+    --repository-name "$ECR_REPOSITORY_NAME" \
+    --image-ids imageTag="$IMAGE_TAG" \
+    --query 'imageDetails[0].imageDigest' \
+    --output text \
+    --no-cli-pager)
+  [[ "$IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+  printf '%s\n' "$ECR_REPO_URI@$IMAGE_DIGEST"
   ```
-- You MUST tag with both `latest` and a version tag for rollback:
-  ```bash
-  docker tag <image> <ecr_repo>:latest
-  docker tag <image> <ecr_repo>:v1.0.0
-  docker push <ecr_repo>:latest
-  docker push <ecr_repo>:v1.0.0
-  ```
+
+Deploy the returned digest reference. Keep the prior known-good digest as rollback evidence; do not retag it.
 
 ### 5. Verify Image
 
 **Constraints:**
-- You MUST verify the image architecture is ARM64:
+- You MUST verify the image architecture is ARM64. This is a separate shell block, so define the local image reference again:
   ```bash
-  docker inspect <image> | grep Architecture
+  set -euo pipefail
+  IMAGE="<local-image-reference>"
+  [[ "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" == "arm64" ]]
   ```
-- You SHOULD test locally before deploying to AgentCore:
+- You SHOULD test locally before deploying to AgentCore. Run the container in the background only for this bounded probe, and always remove it:
   ```bash
-  docker run --platform linux/arm64 -p 8080:8080 <image>
-  # Use the health endpoint for your protocol:
-  # HTTP: /health | MCP: /mcp | A2A: /.well-known/agent.json | AG-UI: /ping
-  curl http://localhost:8080/<health-endpoint>
+  set -euo pipefail
+  IMAGE="<local-image-reference>"
+  # HTTP: health | MCP: mcp | A2A: .well-known/agent.json | AG-UI: ping
+  HEALTH_ENDPOINT="<protocol-health-endpoint>"
+
+  CONTAINER_ID=$(docker run --detach --rm --platform linux/arm64 \
+    --publish 127.0.0.1:8080:8080 "$IMAGE")
+  trap 'docker rm --force "$CONTAINER_ID" >/dev/null 2>&1 || true' EXIT
+
+  healthy=false
+  for _ in {1..30}; do
+    if curl --fail --silent --show-error \
+      "http://127.0.0.1:8080/$HEALTH_ENDPOINT" >/dev/null 2>&1; then
+      healthy=true
+      break
+    fi
+    sleep 1
+  done
+
+  if [[ "$healthy" != true ]]; then
+    docker logs "$CONTAINER_ID" >&2
+    exit 1
+  fi
+
+  docker rm --force "$CONTAINER_ID" >/dev/null
+  trap - EXIT
   ```
-- If health check fails locally, it will fail on AgentCore — fix before deploying
+- If the bounded health check fails locally, inspect the captured logs and fix the image before deployment
 
 ## Security Considerations
 
@@ -237,8 +317,8 @@ Refer to the latest AWS documentation on AgentCore A2A protocol and AG-UI protoc
 - You MUST NOT bake secrets, API keys, or credentials into the Docker image — use Secrets Manager at runtime for secrets; use environment variables only for non-sensitive configuration (RUNTIME_ID, AWS_REGION)
 - You MUST run the container as a non-root user (the example Dockerfile uses `USER appuser` — do not remove this)
 - You MUST use multi-stage builds to exclude build-time dependencies (compilers, pip cache, dev packages) from the final image
-- You SHOULD pin base image versions (e.g., `python:3.12.4-slim` not `python:3.12-slim`) to avoid supply chain attacks from tag mutation
-- You SHOULD enable ECR image scanning: `aws ecr put-image-scanning-configuration --repository-name <repo> --image-scanning-configuration scanOnPush=true`
+- You SHOULD pin base images by digest, with a readable version tag only as metadata, to prevent tag mutation from changing a rebuild
+- You SHOULD enable ECR image scanning. Changing repository scanning is an account mutation: inspect current configuration, show the scoped change, get approval, apply it with the confirmed profile and Region, then verify it
 
 **ECR access control:**
 - Scope ECR push permissions to the specific repository ARN — avoid `ecr:*` on `Resource: "*"`

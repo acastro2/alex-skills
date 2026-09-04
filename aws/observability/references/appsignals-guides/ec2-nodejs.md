@@ -82,7 +82,7 @@ For Docker-based deployments you will also need to find these additional values:
 - `{{IMAGE_URI}}`
   - **Why It Matters:** This is the identifier for the application that Docker will run
   - **How to Find It:** Find the Docker image in `docker run` or `docker pull` commands
-  - **Example Value:** `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest`
+  - **Example Value:** `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app@sha256:<64-hex-digest>`
   - **Required For:** Docker
 
 **If you cannot determine a value:** Ask the user for clarification before proceeding. Do not guess or make up values.

@@ -149,7 +149,7 @@ response = client.converse(
 1. Always set `maxTokens` explicitly — never rely on default
 2. Use `bedrock-runtime` for inference, `bedrock` for management
 3. Use adaptive retry: `Config(retries={"max_attempts": 5, "mode": "adaptive"})`
-4. Use cross-region model IDs (`us.` prefix) for higher availability
+4. Use only a live, approved inference profile. Verify destination Regions, residency, and IAM/SCP access; do not default to a `us.` or `global.` prefix for availability alone
 5. Pin prompt management versions in production (`:1` suffix in ARN)
 6. Use `converse_stream` for user-facing applications (lower time-to-first-token)
 7. Pin guardrail versions — don't use DRAFT in production

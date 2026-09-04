@@ -13,9 +13,10 @@ Track, allocate, and manage Bedrock inference costs across teams, products, and 
 
 | Approach | Best For | Setup Effort |
 |----------|----------|-------------|
-| Application inference profiles + cost allocation tags | Per-product or per-team cost tracking in Cost Explorer | Medium — create profiles, tag, activate in Billing |
-| IAM principal-based (CUR 2.0) | Per-developer or per-role attribution | Low — automatic in CUR 2.0, no Bedrock config needed |
-| Model invocation logging + custom analytics | Fine-grained per-request analysis (token counts, latency, model) | High — enable logging, build queries |
+| Application inference profiles + cost allocation tags | Per-product or per-team billed dollars on `bedrock-runtime` | Medium — create profiles, tag, activate in Billing |
+| IAM principal attribution | Aggregated per-user or per-role billed dollars | Medium — identity capture is automatic, but billing export and optional tags need setup |
+| Projects or Workspaces | Per-workload billed dollars on supported `bedrock-mantle` APIs | Medium — create and tag the resource, then activate tags |
+| Request metadata + model invocation logging | Per-request token and estimated-cost analysis on `bedrock-runtime` | High — stamp metadata, enable protected logs, maintain rate logic |
 
 For most teams, **application inference profiles with cost allocation tags** is the recommended approach. It provides clean cost breakdowns in Cost Explorer without custom analytics.
 
@@ -26,10 +27,12 @@ For most teams, **application inference profiles with cost allocation tags** is 
 #### 1. Create an Application Inference Profile
 
 ```bash
-aws bedrock create-inference-profile \
-  --inference-profile-name "<TEAM_OR_PRODUCT_NAME>" \
-  --model-source "copyFrom=arn:aws:bedrock:<REGION>::foundation-model/<MODEL_ID>" \
-  --region <REGION> --profile <PROFILE>
+AWS_PROFILE="$PROFILE" aws bedrock create-inference-profile \
+  --inference-profile-name "$TEAM_OR_PRODUCT_NAME" \
+  --model-source "copyFrom=$MODEL_SOURCE_ARN" \
+  --region "$REGION" \
+  --output json \
+  --no-cli-pager
 ```
 
 Note the returned `inferenceProfileArn`.
@@ -37,10 +40,11 @@ Note the returned `inferenceProfileArn`.
 #### 2. Tag the Profile
 
 ```bash
-aws bedrock tag-resource \
-  --resource-arn <INFERENCE_PROFILE_ARN> \
-  --tags key=CostCenter,value=<COST_CENTER> key=Project,value=<PROJECT> \
-  --region <REGION> --profile <PROFILE>
+AWS_PROFILE="$PROFILE" aws bedrock tag-resource \
+  --resource-arn "$INFERENCE_PROFILE_ARN" \
+  --tags key=CostCenter,value="$COST_CENTER" key=Project,value="$PROJECT" \
+  --region "$REGION" \
+  --no-cli-pager
 ```
 
 #### 3. Activate Cost Allocation Tags
@@ -65,11 +69,15 @@ After 24–48 hours, filter Cost Explorer by the tag keys. Bedrock costs appear 
 
 ## IAM Principal-Based Attribution
 
-CUR 2.0 automatically records the IAM caller identity for every Bedrock API call. No Bedrock-specific setup required.
+Amazon Bedrock automatically captures the IAM user or role for inference requests on `bedrock-runtime` and `bedrock-mantle`. Billing visibility still needs explicit setup:
 
-To use: tag IAM roles/users with keys like `department`, `costCenter`, or `project`, then filter CUR 2.0 data by those tags. Works for per-developer tracking when each developer assumes a distinct IAM role.
+1. Create a **new CUR 2.0 Data Export** with the option to include the caller identity ARN. An existing export does not gain this column automatically or retroactively.
+2. To add team, department, or cost-center dimensions, tag the IAM principals or pass session tags, then activate those keys as cost allocation tags in Billing.
+3. Allow up to 24 hours for activated tags and cost data to appear. Tags are not retroactive.
 
-Limitation: only tracks who made the call, not which product or feature triggered it. Use inference profiles for product-level attribution.
+The finest native billing grain is aggregated by usage type and identity or tag, not one row per inference request. A shared gateway role attributes every call to the gateway unless it assumes per-user or per-tenant sessions. Session tags are fixed for the STS session. Use a per-user role session for billed-dollar attribution, and use request metadata in protected invocation logs for per-prompt detail.
+
+Do not put PII, secrets, credentials, or regulated values in principal, session, or request-metadata tags.
 
 ## CloudWatch Usage Monitoring
 
@@ -83,25 +91,30 @@ Key metrics for cost monitoring (namespace `AWS/Bedrock`, dimension `ModelId`):
 | `CacheReadInputTokens` | Tokens served from cache (billed at a reduced rate; see pricing page) |
 | `CacheWriteInputTokens` | Cache write tokens (may be billed above the standard input rate; see pricing page) |
 
-Exact cache read and write rates are model-dependent — consult the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for the specific figures for your model.
+Exact cache read and write rates are model-dependent — consult the [Amazon Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for the specific model, endpoint, service tier, and routing type.
 
-### Cost Analysis Script
+CUR and Cost Explorer provide invoice-aligned aggregated dollars. They do not contain a per-request identifier. For per-prompt analysis, use model invocation logs, which contain token counts and optional `requestMetadata`, then calculate an estimate with the current model rate. Reconcile that estimate to CUR at the model, usage-type, and time grain; do not claim a request-ID join or exact per-prompt billed cost.
+
+### Cost Explorer Analysis
+
+Use Cost Explorer for aggregated billed spend. Supply an inclusive start date and exclusive end date:
 
 ```bash
-python3 scripts/analyze-bedrock-costs.py --days <DAYS> --region <REGION> --profile <PROFILE>
+AWS_PROFILE="$PROFILE" aws ce get-cost-and-usage \
+  --region us-east-1 \
+  --time-period Start="$START_DATE",End="$END_DATE" \
+  --granularity DAILY \
+  --metrics UnblendedCost UsageQuantity \
+  --filter '{"Dimensions":{"Key":"SERVICE","Values":["Amazon Bedrock"]}}' \
+  --group-by Type=DIMENSION,Key=USAGE_TYPE \
+  --output json \
+  --no-cli-pager
 ```
 
-The script queries Cost Explorer for Bedrock spend grouped by usage type (model + token direction) over the specified period.
+Account for input, output, cache-read, and cache-write usage types. Apply the correct rate for the endpoint, service tier, and routing type. Do not sum token quantities across usage types as if they had one price.
 
 ## Budget Alerts
 
-Set up AWS Budgets to alert when Bedrock spend approaches a threshold:
+Set up AWS Budgets to alert when Bedrock spend approaches a threshold. Budget creation changes account state and can notify real recipients. Prove the caller, use `us-east-1`, inspect existing budgets, show the exact Bedrock cost filter and recipients, and get confirmation first.
 
-```bash
-aws budgets create-budget --account-id <ACCOUNT_ID> \
-  --budget '{"BudgetName":"bedrock-monthly","BudgetLimit":{"Amount":"<AMOUNT>","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST","CostFilters":{"Service":["Amazon Bedrock"]}}' \
-  --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"<EMAIL>"}]}]' \
-  --profile <PROFILE>
-```
-
-This alerts at 80% of the monthly budget. Adjust threshold and notification targets as needed.
+Read [AWS Budgets](../../billing/references/budgets.md) for the scoped, file-based creation pattern. Add `"CostFilters":{"Service":["Amazon Bedrock"]}` to its budget JSON. This can alert at 80% of the monthly budget; confirm the threshold and notification targets with the user.

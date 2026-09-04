@@ -30,7 +30,7 @@ Complete query syntax reference, performance tips, and reusable query library.
 | `lookup` | Enrich with lookup table data | Yes |
 | `join` | Combine events across log groups by key | Yes |
 | `subqueries` | Nested queries as input | Yes |
-| `anomaly` | ML anomaly detection | No |
+| `anomaly` | ML anomaly detection | Yes |
 | `pattern` | ML-based log clustering | No |
 | `diff` | Compare current vs previous time period | No |
 | `unmask` | Reveal data-protection masked content | No |

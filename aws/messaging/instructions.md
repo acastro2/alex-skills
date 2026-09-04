@@ -31,7 +31,7 @@ Messaging enables **decoupled, asynchronous communication** between components. 
 
 **Key characteristics:**
 
-- Messages are consumed once (point-to-point) or fanned out (pub/sub), then removed
+- Consumers acknowledge or delete messages after processing. Delivery can repeat, so consumers must be idempotent.
 - No replay — once acknowledged, a message is gone
 - Designed for command/request workloads, task distribution, and event notification
 
@@ -50,7 +50,7 @@ Streaming enables **ordered, durable, high-throughput continuous data flow**. Pr
 
 | Dimension | Messaging | Streaming |
 |---|---|---|
-| **Data lifecycle** | Deleted after consumption | Retained for replay (hours to indefinitely) |
+| **Data lifecycle** | Deleted after acknowledgement or retention expiry | Retained for replay only inside the configured service window; Kinesis Data Streams supports 1–365 days |
 | **Ordering** | Best-effort (Standard) or per-group (FIFO) | Strict per-partition/shard |
 | **Consumer model** | Competing consumers (work distribution) | Independent readers (fan-out by position) |
 | **Throughput pattern** | Bursty, variable | Sustained, high-volume |
@@ -81,7 +81,7 @@ Sometimes streaming services (Kinesis Data Streams, Managed Streaming for Apache
 
 | Service | Best For | Key Differentiator |
 |---|---|---|
-| **Amazon SQS** | Task queues, decoupling, buffering | Fully managed, unlimited throughput (Standard), exactly-once (FIFO), fair queues for multi-tenant workloads |
+| **Amazon SQS** | Task queues, decoupling, buffering | Fully managed; Standard queues scale for high throughput; FIFO deduplicates sends only when deduplication is configured and retries occur inside the 5-minute deduplication interval |
 | **Amazon SNS** | Fan-out, pub/sub notifications | Push to multiple subscribers (SQS, Lambda, HTTP, email, SMS) |
 | **Amazon EventBridge** | Event routing, cross-account/SaaS integration | Content-based filtering, schema registry, 200+ AWS source integrations |
 | **Amazon MQ** | Lift-and-shift of existing JMS/AMQP/MQTT apps | Protocol compatibility (ActiveMQ, RabbitMQ) for legacy migration |

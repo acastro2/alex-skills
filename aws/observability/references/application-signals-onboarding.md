@@ -17,12 +17,12 @@ Onboarding has two tiers. Apply the second only when it is supported for the pla
 
 | Component | Minimum for ServiceEvents | Notes | Latest version links |
 |---|---|---|---|
-| CloudWatch Agent | `1.300070.0` (recommended — includes on-prem credential bugfix) or `1.300069.0` | Use latest by default; flag to the user if they are on an older version | — |
-| CloudWatch Observability EKS add-on | `v6.3.0` | Use latest by default; flag if the customer's IaC pins an older version | — |
-| ADOT Python SDK / ECS init container | `0.18.0` | pip: `aws-opentelemetry-distro==0.18.0`; ECR: `adot-autoinstrumentation-python:v0.18.0` | [releases](https://github.com/aws-observability/aws-otel-python-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-python) |
-| ADOT Node.js SDK / ECS init container | `0.12.0` | npm: `@aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0`; ECR: `adot-autoinstrumentation-node:v0.12.0` | [releases](https://github.com/aws-observability/aws-otel-js-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-node) |
-| ADOT Java agent / ECS init container | `2.28.2` | jar: `aws-opentelemetry-agent-2.28.2.jar`; ECR: `adot-autoinstrumentation-java:v2.28.2` | [releases](https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-java) |
-| ADOT .NET / ECS init container | ServiceEvents not supported on .NET | | [releases](https://github.com/aws-observability/aws-otel-dotnet-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet) |
+| CloudWatch Agent | `1.300070.0` (recommended — includes on-prem credential bugfix) or `1.300069.0` | Resolve a current supported version and pin its image digest; do not deploy a floating tag | — |
+| CloudWatch Observability EKS add-on | `v6.3.0` | Resolve a current compatible add-on version and pin it in IaC | — |
+| ADOT Python SDK / ECS init container | `0.18.0` | pip: `aws-opentelemetry-distro==0.18.0`; resolve and pin the ECR image digest for this or a newer approved version | [releases](https://github.com/aws-observability/aws-otel-python-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-python) |
+| ADOT Node.js SDK / ECS init container | `0.12.0` | npm: `@aws/aws-distro-opentelemetry-node-autoinstrumentation@0.12.0`; resolve and pin the ECR image digest for this or a newer approved version | [releases](https://github.com/aws-observability/aws-otel-js-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-node) |
+| ADOT Java agent / ECS init container | `2.28.2` | jar: `aws-opentelemetry-agent-2.28.2.jar`; resolve and pin the ECR image digest for this or a newer approved version | [releases](https://github.com/aws-observability/aws-otel-java-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-java) |
+| ADOT .NET / ECS init container | ServiceEvents not supported on .NET | Resolve an approved release and pin the ECR image digest | [releases](https://github.com/aws-observability/aws-otel-dotnet-instrumentation/releases/latest) · [ECR](https://gallery.ecr.aws/aws-observability/adot-autoinstrumentation-dotnet) |
 
 **Tier 2 is NOT supported on Lambda or .NET.** For a Lambda service, or a .NET service on any platform, do Tier 1 only — the service still gets Application Signals, just without the ServiceEvents metadata/OTLP/DI env vars. Do not add `OTEL_AWS_SERVICE_EVENTS_*`, `OTEL_AWS_OTLP_*`, or `OTEL_AWS_DYNAMIC_INSTRUMENTATION_*` env vars for Lambda or .NET.
 
@@ -47,7 +47,12 @@ Check whether the add-on is already enabled. Present the user with these options
 1. **You run it** — offer to run the AWS CLI command yourself (requires CLI/credentials access and the cluster name + region from the IaC):
 
    ```bash
-   aws eks describe-addon --cluster-name <cluster-name> --addon-name amazon-cloudwatch-observability --region <region>
+   AWS_PROFILE="$PROFILE" aws eks describe-addon \
+     --cluster-name "$CLUSTER_NAME" \
+     --addon-name amazon-cloudwatch-observability \
+     --region "$REGION" \
+     --output json \
+     --no-cli-pager
    ```
 
    A successful response means it exists; `ResourceNotFoundException` means it does not.
@@ -69,13 +74,16 @@ Check whether the add-on is already enabled. Present the user with these options
   }
   ```
 
-- **Add-on already exists (Terraform)**: still add the resource above, and add a `terraform import` step to the CI/CD workflow **before** `terraform apply` so apply uses UpdateAddon instead of CreateAddon. Use `|| true` so reruns don't fail:
+- **Add-on already exists (Terraform)**: still add the resource above. Before `terraform apply`, import it only when it is absent from this state. Do not hide import failures with `|| true`:
 
   ```bash
-  # Import existing CW Observability add-on into Terraform state (first run only; can be removed after).
-  # Add only this import line, BEFORE the workflow's existing `terraform apply` step, and mention that it can be removed after the first run as a comment.
-  terraform import -var="region=..." -var="cluster_name=..." \
-    aws_eks_addon.cloudwatch_observability <cluster-name>:amazon-cloudwatch-observability || true
+  if ! terraform state show aws_eks_addon.cloudwatch_observability >/dev/null 2>&1; then
+    terraform import \
+      -var="region=$REGION" \
+      -var="cluster_name=$CLUSTER_NAME" \
+      aws_eks_addon.cloudwatch_observability \
+      "$CLUSTER_NAME:amazon-cloudwatch-observability"
+  fi
   ```
 
 - **Add-on already exists (CDK)**: do NOT add it to CDK; no change needed.

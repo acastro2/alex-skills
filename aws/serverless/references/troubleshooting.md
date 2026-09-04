@@ -116,7 +116,7 @@ aws cloudformation continue-update-rollback --stack-name my-stack --resources-to
 
 ### Circular dependency
 
-`Circular dependency between resources: [MyFunction, MyRole, ...]` — break the cycle by giving the function an explicit `FunctionName` and referencing the hardcoded ARN (`!Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:my-function-name"`) instead of `!Ref`/`!GetAtt`, or extract the IAM role/policy into a separate resource.
+`Circular dependency between resources: [MyFunction, MyRole, ...]` — first extract the IAM role or policy into a separate resource. If a fixed `FunctionName` is required, construct its ARN with CloudFormation pseudo parameters (`!Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:my-function-name"`) instead of a literal partition, account, or Region. Confirm the fixed name does not create cross-stack or replacement conflicts.
 
 ### Other quick ones
 

@@ -70,9 +70,9 @@ AgentCore is a separate service with its own endpoints. Refer to [AgentCore endp
 
 **max_tokens**: ALWAYS set `maxTokens` explicitly in every Converse/InvokeModel call. Leaving it unset defaults to the model's maximum (e.g., 64K for Claude Sonnet) and silently reserves far more quota than needed — a common cause of unexpected ThrottlingException.
 
-**Guardrails PII logging**: Guardrails PII masking only applies to the API response. Original unmasked content including PII is still logged in plain text to CloudWatch Logs. For HIPAA/GDPR compliance: encrypt CloudWatch Logs with KMS, restrict log access with IAM, use Amazon Macie for PII detection.
+**Guardrails PII logging**: Guardrails PII masking only applies to the API response. If model invocation logging is enabled, original unmasked request or response content can still be written to CloudWatch Logs or S3. For regulated workloads: minimize captured content, encrypt destinations with KMS, restrict access, set approved retention, and use PII detection where required.
 
-**SDK versions**: Requires recent versions of boto3 (≥ 1.34.x) and AWS CLI v2. Older versions are missing Converse API, Agents, and AgentCore support. Run `aws --version` and `pip show boto3` to check.
+**SDK versions**: Do not use one minimum version for all Bedrock features. Converse, Agents, and AgentCore were added at different times. Run `aws --version` and `python -m pip show boto3 botocore`, confirm that the exact command or client operation exists, and upgrade through the project's dependency policy when it does not.
 
 **Bedrock Agents classic is in maintenance mode**: classic Bedrock Agents (`bedrock-agent`) is in maintenance mode and closed to new customers ([announcement](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-classic-maintenance-mode.html)). For new agent workloads use AgentCore (the Harness managed loop); for existing agents, recommend migrating to an AgentCore Harness — see the [migration guide](references/migrate-bedrock-agents-to-agentcore-harness.md).
 
@@ -83,7 +83,7 @@ AgentCore is a separate service with its own endpoints. Refer to [AgentCore endp
 - Store API keys and OAuth secrets in **AWS Secrets Manager** with automatic rotation enabled
 - Include **confused deputy protection** (`aws:SourceAccount`, `aws:SourceArn` conditions) in all resource-based policies for Bedrock services
 - Treat all **agent-generated parameters as untrusted input** — validate before use in Lambda handlers or tool implementations
-- Enable **CloudTrail** for all Bedrock and AgentCore API calls
+- Audit **CloudTrail** by endpoint and operation. Core `bedrock-runtime` `InvokeModel` and `Converse` calls are management events. `bedrock-mantle` inference operations are chargeable data events and need advanced selectors for `bedrock-mantle.amazonaws.com` and the required `AWS::BedrockMantle` resource types. Customer `metadata` can be logged verbatim; never put secrets or PII in it. Use the reviewed CloudTrail data-event change procedure instead of assuming every inference call is logged by default.
 - For PII workloads: encrypt CloudWatch Logs with KMS, configure retention limits, restrict log access
 - Refer to the latest [Bedrock security best practices](https://docs.aws.amazon.com/bedrock/latest/userguide/security.html) for current security guidance
 
@@ -172,7 +172,7 @@ Action: Follow the Create an Agent with action groups workflow. See [agent creat
 
 **Example 4:**
 User query: "How do I call Claude on Bedrock?"
-Action: Use the Converse API (not InvokeModel). Set `maxTokens` explicitly. Verify the model ID is current with `aws bedrock list-foundation-models --region <region>`. Use cross-region model ID with `us.` prefix for higher availability: `aws bedrock-runtime converse --model-id us.anthropic.claude-sonnet-4-6 --messages '[{"role":"user","content":[{"text":"Hello"}]}]' --inference-config '{"maxTokens":1024}'`
+Action: Use the Converse API (not InvokeModel). Set `maxTokens` explicitly. Discover current base models and inference profiles in the source Region. Use a base model when supported. If the model requires cross-Region inference, inspect the profile's destination Regions and confirm data-residency, IAM, and SCP requirements before using its returned ID. Do not choose a `us.` or `global.` prefix only for higher availability.
 
 **Example 5:**
 User query: "Deploy my agent to production"
@@ -306,7 +306,7 @@ Run `start-ingestion-job` and wait for completion. Query before ingestion comple
 Review chunking strategy. Use advanced parsing (FM-based) for documents with tables. Configure metadata filtering.
 
 ### Cross-region model not found
-The model may not be available in the region you're calling from. Check availability at [Supported foundation models](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html). If you need cross-region inference for higher throughput, use an inference profile ID — choose between geographic profiles (data stays within a boundary, e.g. US, EU) or global profiles (any commercial region). The profile prefix is a data residency decision. See [Supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) for available profiles and source/destination region mappings.
+The model may not be available in the Region you're calling from. Check [Supported foundation models](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html), then inspect candidate inference profiles. A geographic profile keeps processing inside its geography, but prompts and results can leave the source Region and AWS can store content in a destination Region for abuse detection. A global profile can route across commercial Regions. Confirm the complete destination list, data-residency approval, and IAM/SCP access to every destination; denying one required destination can fail the request. See [Supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html).
 
 ### On-demand throughput isn't supported
 Error: *"Invocation of model ID <model-id> with on-demand throughput isn't supported. Retry your request with the ID or ARN of an inference profile that contains this model."* Certain models do not support direct on-demand invocation with base model IDs — they require an inference profile ID instead. Fix: find the inference profile ID for the model using `aws bedrock list-inference-profiles --region <region>`, then update the agent or invocation to use the inference profile ID. See [Supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) for available profiles. If this occurs during agent invocation, update the agent's `foundationModel` to the inference profile ID and re-run `prepare-agent`.
@@ -360,7 +360,7 @@ Quick defaults (verify current availability: `aws bedrock list-foundation-models
 - **Open-source / fine-tuning**: Llama
 - **Image generation**: Titan Image Generator
 
-For current model IDs, regional availability, cross-region inference profiles, and supported features, refer to [Supported foundation models in Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html). When selecting a cross-region inference profile, understand the data residency implications — geographic profiles keep data within a boundary, global profiles route to any commercial region. Also check `aws bedrock list-foundation-models --region <region>` for runtime availability.
+For current model IDs, regional availability, cross-Region inference profiles, and supported features, refer to [Supported foundation models in Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html). A geographic profile keeps processing in its geography but can move and store content outside the source Region; a global profile can route across commercial Regions. Inspect the live profile and confirm destinations, residency, and IAM/SCP access. Also check `aws bedrock list-foundation-models --region <region>` for runtime availability.
 
 For model ID formats (4 patterns), access provisioning, and selection criteria, see [model selection guide](references/model-selection-guide.md).
 

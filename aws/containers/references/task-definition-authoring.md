@@ -278,11 +278,13 @@ The operator MUST use platform version `LATEST` or `1.4.0` for new task definiti
 |---------|---------------------------------------------|
 | LATEST  | Recommended. Currently resolves to `1.4.0`. |
 | 1.4.0   | Stable. Required for EFS, ECS Exec, ephemeral storage expansion. |
-| 1.3.0   | **Retired June 15, 2026** (no new tasks/services). **Terminated June 30, 2026** (all running tasks killed). MUST NOT be used for new workloads. Existing tasks MUST be migrated before June 30, 2026. |
+| 1.3.0   | **Deprecated June 15, 2026.** It cannot launch new tasks or services and no longer receives security updates or bug fixes. Existing tasks continue until stopped; AWS lists no force-update date. Migrate and test them on 1.4.0. |
 
 ---
 
 ## Minimal Fargate Task Definition Example
+
+Set `$IMAGE_DIGEST` to the build-proven `sha256:...` value. Register a new task definition revision and verify every running container's `imageDigest` after deployment.
 
 ```json
 {
@@ -300,7 +302,7 @@ The operator MUST use platform version `LATEST` or `1.4.0` for new task definiti
   "containerDefinitions": [
     {
       "name": "$CONTAINER_NAME",
-      "image": "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG",
+      "image": "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME@$IMAGE_DIGEST",
       "essential": true,
       "portMappings": [
         {

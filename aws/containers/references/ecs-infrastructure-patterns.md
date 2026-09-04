@@ -46,6 +46,8 @@ Operators MUST confirm the following before proceeding:
 
 ## Web App on Fargate
 
+Every `$IMAGE_URI` below must be a build-proven digest reference such as `repository@sha256:...`, not a mutable tag. Keep the prior known-good digest for rollback and prove the running digest after deployment.
+
 ```typescript
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
@@ -353,10 +355,12 @@ Additional endpoints MAY be needed:
 
 ## FireLens Logging
 
+Resolve, scan, and pin the approved Fluent Bit image digest. Do not deploy `latest`.
+
 ```typescript
 // Log router sidecar — SHOULD be essential:true (AWS recommended)
 const logRouter = taskDef.addFirelensLogRouter('LogRouter', {
-  image: ecs.ContainerImage.fromRegistry('amazon/aws-for-fluent-bit:latest'),
+  image: ecs.ContainerImage.fromRegistry('amazon/aws-for-fluent-bit@sha256:{{FLUENT_BIT_IMAGE_DIGEST}}'),
   essential: true,
   firelensConfig: {
     type: ecs.FirelensLogRouterType.FLUENTBIT,

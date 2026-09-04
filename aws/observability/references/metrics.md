@@ -126,7 +126,7 @@ Publishes a metric with value 1 for each matching log event.
 
 **Key insight**: You cannot query 1-minute data from 2 months ago. It has been automatically aggregated to 5-minute resolution. High-resolution (1-second) data is only available for 3 hours.
 
-**OTel metrics**: Only **30 days** retention (public preview) — significantly shorter than traditional CloudWatch metrics (15 months).
+**OTel metrics sent to CloudWatch**: Up to **150 labels**, PromQL query and alarm support, and the same **15-month** storage window documented for CloudWatch metrics. Verify current regional feature availability before production use.
 
 ### Metric expiry
 - Metrics with no new data for **15 months** expire

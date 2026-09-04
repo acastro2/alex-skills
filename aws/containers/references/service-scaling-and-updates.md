@@ -111,14 +111,14 @@ Use metric math in the scaling policy to compute this inline — no custom metri
 
 ### Pattern 2: CDK QueueProcessingFargateService (step scaling on queue depth)
 
-The CDK L3 pattern uses **step scaling** on raw `ApproximateNumberOfMessagesVisible` (queue depth), NOT target tracking on backlog-per-task. This is simpler but less proportional.
+The CDK L3 pattern uses **step scaling** on raw `ApproximateNumberOfMessagesVisible` (queue depth), NOT target tracking on backlog-per-task. This is simpler but less proportional. Set `$IMAGE_DIGEST` to the approved ECR `sha256:...` digest, not a tag.
 
 ```typescript
 import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns';
 
 const service = new ecs_patterns.QueueProcessingFargateService(this, 'Worker', {
   cluster,
-  image: ecs.ContainerImage.fromEcrRepository(repo, '$IMAGE_TAG'),
+  image: ecs.ContainerImage.fromEcrRepository(repo, '$IMAGE_DIGEST'),
   queue: queue,
   minScalingCapacity: 1,
   maxScalingCapacity: 50,
@@ -313,7 +313,7 @@ A deployment is stuck when `runningCount` does not converge to `desiredCount`.
 
 ### Force New Deployment
 
-To force a redeployment with the same task definition (e.g., to pick up a new image on a mutable tag):
+Use this only when an approved operation must replace tasks without changing the task definition, such as refreshing a task-launch secret or enabling a task-level feature. Do not use it to promote a new image through a mutable tag:
 
 ```bash
 aws ecs update-service \
@@ -324,7 +324,7 @@ aws ecs update-service \
   --output json
 ```
 
-> The operator SHOULD use immutable image tags and register a new task definition revision instead of relying on `--force-new-deployment` with mutable tags.
+> A production image change MUST use an immutable digest, a new task definition revision, the rollout controls in [release controls](../../delivery/references/release-controls.md), and running-task `imageDigest` proof. `--force-new-deployment` with a mutable tag is not a release mechanism.
 
 ---
 

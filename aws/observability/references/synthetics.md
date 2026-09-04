@@ -4,7 +4,7 @@ Runtime constraints, blueprint compatibility, and common pitfalls for CloudWatch
 
 ## Contents
 - [Runtime and blueprint compatibility](#runtime-and-blueprint-compatibility)
-- [CDK pattern](#cdk-pattern)
+- [Key flags](#key-flags)
 - [VPC canaries](#vpc-canaries)
 - [Common failures](#common-failures)
 - [Limits](#limits)

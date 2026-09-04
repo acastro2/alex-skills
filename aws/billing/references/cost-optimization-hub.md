@@ -8,25 +8,48 @@ Cost Optimization Hub (COH) is the **recommended starting point** for finding sa
 - **Prioritization:** Recommendations ranked by estimated monthly savings across all services and recommendation types.
 - **Aggregation:** Single API to get all optimization opportunities across the account or organization.
 
+## Coverage prerequisites
+
+Before treating COH as an organization-wide inventory, verify all of these:
+
+- AWS Organizations uses all-features mode.
+- COH trusted access is enabled and the caller is the management account or registered delegated administrator.
+- Compute Optimizer is enrolled separately for the organization or intended accounts; COH enrollment does not enable it.
+- New enrollment or configuration has had up to 24 hours to import recommendations.
+
+If any condition is missing, label the result as partial. Do not enable Organizations features, trusted access, delegated administration, COH, or Compute Optimizer without showing the account-level change and getting approval.
+
 ## CLI Commands
 
 ```bash
-# List recommendation summaries grouped by resource type
-aws cost-optimization-hub list-recommendation-summaries \
-  --group-by ResourceType
+# List recommendation summaries grouped by resource type.
+AWS_PROFILE="$PROFILE" aws cost-optimization-hub list-recommendation-summaries \
+  --region us-east-1 \
+  --group-by ResourceType \
+  --output json \
+  --no-cli-pager
 
-# List recommendations sorted by savings (highest first)
-aws cost-optimization-hub list-recommendations \
+# List recommendations sorted by savings, highest first.
+AWS_PROFILE="$PROFILE" aws cost-optimization-hub list-recommendations \
+  --region us-east-1 \
   --order-by '{"dimension":"EstimatedMonthlySavings","order":"Desc"}' \
-  --max-results 20
+  --max-results 20 \
+  --output json \
+  --no-cli-pager
 
-# Get details for a specific recommendation
-aws cost-optimization-hub get-recommendation \
-  --recommendation-id <id>
+# Get details for a specific recommendation.
+AWS_PROFILE="$PROFILE" aws cost-optimization-hub get-recommendation \
+  --region us-east-1 \
+  --recommendation-id "$RECOMMENDATION_ID" \
+  --output json \
+  --no-cli-pager
 
-# Filter by resource type
-aws cost-optimization-hub list-recommendations \
-  --filter '{"resourceTypes":["Ec2Instance"]}'
+# Filter by resource type.
+AWS_PROFILE="$PROFILE" aws cost-optimization-hub list-recommendations \
+  --region us-east-1 \
+  --filter '{"resourceTypes":["Ec2Instance"]}' \
+  --output json \
+  --no-cli-pager
 ```
 
 ## boto3 / call_boto3 Syntax
@@ -87,10 +110,10 @@ client.get_recommendation(recommendationId='<id>')
 
 ## Idle vs Overprovisioned — Do NOT Confuse
 
-**Idle resources** = near-zero utilization, safe to stop/delete. Action types: `Stop`, `Delete`.
+**Idle recommendations** = resources that telemetry suggests may be candidates to stop or delete. Action types: `Stop`, `Delete`. A recommendation is not proof that a resource has no owner, dependency, recovery requirement, or delayed workload.
 **Overprovisioned resources** = actively used but larger than needed, should be rightsized. Action type: `Rightsize`.
 
-When a user asks "what idle resources can I terminate?" — only include `Stop` and `Delete` action types. Do NOT include `Rightsize` recommendations — those resources are still in use.
+When a user asks "what idle resources can I terminate?" — only include `Stop` and `Delete` action types as candidates. Do NOT include `Rightsize` recommendations. Before any stop or delete, verify owner, dependency and retention evidence, recent enough telemetry, backup or rebuild path, rollback, and approval.
 
 ## Compute Optimizer Detailed Operations
 
@@ -133,8 +156,8 @@ COH de-duplicates savings across overlapping recommendation types. A single EC2 
 
 ## Gotchas
 
-- COH requires opt-in: `aws cost-optimization-hub update-enrollment-status --status Active`
+- COH requires an account opt-in. First prove the caller and run `AWS_PROFILE="$PROFILE" aws cost-optimization-hub get-enrollment-status --region us-east-1`. If it is not active, explain the account change and get confirmation before `AWS_PROFILE="$PROFILE" aws cost-optimization-hub update-enrollment-status --region us-east-1 --status Active`. For organization coverage, also verify all-features mode, trusted access or delegated administration, and separate Compute Optimizer enrollment.
 - COH is available in us-east-1 only
-- Recommendations refresh approximately every 24 hours
+- Allow up to 24 hours after enrollment or a configuration change for recommendations to import; do not report an immediate empty result as proof of no opportunities.
 - Savings estimates use On-Demand pricing by default — may overstate savings if customer already has SPs/RIs
 - COH does NOT include per-service optimizations (S3 lifecycle, CloudWatch log retention, NAT Gateway endpoints) — see `references/service-optimization.md` for those

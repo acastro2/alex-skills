@@ -39,16 +39,18 @@ const taskRole = new iam.Role(this, 'EcsTaskRole', {
 ```typescript
 const cwAgentLogGroup = new logs.LogGroup(this, 'CwAgentLogGroup', {
   logGroupName: '/ecs/ecs-cwagent',
-  removalPolicy: cdk.RemovalPolicy.DESTROY,
-  retention: logs.RetentionDays.ONE_MONTH,
+  removalPolicy: cdk.RemovalPolicy.RETAIN,
+  retention: approvedObservabilityRetention,
 });
 ```
 
 #### 1.3 Add CloudWatch Agent Container to Each Task Definition
 
+Set `approvedObservabilityRetention` from the workload's approved audit and incident-retention policy. Resolve a supported CloudWatch Agent version, scan or mirror it as required, and pin its exact digest. Do not deploy `latest`.
+
 ```typescript
 const cwAgentContainer = taskDefinition.addContainer('ecs-cwagent-{{SERVICE_NAME}}', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest'), // Use latest. ServiceEvents requires 1.300070.0+ (or 1.300069.0+).
+  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/cloudwatch-agent/cloudwatch-agent@sha256:{{CLOUDWATCH_AGENT_IMAGE_DIGEST}}'),
   essential: false,
   memoryReservationMiB: 128,
   cpu: 64,
@@ -92,7 +94,7 @@ const taskDefinition = new ecs.FargateTaskDefinition(this, '{{SERVICE_NAME}}Task
 
 ```typescript
 const initContainer = taskDefinition.addContainer('init', {
-  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-python:v0.18.0'), // Minimum version for ServiceEvents. Check ../application-signals-onboarding.md for how to query the latest version.
+  image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/adot-autoinstrumentation-python@sha256:{{ADOT_INIT_IMAGE_DIGEST}}'), // Resolve an approved version at or above the ServiceEvents minimum, then pin its digest.
   essential: false,
   memoryReservationMiB: 64,
   cpu: 32,

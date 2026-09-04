@@ -17,7 +17,7 @@ Step Functions and EventBridge decision matrices, error semantics, and limits. A
 | Dimension | Standard | Express |
 |---|---|---|
 | Max duration | 1 year | 5 minutes |
-| Execution semantics | Exactly-once | At-least-once (async) / At-most-once (sync) |
+| Execution semantics | Exactly-once workflow execution unless the definition uses `Retry`; retried tasks can run more than once | At-least-once (async) / At-most-once (sync) |
 | Execution history | Stored 90 days (API/console) | CloudWatch Logs only (must enable) |
 | `.sync` integration | Supported | **Not supported** |
 | `.waitForTaskToken` | Supported | **Not supported** |
@@ -114,7 +114,7 @@ All specified fields must match (AND); values within an array are OR'd. Operator
 | Enrichment | Built-in (Lambda, API GW, API Destinations, Sync Express SFN) | Not built-in |
 | Use case | **Replace Lambda glue** for source→target | Event routing and distribution |
 
-Pipes filtering happens **at the source** — you pay only for matched events — with built-in retry + DLQ.
+Pipes filtering happens **at the source**. AWS charges requests that remain after filtering in 64 KB chunks. Pipes also provide built-in retry and DLQ support.
 
 ---
 

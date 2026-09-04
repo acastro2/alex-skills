@@ -1,7 +1,8 @@
 # EC2 Right-Sizing with Compute Optimizer
 
 ## Prerequisites
-Opt in first: `aws compute-optimizer update-enrollment-status --status Active`
+
+First prove the caller and run `AWS_PROFILE="$PROFILE" aws compute-optimizer get-enrollment-status --region "$REGION"`. If the account is not active, explain the account change and get confirmation before `AWS_PROFILE="$PROFILE" aws compute-optimizer update-enrollment-status --region "$REGION" --status Active`. Do not opt in only to answer a read-only cost question.
 
 ## Metrics Analyzed
 

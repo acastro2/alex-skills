@@ -1,6 +1,6 @@
 # Bedrock Quota Health Check
 
-Monitor and manage Bedrock model quotas to prevent throttling. Bedrock enforces per-model, per-region token quotas (TPM/TPD); some models also have a requests-per-minute (RPM) quota, but not all (e.g., Claude Opus 4.7/4.8 have no RPM quota and are governed solely by token-based quotas).
+Monitor and manage Bedrock model quotas to prevent throttling. Quotas are model-, endpoint-, and Region-specific. On `bedrock-runtime`, models can have token and request quotas with model-specific output burndown. On `bedrock-mantle`, input TPM and output TPM are separate and there is no RPM quota.
 
 ## Table of Contents
 - [How Quota Reservation Works](#how-quota-reservation-works)
@@ -19,25 +19,38 @@ Bedrock reserves TPM quota at request start based on: `Total input tokens + maxT
 
 This is the most common cause of unexpected `ThrottlingException`. Always set `maxTokens` explicitly.
 
-Cache read tokens (`CacheReadInputTokens`) are NOT counted toward your TPM quota at all — they don't contribute to the reservation calculation. Prompt caching therefore effectively increases your usable TPM capacity. At settlement, consumption is `InputTokenCount + CacheWriteInputTokens + (OutputTokenCount × burndown rate)`.
+Cache read tokens (`CacheReadInputTokens`) are NOT counted toward `bedrock-runtime` TPM quota — they do not contribute to reservation or settlement. Prompt caching can therefore increase usable TPM capacity. At settlement, consumption is `InputTokenCount + CacheWriteInputTokens + (OutputTokenCount × model-specific burndown rate)`. Verify the exact model's current rate; do not use a family-wide default.
+
+These formulas describe `bedrock-runtime`. For `bedrock-mantle`, inspect its separate input-TPM and output-TPM quotas instead.
 
 ## Audit Workflow
 
 ### 1. Check Current Quotas
 
 ```bash
-aws service-quotas list-service-quotas --service-code bedrock --region <REGION> --profile <PROFILE> --query "Quotas[?contains(QuotaName, 'tokens per minute')].{Name:QuotaName, Value:Value}" --output table
+AWS_PROFILE="$PROFILE" aws service-quotas list-service-quotas \
+  --service-code bedrock \
+  --region "$REGION" \
+  --query "Quotas[?contains(QuotaName, 'tokens per minute')].{Name:QuotaName, Value:Value}" \
+  --output table \
+  --no-cli-pager
 ```
 
 ### 2. Check Recent Usage vs Limits
 
-Run the quota health script:
+Discover the exact current metric dimensions before querying; do not assume a `ModelId` dimension shape:
 
 ```bash
-python3 scripts/check-quota-health.py --region <REGION> --profile <PROFILE>
+AWS_PROFILE="$PROFILE" aws cloudwatch list-metrics \
+  --region "$REGION" \
+  --namespace AWS/Bedrock \
+  --metric-name InvocationThrottles \
+  --recently-active PT3H \
+  --output json \
+  --no-cli-pager
 ```
 
-The script compares current quota limits against peak CloudWatch metrics over the last 24 hours and flags models approaching their limits.
+Build a bounded `get-metric-data` request from the returned namespace, metric name, and dimensions. Compare peak request and token usage with the exact endpoint/model quotas over the same period. Report missing metrics as unknown, not zero.
 
 ### 3. Assess maxTokens Impact
 
@@ -71,7 +84,7 @@ Decision table for resolving `ThrottlingException`:
 | Situation | Action |
 |-----------|--------|
 | `maxTokens` not explicitly set | Set it to expected output length — biggest single impact |
-| Traffic is bursty | Use cross-region inference profiles (`us.`, `eu.`, `global.` prefix) to distribute across regions |
+| Traffic is bursty | Inspect live inference profiles. Use one only after its complete destination set, residency, and IAM/SCP access are approved; do not default to a geographic or global prefix |
 | Steady-state traffic exceeds quota | Request a quota increase (see below) |
 | Latency-sensitive workload | Use `priority` service tier for preferential processing |
 | Non-time-critical workload | Use `flex` service tier (may queue during peak, lower cost) |
@@ -79,14 +92,27 @@ Decision table for resolving `ThrottlingException`:
 
 ## Quota Increase Requests
 
+A quota increase request is an account mutation. Prove the caller and Region, read the current quota, show the exact requested value, and get approval before submission:
+
 ```bash
-aws service-quotas request-service-quota-increase --service-code bedrock --quota-code <QUOTA_CODE> --desired-value <VALUE> --region <REGION> --profile <PROFILE>
+AWS_PROFILE="$PROFILE" aws service-quotas request-service-quota-increase \
+  --service-code bedrock \
+  --quota-code "$QUOTA_CODE" \
+  --desired-value "$DESIRED_VALUE" \
+  --region "$REGION" \
+  --output json \
+  --no-cli-pager
 ```
 
 To find the quota code for a specific model:
 
 ```bash
-aws service-quotas list-service-quotas --service-code bedrock --region <REGION> --profile <PROFILE> --query "Quotas[?contains(QuotaName, '<MODEL_NAME>')].{Code:QuotaCode, Name:QuotaName, Value:Value}"
+AWS_PROFILE="$PROFILE" aws service-quotas list-service-quotas \
+  --service-code bedrock \
+  --region "$REGION" \
+  --query "Quotas[?contains(QuotaName, '$MODEL_NAME')].{Code:QuotaCode, Name:QuotaName, Value:Value}" \
+  --output json \
+  --no-cli-pager
 ```
 
-Quota increases are reviewed by AWS — plan 1–3 business days. For urgent production needs, open an AWS Support case.
+AWS reviews quota increases. Do not promise a completion time. For urgent production needs, open an AWS Support case.

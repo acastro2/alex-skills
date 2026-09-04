@@ -213,7 +213,7 @@ The application MUST listen on `0.0.0.0` (all interfaces), not `127.0.0.1` (loca
 
 | Error | Cause | Resolution |
 |---|---|---|
-| `CannotPullContainerError: pull image manifest has been retried N time(s)` | Image/tag resolution failure — image name or tag doesn't match repository, or image version stability enforcement removed the original image. Can also be caused by network connectivity issues. | 1. Verify image URI and tag match the repository. 2. Avoid `:latest` — use a specific tag. 3. If image is correct, check VPC endpoints (private subnet) or NAT gateway (public subnet). |
+| `CannotPullContainerError: pull image manifest has been retried N time(s)` | Image reference or digest resolution failure, or network connectivity failure | 1. Verify the repository and immutable digest exist. 2. Do not fall back to `:latest` or another mutable tag. 3. If the digest is correct, check VPC endpoints for private subnets or the NAT path. |
 | `AccessDeniedException` or `is not authorized to perform ecr:GetAuthorizationToken` | Execution role lacks ECR permissions | Attach `AmazonECSTaskExecutionRolePolicy` to the execution role |
 | `invalid reference format` | Malformed image URI (typo, missing tag, wrong registry) | Verify image URI: `$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:$TAG` |
 | `manifest unknown` or `manifest for $IMAGE not found` | Image tag does not exist in the repository | Verify the tag exists: `aws ecr describe-images --repository-name $REPO --image-ids imageTag=$TAG --region $REGION --output json` |

@@ -42,11 +42,7 @@ When mixing TTLs, longer durations MUST precede shorter ones.
 
 ### 4. Validate
 
-```bash
-python3 scripts/validate-prompt-caching.py --model-id <MODEL_ID> --region <REGION> --profile <PROFILE>
-```
-
-Confirm cache write on first request and cache read on second.
+Use the same SDK request twice inside the selected TTL. Keep the cacheable prefix byte-for-byte identical. Capture only the response `usage` object: the first request must show `cacheWriteInputTokens > 0`, and the second must show `cacheReadInputTokens > 0`. If either value is zero, use the checks below. Do not log prompt or response content as validation evidence.
 
 ## Key Concepts
 
@@ -89,13 +85,7 @@ Caching fails silently. Checklist:
 
 ## Debug Workflow
 
-Run 6 automated diagnostic tests when cache issues are reported:
-
-```bash
-python3 scripts/debug-prompt-cache.py --model-id <MODEL_ID> --region <REGION> --profile <PROFILE>
-```
-
-**Tests:** (1) Model support, (2) Token threshold, (3) Cache write/read cycle, (4) Prefix sensitivity, (5) TTL behavior, (6) Break-even analysis.
+Run six bounded checks when cache issues are reported: (1) current model support, (2) model token threshold, (3) cache write/read cycle, (4) one controlled prefix-sensitivity change, (5) TTL behavior, and (6) model-specific break-even analysis. Record usage counters and timing only; keep prompt and response content out of evidence files.
 
 **If tests fail:** Focus on the matching section above. Prefix sensitivity failures indicate cache fragmentation (see below). Break-even failures mean caching is not cost-effective at the developer's request volume.
 
@@ -103,16 +93,16 @@ python3 scripts/debug-prompt-cache.py --model-id <MODEL_ID> --region <REGION> --
 
 ## Break-Even Analysis
 
-Cache writes cost **25% more** than standard input tokens. Cache reads cost **90% less**.
+Cache write and read prices vary by model and can vary by TTL. Do not apply one 25% write premium, 90% read discount, or two-request break-even rule to every model.
 
-| Requests per TTL Window | Savings |
-|------------------------|---------|
-| 1 (write only) | **-25% (costs MORE)** |
-| 2 | 32% |
-| 5 | 67% |
-| 10 | 78% |
+For one cached token and `n` identical requests inside the TTL window:
 
-You need at least **2 requests within the TTL window** to break even. For single-use content, do NOT enable caching.
+```text
+without_cache = n * standard_input_rate
+with_cache    = cache_write_rate + ((n - 1) * cache_read_rate)
+```
+
+Add uncached input and output charges to both sides. Fetch the current rates for the exact model, Region or routing type, service tier, and TTL. Caching is cost-effective only when `with_cache < without_cache` for the measured hit rate. For single-use content, do not enable caching.
 
 ## Preventing Cache Fragmentation
 

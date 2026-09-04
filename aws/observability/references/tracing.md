@@ -9,7 +9,7 @@ X-Ray SDK is in maintenance mode. Use ADOT (OpenTelemetry) for all new projects.
 - [Sampling rules](#sampling-rules)
 - [ADOT collector configuration](#adot-collector-configuration)
 - [Instrumentation patterns](#instrumentation-patterns)
-- [Migration constraints](#migration-constraints-x-ray-sdk--otel)
+- [Migration constraints](#migration-constraints-x-ray-sdk-otel)
 - [Common mistakes](#common-mistakes)
 
 ---

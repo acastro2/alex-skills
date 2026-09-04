@@ -1,13 +1,13 @@
 # App Runner Guide
 
-> **⚠️ App Runner was sunset April 30, 2026. No new customers. No new features. Existing customers should migrate to ECS Express Mode.** See: [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
+> **⚠️ App Runner closed to new customers after April 30, 2026. Existing customers can continue to use it. AWS plans no new features and has announced no end-of-life date.** See: [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
 
 This reference file is for **existing App Runner customers** who need to operate their current services or migrate to ECS Express Mode. Do NOT recommend App Runner for new projects.
 
 ## Table of Contents
 
 - [Verify Dependencies](#verify-dependencies)
-- [Critical: App Runner Sunset Notice](#critical-app-runner-sunset-notice)
+- [Critical: App Runner Availability Change](#critical-app-runner-availability-change)
 - [ECS Express Mode as Replacement](#ecs-express-mode-as-replacement)
 - [Comparison: App Runner vs ECS Express Mode vs ECS Fargate](#comparison-app-runner-vs-ecs-express-mode-vs-ecs-fargate)
 - [Auto Scaling Behavior](#auto-scaling-behavior)
@@ -28,7 +28,7 @@ Operators MUST confirm the following before proceeding:
 
 ---
 
-## Critical: App Runner Sunset Notice
+## Critical: App Runner Availability Change
 
 > **App Runner is no longer accepting new customers after April 30, 2026.**
 > Existing customers MAY continue using the service, but SHOULD plan migration.
@@ -37,8 +37,8 @@ Operators MUST confirm the following before proceeding:
 Key implications:
 
 - New AWS accounts created on or after April 30, 2026 are not expected to have access to create App Runner services. AWS documentation states the service will be "closed to new customers" but does not document the specific API-level behavior.
-- Existing services continue to run but SHOULD be migrated to ECS Express Mode or ECS Fargate.
-- AWS has not announced an end-of-life date for existing services, but operators SHOULD NOT start new projects on App Runner.
+- Existing services continue to run. Plan and test migration when its benefit exceeds its risk; AWS has not announced a forced migration date.
+- AWS has not announced an end-of-life date for existing services, but operators SHOULD NOT start new projects on App Runner because AWS plans no new features.
 
 ---
 
@@ -83,7 +83,7 @@ ECS Express Mode is designed as the direct migration path for App Runner workloa
 | **ECS Exec / SSH** | Not supported | Supported | Supported |
 | **Sidecar containers** | Not supported | Supported | Supported |
 | **Use case** | Simple web apps, APIs (existing customers only) | Simple web apps, APIs — App Runner replacement | Complex architectures, multi-container, full control |
-| **Limitations** | Sunsetting; no new customers; no sidecars; no ECS Exec | Newer service — feature set expanding | Requires more configuration and operational knowledge |
+| **Limitations** | Closed to new customers; no planned new features; no sidecars; no ECS Exec | Newer service — feature set expanding | Requires more configuration and operational knowledge |
 
 ---
 

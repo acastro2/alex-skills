@@ -16,7 +16,9 @@ Check Fleet Manager for node status (`PingStatus` is `Online`, `ConnectionLost`,
 Session Manager gives a browser/CLI shell with **no inbound ports, no bastion, and no SSH keys** — the agent connects outbound to the service.
 
 ```bash
-aws ssm start-session --target <instance-id>
+AWS_PROFILE="$PROFILE" aws ssm start-session \
+  --region "$REGION" \
+  --target "$INSTANCE_ID"
 ```
 
 **Encrypt session logging.** Session output can contain sensitive command results. Encrypt the destination yourself first: KMS on the CloudWatch Logs log group (`aws logs associate-kms-key --log-group-name <name> --kms-key-id <arn>`) or SSE-KMS on the S3 bucket. Then set `cloudWatchEncryptionEnabled` / `s3EncryptionEnabled` = true — these flags do **not** enable encryption; when true they require the destination to already be encrypted and SSM refuses to stream logs to an unencrypted destination (an enforcement gate). Separately, `kmsKeyId` encrypts the data channel between the client and the managed node (on top of default TLS).
@@ -36,7 +38,7 @@ For an instance in a **private subnet with no NAT/internet gateway**, the agent 
 Alternatively allow HTTPS (443) egress to those service endpoints (add `kms.<region>.amazonaws.com` when session encryption is enabled). `TargetNotConnected` means prerequisites are unmet, the node isn't managed, or you're in the wrong Region.
 
 ## Fleet operations
-- **Run Command** — one-off fleet execution; `aws ssm send-command --document-name AWS-RunShellScript --targets "Key=tag:Role,Values=web-tier" --parameters 'commands=[...]'`. Target by instance IDs or tags. Command output can contain sensitive data — when capturing it to S3 (`--output-s3-bucket-name`) or CloudWatch Logs (`--cloud-watch-output-config`), enable KMS encryption (SSE-KMS bucket / KMS-encrypted log group) on the destination. Secure the S3 output bucket by granting `s3:PutObject` (and `s3:GetObject`, `s3:PutObjectAcl` as needed) to the managed node's **instance-profile IAM role** as the bucket-policy `Principal` (`arn:aws:iam::<account>:role/<InstanceProfileRole>`), scoped to the key prefix via `Resource`. Run Command output is written by the instance role directly, not by the SSM service principal — so do **not** use `aws:SourceArn`/`aws:SourceAccount` here (those apply only when a service principal writes on your behalf). When you build `--targets` tag values or `--parameters` commands from external or user-supplied input, validate and escape them first — unsanitized values flow into shell execution on the fleet and are a command-injection path.
+- **Run Command** is for one-off fleet execution. Put command parameters in a validated JSON file and pass `--parameters file://parameters.json`; inline PowerShell, brackets, pipes, and backslashes can be changed by the local shell before AWS receives them. Target exact instance IDs or tags. Print the resolved target count first, add `--comment` and `--timeout-seconds`, and set `--max-concurrency` plus `--max-errors` for fleet work. Capture the returned `Command.CommandId`, then poll every target with `list-command-invocations --command-id <id> --details` until all targets are terminal or a hard deadline expires. Do not accept the parent command's `Success` state as fleet proof: `AccessDenied` and `DeliveryTimedOut` can leave individual targets unsuccessful without counting toward `max-errors`. Require every resolved target invocation to report `Success`, inspect every command plugin's `ResponseCode`, and validate the command-specific result. Treat every other terminal status, including `Failed`, `TimedOut`, `Cancelled`, `AccessDenied`, and `DeliveryTimedOut`, as a failed operation. An immediate `InvocationDoesNotExist` can be eventual consistency, but only retry it inside the bounded poll. Command output can contain sensitive data. When capturing it to S3 (`--output-s3-bucket-name`) or CloudWatch Logs (`--cloud-watch-output-config`), enable KMS encryption (SSE-KMS bucket or KMS-encrypted log group) on the destination. Secure the S3 output bucket by granting `s3:PutObject` (and `s3:GetObject`, `s3:PutObjectAcl` as needed) to the managed node's **instance-profile IAM role** as the bucket-policy `Principal` (`arn:aws:iam::<account>:role/<InstanceProfileRole>`), scoped to the key prefix via `Resource`. Run Command output is written by the instance role directly, not by the SSM service principal, so do **not** use `aws:SourceArn` or `aws:SourceAccount` here. Those conditions apply only when a service principal writes on your behalf. Validate and escape every external value used in `--targets` or the command payload; unsanitized values become a command-injection path on the fleet.
 - **Patch Manager** — patch at scale with patch baselines + maintenance windows + tag-based patch groups; core document `AWS-RunPatchBaseline` (`Scan`/`Install`).
 - **State Manager** — associations that re-apply desired state on a schedule (vs Run Command's one-shot).
 
@@ -50,7 +52,7 @@ Alternatively allow HTTPS (443) egress to those service endpoints (add `kms.<reg
 | Maintenance window runs nothing | Target tag mismatch or nodes not managed | Fix the tag match; ensure nodes are managed and running in the window |
 
 ## Security Considerations
-- **Sanitize any external input** built into `--targets` tag values or `--parameters` commands before calling Run Command or State Manager — unsanitized values flow into shell execution on the fleet and are a command-injection vector.
+- **Sanitize any external input** built into `--targets` tag values or command payload files before calling Run Command or State Manager. Unsanitized values flow into shell execution on the fleet and create a command-injection path.
 - **Encrypt session and command output** (KMS on the Session Manager S3/CloudWatch sinks, SSE-KMS on Run Command output destinations) — it can contain sensitive results.
 - **Audit with CloudTrail** in all Regions (`StartSession`, `SendCommand`, `GetParameter`) and alarm on unexpected callers; prefer Session Manager over inbound SSH for its keyless, fully-audited access.
 - **Scope SSM access with IAM** — the instance profile needs only `AmazonSSMManagedInstanceCore`; grant human operators least-privilege session/command permissions.
@@ -59,3 +61,4 @@ Alternatively allow HTTPS (443) egress to those service endpoints (add `kms.<reg
 - [provisioning.md](provisioning.md) for key pairs (when you do need SSH)
 - The `setting-up-ec2-instance-profiles` skill for creating the instance profile itself
 - [troubleshooting.md](troubleshooting.md) for connectivity issues
+- [../../references/cli-operating.md](../../references/cli-operating.md) for profile, payload-file, polling, and mutation controls

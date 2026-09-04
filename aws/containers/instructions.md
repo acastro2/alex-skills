@@ -7,7 +7,7 @@ description: >-
   and logging configuration. Use when deploying, debugging, or optimizing containers
   on AWS. ALSO USE for container deployment options (ECS vs ECS Express Mode), networking
   modes, health check troubleshooting, OOM errors, secrets injection, blue/green deployments,
-  ECR image management, and App Runner sunset guidance and migration. NOT for Kubernetes,
+  ECR image management, and App Runner availability-change guidance and migration. NOT for Kubernetes,
   EKS, or CI/CD pipelines.
 version: 1
 allowed-tools: [Read]
@@ -41,8 +41,8 @@ Provides expertise for building, deploying, and operating containerized workload
 
 **When NOT to use this skill:**
 - Kubernetes or EKS workloads → use the kubernetes skill
-- CI/CD pipeline setup for container deployments → use the deploy skill
-- VPC subnet design and security group architecture → use the networking skill
+- AWS release automation and deployment proof → use `aws-delivery`
+- Live VPC, security-group, and ALB investigation → use `aws-networking`; this skill does not design new network architecture
 - Running code without containers (Lambda, Step Functions) → use the serverless skill
 
 **Before executing any commands:**
@@ -85,17 +85,17 @@ Apply these every time. Each corrects a mistake agents make without explicit ins
 
 11. **`awslogs` log driver mode — check your account's default.** Per [ECS docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html), the ECS service defaults to `non-blocking` mode, which drops logs when the buffer fills. The `defaultLogDriverMode` account setting can override this per account. For guaranteed log delivery (audit/compliance), explicitly set `"mode": "blocking"` in `logConfiguration.options`. Check your effective default: `aws ecs list-account-settings --name defaultLogDriverMode --effective-settings --output json`.
 
-12. **App Runner VPC connector routes ALL application-initiated outbound traffic through the VPC.** (App Runner is sunset — new customers should use ECS Express Mode instead.) Without a NAT gateway, external API calls and AWS service calls from your application code break. App Runner's own managed traffic (pulling images, pushing logs, retrieving secrets) is NOT routed through the VPC and is unaffected. Implement retry logic with backoff for database connections at startup.
+12. **App Runner VPC connector routes ALL application-initiated outbound traffic through the VPC.** (App Runner is closed to new customers; AWS has not announced an end-of-life date for existing services and plans no new features.) Without a NAT gateway, external API calls and AWS service calls from your application code break. App Runner's own managed traffic (pulling images, pushing logs, retrieving secrets) is NOT routed through the VPC and is unaffected. Implement retry logic with backoff for database connections at startup.
 
 13. **For `desiredCount=1` zero-downtime deploys: `minimumHealthyPercent=100, maximumPercent=200`.** This requires capacity for 2 tasks during deployment. You MUST NOT set `minimumHealthyPercent=0` if zero downtime is required.
 
 14. **502 Bad Gateway from ALB — check in this order:** (a) Container not listening on the port in the target group. (b) Container crashing before responding. (c) Task security group doesn't allow inbound from ALB security group on the container port. (d) Health check path returns non-200. (e) Health check timeout exceeds response time.
 
-15. **Fargate platform version: always use `LATEST` or `1.4.0`.** Version 1.3.0 is being retired June 15, 2026 and terminated June 30, 2026.
+15. **Fargate Linux platform version: use `LATEST` or `1.4.0`.** Version 1.3.0 was deprecated on June 15, 2026. It cannot launch new tasks or services and no longer receives fixes. Existing tasks continue only until stopped; AWS does not list a forced-update date. Migrate and test them on 1.4.0.
 
 16. **SQS worker scaling: use a custom backlog-per-task metric.** Raw `ApproximateNumberOfMessagesVisible` with target tracking doesn't work because adding tasks doesn't reduce queue depth proportionally. Use custom metric (`ApproximateNumberOfMessagesVisible / RunningTaskCount`) with target tracking, or use step scaling. CDK `QueueProcessingFargateService` handles this automatically via `scalingSteps`. Workers MUST handle SIGTERM gracefully within `stopTimeout` (default 30s, max 120s on Fargate).
 
-17. **Blue/green deployments: use native ECS blue/green (July 2025+) for new services.** Supports all-at-once, canary, and linear traffic shifting (canary/linear added October 2025), plus Service Connect, headless services, EBS volumes, and lifecycle hooks. CodeDeploy blue/green is now legacy — native ECS blue/green has full feature parity.
+17. **Blue/green deployments: prefer native ECS blue/green for new services when its current feature set fits.** It supports all-at-once, canary, and linear traffic shifting, service revisions, lifecycle hooks, alarms, bake time, and rollback. The `CODE_DEPLOY` controller remains a distinct deployment path. Do not claim feature parity or migrate until the current service configuration and rollback behavior are verified.
 
 18. **Container dependency `HEALTHY` condition requires a health check on the dependency container.** Without a configured health check, the dependent container never starts — ECS does not progress it to its next state. If `startTimeout` is set (max 120s), the dependency times out and the task fails; if not set, the dependent container blocks indefinitely. For init containers, use `SUCCESS` condition instead.
 
@@ -106,9 +106,14 @@ import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
 
+const imageDigest = process.env.IMAGE_DIGEST;
+if (!imageDigest?.match(/^sha256:[a-f0-9]{64}$/)) {
+  throw new Error('IMAGE_DIGEST must be an immutable sha256 digest');
+}
+
 const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'WebApp', {
   taskImageOptions: {
-    image: ecs.ContainerImage.fromEcrRepository(repo, 'latest'),
+    image: ecs.ContainerImage.fromEcrRepository(repo, imageDigest),
     containerPort: 8080,
     secrets: { DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret) },
   },
@@ -126,7 +131,7 @@ const scaling = service.service.autoScaleTaskCount({ minCapacity: 2, maxCapacity
 scaling.scaleOnCpuUtilization('CpuScaling', { targetUtilizationPercent: 70 });
 ```
 
-CDK L3 patterns auto-create VPC, cluster, ALB, target group, and security groups. For production, create these separately and pass them in. `ApplicationLoadBalancedFargateService` defaults to `assignPublicIp: false` — tasks in public subnets need `assignPublicIp: true` for internet access, or use private subnets with NAT.
+CDK L3 patterns auto-create VPC, cluster, ALB, target group, and security groups. `IMAGE_DIGEST` must come from the verified build output. For production, create these resources separately, pass them in, and use the test, alarm, approval, observation, runtime-digest proof, and known-good rollback controls in [release controls](../delivery/references/release-controls.md). `ApplicationLoadBalancedFargateService` defaults to `assignPublicIp: false` — tasks in public subnets need `assignPublicIp: true` for internet access, or use private subnets with NAT.
 
 ## Quick-Start: ECS Exec
 
@@ -161,7 +166,7 @@ Read reference files only when the conversation requires deeper detail.
 
 ## Decision Guide: ECS Express Mode vs ECS Fargate
 
-> **App Runner:** Sunset April 30, 2026 — no new customers, no new features. Existing customers should migrate to ECS Express Mode. See [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html).
+> **App Runner:** Closed to new customers after April 30, 2026. Existing customers can continue to use it, but AWS plans no new features and has announced no end-of-life date. Do not select it for a new project. See [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html).
 
 | Factor | ECS Express Mode | ECS Fargate |
 |---|---|---|
@@ -233,4 +238,4 @@ Read reference files only when the conversation requires deeper detail.
 - [ECS Express Mode Getting Started](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-getting-started.html)
 - [ECS Security Best Practices](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/security-network.html)
 - [App Runner Developer Guide](https://docs.aws.amazon.com/apprunner/latest/dg/what-is-apprunner.html) (existing customers)
-- [App Runner Availability Change (Sunset)](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)
+- [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)

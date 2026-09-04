@@ -26,8 +26,8 @@ aws configure list-profiles
 PROFILE=replace-with-profile
 REGION=replace-with-region
 
-env | grep -E '^AWS_(PROFILE|REGION|DEFAULT_REGION|ACCESS_KEY_ID|SESSION_TOKEN)=' \
-  | sed 's/=.*/=<set>/'
+env | grep -E '^AWS_(PROFILE|REGION|DEFAULT_REGION|ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN|ROLE_ARN|ROLE_SESSION_NAME|WEB_IDENTITY_TOKEN_FILE|CONTAINER_CREDENTIALS_FULL_URI|CONTAINER_CREDENTIALS_RELATIVE_URI|SHARED_CREDENTIALS_FILE|CONFIG_FILE|EC2_METADATA_DISABLED)=' \
+  | sed 's/=.*/=<set>/' || true
 
 AWS_PROFILE="$PROFILE" AWS_REGION="$REGION" \
   aws sts get-caller-identity \
@@ -36,7 +36,7 @@ AWS_PROFILE="$PROFILE" AWS_REGION="$REGION" \
   --no-cli-pager
 ```
 
-This environment check shows which AWS variables are set without printing their values. Stop if the identity or Region is not the intended target.
+This environment check shows which AWS variables are set without printing their values. Command-line options and environment variables can override role, IAM Identity Center, and profile settings. This includes static credentials, web-identity roles, container credential endpoints, and alternate shared credential or config files. Stop if an override is unexpected or the identity or Region is not the intended target.
 
 Use the authentication flow that is already configured:
 
@@ -49,7 +49,9 @@ Use the authentication flow that is already configured:
 Prefer command-scoped context for one-off work:
 
 ```bash
-AWS_PROFILE="$PROFILE" AWS_REGION="$REGION" aws <service> <operation> ...
+SERVICE="<service>"
+OPERATION="<operation>"
+AWS_PROFILE="$PROFILE" AWS_REGION="$REGION" aws "$SERVICE" "$OPERATION" ...
 ```
 
 For a sequence, contain exported context in a subshell so it cannot leak into later work:
@@ -59,9 +61,11 @@ For a sequence, contain exported context in a subshell so it cannot leak into la
   set -euo pipefail
   export AWS_PROFILE="$PROFILE"
   export AWS_REGION="$REGION"
+  SERVICE="<service>"
+  READ_OPERATION="<read-operation>"
 
   aws sts get-caller-identity --output json --no-cli-pager
-  aws <service> <read-operation> --output json --no-cli-pager
+  aws "$SERVICE" "$READ_OPERATION" --output json --no-cli-pager
 )
 ```
 
@@ -129,6 +133,9 @@ Discover configured profiles instead of constructing account IDs or role ARNs. P
 
 ```bash
 PROFILE_PREFIX=CloudEngineering-
+SERVICE="<service>"
+LIST_OPERATION="<list-operation>"
+BOUNDED_PROJECTION="<bounded-projection>"
 
 aws configure list-profiles \
 | grep "^${PROFILE_PREFIX}" \
@@ -142,9 +149,9 @@ aws configure list-profiles \
     fi
 
     printf 'caller: %s\n' "$caller"
-    AWS_PROFILE="$profile" aws <service> <list-operation> \
+    AWS_PROFILE="$profile" aws "$SERVICE" "$LIST_OPERATION" \
       --region "$REGION" \
-      --query '<bounded-projection>' \
+      --query "$BOUNDED_PROJECTION" \
       --output json \
       --no-cli-pager
   done
@@ -210,9 +217,11 @@ Use a timestamped evidence directory for approved operational work:
 set -euo pipefail
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 EVIDENCE_DIR="replace-with-approved-evidence-dir/$STAMP"
+SERVICE="<service>"
+DESCRIBE_OPERATION="<describe-operation>"
 mkdir -p "$EVIDENCE_DIR"
 
-AWS_PROFILE="$PROFILE" aws <service> <describe-operation> \
+AWS_PROFILE="$PROFILE" aws "$SERVICE" "$DESCRIBE_OPERATION" \
   --region "$REGION" \
   --output json \
   --no-cli-pager \

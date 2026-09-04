@@ -101,7 +101,7 @@ Serverless apps are mostly about **service integrations**, not complex business 
 
 ## Idempotency
 
-Lambda guarantees **at-least-once** — duplicates come from async retries, SQS visibility expiry, stream replays, client retries, Step Functions task retries. Use the **Powertools Idempotency** utility (Python/TS/Java/.NET), backed by a DynamoDB table with TTL.
+Lambda delivery semantics depend on the invocation path. Lambda does not automatically retry a synchronous invocation; the caller can retry it. Asynchronous invocation and event source mappings can deliver an event more than once. Duplicates also come from SQS visibility expiry, stream replays, client retries, and Step Functions task retries. Use the **Powertools Idempotency** utility (Python/TS/Java/.NET), backed by a DynamoDB table with TTL.
 
 Table: `id` (hash of idempotency key) + `status` (INPROGRESS/COMPLETED/EXPIRED), `data` (cached response), `expiration` (TTL).
 

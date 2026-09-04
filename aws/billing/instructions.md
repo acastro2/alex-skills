@@ -76,20 +76,46 @@ Read `references/deterministic-calculations.md` for patterns and examples.
 ## Common Tasks
 
 ### Analyze costs by service
+
+Resolve the dates at runtime. Do not copy dates from an old example.
+
 ```bash
-aws ce get-cost-and-usage \
-  --time-period Start=2026-03-01,End=2026-04-01 \
+START_DATE="yyyy-mm-dd"
+END_DATE="yyyy-mm-dd" # exclusive; replace both placeholders
+
+AWS_PROFILE="$PROFILE" aws ce get-cost-and-usage \
+  --region us-east-1 \
+  --time-period Start="$START_DATE",End="$END_DATE" \
   --granularity MONTHLY \
   --metrics UnblendedCost \
-  --group-by Type=DIMENSION,Key=SERVICE
+  --group-by Type=DIMENSION,Key=SERVICE \
+  --no-cli-pager
 ```
+
 Default to `UnblendedCost`. Exclude Credits/Refunds with `--filter '{"Not":{"Dimensions":{"Key":"RECORD_TYPE","Values":["Credit","Refund"]}}}'`. End date is exclusive.
 
 ### Run a cost audit
 Read `references/cost-audit.md` for the full 7-step workflow: top cost drivers → month-over-month comparison → optimization recommendations → idle resources → commitment coverage → per-service quick wins → report.
 
 ### Get right-sizing recommendations
-Compute Optimizer requires opt-in first: `aws compute-optimizer update-enrollment-status --status Active`. Then read `references/ec2-rightsizing.md` for EC2 or the relevant resource-specific reference.
+
+Compute Optimizer requires an account opt-in. Treat activation as a production account change, not a query. First prove the caller, inspect the current enrollment status, state the effect, and get confirmation. Then use explicit scope:
+
+```bash
+AWS_PROFILE="$PROFILE" aws compute-optimizer get-enrollment-status \
+  --region "$REGION" \
+  --output json \
+  --no-cli-pager
+
+# Run only after confirmation when the current status is not Active.
+AWS_PROFILE="$PROFILE" aws compute-optimizer update-enrollment-status \
+  --region "$REGION" \
+  --status Active \
+  --output json \
+  --no-cli-pager
+```
+
+Then read `references/ec2-rightsizing.md` for EC2 or the relevant resource-specific reference.
 
 ### Look up service pricing
 Read `references/pricing-lookup.md` for service codes and attribute filters. Common trap: Price List API service codes differ from Cost Explorer service names.
@@ -100,32 +126,44 @@ A billing view scopes cost and usage data to a specific slice of an account's bi
 
 ### Discover available billing views
 ```bash
-aws billing list-billing-views \
-  --billing-view-types PRIMARY CUSTOM BILLING_GROUP
+AWS_PROFILE="$PROFILE" aws billing list-billing-views \
+  --region us-east-1 \
+  --billing-view-types PRIMARY CUSTOM BILLING_GROUP \
+  --no-cli-pager
 ```
 Requires `billing:ListBillingViews` permission.
 
 ### Use a billing view with Cost Explorer
 ```bash
-aws ce get-cost-and-usage \
-  --time-period Start=2026-03-01,End=2026-04-01 \
+START_DATE="yyyy-mm-dd"
+END_DATE="yyyy-mm-dd" # exclusive; replace both placeholders
+
+AWS_PROFILE="$PROFILE" aws ce get-cost-and-usage \
+  --region us-east-1 \
+  --time-period Start="$START_DATE",End="$END_DATE" \
   --granularity MONTHLY \
   --metrics UnblendedCost \
   --group-by Type=DIMENSION,Key=SERVICE \
-  --billing-view-arn arn:aws:billing::ACCOUNT_ID:billingview/BILLING_VIEW_ID
+  --billing-view-arn "$BILLING_VIEW_ARN" \
+  --no-cli-pager
 ```
 
 ### Create a budget scoped to a billing view
-In the `--budget` JSON, include the `BillingViewArn` field:
+
+This command creates account state. Prove the caller, inspect existing budgets, show the exact JSON, and get confirmation first. Budgets uses `us-east-1`. In the `--budget` JSON, include the `BillingViewArn` field:
+
 ```bash
-aws budgets create-budget --account-id ACCOUNT_ID \
+AWS_PROFILE="$PROFILE" aws budgets create-budget \
+  --region us-east-1 \
+  --account-id "$ACCOUNT_ID" \
   --budget '{
     "BudgetName": "TeamX-Monthly",
     "BudgetLimit": {"Amount": "1000", "Unit": "USD"},
     "TimeUnit": "MONTHLY",
     "BudgetType": "COST",
     "BillingViewArn": "arn:aws:billing::ACCOUNT_ID:billingview/BILLING_VIEW_ID"
-  }'
+  }' \
+  --no-cli-pager
 ```
 
 ### API support for `--billing-view-arn`
@@ -148,7 +186,7 @@ aws budgets create-budget --account-id ACCOUNT_ID \
 | `ValidationException` on Cost Explorer | Wrong dimension key (e.g., `CHARGE_TYPE` instead of `RECORD_TYPE`) | Use `RECORD_TYPE` for charge type filtering |
 | Empty results with filter | Filter value doesn't match exactly | Call `GetDimensionValues` first to get valid values |
 | `AccessDeniedException` on hourly data | Hourly granularity not enabled | Enable in Cost Explorer preferences |
-| `Account not registered` on Compute Optimizer | Not opted in | Run `update-enrollment-status --status Active` |
+| `Account not registered` on Compute Optimizer | Not opted in | Follow the caller check, current-state check, and confirmed enrollment workflow above |
 | Budgets API fails outside us-east-1 | Budgets requires us-east-1 | Set `--region us-east-1` |
 | Cost Explorer `Total` empty with GroupBy | By design — totals excluded when grouping | Make separate call without GroupBy, or sum grouped results using a script |
 | `AccessDeniedException` on `list-billing-views` | Missing permission | User needs `billing:ListBillingViews` permissions |

@@ -93,8 +93,8 @@ Refer to the latest AWS documentation on Bedrock InvokeModel for current request
 
 Model ID format determines how requests are routed:
 - In-region (base model ID): e.g., `anthropic.claude-3-haiku-20240307-v1:0` — single-region invocation, only for models with In-Region availability in your region  
-- Geo cross-region (inference profile): e.g., `us.anthropic.claude-sonnet-4-6` — routes within a geography (US, EU, APAC). Required for many newer models, even for standard on-demand invocation
-- Global cross-region (inference profile): e.g., `global.anthropic.claude-sonnet-4-6` — routes to any commercial region where the model is available, for maximum throughput  
+- Geo cross-region (inference profile): e.g., `us.anthropic.claude-sonnet-4-6` — routes within a geography (US, EU, APAC), but prompts and results can leave the source Region and AWS can store content in a destination Region for abuse detection. Required for many newer models, even for standard on-demand invocation
+- Global cross-region (inference profile): e.g., `global.anthropic.claude-sonnet-4-6` — routes to any commercial Region where the model is available. Use only with explicit global-routing approval
 - Provisioned throughput: ARN format `arn:aws:bedrock:<region>:<account-id>:provisioned-model/<id>`
 
 Common errors from using the wrong ID format:
@@ -103,7 +103,7 @@ Common errors from using the wrong ID format:
 
 Verify the Correct ID format:
 - For foundation models: `aws bedrock get-foundation-model --model-identifier <model-id>`
-- For inference profiles: `aws bedrock list-inference-profiles --region <region>` - see [Supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html)
+- For inference profiles: `aws bedrock list-inference-profiles --region <region>`, then `aws bedrock get-inference-profile --inference-profile-identifier <id> --region <region>`. Confirm all destination Regions and IAM/SCP access before use. See [Supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html)
 
 ## Prompt Caching
 
@@ -152,13 +152,15 @@ modelId: "arn:aws:bedrock:us-east-1:<account-id>:prompt/PROMPTID:1"
 
 ## max_tokens Quota Mechanics
 
-Bedrock reserves quota at request start based on total input tokens (including cache read/write tokens) + `max_tokens`. Three stages:
+For the `bedrock-runtime` endpoint, Bedrock excludes cache-read tokens from both admission and final quota consumption. The stages are:
 
-1. **Initial reservation**: `InputTokenCount + CacheReadInputTokens + CacheWriteInputTokens + max_tokens` — determines if request is throttled
+1. **Initial reservation**: `InputTokenCount + CacheWriteInputTokens + max_tokens` — determines if the request is throttled
 2. **Dynamic adjustment**: Bedrock releases unused reserved tokens as output is generated
-3. **Final settlement**: `InputTokenCount + CacheWriteInputTokens + (OutputTokenCount × burndown rate)` — `CacheReadInputTokens` do not count toward final settlement
+3. **Final settlement**: `InputTokenCount + CacheWriteInputTokens + (OutputTokenCount × model-specific burndown rate)`
 
-**Burndown rate**: Anthropic Claude 3.7+ models have a **5x burndown rate** for output tokens — 1 output token = 5 quota tokens at settlement. All other models: 1x.
+`CacheReadInputTokens` do not count in either formula. Output burndown is model-specific; do not infer a universal 5x rate from a provider family or version number. Verify the current quota documentation for the exact model.
+
+The `bedrock-mantle` endpoint has separate input-TPM and output-TPM quotas and no RPM quota. Do not apply the `bedrock-runtime` combined reservation formula to Mantle operations.
 
 **Impact of unset max_tokens** (Claude Sonnet example): With 500 input tokens:
 - `max_tokens=1000`: reserves 1,500 tokens → ~1,333 concurrent requests from 2M TPM

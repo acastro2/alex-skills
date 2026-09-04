@@ -5,7 +5,7 @@ Deploy into the **source agent's region** (mirror). If any step fails, surface t
 ## CRITICAL: set the deploy-target region right after scaffold (region trap)
 `agentcore create` with no resolved region **silently writes a default region** into `agentcore/aws-targets.json` that is usually not the source agent's. Immediately after scaffold, before any `add`/`deploy`: **edit `agentcore/aws-targets.json` so the deploy-target region is the source agent's region**, and verify it before the first deploy. A wrong region is wrong on two counts: the shims invoke the **source** Lambdas / KB **by ARN**, so a harness elsewhere can't reach them; and a deploy can hit region-specific Harness CFN-type issues that surface as a stack rollback (read the CloudFormation failure; if region-specific, redeploy in the source region).
 
-If a deploy already landed in the wrong region: `aws cloudformation delete-stack` the wrong-region stack, reset `agentcore/.cli/deployed-state.json` to `{"targets":{}}`, fix `aws-targets.json`, then redeploy.
+If a deploy landed in the wrong Region, do not delete it immediately. Capture the exact stack, resources, and events; prove that it is the failed wrong-Region copy; back up `agentcore/.cli/deployed-state.json`; show the deletion and recovery plan; and get explicit approval. Then delete only that confirmed stack, reset the local target state to `{"targets":{}}`, fix `aws-targets.json`, and redeploy. Verify that no source-Region resource changed.
 
 ## Source-side prerequisites — the builder grants these, never the migration (INV-1)
 
@@ -14,9 +14,14 @@ The AG shim invokes the **original** source Lambda by ARN, so the source Lambda'
 Expect the **first shim invocation to fail with `AccessDeniedException`** until the permission exists. When it does: **stop and hand the builder this command; do NOT run `aws lambda add-permission` on the source yourself** (that mutates the source and breaks INV-1):
 
 ```bash
-aws lambda add-permission --function-name <original-fn> \
-  --statement-id agentcore-shim-invoke --action lambda:InvokeFunction \
-  --principal <shim-role-arn> --source-arn <shim-lambda-arn>
+AWS_PROFILE="$PROFILE" aws lambda add-permission \
+  --region "$REGION" \
+  --function-name "$ORIGINAL_FUNCTION_NAME" \
+  --statement-id agentcore-shim-invoke \
+  --action lambda:InvokeFunction \
+  --principal "$SHIM_ROLE_ARN" \
+  --source-arn "$SHIM_LAMBDA_ARN" \
+  --no-cli-pager
 ```
 
 (`bedrock-agent-runtime:Retrieve` for the KB shim is granted on the shim role via its `iamPolicy`, so the KB path needs no source-side change — only the AG-shim → original-Lambda invoke does.)
@@ -28,7 +33,7 @@ A gateway tool can only attach once the gateway and its targets are *deployed* (
 1. **Scaffold:** `agentcore create` (plain — not the `--type import`/`agentcore import` path, which builds a *code* project, not a Harness). Then `cd` in and run **every** later `add`/`deploy`/`status` from that one directory — those commands resolve the project from the cwd, so a second project or a different dir yields "No agentcore project found".
 2. **Add** infra that doesn't need a deployed gateway:
    - `agentcore add gateway`, then hand-add one **`targetType: "lambda"` code target** to `agentcore.json` per action group / KB shim (see "How shims are deployed").
-   - `agentcore add harness` (one command, all flags): `--model-id` (= source `foundationModel`), `--temperature`/`--top-p`/`--model-max-tokens` (only one of temperature/top-p when the model rejects both), `--system-prompt` (folded instruction + non-DEFAULT override intent, per [mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md)). Managed memory stays on. `--additional-params` is `lite_llm`-provider only, so a bedrock harness rejects it — which is why the source guardrail is classified **cannot migrate** (verify the current CLI surface per [mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md)'s guardrail section before relying on this).
+   - `agentcore add harness` (one command, all flags): `--model-id` (= source `foundationModel`), `--temperature`/`--top-p`/`--model-max-tokens` (only one of temperature/top-p when the model rejects both), `--system-prompt` (folded instruction + non-DEFAULT override intent, per [mapping.md](mapping.md)). Managed memory stays on. `--additional-params` is `lite_llm`-provider only, so a bedrock harness rejects it — which is why the source guardrail is classified **cannot migrate** (verify the current CLI surface per [mapping.md](mapping.md)'s guardrail section before relying on this).
    - if the source had CodeInterpreter: `agentcore add tool --harness <name> --type agentcore_code_interpreter --name <tool-name>`.
 3. **First deploy:** `agentcore deploy` — creates gateway, targets, harness, memory.
 4. **Attach the gateway tool** (gateway now deployed): `agentcore add tool --harness <name> --type agentcore_gateway --name <tool-name> --gateway <gateway-project-name> --outbound-auth awsIam`. `--gateway <project-name>` resolves the deployed ARN automatically. **Add it exactly once** — check `harness.json`/`agentcore status` first; a duplicate `agentcore_gateway` tool deploys fine but breaks at runtime (`Tool name '…' already exists`), silently disabling every gateway-backed tool. If already doubled, remove the extra from `harness.json` and redeploy.
@@ -66,7 +71,7 @@ A gateway tool can only attach once the gateway and its targets are *deployed* (
 
 3. Run `agentcore validate` (must print `Valid`), then `agentcore deploy`.
 
-**No `environment` key — all shim config is baked in at render time.** The `compute` schema is strict and has **no** environment-variable support; adding an `environment` key fails `agentcore validate`. Every `{{TOKEN}}` in the shim templates (`ORIGINAL_LAMBDA_ARN`, `SCHEMA_STYLE`, `OP_ROUTES`, `KB_ID`, …) is substituted directly into `tools/<shim>/handler.py` as a literal. An unsubstituted token causes a `SyntaxError` or wrong behavior at runtime — the post-render grep in [mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md) is the gate.
+**No `environment` key — all shim config is baked in at render time.** The `compute` schema is strict and has **no** environment-variable support; adding an `environment` key fails `agentcore validate`. Every `{{TOKEN}}` in the shim templates (`ORIGINAL_LAMBDA_ARN`, `SCHEMA_STYLE`, `OP_ROUTES`, `KB_ID`, …) is substituted directly into `tools/<shim>/handler.py` as a literal. An unsubstituted token causes a `SyntaxError` or wrong behavior at runtime — the post-render grep in [mapping.md](mapping.md) is the gate.
 
 **Scope `iamPolicy` to a single resource ARN — never a wildcard.** It is a full policy document (`Version` + `Statement` array are required), granting exactly one action on exactly one resource:
 - AG shim — invoke only the original Lambda:
@@ -100,11 +105,19 @@ Do **not** use `--type lambda-function-arn` — that wires a *pre-existing* Lamb
 Hand-edit a config file **only where this guide explicitly says to** — the region correction in `aws-targets.json`, the `targetType: "lambda"` code target in `agentcore.json`, the documented recovery edits (removing a duplicate `agentcore_gateway` tool from `harness.json`; resetting `deployed-state.json` for a wrong-region redeploy). Everything else goes through `agentcore` commands — harness and tools via `add harness`/`add tool`, gateways and other targets via `add gateway`/`add gateway-target`. Do not invent new hand-edits: when an `add` command fails, fix its flags (missing `--name`, wrong `--type`) rather than editing `harness.json`/`agentcore.json` to route around the failure.
 
 ## One action group = one target, with all its functions
-A Bedrock action group can expose several functions/operations (up to three), each with its own schema. The tool-schema file is a **`ToolDefinition[]` array**, so a single Lambda target carries every function in that action group — one array entry per function/operationId. Do not split an action group into multiple targets. [tool_schema.json.tmpl](assets/tool_schema.json.tmpl) is already an array; add one entry per function, mirroring the source schema exactly ([mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md)).
+A Bedrock action group can expose several functions/operations (up to three), each with its own schema. The tool-schema file is a **`ToolDefinition[]` array**, so a single Lambda target carries every function in that action group — one array entry per function/operationId. Do not split an action group into multiple targets. [tool_schema.json.tmpl](../../assets/tool_schema.json.tmpl) is already an array; add one entry per function, mirroring the source schema exactly ([mapping.md](mapping.md)).
 
 ## Verification
-The migration is done when `agentcore deploy` reports success. Before treating it as complete, **prompt the user** to confirm the deploy succeeded and they're satisfied — surface the deployed harness/gateway ARNs from `agentcore status`. Deeper parity (invoking the harness, comparing against the source) is out of scope unless the user asks.
+A successful `agentcore deploy` proves only control-plane acceptance. Before calling the migration complete:
+
+1. Capture the deployed harness and gateway ARNs and versions from `agentcore status`.
+2. Run an authorized health or smoke invocation for every migrated tool path with synthetic, non-sensitive input.
+3. Confirm an unapproved principal cannot invoke the migrated endpoint.
+4. Compare representative source and migrated outputs for each clean component. Record every approved degraded or missing behavior from the Phase 4 ledger.
+5. Check shim errors, throttles, logs, and traces during the observation window.
+
+If a safe parity test needs production data or another owner's approval, stop and keep the migration incomplete until that evidence is available.
 
 ## Rendering templates into CLI inputs
-- KB shim / AG shim Lambda code: adapt the `*.py.tmpl` files in `assets/` (rendering rules in [mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md)) and place the rendered handler at `tools/<shim>/handler.py` — see "How shims are deployed" above.
-- Tool-schema files: one array per target, one entry per source function/operation, mirroring the source schema exactly ([mapping.md](references/bedrock-agents-to-agentcore-harness/mapping.md)).
+- KB shim / AG shim Lambda code: adapt the `*.py.tmpl` files in `../../assets/` (rendering rules in [mapping.md](mapping.md)) and place the rendered handler at `tools/<shim>/handler.py` — see "How shims are deployed" above.
+- Tool-schema files: one array per target, one entry per source function/operation, mirroring the source schema exactly ([mapping.md](mapping.md)).

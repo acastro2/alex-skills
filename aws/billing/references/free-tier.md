@@ -6,11 +6,11 @@ AWS transitioned from time-based to credit-based free tier on July 15, 2025:
 
 | Account Type | Model | Details |
 |-------------|-------|---------|
-| Legacy (before July 15, 2025) | 12-month free tier + Always Free | Original offers, complete naturally. Always Free services available. |
-| Free Plan (after July 15, 2025) | $200 credits for 6 months | No charges during free period. Upgrade to Paid Plan after. Always Free services available. |
-| Paid Plan (after July 15, 2025) | $200 credits for 6 months | Charged for usage exceeding credits. Always Free services available. |
+| Legacy (before July 15, 2025) | 12-month offers + Always Free | Existing benefits continue under the legacy program. |
+| Free Plan (after July 15, 2025) | $100 sign-up credit plus up to $100 earned credits | The plan ends after six months or when credits are exhausted, whichever comes first. The account then closes unless upgraded within 90 days. |
+| Paid Plan (after July 15, 2025) | Same sign-up and earned-credit opportunity | Usage beyond credits is charged. Credits expire 12 months after account creation. |
 
-~30 Always Free services remain available indefinitely for all account types.
+AWS currently lists over 30 services with Always Free monthly usage limits. They remain available while the user is an AWS customer, but the offer list and limits can change. Verify the current service page before relying on an allowance.
 
 ## Recommended Workflow
 
@@ -32,3 +32,5 @@ aws freetier get-account-plan-state
 # Check current free tier usage
 aws freetier get-free-tier-usage
 ```
+
+Current references: [Choosing a plan](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-plans.html) and [AWS Free Tier FAQs](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/free-tier-FAQ.html).
