@@ -148,3 +148,13 @@ Disabling GHAS/secret scanning on every existing repo in the Archive org doesn't
 The right pattern is: flip the org defaults once (SKILL.md "Archive org one-time hardening"), then the per-repo cleanup only ever applies to legacy archives.
 
 Counter-intuitively, archiving a repo does NOT re-evaluate the org defaults — it just freezes whatever was there. So the org-default flip is a forward-looking fix, not a retroactive one.
+
+## Enforced code security configurations override repo-level toggles
+
+Observed 2026-09-03 on `Curo-AstroUS-OLD` and `Attain-MWAA` after transfer from `Data-Engineering-Attain-Finance`.
+
+- Both repos arrived carrying the enterprise-level **Attain Security Configuration** (id 257718, `enforcement: enforced`, secret scanning on).
+- `PATCH repos/<repo>` with `security_and_analysis.secret_scanning.status = disabled` returned 200 with `disabled` in the body, and the value reverted to `enabled` within about 20 seconds. The unarchive, disable, re-archive dance had no effect for the same reason.
+- The Archive org's own defaults (`secret_scanning_enabled_for_new_repositories: false`) do not apply to transferred repos. They only cover repos created in the org.
+- Fix: `POST orgs/Archive-Attain-Finance/code-security/configurations/266618/attach` with `{"scope":"selected","selected_repository_ids":[<id>]}`. Works on archived repos. Scanning read `disabled` and the org's open generic alerts dropped from 13 to 0 within 30 seconds.
+- The same mechanism explains repos in active orgs with scanning or AI detection mysteriously off: they were sitting on the unenforced global "GitHub recommended" configuration instead of the enterprise one. Attaching 257718 fixed 16 Engineering repos the same day.

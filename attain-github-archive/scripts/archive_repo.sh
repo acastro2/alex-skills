@@ -10,6 +10,10 @@ SRC_OWNER="${1:-}"
 REPO="${2:-}"
 DST_OWNER="Archive-Attain-Finance"
 SRE_TEAM="sre"
+# Org-level code security configuration with everything disabled. Attached post-transfer
+# so the enforced enterprise configuration stops re-enabling secret scanning.
+COLD_CONFIG_ID="266618"
+COLD_CONFIG_NAME="Archive Cold - Security Disabled"
 
 if [[ -z "$SRC_OWNER" || -z "$REPO" ]]; then
   echo "Usage: $0 <source-org> <repo-name>" >&2
@@ -82,6 +86,28 @@ if [[ "$SKIP_TRANSFER" == "0" ]]; then
     fi
   done
 fi
+
+log "Attaching '${COLD_CONFIG_NAME}' code security configuration (id ${COLD_CONFIG_ID})"
+# A transferred repo keeps the code security configuration it arrived with. The
+# enterprise-level "Attain Security Configuration" is *enforced*, so any repo-level
+# security_and_analysis PATCH is silently reverted while it stays attached. The only
+# durable fix is to attach the Archive org's own cold configuration, which replaces it.
+REPO_ID=$(gh api "repos/${DST_OWNER}/${REPO}" --jq '.id')
+gh api -X POST "orgs/${DST_OWNER}/code-security/configurations/${COLD_CONFIG_ID}/attach" \
+  --input - <<<"{\"scope\":\"selected\",\"selected_repository_ids\":[${REPO_ID}]}" >/dev/null \
+  || log "  (attach failed; check that configuration ${COLD_CONFIG_ID} still exists in ${DST_OWNER})"
+for i in {1..15}; do
+  cfg=$(gh api "repos/${DST_OWNER}/${REPO}/code-security-configuration" --jq '.configuration.name' 2>/dev/null || echo "")
+  ss=$(gh api "repos/${DST_OWNER}/${REPO}" --jq '.security_and_analysis.secret_scanning.status')
+  if [[ "$cfg" == "$COLD_CONFIG_NAME" && "$ss" == "disabled" ]]; then
+    log "  configuration attached, secret scanning disabled (attempt ${i})"
+    break
+  fi
+  sleep 4
+  if [[ $i -eq 15 ]]; then
+    log "  WARNING: configuration is '${cfg}' and secret_scanning=${ss} after 60s. Fix by hand before archiving."
+  fi
+done
 
 log "Archiving ${DST_OWNER}/${REPO}"
 gh api -X PATCH "repos/${DST_OWNER}/${REPO}" -F archived=true --jq '.archived' >/dev/null

@@ -35,10 +35,17 @@ Order matters. Do everything **before** archiving, because archived repos reject
 1. **Strip direct collaborators on the source repo.** The Archive org disallows outside collaborators, so transfer fails with 422 if any direct collaborator isn't a member of the Archive org. Record them first, then delete.
 2. **Disable security features on the source repo** (GHAS, secret scanning, Dependabot security updates, vulnerability alerts, automated security fixes). GitHub auto-disables most of these on archive, but `automated-security-fixes` persists and continues counting against billing if left on. Doing this pre-transfer avoids the unarchive/re-archive dance.
 3. **Transfer** to `Archive-Attain-Finance`. The API returns 202 and the move is async — poll the target until queryable.
-4. **Archive** the repo at its new location.
-5. **Grant the `sre` team `pull`** on the archived repo.
+4. **Attach the `Archive Cold - Security Disabled` code security configuration** (org config id `266618`) to the repo and verify `secret_scanning.status == "disabled"` before archiving. A transferred repo keeps the configuration it arrived with, and the enterprise-level `Attain Security Configuration` is *enforced*: while it stays attached, every repo-level `security_and_analysis` PATCH is silently reverted and GHAS keeps billing and alerting. Step 2 alone does not survive the transfer. Verified 2026-09-03 on `Curo-AstroUS-OLD` and `Attain-MWAA`.
+   ```bash
+   id=$(gh api "repos/Archive-Attain-Finance/<repo>" --jq .id)
+   gh api -X POST "orgs/Archive-Attain-Finance/code-security/configurations/266618/attach" \
+     --input - <<<"{\"scope\":\"selected\",\"selected_repository_ids\":[$id]}"
+   gh api "repos/Archive-Attain-Finance/<repo>/code-security-configuration" --jq '.configuration.name'
+   ```
+5. **Archive** the repo at its new location.
+6. **Grant the `sre` team `pull`** on the archived repo.
 
-Use the bundled script `scripts/archive_repo.sh` for a single repo. It does all five steps with logging and confirmation prompts.
+Use the bundled script `scripts/archive_repo.sh` for a single repo. It does all six steps with logging and confirmation prompts.
 
 ```bash
 ./scripts/archive_repo.sh <source-org> <repo-name>
@@ -126,6 +133,24 @@ EOF
 ```
 
 This works on archived repos — the `security_and_analysis` PATCH is one of the few mutations GitHub still accepts post-archive (counter to gotcha #3, which applies to most other fields).
+
+**If the setting flips back to `enabled` within a minute, a code security configuration is enforcing it.** Check which one is attached and replace it with the cold configuration; the attach endpoint works on archived repos too:
+
+```bash
+gh api "repos/Archive-Attain-Finance/<repo>/code-security-configuration" --jq '{name:.configuration.name, status}'
+id=$(gh api "repos/Archive-Attain-Finance/<repo>" --jq .id)
+gh api -X POST "orgs/Archive-Attain-Finance/code-security/configurations/266618/attach" \
+  --input - <<<"{\"scope\":\"selected\",\"selected_repository_ids\":[$id]}"
+```
+
+Sweep the whole org for repos not on the cold configuration:
+
+```bash
+gh api "orgs/Archive-Attain-Finance/repos?per_page=100&type=all" --paginate --jq '.[].name' | while read r; do
+  c=$(gh api "repos/Archive-Attain-Finance/$r/code-security-configuration" --jq '.configuration.name' 2>/dev/null)
+  [[ "$c" != "Archive Cold - Security Disabled" ]] && echo "$r -> ${c:-none}"
+done
+```
 
 ## SRE team setup (one-time per archive org)
 
