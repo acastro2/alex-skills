@@ -174,7 +174,7 @@ A regex pattern that matches the start of a new log entry. More flexible than `a
 
 ---
 
-## FireLens / Fluent Bit Setup
+## FireLens Fluent Bit Setup
 
 FireLens routes container logs through a Fluent Bit (or Fluentd) sidecar, enabling delivery to multiple destinations (CloudWatch, S3, Elasticsearch, Datadog, etc.).
 

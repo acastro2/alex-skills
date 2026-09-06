@@ -8,7 +8,7 @@ Using CloudTrail for operational debugging: who changed what, when. Not for secu
 - [Common operational queries](#common-operational-queries)
 - [Organization audit baseline](#organization-audit-baseline)
 - [Querying CloudTrail logs](#querying-cloudtrail-logs)
-- [CloudTrail → CloudWatch integration](#cloudtrail-cloudwatch-integration)
+- [CloudTrail → CloudWatch integration](#cloudtrail-to-cloudwatch-integration)
 
 ---
 
@@ -115,7 +115,7 @@ This is the long-term supported approach — works with standard SQL, scales to 
 
 ---
 
-## CloudTrail → CloudWatch integration
+## CloudTrail to CloudWatch integration
 
 ### Alert on specific API calls
 ```

@@ -9,7 +9,7 @@ X-Ray SDK is in maintenance mode. Use ADOT (OpenTelemetry) for all new projects.
 - [Sampling rules](#sampling-rules)
 - [ADOT collector configuration](#adot-collector-configuration)
 - [Instrumentation patterns](#instrumentation-patterns)
-- [Migration constraints](#migration-constraints-x-ray-sdk-otel)
+- [Migration constraints](#migration-constraints-x-ray-sdk-to-otel)
 - [Common mistakes](#common-mistakes)
 
 ---
@@ -194,7 +194,7 @@ logging.info("Processing request", extra={"trace_id": trace_id})
 
 ---
 
-## Migration constraints (X-Ray SDK → OTel)
+## Migration constraints (X-Ray SDK to OTel)
 
 ### Annotations require explicit opt-in
 In OTel, all span attributes become X-Ray **metadata** by default. To make an attribute a searchable X-Ray annotation, add its key to the `aws.xray.annotations` list:

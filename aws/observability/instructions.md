@@ -1,70 +1,50 @@
 ---
 name: aws-observability
 description: >-
-  Builds, configures, debugs, and optimizes AWS observability with CloudWatch (Log
-  Insights, Metrics, Alarms, Dashboards, EMF), X-Ray, CloudTrail, and ADOT (AWS Distro
-  for OpenTelemetry), AND enables/onboards services to Application Signals using ADOT
-  auto-instrumentation SDKs. Covers Log Insights queries, alarms (metric, composite,
-  anomaly), dashboards, custom metrics/EMF, X-Ray tracing and sampling, ADOT collector
-  config, CloudTrail auditing, and end-to-end Application Signals enablement via ADOT
-  SDKs (CloudWatch Observability EKS add-on, CloudWatch Agent IAM, OTLP endpoints,
-  ServiceEvents, Dynamic Instrumentation), breakpoint and snapshot in Dynamic Instrumentation,
-  live data capture in running service, debug without redeploying. Applies to CloudWatch,
-  alarms, dashboards, EMF, X-Ray, traces, CloudTrail,  ADOT, monitoring, synthetics/canaries,
-  OR enabling/onboarding/instrumenting a service for Application Signals. Not for
-  app logging or security threat detection. Defer to the attain-observability skills
-  for Grafana/Loki/Prometheus-based monitoring; this skill is for AWS-native
-  CloudWatch/X-Ray/Application Signals only.
-version: 2
+  Diagnose AWS workloads through existing CloudWatch logs, metrics, metric streams,
+  alarms and CloudTrail evidence. Use for missing telemetry, stream coverage,
+  AWS-side query/cost issues and audit events. Application Signals, X-Ray and ADOT
+  are optional paths, not default onboarding. Route Grafana/Loki/Mimir/Tempo/
+  Pyroscope work to the installed skills for that telemetry stack.
+version: 3
 disable-model-invocation: true
 ---
 
-# AWS Observability
+# AWS observability
 
-## Overview
+Use the telemetry already connected to the workload. Start with the caller, account, Region, resource and one UTC incident window. Read the [shared CLI guide](../references/cli-operating.md) before commands.
 
-Domain expertise for AWS observability across metrics, logs, and traces, covering the full lifecycle: **enabling/onboarding** a service to Application Signals using ADOT (AWS Distro for OpenTelemetry) auto-instrumentation SDKs and ServiceEvents — making the service show up in Application Signals — on EC2, ECS, EKS, and Lambda in Python, Node.js, Java, and .NET.
+Do not enable a new collector, trace backend, log class or retention policy just to investigate an incident. Find the actual telemetry path and its owner first.
 
-**Works best with** the [AWS MCP server](https://docs.aws.amazon.com/aws-mcp/) — enables running CLI commands, querying CloudWatch, and validating configurations directly. All guidance also works with standard AWS CLI access.
+## Pick the evidence
 
-**Note:** Reference files contain specific runtime versions, quota values, and feature matrices that may change. When precision matters (e.g., deploying to production, choosing a runtime, or checking a quota), confirm values against current AWS documentation rather than relying solely on the values in these files.
+| Question | Reference |
+|---|---|
+| What failed in the application? | [Logs Insights](references/log-insights.md) |
+| Is load, latency or saturation different? | [Metrics](references/metrics.md) |
+| Why is telemetry missing downstream? | [Metric streams](references/metric-streams.md) |
+| Why did an alarm fire or miss a failure? | [Alarms](references/alarms.md) |
+| Who changed the resource? | [CloudTrail](references/cloudtrail.md) |
+| What does an existing AWS dashboard show? | [Dashboards](references/dashboards.md) |
+| How do I diagnose existing tracing? | [Tracing](references/tracing.md) |
+| Why did an existing canary fail? | [Synthetics](references/synthetics.md) |
+| Common AWS telemetry errors | [Troubleshooting](references/troubleshooting.md) |
+| Does this workload need Application Signals or dynamic capture? | [Optional application telemetry](references/application-telemetry-options.md) |
 
-## Routing
+For Grafana queries, dashboards, alert investigation and .NET instrumentation, load the installed skills for that stack. Do not treat generic CloudWatch onboarding examples as the workload's instrumentation standard.
 
-| User need | Action |
-|-----------|--------|
-| Enabling/onboarding a service to Application Signals (auto-instrumentation) | Read [application-signals-onboarding.md](references/application-signals-onboarding.md) |
-| Propagating ServiceEvents git/deployment metadata through CI/CD | Read [application-signals-cicd-metadata.md](references/application-signals-cicd-metadata.md) |
-| Per-platform/per-language enablement steps | Read the matching `references/appsignals-guides/<platform>-<language>.md` (e.g. [eks-python.md](references/appsignals-guides/eks-python.md)) |
-| Writing Log Insights queries | Read [log-insights.md](references/log-insights.md) |
-| Configuring alarms (metric, composite, anomaly) | Read [alarms.md](references/alarms.md) |
-| Publishing custom metrics or using EMF | Read [metrics.md](references/metrics.md) |
-| Setting up X-Ray tracing or ADOT | Read [tracing.md](references/tracing.md) |
-| Building dashboards | Read [dashboards.md](references/dashboards.md) |
-| Debugging observability issues | Read [troubleshooting.md](references/troubleshooting.md) — starts with the 5 most common fixes |
-| Debugging canary failures | Read [synthetics.md](references/synthetics.md) — see Common failures table |
-| CloudTrail operational auditing | Read [cloudtrail.md](references/cloudtrail.md) |
-| Setting up Lambda monitoring with CDK | Use [alarm-template.ts](assets/alarm-template.ts) as a starting point |
-| Creating synthetic canaries | Read [synthetics.md](references/synthetics.md) |
-| Configuring ADOT collector | Use [otel-config.yaml](assets/otel-config.yaml) as a starting point |
-| Debugging a running service with breakpoints/snapshots — Dynamic Instrumentation (**modifies live services and capture live data**) | Read [dynamic-instrumentation.md](references/dynamic-instrumentation.md) in full before acting. Confirm with the user before any create/delete, and narrate before significant actions: observation → hypothesis → proposed action → expected result. Diagnosing running-service root cause from source/code inspection. Source inspection alone identifies hypotheses, not confirmed root causes. Keep suspected causes tentative until runtime evidence confirms them. |
-| Spans multiple areas | Read the most specific reference first, then consult others as needed |
+## Working rules
 
-## Files
+- Match the same resource dimensions and time window across logs, metrics and changes. State missing coverage rather than filling gaps with a theory.
+- Project only needed fields. Logs, traces, SQL text and snapshots can contain customer data or credentials. Obtain an evidence plan before content capture.
+- Discover metric names and dimensions live. No matching series does not mean a zero value.
+- Check current limits/API behavior through official docs before copying version-sensitive examples. Use the repo's existing IaC and deployment tool; CDK assets are examples for CDK repos only.
+- A telemetry change needs a reviewed before/after configuration, cost and retention impact, owner approval, and an actual delivery/query test. Preserve the previous export path until replacement coverage is proven.
 
-| File | Content |
-|------|---------|
-| [application-signals-onboarding.md](references/application-signals-onboarding.md) | Enable Application Signals auto-instrumentation: EKS add-on, CloudWatch Agent IAM, OTLP endpoints, ServiceEvents env vars, Dynamic Instrumentation — two-tier scope by platform/language |
-| [application-signals-cicd-metadata.md](references/application-signals-cicd-metadata.md) | ServiceEvents git & deployment metadata propagation through CI/CD (the 5 `OTEL_AWS_SERVICE_EVENTS_*` vars) |
-| `references/appsignals-guides/` (e.g. [eks-python.md](references/appsignals-guides/eks-python.md)) | 16 per-platform × per-language enablement guides (EC2/ECS/EKS/Lambda × Python/Node.js/Java/.NET) |
-| [alarms.md](references/alarms.md) | Metric, composite, anomaly detection alarms — configuration, constraints, recommended defaults |
-| [log-insights.md](references/log-insights.md) | Complete query syntax, commands, functions, known issues, reusable query library |
-| [metrics.md](references/metrics.md) | Custom metrics, EMF spec, metric filters, high-resolution, retention |
-| [tracing.md](references/tracing.md) | X-Ray → ADOT migration, sampling rules, annotations vs metadata, collector config |
-| [dashboards.md](references/dashboards.md) | Widget types, cross-account/region, dynamic labels, sharing |
-| [troubleshooting.md](references/troubleshooting.md) | Error → cause → fix for all observability services |
-| [cloudtrail.md](references/cloudtrail.md) | Operational auditing, event types, S3+Athena queries |
-| [synthetics.md](references/synthetics.md) | Canary runtime/blueprint constraints, VPC networking, common failures |
-| [alarm-template.ts](assets/alarm-template.ts) | Best-practice CDK Lambda monitoring (alarms + dashboard) |
-| [otel-config.yaml](assets/otel-config.yaml) | ADOT collector config for X-Ray traces + CloudWatch EMF metrics |
-| [dynamic-instrumentation.md](references/dynamic-instrumentation.md) | Dynamic Instrumentation debugging loop — breakpoints/probes on live code, snapshot capture + correlation analysis, create/delete gating, snapshot PII handling. Runs via `scripts/di_instrumentation.py` + `scripts/di_snapshots.py`. |
+```mermaid
+flowchart LR
+    A[One incident window] --> B[Logs and metrics]
+    A --> C[Change evidence]
+    B --> D[Supported diagnosis]
+    C --> D
+```

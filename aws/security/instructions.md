@@ -36,6 +36,7 @@ flowchart TD
 
 | Need | Read |
 |---|---|
+| Config, Security Hub, Firewall Manager, Shield, Macie or Detective coverage/owner discovery | [Security service coverage](references/service-coverage.md) |
 | GuardDuty detector or Runtime Monitoring coverage, ECS or EC2 remediation | [GuardDuty coverage and remediation](references/guardduty.md) |
 | Exposed endpoint, ALB or WAF scope, log evidence, emergency containment | [Exposure investigation and containment](references/exposure-response.md) |
 | Enable, change, prove, or remove CloudTrail data events | [CloudTrail data-event changes](references/cloudtrail-data-events.md) |
@@ -91,4 +92,4 @@ If there is no safe rollback, say that before confirmation. The approver must ac
 
 ## Not covered
 
-Use another module for generic CloudWatch observability, VPC, Transit Gateway, DNS, CI/CD deployments, or workload rollout design. This module does not author full IAM, KMS, WAF, or organization policies. It is not a catalogue of Security Hub, Inspector, Macie, Detective, Security Lake, or every AWS security service.
+Use another module for generic CloudWatch observability, VPC, Transit Gateway, DNS, CI/CD deployments, or workload rollout design. This module does not author full IAM, KMS, WAF, or organization policies. Other security services get focused ownership and coverage discovery, not a complete setup catalog. Fetch current official docs when an explicit task needs deeper configuration.

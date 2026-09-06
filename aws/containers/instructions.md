@@ -1,46 +1,44 @@
 ---
 name: aws-containers
 description: >-
-  Deploys and operates containerized workloads on ECS, Fargate, and ECR. Covers task
+  Operates containerized workloads on ECS, Fargate, EKS, and ECR. Covers task
   definitions, Fargate services, ECR repository setup and lifecycle policies, ECS
   Exec debugging, service scaling, deployment strategies, load balancer integration,
   and logging configuration. Use when deploying, debugging, or optimizing containers
   on AWS. ALSO USE for container deployment options (ECS vs ECS Express Mode), networking
   modes, health check troubleshooting, OOM errors, secrets injection, blue/green deployments,
-  ECR image management, and App Runner availability-change guidance and migration. NOT for Kubernetes,
-  EKS, or CI/CD pipelines.
+  ECR image management, EKS access/nodes/add-ons, and existing App Runner services.
+  For Kubernetes workload changes use the repo's Kubernetes tooling; for CI use delivery.
 version: 1
 allowed-tools: [Read]
 ---
 
 # AWS Containers
 
-## Service Overview
+## Start with the existing platform
 
-| Developer Need | Recommend | Key CLI / CDK |
-|---|---|---|
-| Simplest container deploy (HTTP app/API, new customers) | ECS Express Mode | `aws ecs create-express-gateway-service` |
-| Web app, worker, batch, scheduled task | ECS on Fargate | `aws ecs create-service` / CDK `ecsPatterns.ApplicationLoadBalancedFargateService` |
-| GPU workloads or >16 vCPU | ECS on EC2 | CDK `ecs.Ec2Service` |
-| Store container images | ECR | `aws ecr create-repository` |
-| Web app behind a load balancer | ECS Fargate + ALB | CDK `ecsPatterns.ApplicationLoadBalancedFargateService` |
-| SQS worker scaling on queue depth | ECS Fargate + SQS | CDK `ecsPatterns.QueueProcessingFargateService` |
-| Cron job / scheduled task | ECS Fargate + EventBridge | CDK `ecsPatterns.ScheduledFargateTask` |
-| Service mesh / service-to-service | ECS Service Connect | Configure on ECS service with Cloud Map namespace |
-| Debug a running container | ECS Exec | `aws ecs execute-command --interactive --command "/bin/sh"` |
+Read the [shared CLI guide](../references/cli-operating.md). Inspect the workload's cluster, IaC and delivery owner before selecting a service. Do not recommend a new platform merely because the user says "deploy my container."
 
-When a developer says "deploy my container" without naming a service: recommend ECS Express Mode for simple HTTP apps (replaces App Runner for new customers). Recommend ECS Fargate for everything else. Never recommend EKS unless they explicitly ask for Kubernetes.
+| Need | Start here |
+|---|---|
+| Existing Kubernetes cluster, access, nodes or add-ons | [EKS operations](references/eks-operations.md) |
+| ECS tasks/services on Fargate or EC2 | Focused ECS references below |
+| Image identity, pull failures or lifecycle | ECR reference below |
+| Release automation and runtime digest proof | [Delivery](../delivery/instructions.md) |
+| New platform choice | Establish requirements and compare against the existing deployment path first |
+
+CDK examples below are for CDK repos. Use existing Terraform/OpenTofu modules or manifests when those own the workload.
 
 ## Overview
 
-Provides expertise for building, deploying, and operating containerized workloads using Amazon ECS, AWS Fargate, Amazon ECR, and AWS App Runner.
+Provides ECS/Fargate/ECR runtime guidance and AWS-side EKS diagnosis. Existing App Runner is a limited compatibility path.
 
 **Recommended setup:** Install the AWS MCP server for sandboxed execution, audit logging, and enterprise controls. See: aws.amazon.com/mcp
 
 **Without AWS MCP:** This skill works with any agent that has AWS CLI access. All commands use standard AWS CLI syntax.
 
 **When NOT to use this skill:**
-- Kubernetes or EKS workloads → use the kubernetes skill
+- Kubernetes workload manifests and in-cluster changes → establish EKS access here, then use the repo's Kubernetes tooling
 - AWS release automation and deployment proof → use `aws-delivery`
 - Live VPC, security-group, and ALB investigation → use `aws-networking`; this skill does not design new network architecture
 - Running code without containers (Lambda, Step Functions) → use the serverless skill
@@ -164,19 +162,11 @@ Read reference files only when the conversation requires deeper detail.
 - Read [references/ecs-troubleshooting-guide.md](references/ecs-troubleshooting-guide.md) if the user is debugging task placement failures, OOM kills (exit code 137), health check failures, image pull errors, or networking issues in private subnets.
 - Read [references/fargate-spot.md](references/fargate-spot.md) if the user asks about Fargate Spot pricing, capacity provider strategies, or interruption handling.
 
-## Decision Guide: ECS Express Mode vs ECS Fargate
+## Related container options
 
-> **App Runner:** Closed to new customers after April 30, 2026. Existing customers can continue to use it, but AWS plans no new features and has announced no end-of-life date. Do not select it for a new project. See [App Runner Availability Change](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html).
+ECS Express Mode is an option to evaluate for a new simple HTTP workload, not the default replacement for an existing platform. Check current networking, permissions and delivery fit before proposing it.
 
-| Factor | ECS Express Mode | ECS Fargate |
-|---|---|---|
-| Setup complexity | Minimal (single API call) | Moderate — task def, service, cluster, ALB |
-| Networking control | Managed (ALB in default VPC) | Full — awsvpc, security groups, subnets |
-| Scaling | Auto (CPU-based) | Configurable target/step scaling |
-| Use when | New simple HTTP app/API, zero infra management | Production services needing VPC, ALB, fine-grained IAM |
-| Limitations | New service, evolving feature set | Most setup required |
-
-**Default recommendation:** Use ECS Fargate for production workloads. Use ECS Express Mode for the simplest path (new customers).
+App Runner is closed to new customers after April 30, 2026. Existing customers can continue using it; AWS plans no new features and has announced no end-of-life date. Do not infer an urgent migration from that availability change. Use the [short compatibility guide](references/app-runner-guide.md) for an actual existing service.
 
 ## Troubleshooting
 

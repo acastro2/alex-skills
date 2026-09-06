@@ -1,67 +1,70 @@
 ---
 name: aws
 description: >-
-  AWS infrastructure and AWS CLI operations: serverless (Lambda, API Gateway,
-  Step Functions), containers (ECS, Fargate, ECR), delivery automation, networking,
-  security operations, observability (CloudWatch, X-Ray, Application Signals),
-  compute (EC2, Auto Scaling, SSM), messaging, billing, Bedrock, authentication,
-  multi-account and multi-region inventory, shell automation, and safe AWS changes.
-  Use for any AWS service, CLI command, CDK/SAM task, AWS error, audit, deployment,
-  incident, network investigation, security control, or cost question.
+  Practical AWS operations for existing workloads: SSO, scoped CLI
+  discovery, EC2/SSM, ECS/EKS/ECR, RDS/Aurora/SQL Server/PostgreSQL, Redis/Valkey,
+  DynamoDB/OpenSearch/DocumentDB, S3/FSx/EFS, WorkSpaces/AppStream, networking,
+  security, billing, delivery, Lambda/messaging, Bedrock and SageMaker discovery.
+  Use for AWS investigation, safe infrastructure changes, release proof, cost
+  analysis, and directly related service options such as Athena over S3.
 ---
 
 # AWS
 
-Umbrella skill for all AWS infrastructure and services. Routes queries to the appropriate
-domain module based on topic.
+Help the operator find the right account, explain what failed, make one reviewed change, and prove the result. This skill covers existing workloads and practical next steps from them. It is not a catalog of everything AWS sells.
+
+Before any AWS command, read the [shared CLI guide](references/cli-operating.md). Then load only the relevant module. Read the [workload scope](references/workload-scope.md) when deciding whether to expand coverage or propose a new service.
+
+## Working defaults
+
+- Discover the configured operator profile and verify STS identity. Never hardcode an account from this skill.
+- Start with metadata, resource state and existing telemetry. Do not fetch secrets, customer objects, database rows or desktop user details just to inventory a service.
+- Follow the existing repo and release path. Inspect its Terraform/OpenTofu modules, workflows and owner before proposing CDK, SAM, console setup or a new platform. Keep CDK/SAM examples for repos that actually use them.
+- A timeout, stopped task, billing line or successful API response is evidence, not a complete diagnosis. Separate observation, hypothesis and proof.
+- Prefer a reviewed IaC change. Emergency CLI changes need exact targets, before state, approval, rollback and reconciliation into IaC.
+- Use Exa for current AWS guidance and Context7 for library/CLI details when extending this skill or using changing APIs. Do not send internal resource data to either service.
+
+```mermaid
+flowchart LR
+    A[Operator question] --> B[Identity and scope]
+    B --> C[Read current state]
+    C --> D[Explain or propose narrow change]
+    D --> E[Approval and result proof]
+```
 
 ## Routing
 
-Identify which module(s) to load based on the user's question. Read ONLY the relevant
-module; do not load all of them.
+| Task | Module |
+|---|---|
+| Credentials, SSO, expired session | [auth](auth/instructions.md) |
+| General CLI, profiles, pagination, account sweeps, safe shell commands | [shared CLI](references/cli-operating.md) |
+| EC2, AMI, Auto Scaling, SSM fleet diagnosis | [compute](compute/instructions.md) |
+| ECS/Fargate tasks, EKS access/nodes/add-ons, ECR images | [containers](containers/instructions.md) |
+| RDS, SQL Server, PostgreSQL, Aurora Serverless, Redis/Valkey, DynamoDB, DocumentDB, OpenSearch | [databases](databases/instructions.md) |
+| S3 access/storage, FSx ONTAP, EFS, Transfer, DataSync, DMS, Athena/Glue adjacency | [storage](storage/instructions.md) |
+| WorkSpaces, WorkSpaces Applications/AppStream, directory and fleet diagnosis | [end-user computing](euc/instructions.md) |
+| VPC/TGW, DNS/Resolver, endpoints, security groups, Direct Connect, ALB containment | [networking](networking/instructions.md) |
+| GuardDuty, WAF, CloudTrail data events, IAM/KMS, secret exposure, security service discovery | [security](security/instructions.md) |
+| Logs, metrics/streams, alarms, CloudTrail, existing AWS telemetry | [observability](observability/instructions.md) |
+| GitHub Actions OIDC, ECR/ECS/SSM releases, S3 publication, rollback proof | [delivery](delivery/instructions.md) |
+| Lambda, API Gateway, Step Functions, event-driven app diagnosis | [serverless](serverless/instructions.md) |
+| SQS/SNS/EventBridge, Kinesis/Firehose, queue and stream choices | [messaging](messaging/instructions.md) |
+| Service/account spend, budgets, sizing, commitments, CUR | [billing](billing/instructions.md) |
+| Bedrock invocation, access, residency, cache/quota/cost; related agent options | [Bedrock](bedrock/instructions.md) |
+| SageMaker resource/cost discovery; Airflow ownership discovery | [data platform discovery](references/data-platform-discovery.md) |
 
-Before writing or executing any `aws` CLI command, read the shared
-[CLI operating guide](references/cli-operating.md). Then read the service module or
-reference needed for the task.
+For Grafana, Loki, Mimir, Tempo and Pyroscope, use the installed observability skills for that stack. Do not enable a second telemetry stack just because this AWS skill includes it.
 
-| Topic | Module | When to use |
-|-------|--------|-------------|
-| Lambda, API Gateway, Step Functions, EventBridge, SAM, cold starts, timeouts, CORS | [serverless/instructions.md](serverless/instructions.md) | Serverless apps, Lambda config, event-driven architecture |
-| ECS, Fargate, ECR, task definitions, App Runner, container runtime | [containers/instructions.md](containers/instructions.md) | Container workloads and runtime behavior |
-| GitHub Actions OIDC, ECR/ECS release, SSM fleet deploy, S3 publish, targeted apply, rollback | [delivery/instructions.md](delivery/instructions.md) | Delivering one verified revision to AWS |
-| Transit Gateway, Route 53, Resolver, VPC endpoints, security groups, ALB listener rules | [networking/instructions.md](networking/instructions.md) | Cross-account network discovery and narrow network changes |
-| GuardDuty, WAF evidence, CloudTrail data events, secret exposure, KMS and IAM checks | [security/instructions.md](security/instructions.md) | Security investigation, evidence, and approved containment |
-| CloudWatch, X-Ray, Application Signals, ADOT, alarms, dashboards, Dynamic Instrumentation | [observability/instructions.md](observability/instructions.md) | Monitoring, tracing, metrics, debugging live services |
-| EC2, Auto Scaling, AMI, launch templates, IMDSv2, SSM | [compute/instructions.md](compute/instructions.md) | Virtual machines, fleets, instance management |
-| SQS, SNS, EventBridge, Kinesis, MSK, Amazon MQ | [messaging/instructions.md](messaging/instructions.md) | Queues, topics, streaming, event routing |
-| Cost Explorer, Budgets, Savings Plans, Reserved Instances, CUR, pricing | [billing/instructions.md](billing/instructions.md) | Cost analysis, optimization, pricing lookup |
-| Bedrock, Knowledge Bases, Agents, Guardrails, AgentCore, foundation models | [bedrock/instructions.md](bedrock/instructions.md) | Generative AI, foundation models, RAG |
-| `aws login`, `aws sso login`, credentials, session expired, AccessDeniedException (no creds) | [auth/instructions.md](auth/instructions.md) | Getting AWS credentials for CLI/SDK |
-| General AWS CLI operation, profiles, Regions, output, pagination, shell payloads, account sweeps, safe mutations | [references/cli-operating.md](references/cli-operating.md) | Cross-service CLI operating rules and proven command patterns |
+## Questions that cross modules
 
-## Multi-Domain Questions
+- ECS release: delivery owns artifact and rollback proof; containers owns runtime diagnosis.
+- Database connection failure: databases owns engine/access checks; networking owns the path; security owns IAM/KMS evidence.
+- S3 deployment: delivery owns sync and deletion review; storage owns storage/access diagnosis; networking owns endpoint-policy alignment.
+- Public route exposure: security owns incident evidence; networking owns the approved listener change.
+- EKS application failure: establish AWS cluster access here, then inspect the exact Kubernetes context, namespace and workload with the relevant tooling.
 
-Some questions span domains. Examples:
+## Coverage limits
 
-- "Lambda is slow" → start with `serverless`, may need `observability` for tracing
-- "ECS task OOM" → `containers` has the answer, but if investigating metrics, also `observability`
-- "Ship this image to ECS" → `delivery` owns release proof; `containers` owns runtime configuration
-- "A public route exposes configuration" → `security` owns evidence; `networking` owns an approved listener change
-- "How much does Fargate cost?" → `containers` for sizing, `billing` for pricing lookup
-- "Sweep every account for this resource" → `cli-operating` for the safe loop, then the service module
+Current use gets operational depth. Direct successors, alternatives and complements get a short comparison and discovery path. Adoption of one service does not approve another.
 
-Load the primary domain first. If it points you elsewhere or you need more context, load the second.
-
-## Module Structure
-
-Each subdirectory contains:
-- `instructions.md`: the main skill content (formerly `SKILL.md`)
-- `references/`: deeper documentation loaded on demand
-- `scripts/`: helper scripts, if any
-- `assets/`: templates and config files, if any
-
-Root-level `references/` files contain rules shared by more than one service module.
-
-## Fallback
-
-If no module clearly matches, ask the user which AWS service they're working with.
+If no module fits, identify the service and task, check current official documentation, and use the shared safety rules. Ask only for missing scope or decisions. Do not force the task into the nearest module or invent a local helper script.

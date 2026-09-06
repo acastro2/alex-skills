@@ -306,7 +306,7 @@ without the ENI topology is incomplete.
 
 ## Evidence basis and current references
 
-These workflows reflect repeated Attain operations: multi-profile TGW, Route 53, and
+These workflows cover repeatable network operations: multi-profile TGW, Route 53, and
 Resolver discovery; exact TGW route searches; and security-group and S3 policy inspection.
 The shared guide requires profile failures to stay visible instead of being redirected
 away.

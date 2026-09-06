@@ -6,7 +6,7 @@ description: >-
   Resolver, VPC endpoints with S3 bucket policies, security-group topology, and
   narrow ALB listener-rule containment. Use for TGW, Route 53, Resolver, VPC endpoint,
   bucket-policy network conditions, security group, ENI, ALB listener, or listener-rule
-  incidents. Does not cover general network design, Direct Connect or VPN builds,
+  incidents and AWS-side Direct Connect/VPN diagnosis. Does not cover network builds,
   GuardDuty, WAF, or CI delivery.
 version: 1
 ---
@@ -43,6 +43,7 @@ flowchart TD
 | Find a hosted zone, record, Resolver rule, association, or endpoint | [Route 53 and Resolver](references/investigation.md#route-53-and-resolver) |
 | Compare a VPC endpoint with an S3 bucket policy | [Endpoint and bucket policy](references/investigation.md#vpc-endpoint-and-s3-bucket-policy-alignment) |
 | Trace a security group through ENIs and referenced groups | [Security-group topology](references/investigation.md#security-group-topology) |
+| Diagnose Direct Connect, BGP or VPN tunnel state | [Hybrid connectivity](references/hybrid-connectivity.md) |
 | Add a temporary fixed-response ALB rule during an incident | [Listener emergency response](references/listener-emergency.md) |
 
 Load only the section needed for the task. Load the listener reference only for an

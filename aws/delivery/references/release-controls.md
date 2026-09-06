@@ -25,7 +25,7 @@ Use OIDC and one least-privilege role per delivery purpose. Keep `id-token: writ
 
 Do not pass access keys through GitHub secrets. Do not let a build role deploy, or a deploy role change unrelated infrastructure.
 
-The central ECR workflow constructs its role ARN from `aws_account_id` and `iam_role_name`. The ECS, SSM, S3 artifact, and static workflows accept `ROLE_ARN`. Treat those as two verified contracts, not interchangeable input names.
+Inspect how each workflow resolves its deployment role. A workflow may construct an ARN from separate inputs or require an exact role ARN. Input names and trust boundaries are not interchangeable.
 
 ### AWS-managed host
 
@@ -33,14 +33,9 @@ Use the attached machine role or its configured profile. If injected credentials
 
 ## ECR build proof
 
-Use `ecr-image-build.yml` against an existing immutable repository and a unique source-derived tag. Retain all four outputs:
+Use the approved image-build workflow against an existing immutable repository and a unique source-derived tag. Retain the source commit, image tag, authoritative digest and digest-pinned deployment reference. Map these to the workflow's actual output names.
 
-- `source_sha`
-- `image_tag`
-- `image_digest`
-- `image_ref`
-
-The authoritative release identity is `image_digest`. The deployment input is `image_ref`, which includes the tag and digest. Never promote a mutable tag by itself.
+The digest is the release identity. The deployment reference must include it. Never promote a mutable tag by itself.
 
 If the central workflow is not used, follow the [ECR section of the shared CLI guide](../../references/cli-operating.md#ecr). A successful Docker push is not enough; read the digest back from ECR.
 
@@ -70,9 +65,9 @@ flowchart LR
 
 ## ECS runtime proof
 
-First let `ecs-deploy-task-definition.yml` complete its rollout and health checks. Then compare every running target container with the ECR `image_digest` output.
+First let the approved ECS deployment workflow complete its rollout and health checks. Then compare every running target container with the build's ECR digest.
 
-The command options below are verified by the current central ECS workflow and the current AWS CLI command reference. `describe-tasks` exposes `containers[].imageDigest` as the container image manifest digest. This operator form uses `PROFILE`, `REGION`, and `EVIDENCE_DIR` from the shared CLI guide. In an OIDC job, use the configured environment credentials and omit each `AWS_PROFILE` assignment.
+The command options below use the AWS CLI command reference. `describe-tasks` exposes `containers[].imageDigest` as the container image manifest digest. This operator form uses `PROFILE`, `REGION`, and `EVIDENCE_DIR` from the shared CLI guide. In an OIDC job, use the configured environment credentials and omit each `AWS_PROFILE` assignment.
 
 ```bash
 set -euo pipefail
@@ -155,7 +150,7 @@ Official command references:
 
 ## SSM fleet delivery
 
-Prefer `ec2-ssm-deploy.yml` for its supported Windows deployment kinds. It already provides the controls that are easy to miss in an ad hoc script:
+Prefer the approved fleet workflow when it supports the deployment kind. Verify that it provides these controls before use:
 
 - fixed approved document names and an explicit document version;
 - exact tag target and expected target count;
@@ -166,7 +161,7 @@ Prefer `ec2-ssm-deploy.yml` for its supported Windows deployment kinds. It alrea
 - failure unless every expected invocation reaches `Success`;
 - `deploy` and narrow `rollback` operations.
 
-Start with `DEPLOY=true` and `DRY_RUN=true`. This performs the real AWS preflight without uploading or sending a command. Review the target count, document version, artifact identity, concurrency, failure threshold, timeout, and rollback before setting `DRY_RUN=false`.
+Start with the workflow's verified AWS preflight mode, without uploading or sending a command. Review the target count, document version, artifact identity, concurrency, failure threshold, timeout and rollback before selecting apply mode. Do not assume conventional input names have conventional effects.
 
 Do not replace the fixed document with an inline production PowerShell payload. For diagnostics or an unsupported deployment kind, use the [Systems Manager reference](../../compute/references/systems-manager.md). Keep payloads in files, validate external values, and keep the same target, concurrency, error, timeout, and polling controls.
 
@@ -182,15 +177,15 @@ If only part of the fleet succeeds, stop. Keep the command ID and per-target res
 
 ### Immutable artifact
 
-Use `s3-artifact-deploy.yml` for one release file. Run `DEPLOY=true`, `DRY_RUN=true` first. A real write requires `DRY_RUN=false` after review. Keep its `object-key` and `sha256` outputs as deployment and rollback evidence.
+Use the approved artifact workflow for one release file. Run its verified preflight mode first and require approval for apply. Keep the exact object key and SHA-256 as deployment and rollback evidence.
 
-The workflow proves expected ownership, default KMS encryption, versioning, key absence before upload, object metadata, and downloaded SHA-256. It uses a run-specific key and never uses `--delete`.
+Require expected ownership, approved encryption, versioning, key absence before upload, object metadata and downloaded SHA-256 checks. Use a unique immutable key, not `--delete`.
 
 ### Static content
 
 Direction and scope decide the risk. Use a dedicated prefix. A root-bucket destination is not bounded enough for delete mode.
 
-The central static-site workflow can build without deploying and can sync with `DELETE=false`. It cannot show an AWS dry run and it has no built-in GitHub environment gate. For a controlled production release, use it with `DEPLOY=false`, then split delivery into two dependent custom jobs.
+If the existing static-site workflow cannot show an AWS dry run or enforce production approval, use only its verified build-only path. Split controlled delivery into two dependent jobs.
 
 The unprotected preview job must:
 
@@ -208,7 +203,7 @@ The dependent apply job must declare the protected production environment. GitHu
 5. Run the bounded sync without dry-run mode.
 6. Compare representative critical files and run the site's behavior check.
 
-Do not rebuild between preview and execution. Do not let the apply job accept mutable destination or delete inputs that were absent from the preview. If delete is enabled, the reviewed preview and production approval must both include it. For nonproduction, the central deploy path is acceptable only with `DELETE=false` and the repository's normal write gate.
+Do not rebuild between preview and execution. Do not let the apply job accept mutable destination or delete inputs that were absent from the preview. If delete is enabled, the reviewed preview and production approval must both include it. For nonproduction, keep deletion disabled unless explicitly reviewed, and use the repository's normal write gate.
 
 ## Targeted applies when unrelated drift exists
 
@@ -231,7 +226,7 @@ Rollback the release selector, not the whole platform.
 | Target | Narrow rollback |
 |---|---|
 | ECS | Re-render with the previous verified digest reference, deploy one new task-definition revision, then repeat runtime digest and app checks |
-| SSM fleet | Call `ec2-ssm-deploy.yml` with `OPERATION=rollback`, the exact prior key under the approved prefix, and its recorded SHA-256 |
+| SSM fleet | Use the verified rollback contract with the exact prior key under the approved prefix and its recorded SHA-256 |
 | Immutable S3 artifact | Keep the old object unchanged; move only the consumer's release pointer through its approved process |
 | Static S3 prefix | Restore the prior captured artifact to the same bounded prefix; preview deletions before execution |
 | Targeted infrastructure repair | Apply only the recorded inverse of the object or value changed by the repair |
@@ -240,21 +235,6 @@ Never retag an old image as "latest." Never select a rollback artifact by timest
 
 After rollback, prove the rollback revision and behavior with the same checks used for deployment. "Rollback command succeeded" is not the final state.
 
-## Evidence behind these controls
+## Validate the local contract
 
-Verified current implementation evidence:
-
-- `reusable-workflows/.github/workflows/ecr-image-build.yml` owns OIDC build identity, immutable tags, and authoritative ECR digest outputs.
-- `ecs-render-task-definition.yml` and `ecs-deploy-task-definition.yml` own render, registration, rollout, service stability, and task health. Their current post-check does not compare the running image digest.
-- `ec2-ssm-deploy.yml` owns supported Windows deployment kinds, target counts, concurrency, failure bounds, polling, immutable staging, and rollback selection.
-- `s3-artifact-deploy.yml` owns versioned KMS artifact publication and readback digest verification.
-- `static-site-s3-deploy.yml` has delete mode but no dry-run or environment input.
-
-Verified historical operating evidence:
-
-- `Engineering-Attain-Finance/tf-aws-reusable-workflows-canary-infra#6` records external ECS task-definition ownership and warns that a green infrastructure apply does not prove the new revision is running.
-- `Engineering-Attain-Finance/Cloud#1976` records targeted applies because unrelated drift could not ride with the repair.
-- `Engineering-Attain-Finance/AppStream#23` records machine-role profile fallback instead of embedded credentials.
-- Repeated delivery investigations record ECR stdin login, digest inspection, bounded SSM polling, and failures caused by unbounded remote checks.
-
-Confidence is high for these controls. The actual content and behavior of the named SSM documents in each AWS account were not checked because this work did not call live AWS APIs.
+These controls preserve lessons from actual delivery failures without treating one organization's implementation as universal. Re-read the owning workflows, infrastructure and SSM documents at the selected ref and account before a change. Keep task-definition ownership, target bounds, preflight effects and runtime proof explicit. If the implementation does not enforce a required control, report the gap rather than assuming its name guarantees it.

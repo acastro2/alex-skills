@@ -1,7 +1,7 @@
 ---
 name: aws-delivery
 description: >-
-  Delivers Attain workloads to AWS through GitHub Actions, ECR and ECS, Systems
+  Delivers workloads to AWS through GitHub Actions, ECR and ECS, Systems
   Manager fleets, or S3. Use for OIDC and machine-role identity, immutable image
   and artifact promotion, external ECS deployment ownership, bounded SSM rollout,
   static-site sync, targeted infrastructure applies, release evidence, and narrow
@@ -19,11 +19,11 @@ Before writing or running any `aws` command, read the shared [CLI operating guid
 
 | Delivery need | Read next | Also load |
 |---|---|---|
-| Call an Attain reusable workflow | [Reusable workflow contracts](references/reusable-workflows.md) | This page |
+| Call an existing reusable workflow | [Reusable workflow contracts](references/reusable-workflows.md) | This page |
 | Build to ECR and deploy to ECS | [Verification, ownership, and rollback](references/release-controls.md) | [Containers](../containers/instructions.md) |
-| Deploy to a Windows EC2 fleet | [Reusable workflow contracts](references/reusable-workflows.md#ec2-ssm-deployyml) | [Systems Manager](../compute/references/systems-manager.md) |
-| Publish an immutable S3 artifact | [Reusable workflow contracts](references/reusable-workflows.md#s3-artifact-deployyml) | [Release controls](references/release-controls.md) |
-| Sync a static site to S3 | [Static-site limits](references/reusable-workflows.md#static-site-s3-deployyml) | [S3 controls](references/release-controls.md#s3-delivery) |
+| Deploy to a Windows EC2 fleet | [Reusable workflow contracts](references/reusable-workflows.md#windows-fleet-contract) | [Systems Manager](../compute/references/systems-manager.md) |
+| Publish an immutable S3 artifact | [Reusable workflow contracts](references/reusable-workflows.md#contract-by-target) | [Release controls](references/release-controls.md) |
+| Sync a static site to S3 | [Static-site limits](references/reusable-workflows.md#static-site-production-boundary) | [S3 controls](references/release-controls.md#s3-delivery) |
 | Apply only the intended infrastructure repair | [Targeted applies](references/release-controls.md#targeted-applies-when-unrelated-drift-exists) | The repository's own infrastructure rules |
 | Roll back a failed release | [Narrow rollback](references/release-controls.md#narrow-rollback) | The service module for the target |
 
@@ -51,11 +51,11 @@ Write down the boundary before deployment:
 - If delivery owns the ECS revision, infrastructure code must not reset `task_definition` during a later apply. Stop if both systems can update it.
 - A green infrastructure apply proves only that the requested infrastructure change completed. It does not prove the intended application revision is running.
 
-## Use the Attain workflow when it fits
+## Use the existing workflow when it fits
 
-Prefer the central workflows in `Engineering-Attain-Finance/reusable-workflows/.github/workflows/`. Pin calls to an approved ref. Do not guess a workflow path, input name, or default. The verified contracts are in [reusable-workflows.md](references/reusable-workflows.md).
+Discover central workflows from the repository's existing callers and guidance. Pin calls to an approved ref. Do not guess a workflow path, input name, or default. Follow the [contract inspection guide](references/reusable-workflows.md).
 
-Use custom repository jobs only when the central workflow cannot enforce the required control. The current static-site workflow is the important case: it has `DELETE`, but no dry-run preview or GitHub environment input. Use it with `DEPLOY=false` to build the artifact. Then use two jobs for controlled production delivery:
+Use custom repository jobs only when the central workflow cannot enforce the required control. If a static-site workflow has deletion but no dry-run preview or protected environment, use only its verified build-only path. Then use two jobs for controlled production delivery:
 
 1. An unprotected preview job downloads that exact artifact, records its digest, runs the shared CLI guide's S3 dry-run flow, and publishes the preview, destination, and delete mode for review.
 2. A dependent apply job uses the protected production environment. After approval, it downloads the same artifact, verifies its digest and fixed inputs, repeats the dry run, stops if the result differs, and runs the bounded sync.

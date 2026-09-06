@@ -1,6 +1,6 @@
 # AWS CLI Operating Guide
 
-Use this guide before you write or run any `aws` command. It captures the operating patterns that repeatedly worked across Attain investigations, deployments, audits, and recovery work.
+Use this guide before you write or run any `aws` command. It captures operating patterns for investigations, deployments, audits, and recovery work.
 
 The rule is simple: prove the scope, reduce the data, make the smallest change, wait for AWS, and verify the result.
 
@@ -132,7 +132,7 @@ Do not parse display tables. They are for people, not scripts.
 Discover configured profiles instead of constructing account IDs or role ARNs. Print the profile and caller for every result.
 
 ```bash
-PROFILE_PREFIX=CloudEngineering-
+PROFILE_PREFIX="<confirmed-profile-prefix>"
 SERVICE="<service>"
 LIST_OPERATION="<list-operation>"
 BOUNDED_PROJECTION="<bounded-projection>"
