@@ -23,7 +23,7 @@ skill-name/
 ## Key patterns
 
 - **SKILL.md frontmatter** always has `name` and `description`. Some skills add `allowed-tools` to restrict what the skill may call, and `disable-model-invocation: true` to make a skill manual-only.
-- **alex-voice/** is the one discoverable voice skill. Its `SKILL.md` defines Alex's voice for docs, comms, exec, chat, and general prose; `references/alex-blogger.md` adds blog-specific guidance.
+- **alex-voice/** is the one discoverable voice skill. Its `SKILL.md` defines Alex's voice for chat, comms, exec, docs, spoken, and general prose; `references/alex-blogger.md` adds the blog layer; `references/voice-fingerprint.md` holds the measured markers; `scripts/voice_check.py` scores drafts. Real excerpts live in Alex's private vault, never in this repo.
 - **skill-creator/** is the meta-skill with the most infrastructure: eval loops (`scripts/run_loop.py` uses `claude -p` CLI), grading subagents (`agents/analyzer.md`, `comparator.md`, `grader.md`), benchmark aggregation, and description optimization.
 - **pptx/ and docx/** have Python helpers for Office file manipulation (markitdown, thumbnail.py, office/unpack.py, package.py).
 

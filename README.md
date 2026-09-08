@@ -16,6 +16,8 @@ Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/sk
 
 - `alex-voice/SKILL.md` — Discoverable voice skill for docs, comms, exec, chat, and general prose
 - `alex-voice/references/alex-blogger.md` — Blog-specific guidance loaded by the voice skill
+- `alex-voice/references/voice-fingerprint.md` — Measured rhythm and vocabulary per register, from Alex's own words
+- `alex-voice/scripts/voice_check.py` — Scores a draft against the fingerprint; em dashes and banned phrases are blockers
 
 ## Skill anatomy
 
