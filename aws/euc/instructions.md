@@ -9,7 +9,7 @@ description: >-
 # EUC: find the fault before restarting sessions
 
 Use this module to separate identity, directory, network, capacity, and image failures. A reboot does not fix a broken DNS path.
-Read [CLI operating](../references/cli-operating.md) first. It owns scope checks, SSO/auth, pagination, evidence, and write gates. Use the configured [writing guidance](../../alex-voice/SKILL.md) for the report.
+Read [CLI operating](../references/cli-operating.md) first. It owns scope checks, SSO/auth, pagination, evidence, and write gates.
 
 ## Start in the right place
 
@@ -155,4 +155,4 @@ For Personal reboot/rebuild, first verify that operation supports the exact desk
 ## Close with evidence, not a claim
 
 Report exact scope and UTC window, affected type/IDs, observed state and error codes, isolated layer, approved change, before/after image or bundle identity, test result, and rollback status. Label partial discovery, unresolved mixed-image rollout, and checks not run. No secret, customer, or user data in the report.
-See [sources and validation](references.md) for the documentation basis and offline limits.
+See [sources and validation](references/sources.md) for the documentation basis and offline limits.

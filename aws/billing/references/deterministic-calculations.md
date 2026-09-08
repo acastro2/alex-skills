@@ -59,4 +59,3 @@ print(f"Annual savings: ${total_savings * 12:,.2f}")
 - LLMs frequently make arithmetic errors on multi-digit numbers, especially with percentages and aggregations
 - Cost data involves currency — wrong numbers erode customer trust immediately
 - Scripts produce verifiable, reproducible results
-- The AWS MCP server's `run_script` tool runs Python in a sandbox — use it when available

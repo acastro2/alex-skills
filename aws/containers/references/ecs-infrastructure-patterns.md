@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [Verify Dependencies](#verify-dependencies)
+- [Quick-Start: CDK Fargate Web App](#quick-start-cdk-fargate-web-app)
 - [L3 Construct Overview](#l3-construct-overview)
 - [Web App on Fargate](#web-app-on-fargate)
 - [SQS Worker](#sqs-worker)
@@ -26,6 +27,42 @@ Operators MUST confirm the following before proceeding:
 |---|---|
 | Correct account/region | `aws sts get-caller-identity --output json` |
 | CDK bootstrapped in target account | `cdk bootstrap aws://$ACCOUNT_ID/$REGION` |
+
+---
+
+## Quick-Start: CDK Fargate Web App
+
+```typescript
+import * as cdk from 'aws-cdk-lib';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+
+const imageDigest = process.env.IMAGE_DIGEST;
+if (!imageDigest?.match(/^sha256:[a-f0-9]{64}$/)) {
+  throw new Error('IMAGE_DIGEST must be an immutable sha256 digest');
+}
+
+const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'WebApp', {
+  taskImageOptions: {
+    image: ecs.ContainerImage.fromEcrRepository(repo, imageDigest),
+    containerPort: 8080,
+    secrets: { DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret) },
+  },
+  cpu: 512,
+  memoryLimitMiB: 1024,
+  desiredCount: 2,
+  publicLoadBalancer: true,
+  circuitBreaker: { rollback: true },
+  minHealthyPercent: 100,
+});
+
+service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
+
+const scaling = service.service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 10 });
+scaling.scaleOnCpuUtilization('CpuScaling', { targetUtilizationPercent: 70 });
+```
+
+CDK L3 patterns auto-create VPC, cluster, ALB, target group, and security groups. `IMAGE_DIGEST` must come from the verified build output. For production, create these resources separately, pass them in, and use the test, alarm, approval, observation, runtime-digest proof, and known-good rollback controls in [release controls](../../delivery/references/release-controls.md). `ApplicationLoadBalancedFargateService` defaults to `assignPublicIp: false` — tasks in public subnets need `assignPublicIp: true` for internet access, or use private subnets with NAT.
 
 ---
 

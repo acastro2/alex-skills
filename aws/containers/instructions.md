@@ -33,10 +33,6 @@ CDK examples below are for CDK repos. Use existing Terraform/OpenTofu modules or
 
 Provides ECS/Fargate/ECR runtime guidance and AWS-side EKS diagnosis. Existing App Runner is a limited compatibility path.
 
-**Recommended setup:** Install the AWS MCP server for sandboxed execution, audit logging, and enterprise controls. See: aws.amazon.com/mcp
-
-**Without AWS MCP:** This skill works with any agent that has AWS CLI access. All commands use standard AWS CLI syntax.
-
 **When NOT to use this skill:**
 - Kubernetes workload manifests and in-cluster changes → establish EKS access here, then use the repo's Kubernetes tooling
 - AWS release automation and deployment proof → use `aws-delivery`
@@ -99,37 +95,7 @@ Apply these every time. Each corrects a mistake agents make without explicit ins
 
 ## Quick-Start: CDK Fargate Web App
 
-```typescript
-import * as cdk from 'aws-cdk-lib';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
-
-const imageDigest = process.env.IMAGE_DIGEST;
-if (!imageDigest?.match(/^sha256:[a-f0-9]{64}$/)) {
-  throw new Error('IMAGE_DIGEST must be an immutable sha256 digest');
-}
-
-const service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'WebApp', {
-  taskImageOptions: {
-    image: ecs.ContainerImage.fromEcrRepository(repo, imageDigest),
-    containerPort: 8080,
-    secrets: { DB_PASSWORD: ecs.Secret.fromSecretsManager(dbSecret) },
-  },
-  cpu: 512,
-  memoryLimitMiB: 1024,
-  desiredCount: 2,
-  publicLoadBalancer: true,
-  circuitBreaker: { rollback: true },
-  minHealthyPercent: 100,
-});
-
-service.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
-
-const scaling = service.service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 10 });
-scaling.scaleOnCpuUtilization('CpuScaling', { targetUtilizationPercent: 70 });
-```
-
-CDK L3 patterns auto-create VPC, cluster, ALB, target group, and security groups. `IMAGE_DIGEST` must come from the verified build output. For production, create these resources separately, pass them in, and use the test, alarm, approval, observation, runtime-digest proof, and known-good rollback controls in [release controls](../delivery/references/release-controls.md). `ApplicationLoadBalancedFargateService` defaults to `assignPublicIp: false` — tasks in public subnets need `assignPublicIp: true` for internet access, or use private subnets with NAT.
+Only for repos that already use CDK. The digest-pinned `ApplicationLoadBalancedFargateService` example lives in [ECS infrastructure patterns](references/ecs-infrastructure-patterns.md#quick-start-cdk-fargate-web-app). Terraform/OpenTofu repos keep their own modules; do not introduce CDK to prove a point.
 
 ## Quick-Start: ECS Exec
 
@@ -147,7 +113,7 @@ If `TargetNotConnectedException`: wait 30–60s for SSM agent startup, check NAT
 
 ## Common Workflows
 
-Use the best available tool for AWS operations (MCP server, AWS CLI, or SDK). The commands below show the AWS CLI form.
+The commands below show the AWS CLI form.
 
 Read reference files only when the conversation requires deeper detail.
 

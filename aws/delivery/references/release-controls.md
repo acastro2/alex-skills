@@ -72,10 +72,21 @@ The command options below use the AWS CLI command reference. `describe-tasks` ex
 ```bash
 set -euo pipefail
 
-EXPECTED_DIGEST=replace-with-ecr-image-digest
+REPO=replace-with-ecr-repository
+IMAGE_TAG=replace-with-source-derived-tag
 CLUSTER=replace-with-cluster
 SERVICE=replace-with-service
 CONTAINER=replace-with-container
+
+# Read the release identity from ECR. Never paste a digest from a build log by hand.
+EXPECTED_DIGEST=$(AWS_PROFILE="$PROFILE" aws ecr describe-images \
+  --region "$REGION" \
+  --repository-name "$REPO" \
+  --image-ids imageTag="$IMAGE_TAG" \
+  --query 'imageDetails[0].imageDigest' \
+  --output text \
+  --no-cli-pager)
+[[ "$EXPECTED_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo "no digest for $REPO:$IMAGE_TAG" >&2; exit 1; }
 
 AWS_PROFILE="$PROFILE" aws ecs describe-services \
   --region "$REGION" \

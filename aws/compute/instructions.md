@@ -9,16 +9,12 @@ description: >-
   Applies to EC2 instance and fleet questions, InsufficientInstanceCapacity, CPU-credit/surplus
   charges, IMDSv2 401s, instances stuck in Pending:Wait, ASG not replacing unhealthy
   instances, status-check failures, SSH refused/timed out, or instances missing as
-  SSM managed nodes. For a single secure instance launch, the launching-ec2-instance-with-best-practices
-  skill is more appropriate; for instance profiles, see setting-up-ec2-instance-profiles;
-  for Image Builder, see creating-ec2-image-builder-pipeline. Does NOT cover Lambda,
-  ECS/Fargate, EKS, VPC/ALB/NLB design, or IAM policy authoring.
+  SSM managed nodes. Does NOT cover Lambda, ECS/Fargate, EKS, VPC/ALB/NLB design,
+  IAM policy authoring, or Image Builder pipelines.
 version: 1
 ---
 
 # Amazon EC2 Compute
-
-Best experience with the AWS MCP server; also works with the AWS CLI alone — no hard dependency on either.
 
 ## Critical Warnings
 
@@ -89,10 +85,9 @@ Full tables and more errors in [troubleshooting.md](references/troubleshooting.m
 
 ## Not Covered By This Skill
 
-- **Launching a single hardened instance with best-practice defaults** → use the `launching-ec2-instance-with-best-practices` skill
-- **Creating IAM roles / instance profiles for EC2** → use the `setting-up-ec2-instance-profiles` skill
-- **Building AMIs with an Image Builder pipeline** → use the `creating-ec2-image-builder-pipeline` skill
-- **Lambda / serverless** → `aws-serverless`; **ECS/Fargate** → `aws-containers`; **EKS/Kubernetes** → `kubernetes`
+- **IAM roles and instance profiles for EC2** → the security module for evidence; policy authoring follows the owning IaC repo
+- **Building AMIs with an Image Builder pipeline** → not covered; use current AWS docs and the shared CLI rules
+- **Lambda / serverless** → [serverless](../serverless/instructions.md); **ECS/Fargate, EKS** → [containers](../containers/instructions.md)
 - **Live VPC, Transit Gateway, Route 53, endpoint, security-group, and ALB investigation** → `aws-networking`; new network architecture is not covered here
 - **IAM, KMS, secret-access, and WAF evidence** → `aws-security-operations`; full policy authoring is not covered
 - **CloudWatch dashboards and agent setup** → `aws-observability`

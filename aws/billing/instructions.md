@@ -39,10 +39,6 @@ Use this skill when:
 - **Savings Plans / Reserved Instances** — commitment-based discounts
 - **CUR 2.0** — detailed line-item billing data queryable via Athena
 
-**Recommended setup:** Use the AWS MCP server for sandboxed execution, audit logging, and enterprise controls. See: https://docs.aws.amazon.com/aws-mcp/
-
-**Without AWS MCP:** All commands use standard AWS CLI syntax and work with any agent that has CLI access.
-
 ## Critical Rule: Always Check the Current Date
 
 **Before making ANY Cost Explorer, Budgets, or Savings Plans API call, you MUST determine the current date.** Use a tool to get the current date and time — do NOT assume or guess the year. LLMs frequently default to dates from their training data instead of the actual current date, producing analyses of stale data that appear correct but are completely wrong.
@@ -51,7 +47,7 @@ Use this skill when:
 
 **You MUST NEVER perform numerical calculations (sums, averages, percentages, comparisons, counts, min/max) by reasoning in your response.** LLM arithmetic is unreliable and produces wrong answers on cost data.
 
-**You MUST ALWAYS use a script or calculator tool** for any math on data returned from API calls. Write a Python script that performs the calculation and prints the result. If the AWS MCP server's `run_script` tool is available, use it. Otherwise, run the script locally.
+**You MUST ALWAYS use a script or calculator tool** for any math on data returned from API calls. Write a Python script that performs the calculation and prints the result, and run it locally.
 
 Read `references/deterministic-calculations.md` for patterns and examples.
 

@@ -23,6 +23,7 @@ Before any AWS command, read the [shared CLI guide](references/cli-operating.md)
 - A timeout, stopped task, billing line or successful API response is evidence, not a complete diagnosis. Separate observation, hypothesis and proof.
 - Prefer a reviewed IaC change. Emergency CLI changes need exact targets, before state, approval, rollback and reconciliation into IaC.
 - Use Exa for current AWS guidance and Context7 for library/CLI details when extending this skill or using changing APIs. Do not send internal resource data to either service.
+- Every command here is plain AWS CLI. If an AWS MCP server is connected and healthy, it may run the same reads; it is not required, and a failed MCP connection is not a reason to stop.
 
 ```mermaid
 flowchart LR

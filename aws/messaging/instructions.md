@@ -10,18 +10,58 @@ version: 1
 
 # AWS Messaging & Streaming Services
 
+Read the [shared CLI guide](../references/cli-operating.md) before any command. It owns identity, Region, output shaping, evidence files and write gates. Limits, versions and alarm thresholds change; when a number matters, check current AWS documentation instead of guessing. A wrong limit is worse than "not verified".
 
-When answering AWS messaging and streaming questions, verify specific numbers, versions, limits, and behavioral details from service-specific skills or official AWS documentation. When uncertain, search skills or docs rather than guessing. Fabricated configuration options or incorrect version numbers are worse than admitting uncertainty.
+## Diagnose a delivery problem before choosing a service
 
-When a question asks about recommended configurations (CloudWatch alarm settings, thresholds, missing data treatment), search for the service-specific skills or documentation rather than relying on general best practices.
+Most messaging incidents are one of four things: a missing resource policy, a wrong timeout, a filter that drops records, or a consumer that is not idempotent. Read the configuration first; message bodies are application data and often personal data, so never `receive-message` on a production queue to "see what is in it".
+
+```mermaid
+flowchart LR
+  A[Symptom: lost, duplicated or stuck messages] --> B[Read queue/topic/rule config]
+  B --> C[Read delivery metrics for one UTC window]
+  C --> D{Layer}
+  D --> E[Resource policy or KMS]
+  D --> F[Timeouts and batching]
+  D --> G[Filter or transform]
+  D --> H[Consumer idempotency]
+```
+
+Discovery commands, metadata only. Set `PROFILE` and `REGION` after the shared preflight.
+
+```bash
+aws sqs get-queue-attributes --queue-url "$QUEUE_URL" --profile "$PROFILE" --region "$REGION" \
+  --attribute-names Policy RedrivePolicy VisibilityTimeout ReceiveMessageWaitTimeSeconds KmsMasterKeyId \
+    ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible --output json --no-cli-pager
+aws events list-targets-by-rule --rule "$RULE" --event-bus-name "$BUS" --profile "$PROFILE" --region "$REGION" \
+  --query 'Targets[].{Id:Id,Arn:Arn,DLQ:DeadLetterConfig.Arn,Retry:RetryPolicy}' --output json --no-cli-pager
+aws sns get-subscription-attributes --subscription-arn "$SUB_ARN" --profile "$PROFILE" --region "$REGION" \
+  --query 'Attributes.{Protocol:Protocol,Raw:RawMessageDelivery,Redrive:RedrivePolicy,Filter:FilterPolicy}' \
+  --output json --no-cli-pager
+aws firehose describe-delivery-stream --delivery-stream-name "$STREAM" --profile "$PROFILE" --region "$REGION" \
+  --query 'DeliveryStreamDescription.Destinations[].{Processing:ExtendedS3DestinationDescription.ProcessingConfiguration,Buffer:ExtendedS3DestinationDescription.BufferingHints}' \
+  --output json --no-cli-pager
+aws lambda get-event-source-mapping --uuid "$ESM_UUID" --profile "$PROFILE" --region "$REGION" \
+  --query '{State:State,Batch:BatchSize,Window:MaximumBatchingWindowInSeconds,Partial:FunctionResponseTypes,Filters:FilterCriteria}' \
+  --output json --no-cli-pager
+```
+
+Then one UTC window of delivery metrics: SQS `ApproximateAgeOfOldestMessage` and `NumberOfMessagesReceived` versus `NumberOfMessagesDeleted`; EventBridge `FailedInvocations`, `InvocationsSentToDlq` and `InvocationsFailedToBeSentToDlq`; SNS `NumberOfNotificationsFailed`; Firehose `DeliveryToS3.Success`. A missing series is unknown, not zero.
+
+| Signal | Check next | Do not |
+|---|---|---|
+| Target fails, DLQ empty | DLQ queue policy for the sending service principal with `aws:SourceArn`; KMS key policy if the DLQ is encrypted | Recreate the rule or topic |
+| Same message processed twice | Visibility timeout vs consumer timeout (at least 6x for Lambda), partial-batch response, consumer idempotency key | Raise `maxReceiveCount` to hide it |
+| Records dropped | Subscription or rule filter policy, ESM filter criteria, Firehose transform errors | Remove the filter without reading it |
+| Consumer stalls | `ApproximateNumberOfMessagesNotVisible` growing, ESM state, poison message and DLQ `maxReceiveCount` | Purge the queue |
+
+Changes go through the owning IaC. `sqs set-queue-attributes --attributes Policy=...` replaces the whole policy; merge with `jq` from the saved before state, and follow the shared write gate.
 
 ## Overview
 
 Domain expertise for choosing and using AWS services that move data between producers and consumers.
 This skill covers two fundamental patterns — **messaging** and **streaming** — and the AWS services that implement each.
 Use this skill to decide which pattern fits a workload, select the right service, and understand how services integrate with each other.
-
-For specific guidance on individual AWS services, see reference files or service-specific Skills.
 
 ## Streaming and Messaging
 

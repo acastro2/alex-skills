@@ -1,8 +1,18 @@
+---
+name: aws-storage
+description: >-
+  Diagnose S3 access and storage state, FSx for NetApp ONTAP, EFS, and managed data
+  movement (Transfer Family, DataSync, DMS). Metadata-first checks, private-path
+  reasoning, and restore proof. No object bodies, no publishing commands; publishing
+  belongs to delivery.
+version: 1
+---
+
 # Storage: prove the path before touching the data
 
 Use this module for S3 access and storage diagnosis, FSx for NetApp ONTAP, EFS, and discovery of managed file or data movement. Inventory does not need customer object bodies, mounted shares, database rows, or a test transfer.
 
-Read [the shared CLI guide](../references/cli-operating.md) first. It owns scoped SSO, identity checks, pagination, approval, and file-based payloads. Use the configured [writing guidance](../../alex-voice/SKILL.md) when writing findings.
+Read [the shared CLI guide](../references/cli-operating.md) first. It owns scoped SSO, identity checks, pagination, approval, and file-based payloads.
 
 ## Scope and working pattern
 

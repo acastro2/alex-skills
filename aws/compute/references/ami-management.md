@@ -1,7 +1,7 @@
 # AMI Management
 
 ## Overview
-Creating, sharing, and retiring Amazon Machine Images. For building AMIs with an automated pipeline (recipes, components, distribution), use the `creating-ec2-image-builder-pipeline` skill — this reference covers the AMI lifecycle and sharing that a domain skill owns.
+Creating, sharing, and retiring Amazon Machine Images. Automated pipelines (EC2 Image Builder recipes, components, distribution) are not covered here; use current AWS docs. This reference covers the AMI lifecycle and sharing.
 
 ## Create a custom AMI
 ```bash
@@ -48,5 +48,4 @@ KMS keys are Region-scoped, so copying/sharing an encrypted AMI to a different R
 - **Audit AMI operations with CloudTrail** — enable CloudTrail in all Regions and alarm on sensitive AMI actions (`ModifyImageAttribute` for sharing changes, `DeregisterImage`, `DisableImage`) to detect unauthorized cross-account sharing or destructive deregistration.
 
 ## Related
-- The `creating-ec2-image-builder-pipeline` skill for automated AMI build pipelines
 - [provisioning.md](provisioning.md) to reference the AMI in a launch template

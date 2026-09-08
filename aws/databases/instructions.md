@@ -1,8 +1,18 @@
+---
+name: aws-databases
+description: >-
+  Diagnose RDS SQL Server and PostgreSQL, Aurora (including Serverless v2 members),
+  DocumentDB, Redis OSS/Valkey, DynamoDB and OpenSearch: engine and topology discovery,
+  connection-failure layering, recovery proof and reviewed changes. Metadata first;
+  never scan data to identify a service.
+version: 1
+---
+
 # Databases and caches
 
 Find the engine and the failing layer before changing anything. A reachable endpoint is not proof of database access. A backup is not proof of recovery.
 
-Read the [shared CLI guide](../references/cli-operating.md) first. It owns named SSO profiles, account/Region checks, output limits, and mutation gates. Use the configured [writing guidance](../../alex-voice/SKILL.md) for findings and handoffs.
+Read the [shared CLI guide](../references/cli-operating.md) first. It owns named SSO profiles, account/Region checks, output limits, and mutation gates.
 
 ## Scope
 

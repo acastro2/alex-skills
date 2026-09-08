@@ -59,6 +59,6 @@ Alternatively allow HTTPS (443) egress to those service endpoints (add `kms.<reg
 
 ## Related
 - [provisioning.md](provisioning.md) for key pairs (when you do need SSH)
-- The `setting-up-ec2-instance-profiles` skill for creating the instance profile itself
+- Instance profile creation follows the owning IaC repo; the [security module](../../security/instructions.md) covers role evidence
 - [troubleshooting.md](troubleshooting.md) for connectivity issues
 - [../../references/cli-operating.md](../../references/cli-operating.md) for profile, payload-file, polling, and mutation controls

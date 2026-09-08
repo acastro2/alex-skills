@@ -25,7 +25,15 @@ For MWAA, inspect the chosen environment's state, network, execution role and lo
 
 ## Changes and proof
 
-Before a stop, resize, delete or schedule change, require the owner, dependencies, impact, retention requirements, approved diff and recovery plan. A resource with low utilization can still support scheduled or infrequent work. Confirm cost after the billing lag and verify the workload still completes; do not call an API response a realized saving.
+Discovery ends with a report, not a change. If the owner then asks for a stop, resize, delete or schedule change, every answer must carry this gate, in this order:
+
+1. **Owner** named and in agreement. No owner, no change.
+2. **Dependencies** checked: who calls the endpoint, which pipelines read the notebook output, which jobs run on the schedule. Low utilization can still be a monthly batch.
+3. **Impact and retention**: what stops working, what data must be kept, and for how long.
+4. **Approved diff and recovery**: the exact before state saved (`describe-endpoint-config`, `describe-notebook-instance`), the exact command, and how to restore it.
+5. **Proof after the fact**: a successful API response is not a saving. Confirm the workload still completes and confirm the drop on the next bill after the billing lag.
+
+Write these five out even when the current task is discovery only, so the reader knows what the next step costs.
 
 For deep service configuration, fetch current official docs through Exa and exact APIs through Context7. Keep local depth small until a real task needs more.
 

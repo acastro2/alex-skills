@@ -11,7 +11,7 @@ version: 1
 
 # AWS delivery
 
-Ship one known revision, prove that revision reached the target, and keep rollback narrow.
+Ship one known revision, prove that revision reached the target, and keep rollback narrow. Pipeline identity is GitHub OIDC role assumption, never static keys; name that in every delivery answer, because the identity is part of the release contract.
 
 Before writing or running any `aws` command, read the shared [CLI operating guide](../references/cli-operating.md). It owns identity, Region, output, payload-file, polling, and mutation controls. Do not copy or weaken those rules here.
 
@@ -67,7 +67,7 @@ GitHub approves an environment before its job starts. A dry run inside the prote
 Do not start a write until all of these are known:
 
 1. Source commit and immutable image digest or artifact SHA-256.
-2. AWS identity, account, Region, environment, and exact target set.
+2. AWS identity (the GitHub OIDC deployment role or machine role, never static keys), account, Region, environment, and exact target set.
 3. The one system that owns the active revision.
 4. Before-state evidence and service-specific pre-checks.
 5. Write scope, expected impact, hard timeout, and failure threshold.
@@ -90,9 +90,25 @@ Do not start a write until all of these are known:
 Keep a small evidence chain:
 
 ```text
-source commit -> build output digest -> requested deployment -> AWS target revision -> app check
+pipeline identity (GitHub OIDC role, no static keys) -> source commit -> build output digest -> requested deployment -> AWS target revision -> app check
 ```
 
-For ECS, compare the ECR digest with every running target container's `imageDigest`, then run the application's revision or behavior check. For SSM, require every expected target to reach `Success`, then check the deployed file, service, or endpoint. For S3, compare the uploaded object or fetched static file with the local artifact.
+The chain starts with identity on purpose. Every proof and every rollback below runs as some principal; write down which one. For GitHub Actions that is the OIDC-assumed deployment role, granted `id-token: write` only on the deploying job. If the answer to "who deployed this" is a long-lived access key, that is a finding, not a footnote.
+
+For ECS, read the digest from ECR, then compare it with every running target container's `imageDigest`, then run the application's revision or behavior check. Do not type the expected digest by hand; fetch it:
+
+```bash
+EXPECTED_DIGEST=$(AWS_PROFILE="$PROFILE" aws ecr describe-images --region "$REGION" \
+  --repository-name "$REPO" --image-ids imageTag="$IMAGE_TAG" \
+  --query 'imageDetails[0].imageDigest' --output text --no-cli-pager)
+
+AWS_PROFILE="$PROFILE" aws ecs describe-tasks --region "$REGION" --cluster "$CLUSTER" \
+  --tasks $(AWS_PROFILE="$PROFILE" aws ecs list-tasks --region "$REGION" --cluster "$CLUSTER" \
+    --service-name "$SERVICE" --desired-status RUNNING --query 'taskArns' --output text --no-cli-pager) \
+  --query "tasks[].containers[?name=='$CONTAINER'].{Task:taskArn,Digest:imageDigest,Status:lastStatus}" \
+  --output json --no-cli-pager
+```
+
+Every running container must show `EXPECTED_DIGEST`. The full gate with evidence files is in [release controls](references/release-controls.md#ecs-runtime-proof). For SSM, require every expected target to reach `Success`, then check the deployed file, service, or endpoint. For S3, compare the uploaded object or fetched static file with the local artifact.
 
 If any link is missing, report the release as unverified. Do not convert "apply succeeded," "service stable," or "SSM command succeeded" into "the intended app is live."
