@@ -83,6 +83,11 @@ def parse_dictionary(xml):
         caps[operation] = native and command(term, code) and term in receivers
     caps["execute"] = caps["execute"] and commands["execute"]["parameters"].get("javascript", {}).get("code") == "JvSc"
     caps["new_tab"] = bool(writable_url and command("make", "corecrel"))
+    caps["ax_context"] = bool(caps["execute"] and prop("application", "frontmost", "pisf")
+                              and prop("window", "index", "pidx")
+                              and prop("window", "active tab", "acTa")
+                              and prop("window", "visible", "pvis")
+                              and prop("window", "minimized", "pmnd"))
     return {
         "adapter": "chromium" if native else None,
         "capabilities": caps,

@@ -56,6 +56,16 @@ class DictionaryTests(unittest.TestCase):
         self.assertFalse(any(alternate["capabilities"].values()))
         self.assertIn("execute", alternate["commands"])
 
+    def test_ax_context_requires_the_actual_foreground_dictionary_properties(self):
+        xml = DICTIONARY.replace('<element type="window"/>', '<element type="window"/><property name="frontmost" code="pisf"/>')
+        properties = {'index': 'pidx', 'active tab': 'acTa', 'visible': 'pvis', 'minimized': 'pmnd'}
+        xml = xml.replace('<element type="tab"/>', '<element type="tab"/>' + ''.join(
+            f'<property name="{name}" code="{code}"/>' for name, code in properties.items()))
+        self.assertTrue(ae.parse_dictionary(xml)["capabilities"]["ax_context"])
+        for code in properties.values():
+            with self.subTest(code=code):
+                self.assertFalse(ae.parse_dictionary(xml.replace(code, "bad!"))["capabilities"]["ax_context"])
+
     def test_invalid_dictionary_is_not_reported_as_supported(self):
         for xml in ("<dictionary>", "<html/>"):
             with self.subTest(xml=xml), self.assertRaises(ae.BrowserError) as error:
@@ -104,6 +114,25 @@ class InputTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == "darwin", "Requires macOS JXA; no browser access")
 class TransportErrorTests(unittest.TestCase):
+    def test_text_tab_ids_resolve_numeric_ids_without_a_title_or_index_fallback(self):
+        source = (SCRIPTS / "transport.js").read_text()
+        source += '''
+function run() {
+  function app(rows) {
+    return {windows:{id:function(){return Object.keys(rows);},byId:function(wid){
+      return {id:function(){return wid;},tabs:{id:function(){return rows[wid];},byId:function(tid){return {id:function(){return tid;}};}}};
+    }}};
+  }
+  var match=locate(app({'11':[7],'12':[42]}),'42'), errors=[];
+  [app({'11':[7]}),app({'11':[42],'12':[42]})].forEach(function(a){try{locate(a,'42');}catch(e){errors.push(e.code);}});
+  return JSON.stringify({window:String(match.window.id()),tab:String(match.tab.id()),errors:errors});
+}
+'''
+        result = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-"], input=source,
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"window": "12", "tab": "42", "errors": ["OBJECT_NOT_FOUND", "TARGET_AMBIGUOUS"]})
+
     def test_os_errors_remain_distinct_from_browser_javascript_gate(self):
         source = (SCRIPTS / "transport.js").read_text()
         cases = [{"number": -1743, "message": "Not authorized"}, {"number": -1712, "message": "Timed out"},

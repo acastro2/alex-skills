@@ -22,7 +22,7 @@ The reported capabilities describe **this helper's recognized protocol**, not ev
 
 Never trim or lowercase codes. Do not copy the research shorthand `ID ` as a three-byte code. The installed Edge and Chrome dictionaries use two spaces after `ID`.
 
-All browser control in the helper goes through JXA and `/usr/bin/osascript`, which send Apple Events. The Objective-C bridge reads running-process metadata through AppKit; it does not perform UI automation. Request data lives in a private temporary file and is removed after the call. The helper does not start a WebDriver server, extension, debugger port, or browser process.
+All browser control in `browser_ae.py` goes through JXA and `/usr/bin/osascript`, which send Apple Events. The Objective-C bridge reads running-process metadata through AppKit; it does not perform UI automation. Request data lives in a private temporary file and is removed after the call. The helper does not start a WebDriver server, extension, debugger port, or browser process.
 
 ## What about another browser?
 
@@ -30,7 +30,7 @@ For Edge, Chrome, Brave, and any fork: discover its actual bundle and match the 
 
 For Safari or a different model: inspect `--full`. The local Safari dictionary defines `tab` as `bTab` and uses `do JavaScript` (`sfridojs`); that is not the Chromium protocol. Its tab definition does not advertise the stable tab ID used by this helper. Do not use a tab index as a silent substitute. Read-only metadata inspection may still be possible from its dictionary, but persistent concurrent mutation needs a separate, verified adapter. Ask before building it.
 
-For a missing dictionary: report that Apple Events support could not be established for the installed app. Do not infer support or absence from the engine or brand alone. Default to the Accessibility handoff in `shared-mac.md` for actions covered by the user's task; no extra transport approval is needed. Establish the exact target independently if native identity checks are unavailable. CDP, WebDriver, and Playwright remain outside this skill. The helper remains Apple Events-only; Accessibility runs through a separately inspected tool or script and does not bypass required host or OS permissions.
+For a missing dictionary: report that Apple Events support could not be established for the installed app. Do not infer support or absence from the engine or brand alone. Request a manual step for unsupported operations. The AX inspector requires an existing native document binding and cannot replace a missing adapter. CDP, WebDriver, and Playwright remain outside this skill. `browser_ae.py` remains Apple Events-only. `browser_ax.py` uses public ApplicationServices AX APIs and requires the existing document binding plus verified foreground mapping. It does not supply a missing native adapter or bypass host/OS permissions. See [the AX guide](accessibility.md) for inspection commands and errors. AX writes are disabled with `AX_WRITES_DISABLED`, without an override.
 
 The dictionary also lists commands such as save, print, bookmarks, editing, and generic object movement. They are outside the helper's tested command set. Save without an explicit destination can open a dialog; print can show browser UI. Clipboard editing competes with the user. Generic `move` must not be treated as a reliable tab-drag API. Inspect and test a separate implementation in an approved fixture before extending the helper.
 
@@ -72,4 +72,4 @@ The CLI emits one JSON envelope for operation results and returns exit status 1 
 | `UNSUPPORTED_ASYNC`, `OUTPUT_TOO_LARGE` | Work may already have started; inspect before changing the script |
 | `WRITE_NOT_ALLOWED`, `TARGET_FILE_EXISTS`, `INVALID_TARGET`, `INVALID_SELECTION` | Fix the caller input deliberately; never weaken safety checks |
 
-Raw error text can depend on language and browser build. The helper keeps unknown cases as `APPLE_EVENT_FAILED`. A failed read/write envelope is not a rollback guarantee.
+Raw error text can depend on language and browser build. The helper keeps unknown cases as `APPLE_EVENT_FAILED`. A failed read/write envelope is not a rollback guarantee. The AX helper is inspection-only. Its CLI and native methods refuse AX writes before dispatch. Historical receipts do not prove business success. Its focused-app/window/control checks are separate native calls, not an atomic lock.

@@ -131,6 +131,23 @@ function perform(request) {
     var row = describe(match.window, match.tab);
     if (row.url !== request.target.url) fail('PAGE_CHANGED', 'Bound tab navigated. Do not overwrite or silently rebind it.', {outcome: 'not_started'});
     checkSession(request, request.target.session);
+    if (request.operation === 'ax-check') {
+        if (row.loading) fail('PAGE_LOADING', 'Bound page is loading.', {outcome: 'not_started'});
+        if (Number($.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier) !== request.target.session.pid ||
+            !app.frontmost() || Number(match.window.index()) !== 1 ||
+            !match.window.visible() || match.window.minimized() ||
+            String(match.window.activeTab().id()) !== request.target.tab_id) {
+            fail('AX_FOCUS_REQUIRED', 'Exact bound tab must already be foreground. No focus was changed.', {outcome: 'not_started'});
+        }
+        var context = executePage(match.tab, guardedSource(request));
+        checkSession(request, request.target.session);
+        if (Number($.NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier) !== request.target.session.pid ||
+            !app.frontmost() || Number(match.window.index()) !== 1 ||
+            String(match.window.activeTab().id()) !== request.target.tab_id) {
+            fail('AX_FOCUS_CHANGED', 'Foreground changed during the page guard.', {outcome: 'not_started'});
+        }
+        return {window_id: row.window_id, tab_id: row.tab_id, context: context.value};
+    }
     if (request.operation === 'run') {
         if (row.loading) fail('PAGE_LOADING', 'Page is loading. Body was not sent.', {outcome: 'not_started'});
         var reply = executePage(match.tab, guardedSource(request));

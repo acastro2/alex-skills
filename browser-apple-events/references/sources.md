@@ -39,3 +39,17 @@ Exa Contents retrieved the WWDC19 passages. Its Chromium fetch timed out, so the
 Edge rejected the generic native tab move into a tab collection with `Handler only handles single objects`. A separate manual check followed the user's report that the source tab had been dragged. The write reached the original source tab, but its reported window ID had not changed. The cross-window assertion therefore failed; this is not proof of successful cross-window drag recovery. Both test tabs were closed. Stable-ID resolution across windows is implemented, but real cross-window drag recovery remains unverified.
 
 No automated test proves that concurrent website or human actions are fully locked out. Native guards are not atomic. No trigger-selection benchmark or cross-host model comparison was run. Passing these checks is execution evidence, not proof that every agent will choose and follow this skill correctly.
+
+## Accessibility implementation follow-up
+
+The Apple Events results above predate the new AX implementation. See [AX verification status](ax-verification.md) for its separate case matrix. Live Edge AX discovery worked after owner coordination and disposable-window approval. Foreground guards stopped two early action tests. A later run passed seven assertions, then Submit AXPress returned without the expected saved state/revision change. No ADO write ran through this helper. After two research passes found no usable fix, the user dropped AX writes. The CLI and native bridge now refuse writes; the write fixture runner is retired. AX inspection remains available.
+
+The new boundary uses public ApplicationServices functions, not System Events keystrokes. Sources inspected for it:
+
+- [Apple AXUIElementCopyActionNames](https://developer.apple.com/documentation/applicationservices/1462053-axuielementcopyactionnames): discover advertised actions; messaging can fail.
+- [Apple AXUIElementIsAttributeSettable](https://developer.apple.com/documentation/applicationservices/1459972-axuielementisattributesettable): inspect writable attributes; unsupported and missing values are distinct from permission or messaging errors.
+- Local Command Line Tools SDK `HIServices.framework/Headers/AXUIElement.h` and `AXError.h`: native signatures, no-prompt trust check, focused application/window access, bounded attribute-array reads, and error codes.
+- Local SDK `AppKit.framework/Headers/NSWorkspace.h`, lines 143-144: `frontmostApplication` identifies the application that receives key events. The transport checks its PID alongside native `frontmost`; the AX bridge independently requires the bound application's `AXFrontmost` and reads focus from that application's object.
+- Installed Edge SDEF: `frontmost` (`pisf`), window `index` (`pidx`, front-to-back), `active tab` (`acTa`), `visible` (`pvis`), and `minimized` (`pmnd`). These terms do not prove native-front/AX-focused equivalence at runtime.
+
+Context7 did not resolve a relevant ApplicationServices library. Exa retrieved the Apple API pages; installed SDK headers supplied the native signatures. No unverified UI-toggle, browser-restart, or policy-change prescription was inferred from the historical empty AX trees.
