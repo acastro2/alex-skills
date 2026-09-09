@@ -5,7 +5,7 @@ A collection of skills for Claude Code and opencode — modular instruction pack
 ## Install
 
 ```bash
-git clone https://github.com/acastro2/alex-skills.git ~/.agents/skills
+git clone --recurse-submodules https://github.com/acastro2/alex-skills.git ~/.agents/skills
 ```
 
 This puts each skill at `~/.agents/skills/<name>/SKILL.md`, which opencode discovers automatically.
@@ -18,6 +18,32 @@ Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/sk
 - `alex-voice/references/alex-blogger.md` — Blog-specific guidance loaded by the voice skill
 - `alex-voice/references/voice-fingerprint.md` — Measured rhythm and vocabulary per register, from Alex's own words
 - `alex-voice/scripts/voice_check.py` — Scores a draft against the fingerprint; em dashes and banned phrases are blockers
+
+## Skill creator
+
+`skill-creator/SKILL.md` routes structure work to OpenAI's creator and evaluation work to Anthropic's creator. Both stay unchanged in Git submodules at `.upstream/codex` and `.upstream/claude`. The hidden parent keeps them out of normal Pi and Codex skill discovery; do not register `.upstream/` as a skill search path.
+
+```mermaid
+flowchart LR
+    A[skill-creator/SKILL.md] --> B[.upstream/codex: structure]
+    A --> C[.upstream/claude: evaluation]
+```
+
+For an existing clone, run from the repository root (Git changes require approval when an agent runs them):
+
+```bash
+git submodule update --init --recursive -- .upstream/codex .upstream/claude
+```
+
+This restores the recorded versions. To deliberately test newer upstream versions:
+
+```bash
+git submodule update --remote -- .upstream/codex .upstream/claude
+git diff --submodule=log
+git submodule status
+```
+
+Review the changed creator instructions and scripts, then rerun validation and a representative skill task before recording the new pins. Do not edit files inside the submodules. Upstream licenses remain in their repositories. Install this wrapper with the parent repository, not as a standalone `.skill` archive.
 
 ## Skill anatomy
 

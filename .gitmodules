@@ -1,0 +1,6 @@
+[submodule "skill-creator/.upstream/codex"]
+	path = .upstream/codex
+	url = https://github.com/openai/skills.git
+[submodule ".upstream/claude"]
+	path = .upstream/claude
+	url = https://github.com/anthropics/skills.git
