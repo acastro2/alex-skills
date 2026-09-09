@@ -24,7 +24,7 @@ graph TD
   T2 --> P1[teams_transcript.py: VTT to turns]
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[transcribe.py: mlx-whisper, local]
-  P1 --> C[you: Tier 1 screen, summary]
+  P1 --> C[you: full transcript, summary]
   H3 --> C
   C --> W[write_note.py: glossary, filler, note]
   W --> O[vault Scribe/Meetings/Transcripts/]
@@ -58,19 +58,15 @@ run stays offline. On this Mac all three were already present on 2026-09-03.
   text, or summaries to Exa, a web tool, or any external service: a call recording is confidential
   even when it sounds like small talk, and Attain is a regulated lender. HiNotes cloud is not a
   source (no API, no export).
-- **Tier 1 screen before every write.** If a transcript contains personal data about customers,
-  applicants, borrowers, or other non-employees (names tied to accounts, SSN/SIN, card or bank
-  numbers, government IDs, birth dates, home addresses, personal phones, health data), or HR
-  case, compensation, or performance data about anyone: do NOT write the note. Record the item
-  in state under `skipped` with reason `tier1` and tell Alex. Employee names, titles, and teams
-  are fine (Tier 2). Only an admin edit of the Attain policy unlocks Tier 1, not an approval in
-  chat.
+- **No content-based skips or tiering.** Process calls that contain HR, compensation,
+  performance, or personal information too. Do not reject a whole meeting or remove sections
+  because of their subject matter. Keep every note `confidential: true` and keep the local-only
+  handling rules above (Alex, 2026-09-08).
 - **scribe does not curate.** Every work recording and every Teams transcript becomes a note,
   including standups, 1:1s, and calls that turn out to be personal. Deciding what matters is
-  bard's job, not scribe's (Alex, 2026-09-03). Two exceptions only: the Tier 1 rule above, which
-  is Attain policy, and the Teams-wins dedup in Source B, which drops a HiDock copy that carries
-  strictly less information (no speaker names) than the Teams note of the same meeting. Neither
-  is a judgment about relevance.
+  bard's job, not scribe's. The Teams-wins dedup in Source B drops a HiDock copy that carries
+  strictly less information (no speaker names) than the Teams note of the same meeting; it is
+  not a judgment about relevance. The sync date and minimum-duration filters still apply.
 - **Write only** inside `<vault>/Scribe/`, `~/.scribe/`, and the state file. Never touch
   `Bard/`, `Evidence/`, `Todo.md`, or any other vault folder. Never edit an existing transcript
   note; re-run with `--force` only when Alex asks for a rewrite.
@@ -148,7 +144,7 @@ Verified end to end by ea-projects-curator on 2026-08-28; the mechanics moved he
    the script refuses and you re-fetch. The note's `date`/`end` and its filename come from the
    `?start=&end=` calendar slot in the URI (so the AAB note is `... 1500 ...`, not `1459`); the
    transcript's own first/last cue times land in provenance.
-6. Continue at **Summary, screen, write**.
+6. Continue at **Summary and write**.
 
 ## Source B — HiDock P1
 
@@ -216,13 +212,13 @@ keeps every recording until HiNotes removes it; scribe never deletes.
    attendee names as `--attendees`. No match, or Pi (no M365): read the transcript and pick a
    short factual title from content (`Call about <topic>`); if the content does not say what it
    is, `Untitled call`.
-6. Continue at **Summary, screen, write**.
+6. Continue at **Summary and write**.
 
-## Summary, screen, write (both sources)
+## Summary and write (both sources)
 
 1. **Read the normalized JSON in full** (`turns[].text`). Do not summarize from grep hits.
-2. **Tier 1 screen** per the hard constraint. If it trips: skip, record, report. Stop here for
-   this item.
+2. **Keep the full meeting.** Summarize all topics, including HR and personal discussion.
+   Apply the normal transcript cleaning below, but do not redact or skip content by tier.
 3. **Write the summary file** to `~/.scribe/transcripts/<id>.summary.md`. Voice: neutral
    reference, terse, factual, like a bard note. Shape:
 
@@ -258,14 +254,17 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 5. **Glossary upkeep**: when you confirmed a garble → real name during the summary, append a
    `- wrong => Right` line to `<vault>/Scribe/Glossary.md`. Only confirmed ones.
 6. **State**: add the item to `.scribe-state.json` (`teams.<eventId>` or `hidock.<deviceFile>` →
-   note path, plus `skipped.<id>` → reason). Set `last_run` to now (ISO) at the end.
+   note path, plus `skipped.<id>` → reason). When Alex asks to recover a previously skipped
+   recording, use its existing local JSON even if it is older than the watermark. Remove its
+   old `skipped` entry only after the note is successfully written. Do not backfill unrelated
+   historical skips unless requested. Set `last_run` to now (ISO) at the end.
 7. **Sync the vault**: Obsidian watches the filesystem, so new files show up on their own. Run
    only `obsidian sync:status vault=Alex` (expect `status: synced`). Do NOT run
    `obsidian reload`: on 2026-09-03 it printed `Reloading...` and never returned. Wrap the CLI in
    a 20 s timeout (macOS has no `timeout` binary; use `python3 -c` with `subprocess.run(...,
    timeout=20)`), and report "Obsidian not running" if it times out.
 8. **Report** in one table: source, meeting, date, duration, speakers, note path or skip reason.
-   Reasons you assign: `teams-covers`, `tier1`, `no-transcript`. Reasons the sync script prints
+   Reasons you assign: `teams-covers`, `no-transcript`. Reasons the sync script prints
    (`already present`, `already transcribed`, `shorter than --min-seconds`, `older than --since`):
    quote them as printed.
    Then one line for glossary lines added and one for the vault sync status.
