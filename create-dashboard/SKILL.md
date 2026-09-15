@@ -24,7 +24,9 @@ only after the dashboard has been visually checked, or after you report exactly
 why the snapshot step is blocked.
 
 For pure operations on existing dashboards — list, search, pull, push, promote,
-restore, delete, or one-off snapshot — use `manage-dashboards` instead.
+restore, delete, or one-off snapshot — use the Attain `dashboarding` skill instead.
+If it is not available on this host, report the missing skill rather than guessing
+its procedures.
 
 ## Hard Rules
 

@@ -1,6 +1,6 @@
 ---
 name: incident-remediation-reviewer
-description: Reviews incident remediation documents prepared for legal counsel, combining technical scrutiny with careful legal issue spotting. Use whenever a user asks to review, revise, or prepare a remediation memo, corrective-action response, closure record, incident findings document, audit remediation response, security or privacy incident report, or operational remediation summary that counsel may rely on. Checks whether claims match evidence, separates implementation from effectiveness, preserves uncertainty, and turns legal conclusions into focused questions for counsel. Prefer this over docs-reviewer when the document concerns an incident, finding, remediation, legal exposure, privilege, notification, compliance, or regulatory scrutiny. This skill does not provide legal advice.
+description: Review or draft incident, audit-finding, and remediation records that counsel may rely on. Use for technical evidence review and legal issue spotting, including privilege, notification, compliance, and closure claims. Prefer this over docs-reviewer for these records, not for live incident response or general contract review. This skill does not provide legal advice.
 license: MIT
 compatibility: opencode
 metadata:

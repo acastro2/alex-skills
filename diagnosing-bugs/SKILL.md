@@ -53,7 +53,7 @@ The goal is not a clean repro but a **higher reproduction rate**. Loop the trigg
 
 ### When you genuinely cannot build a loop
 
-Stop and say so explicitly. List what you tried. Ask the user for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. Do **not** proceed to hypothesise without a loop.
+Report the blocker and what you tried. Ask the user for the missing environment access, a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or permission to add temporary production instrumentation. You may continue scoped, read-only investigation and form provisional hypotheses to build the reproducer. Label those hypotheses unverified; without a loop, do not apply a speculative fix or claim the cause is confirmed.
 
 ### Completion criterion: a tight loop that goes red
 
@@ -64,7 +64,7 @@ Phase 1 is done when the loop is **tight** and **red-capable**: you can name **o
 - [ ] **Fast**: seconds, not minutes.
 - [ ] **Agent-runnable**: you can run it unattended; a human in the loop only via `scripts/hitl-loop.template.sh`.
 
-If you catch yourself reading code to build a theory before this command exists, **stop: jumping straight to a hypothesis is the exact failure this skill prevents.** No red-capable command, no Phase 2.
+Read relevant code and existing evidence as needed to construct this command. Provisional hypotheses guide the reproducer; they do not replace it. Phase 1 is complete only when the red-capable command exists and has run. Require the reproduced symptom and evidence from testing before applying or claiming a fix.
 
 ## Phase 2: Reproduce + minimise
 

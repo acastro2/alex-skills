@@ -1,6 +1,6 @@
 ---
 name: printed-part-modeling
-description: Design, remix, resize or repair 3D-printable parts as parametric code — build the geometry with trimesh/manifold3d/shapely, encode the fit rules as assertions, then verify by measuring the exported mesh. Use this whenever someone wants a physical part modelled or adapted — a bracket, mount, jig, adapter, spacer, clip, enclosure, replacement or remix; whenever they mention STL, 3MF, OBJ, STEP, a slicer (Bambu Studio, OrcaSlicer, PrusaSlicer, Cura), a printer, filament, PLA/PETG/ABS/TPU, layer height, walls, infill, supports, brims or print orientation; whenever a downloaded model almost fits but needs a dimension changed; and whenever they hand over real measurements of something the part must fit around. Reach for it even when 3D printing is never named — "make this thing fit under my door", "the tab on this broke, can you make a new one" are exactly this task. Covers clearance-vs-strength trade-offs, fastener sizing, and print orientation that puts layer lines across the load.
+description: Design, adapt, or repair 3D-printable parts as parametric code. Use for new physical parts, remixes of STL/3MF/OBJ/STEP models, or fitting a part to real measurements, even when printing is not named. Verify the exported mesh. For measurement-only tasks use mesh-measure; general printer, filament, or slicer advice alone does not trigger this skill.
 ---
 
 # Modelling printed parts

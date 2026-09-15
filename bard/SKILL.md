@@ -178,10 +178,10 @@ so it is derived from real work and ratified by Alex.
    flat `## Done`, and append the ISO date. Roll `## Done` entries older than ~4 weeks
    to `<vault>/Bard/Done Archive.md`; move them, never delete them. This is one of the
    existing files bard edits in place.
-7. **Capture evidence files** — when the sweep's file scan surfaces authored
-   deliverables not yet in `Evidence/`, copy them per **Evidence capture** (see
-   below). Update `Evidence/README.md` to match. This is another existing file
-   bard edits in place.
+7. **Capture evidence files** — when a swept session or the sweep's file scan surfaces
+   authored deliverables not yet in `Evidence/`, copy them per **Evidence capture**
+   below, loading its mechanics reference before copying. Update `Evidence/README.md`
+   to match. This is another existing file bard edits in place.
 8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
    session-start timestamp swept this run. It must be a **real session-start you
    actually swept**, copied from the index — never a rounded day boundary. A watermark
@@ -543,20 +543,12 @@ started with.
 This is a data-loss class, not a style rule: a sweep that trusts stale state silently
 erases work Alex already did.
 
-### Bulk clear ("the board is mostly done, start fresh")
+### Bulk clear (only when Alex asks)
 
 When Alex asks to clear the board, archive it — do not mark it done.
-
-- Items he actually checked keep their real `✅` date and file under `## YYYY-MM`.
-- Everything else moves to `Bard/Done Archive.md` under a
-  `## Cleared <ISO date> — bulk, not individually verified (N items)` section, staying
-  `- [ ]` with NO `✅` date, topic emoji restored to the line, grouped by topic.
-- Say plainly in that section that the items were not checked one by one, and that the
-  session id is the record for re-opening any of them.
-
-**"Mostly done" is not done.** Stamping a completion date bard did not observe writes
-false provenance into the knowledge base and destroys the difference between real
-completed work and a bulk clear. Same rule as never inventing provenance.
+Read [Bulk clear](references/bulk-clear.md) only for that request, before changing
+`Todo.md` or `Bard/Done Archive.md`. A bulk clear never deletes items or invents
+completion dates; keep real completions separate from unverified cleared items.
 
 ## Evidence capture
 
@@ -575,18 +567,6 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
 - it's not already in `Evidence/` (dedupe by filename — copy = ADD only, never overwrite
   an existing copy, never move/delete the source).
 
-### Folder layout
-
-`Evidence/` is organized by artifact type, not by topic:
-- `Decks/` — .pptx/.pdf presentations
-- `ADRs/` — Architecture Decision Records
-- `Reports/` — audit/baseline/activity reports (html/docx/pdf)
-- `Plans-Proposals/` — plans, proposals, SOWs, remediation plans
-- `RFCs/` — RFCs
-- `Tech-Briefs/` — tech briefs, opportunity briefs, reference docs
-- `Templates/` — templates Alex built
-- `Confidential/` — ⚠️ incident-related and internal-sensitive material (see below)
-
 ### Confidentiality (hard rule, same as notes)
 
 - **Never copy consumer-PII datafiles** (loan documents, consumer-count datafiles,
@@ -599,11 +579,10 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
   matter is **"an incident," never "a breach"** — never reframe, never widen audience.
 - Nothing confidential ever goes to Exa or any public web tool (same boundary as notes).
 
-### README
-
-Keep `Evidence/README.md` current in place (it is updated alongside `Todo.md` and
-`Bard/Done Archive.md`): list each category, note the PII boundary, and flag the
-Confidential folder with a do-not-share warning.
+Before copying a qualifying file, read
+[Evidence capture mechanics](references/evidence-capture.md) for the folder layout
+and README update. Load it only when copying deliverables, including those found
+during a normal sweep. This is required capture, not a separate opt-in mode.
 
 ## Vault sync
 

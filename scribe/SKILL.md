@@ -95,124 +95,46 @@ Argument decides the mode. With no argument, run both sources for the window sin
 Teams needs the Microsoft 365 connector, so it works in Claude Code only. HiDock works in
 Claude Code and Pi.
 
+## Source routing
+
+- **Teams intake:** for `/scribe teams` or the Teams part of `/scribe`, read
+  [Source A: Microsoft Teams](references/teams.md) before fetching transcripts.
+- **HiDock intake:** for `/scribe hidock` or the HiDock part of `/scribe`, read
+  [Source B: HiDock P1](references/hidock.md) before accessing the device.
+- **Combined run:** finish Teams notes through **Summary and write** first. Then
+  process HiDock so the coverage check sees the Teams notes.
+- **Status:** read both references, but use only Teams steps 1–2 for calendar
+  inventory and HiDock step 1 with `list --json` for device inventory. Report the
+  three tables in **Modes** and stop. Do not fetch transcripts, sync/download audio,
+  transcribe, write summaries/notes, or update state.
+
+Run all shell commands from `~/.agents/skills/scribe/scripts/`, not from the
+reference directory. HiDock-only in Pi has no M365 connector: use the no-calendar
+fallback in Source B; do not assume Teams coverage.
+
+### Teams-first dedupe
+
+**Teams wins.** Before transcribing, match the recording to the calendar:
+`outlook_calendar_search` with `query: "*"` over start −10 min to start +10 min. Skip the
+recording with reason `teams-covers` ONLY when a scribe Teams note already exists for that slot
+and the match is unambiguous (one event, same start within 10 min, similar length). Teams has
+speaker names; whisper does not, so the HiDock copy adds nothing then. In every other case,
+including concurrent meetings, a Teams note with almost no cues, or Source A not yet run, write
+the HiDock note; a duplicate is bard's problem, a missing meeting is not recoverable.
+`meetingTranscriptUrl` on the event is NOT proof of a transcript: every Teams meeting carries
+it. Expect `no-transcript` for most standups and 1:1s and `FORBIDDEN 3003` for meetings
+organized by someone whose transcript you may not look up; both mean the HiDock copy is the
+record. A recording whose window overlaps two calendar events matches neither: write the
+HiDock note and let the summary say which meeting it turned out to be.
+
 ## Source A — Microsoft Teams
 
-Verified end to end by ea-projects-curator on 2026-08-28; the mechanics moved here unchanged.
-
-1. Load the tools:
-   `ToolSearch("select:mcp__claude_ai_Microsoft_365__outlook_calendar_search,mcp__claude_ai_Microsoft_365__read_resource")`.
-2. Find candidate meetings: `outlook_calendar_search` with `query: "*"` and a
-   `afterDateTime`/`beforeDateTime` window covering the requested days. Search by the **real
-   calendar subject** (the AAB forum is `Architecture Advisory Board`, not "Architecture Review
-   Forum"). The search returns 25 events per page; when the result ends with `nextOffset`,
-   call again with `offset` until it is gone (two working days already exceed one page). Skip
-   events already present in state under `teams`.
-3. For each event, `read_resource` on `calendar:///events/{eventId}` to get its
-   `meetingTranscriptUrl`. Every Teams meeting carries one, so its presence proves nothing.
-4. `read_resource` on that URL. It looks like
-   `meeting-transcript:///events/{token}?start={iso}&end={iso}`. Recurring occurrences carry
-   `start`/`end`, which pin the series to one occurrence; keep them. **One-off meetings carry no
-   window**: append `?start=<event start>&end=<event end>` yourself, converted to UTC
-   (`2026-09-04T09:00 Central` → `start=2026-09-04T14%3A00%3A00.000Z`). Without a window the read
-   returns "the most recent transcripts of the series, capped", which is the wrong occurrence
-   for a series and works only by luck for a one-off.
-   `NOT_FOUND transcripts_empty`, `NOT_FOUND 3004`, and `FORBIDDEN 3003` all mean no transcript
-   for that occurrence: record `no-transcript` for that event. **Check every occurrence, every
-   run.** A standup that had no transcript yesterday is not evidence about today; the read costs
-   one call, and inferring from history was a mistake made on 2026-09-04.
-5. The payload comes back two ways. Above roughly 50 KB (an 85-minute AAB is ~114 KB) the
-   harness saves it to a file and gives you the path: do not `Read` it (one giant line), copy it
-   to `~/.scribe/raw/<eventId>.json`. Below that it arrives **inline** in the tool result, and
-   the only way to disk is to write it yourself. Write the `content` (WEBVTT) to
-   `~/.scribe/raw/<eventId>.vtt` with the Write tool **exactly as received**: every cue, every
-   "Yeah.", every garble. Do not drop filler, do not fix names inline; the cleaner drops filler
-   and the glossary fixes names, and the raw file is the record that lets anyone check the note.
-   Then wrap it into the payload shape (`{"meeting": {...}, "transcripts": [{"createdDateTime",
-   "endDateTime", "content"}]}`) with a short Python snippet. Pass the **real** URI, with the
-   window, as `--transcript-uri`; it lands in provenance, and a placeholder there is a false
-   record. Then:
-
-   ```bash
-   cd ~/.agents/skills/scribe/scripts
-   uv run python teams_transcript.py ~/.scribe/raw/<eventId>.json \
-     -o ~/.scribe/transcripts/<eventId>.json --event-id <eventId> --transcript-uri "<url>"
-   ```
-
-   stderr prints the occurrence window, cue and turn counts, and the speaker list. Confirm the
-   window matches the event you meant. `meeting.startDateTime` is the SERIES start; the script
-   ignores it on purpose. Two transcripts in one payload means you dropped the window params:
-   the script refuses and you re-fetch. The note's `date`/`end` and its filename come from the
-   `?start=&end=` calendar slot in the URI (so the AAB note is `... 1500 ...`, not `1459`); the
-   transcript's own first/last cue times land in provenance.
-6. Continue at **Summary and write**.
+Use the Teams intake route above. The source mechanics end at **Summary and write**.
 
 ## Source B — HiDock P1
 
-Device facts (verified 2026-09-03): HiDock P1, USB 0x10D6:0xB00E, vendor protocol over bulk
-endpoints, not a USB drive. Recordings are `YYYYMonDD-HHMMSS-RecNN.hda`, which are plain MP3
-(mono, 48 kHz, 96 kbps). The filename timestamp is the device clock in Central time. The device
-keeps every recording until HiNotes removes it; scribe never deletes.
-
-1. Device check and inventory:
-
-   ```bash
-   cd ~/.agents/skills/scribe/scripts
-   uv run --with pyusb python hidock_pull.py list
-   ```
-
-   Exit 2 = not plugged in. Exit 3 = USB claim error: another process holds the device. Tell
-   Alex to close the HiNotes tab in Edge and any other scribe/pytest run, then retry once.
-   Exit 4 = the device is connected but never answered the list request, even after the script's
-   own retry: unplug, replug, retry. `No recordings found.` (exit 0) means the device answered
-   with an empty list; if state shows recordings from yesterday, that is still suspicious, since
-   HiNotes is the only thing that deletes. Run `list` again before believing it. On 2026-09-04
-   a silent first request was reported as an empty device and nearly cost a day of calls.
-2. Pull and transcribe in one go:
-
-   ```bash
-   ./hidock_batch.sh <YYYY-MM-DD of watermark>
-   ```
-
-   It runs `hidock_pull.py sync` (skips files already present with the same size, already
-   transcribed in `--done-dir`, shorter than 120 s, or older than the date), then
-   `transcribe.py` on each new MP3, and deletes the MP3 once its JSON exists. One JSON line per
-   file from the sync (`downloaded` or `skipped` + reason), then one `=== transcribing <stem> ===`
-   per file on stderr. ~7 MB/s download; a 40-minute call downloads in a few seconds. Every
-   download is size- and magic-byte-checked. `--done-dir` is what stops re-downloads once the
-   local audio is gone: a recording is done when `<stem>.json` exists there.
-3. If you need the steps apart (one file, a re-run), the pieces are:
-
-   ```bash
-   uv run --with pyusb python hidock_pull.py sync -o ~/.scribe/audio \
-     --done-dir ~/.scribe/transcripts --since <YYYY-MM-DD> --min-seconds 120
-   uv run --with mlx-whisper python transcribe.py ~/.scribe/audio/<stem>.mp3 \
-     -o ~/.scribe/transcripts/<stem>.json
-   ```
-
-   Runs offline with the cached `mlx-community/whisper-large-v3-turbo` (~95× realtime on the
-   M5 Max, so a 40-minute call takes ~30 s; 18 recordings, 8.7 hours of audio, took 6 minutes on
-   2026-09-03). Start time comes from the filename. Whisper has no speaker labels: turns are
-   paragraphs split on 2 s pauses, `speaker` is null. The script drops the repeated-line
-   hallucinations whisper produces on silence. **Then delete the MP3** (`rm ~/.scribe/audio/<stem>.mp3`)
-   once the JSON exists: Alex wants no local audio copies, the device keeps the recording. The
-   JSON carries the file's sha256 in provenance, so the source stays verifiable.
-4. **Teams wins.** Before transcribing, match the recording to the calendar:
-   `outlook_calendar_search` with `query: "*"` over start −10 min to start +10 min. Skip the
-   recording with reason `teams-covers` ONLY when a scribe Teams note already exists for that slot
-   and the match is unambiguous (one event, same start within 10 min, similar length). Teams has
-   speaker names; whisper does not, so the HiDock copy adds nothing then. In every other case,
-   including concurrent meetings, a Teams note with almost no cues, or Source A not yet run, write
-   the HiDock note; a duplicate is bard's problem, a missing meeting is not recoverable.
-   `meetingTranscriptUrl` on the event is NOT proof of a transcript: every Teams meeting carries
-   it. Expect `no-transcript` for most standups and 1:1s and `FORBIDDEN 3003` for meetings
-   organized by someone whose transcript you may not look up; both mean the HiDock copy is the
-   record. A recording whose window overlaps two calendar events matches neither: write the
-   HiDock note and let the summary say which meeting it turned out to be.
-5. Title and attendees for what is left: one calendar match → its subject as `--title` and its
-   attendee names as `--attendees`. No match, or Pi (no M365): read the transcript and pick a
-   short factual title from content (`Call about <topic>`); if the content does not say what it
-   is, `Untitled call`.
-6. Continue at **Summary and write**.
+Use the HiDock intake route above. Apply **Teams-first dedupe** before any
+transcription, including a batch run. The source mechanics end at **Summary and write**.
 
 ## Summary and write (both sources)
 
