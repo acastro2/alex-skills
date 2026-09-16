@@ -2,10 +2,19 @@
 
 Scaffolding written once during `/bard bootstrap`. Create `Done Archive.md` from its
 template even when it has no entries, so the board link resolves. After that bard
-maintains the root `Todo.md` board per `SKILL.md`; it does not rewrite these setup assets.
+maintains the root `Todo.md` board per [todo-board.md](todo-board.md); it does not
+rewrite these setup assets.
 
 > Verified against the live vault: `bases: true`, `properties: true`, `sync: true`,
 > wikilinks default, no community plugins (no Dataview — Bases only).
+
+## Contents
+
+- 1. `Bard.base`
+- 2. Topic Hub note template
+- 2b. Root TODO board template
+- 2c. Done Archive template
+- 3. Graph color groups
 
 ---
 
@@ -121,12 +130,8 @@ bard must not add YAML to it. The `Bard.base` block above already uses
 `file.inFolder("Bard")`; that filter excludes a root-level `<vault>/Todo.md`, so
 `Bard.base` needs no filter change.
 
-Everything above the `<!-- BARD:START -->` marker belongs to Alex. bard never edits,
-reorders, or reads it as task input. bard edits only from the marker down. If the marker
-is absent, append the whole block at the END of the file, never at the top. Alex curates;
-bard is the scribe. New items go at the top of their topic group within the derived
-horizon. Finished items move to the top of flat `## Done`. Items older than ~4 weeks roll
-to `Bard/Done Archive.md`; moving replaces pruning, and nothing is deleted.
+The template only. Ownership split, line formats, priority, horizon derivation and
+roll-over rules all live in [todo-board.md](todo-board.md).
 
 ```markdown
 <!-- BARD:START — bard owns everything below this line. Alex owns everything above. -->
@@ -162,33 +167,6 @@ _Last ~4 weeks. Older rolls to [[Done Archive]]._
 - [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
 ```
 
-Apply the horizon derivation table and fixed topic-map order in `SKILL.md`. Test
-`⏳ Waiting on others` first. Omit empty horizon and topic headings.
-
-Open lines use this exact format:
-
-```text
-- [ ] <short imperative description> `(<session id>)` <priority emoji>
-```
-
-Done lines use this exact format:
-
-```text
-- [x] <topic emoji> <short description> `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
-```
-
-Descriptions are short imperatives. Target 80 characters or fewer; hard cap 90. Drop
-detail — the session id is the record. The breadcrumb is the session id only, backticked.
-It has no `session ` prefix, repo, or ` · ` separator. The `####` heading carries the
-topic emoji, so open lines have no topic emoji. The priority emoji is the last token on an
-open line. On a done line, the priority emoji and `✅ YYYY-MM-DD` are the last two fields.
-The installed Obsidian Tasks plugin (v8.3.0) uses `$`-anchored trailing-field regexes in a
-loop. Any text after the priority emoji stops it parsing. Put the breadcrumb before the
-priority, never after it. Every line carries exactly one priority emoji.
-
-Priority symbols: 🔺 Highest, ⏫ High, 🔼 Medium, 🔽 Low, ⏬ Lowest. Use the meanings in
-`SKILL.md`. Reuse the fixed topic map in `SKILL.md`; never invent a topic emoji.
-
 Optional priority-sorted view for the root board:
 
 ```tasks
@@ -208,8 +186,8 @@ filter includes `file.inFolder("Bard")` and excludes `type == "board"`, so the a
 stays out of the base by type. The folder filter excludes the root `<vault>/Todo.md`, not
 the archive.
 
-Use `# Done Archive`, then `## YYYY-MM` sections. List months newest first. List items
-newest first inside each month. Keep the same flat Done line format as `## Done`.
+Use `# Done Archive`, then `## YYYY-MM` sections. The section ordering and line format
+are in [todo-board.md](todo-board.md).
 
 ```markdown
 ---
@@ -223,9 +201,7 @@ type: board
 - [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
 ```
 
-Rolling over means moving, not deleting. A future full retrospective rebuild writes its
-finished-work haul here, never into `Todo.md`. The roll-over/prune step never deletes
-archive content.
+Roll-over and never-delete rules are in [todo-board.md](todo-board.md).
 
 ---
 

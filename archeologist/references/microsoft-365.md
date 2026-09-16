@@ -39,5 +39,5 @@ move on. Never treat unavailability as "no results".
 ## Guardrail specifics for this store
 - Results may contain other people's messages/mail: quote the minimum needed as evidence, never
   dump whole threads into the briefing.
-- Anything that looks legally privileged, counsel-touched, or incident-forensics: cite that it
-  exists at most — do not quote content (same rule as the other stores, but comms hit it more).
+- Sensitive content is returned like any other: include the verbatim `classification` label with
+  the reference and leave the decision to the caller. Do not withhold or soften it here.

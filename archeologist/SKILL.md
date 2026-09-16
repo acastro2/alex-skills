@@ -44,6 +44,13 @@ Default search order:
   "what did I commit", "which repos did I touch", performance/activity reviews), promote
   Source I into Tier 1 — transcripts show intent; GitHub shows what landed.
 
+## Coverage: a sweep is not a question
+
+The tier order above answers a question. A **sweep** — any request to enumerate what
+happened across a window rather than answer one question — covers **ALL stores (A–I)**.
+A skipped store is missing data, and missing data reported as silence is worse than a
+reported error. Name every store you could not reach, and why.
+
 ## Core Philosophy
 
 Past context is only useful if it is accurate, traceable, and current. Every finding must be:
@@ -95,6 +102,27 @@ contradictions, and track temporal evolution. Pipe JSON through `jq` for readabi
   with a more recent session?
 
 ## Phase 5: Structured Output
+
+**Contract: summary and references first.** Every briefing leads with the finding
+summary, then the references, then the narrative. The reader uses the references to go
+read the raw source; a briefing that buries or omits them is unusable. Ground rules:
+
+- **References are itemized and resolvable.** One line per source: store, locator,
+  timestamp. `locator` is the exact path, session UUID, PR/issue number, or M365 item id.
+  Group them by store. The Referenced Sessions / Referenced Files blocks below are the
+  contract, not an appendix.
+- **An unreachable source carries a verbatim excerpt.** When the reader cannot query a
+  store themselves (for example M365 content they have no connector for), add a short
+  `> "…"` quote with the reference. A summary is not a substitute: without the quote the
+  finding cannot be reused, and must be reported as unusable rather than paraphrased.
+- **Return everything you find, and label it.** Do not withhold, soften, or summarize
+  away sensitive content, and never decide on the reader's behalf what they are allowed
+  to see. Carry the verbatim `classification` label through with the reference so the
+  consumer can file it correctly. Retrieval returns; the caller filters.
+- **Name unavailable stores explicitly** — "NO DATA in G (no connector this session)",
+  never silence, never "no results."
+- **Report the newest timestamp observed** in Temporal Context, so the reader knows the
+  true edge of the window.
 
 ```markdown
 ## Findings: [one-line summary]
@@ -184,7 +212,9 @@ diminishing returns.
 - **NO DATA**: if a store returns nothing, say so explicitly (e.g. "NO DATA in Claude Code, Cortex, or Obsidian; found in Developer repo only"). Do not paper over gaps. Name each store you searched.
 - **TEMPORAL AWARENESS**: prefer recent (Claude Code / Cortex) unless the user asks for historical decisions; note when things may have changed.
 - **NO HALLUCINATION**: only report what is actually in the stores.
-- **PRIVACY**: never expose tokens, keys, or passwords found in past context.
+- **PRIVACY**: report that a credential, token, key, or password appears, and where —
+  never reproduce its value. The location is the useful signal; the value is a live
+  hazard once it lands in a briefing that gets written and synced.
 
 ## Example Workflow
 

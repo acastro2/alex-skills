@@ -1,14 +1,17 @@
 ---
 name: bard
 description: >-
-  Mine AI-coding session history and scribe meeting transcript notes
-  (Scribe/Meetings/Transcripts) and distill them into durable, graph-native notes
+  Mine AI-coding session history, scribe meeting transcript notes
+  (Scribe/Meetings/Transcripts), and the comms (Outlook mail, Teams, calendar) that
+  the archeologist surfaces during a sweep, and distill them into durable,
+  graph-native notes
   in the personal Obsidian knowledge base at obsidian/Alex/Bard, and copy authored
   deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
-  to sweep recent sessions or meetings into the knowledge base, to bootstrap the bard
+  to sweep recent sessions, meetings, or comms into the knowledge base, to bootstrap the bard
   hubs, or to turn past decisions/lessons/patterns into notes, and to maintain the
-  root-vault `Todo.md` board. On-demand only. Reads sessions via the archeologist agent; writes
+  root-vault `Todo.md` board. On-demand only. Reads sessions, meetings, and comms via the
+  archeologist agent; writes
   OKF-envelope markdown notes. Never commits, never runs a server, never invents
   provenance.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa
@@ -79,11 +82,13 @@ bard auto-detects mode from the argument and vault state.
 One-time scaffolding. The controlled hub taxonomy cannot be invented from nothing,
 so it is derived from real work and ratified by Alex.
 
-1. Spawn the **archeologist** agent (read-only) with a sweep-style prompt:
-   "Enumerate coding sessions across all three stores. For each, return session id,
-   source, session-start date, project/repo, and the durable topics worked on
-   (decisions, lessons, patterns). Group by topic area. I am building a topic
-   taxonomy, not answering one question."
+1. Spawn the **archeologist** agent (read-only) to sweep every store over all history.
+   Its output contract is `../archeologist/SKILL.md` → **Phase 5: Structured Output**,
+   and the sweep scope is its **Coverage** rule:
+   "Enumerate sessions, meetings, and comms across ALL stores. For each, return store,
+   locator, session-start date, project/repo, and the durable topics worked on
+   (decisions, lessons, patterns). Summary and references first. Group by topic area.
+   I am building a topic taxonomy, not answering one question."
 2. Cluster the returned topics into ~8-12 candidate **Topic Hubs** (by TOPIC — e.g.
    AWS, Terraform, Snowflake, hiring, security — NOT by note `type`).
 3. **Present the candidate hub list to Alex and STOP for approval/edits.** Do not
@@ -113,12 +118,27 @@ so it is derived from real work and ratified by Alex.
      `aliases`, path. (Glob + read frontmatter.)
    - `existing_tags` — the set of all tags already used in `Bard/`.
    - `hubs` — the titles of the approved Topic Hub notes.
-3. **Discover, then read raw.** Two parts — keep them separate, because the quote
-   rule (STEP 3 below) needs VERBATIM content, and the archeologist returns a
-   *summarized* briefing (distilling a distillation would break the quote rule):
-   - **Discover** candidate sessions with session-start **newer than `watermark`**
-     (or all history on a first sweep) using the documented time indexes — these
-     carry reliable session-start times:
+3. **Discover via the archeologist, then read raw.** Two parts — keep them separate,
+   because the quote rule (see **PROVENANCE**) needs VERBATIM content, and the
+   archeologist returns a *summarized* briefing (distilling a distillation would break
+   the quote rule).
+   - **Discover — one archeologist sweep, all stores.** Spawn the **archeologist** agent
+     (read-only) with the window `watermark` → now. It sweeps every store by its own
+     **Coverage** rule and answers with summary and references first (its **Phase 5**
+     contract). Treat its **summary as a lead, never as quotable text**; its
+     **references are the payload** the next step reads: store, locator, session-start,
+     and the verbatim label on anything confidential. This is the lane that reaches
+     mail, Teams, calendar, tenant SharePoint, and GitHub activity — stores the local
+     indexes below cannot see. An unavailable store in the briefing is missing data, not
+     empty data: name it in the sweep report, never let it pass silently. Comms mostly
+     dies at the half-life filter (STEP 1) — expect to drop standups, 1:1s, and routine
+     threads; what survives is usually a commitment ("I'll send X by Friday"), which is
+     a board candidate, not a knowledge note.
+   - **Also scan the time indexes — they are the cursor.** The briefing is a
+     summarizer's view and cannot be trusted to enumerate every session start. Scan
+     these and take the union with the briefing. The scan is a filename glob: cheap,
+     exact, and the only ground truth for the watermark. These carry reliable
+     session-start times:
      - Claude Code: `~/.claude/history.jsonl` (`.timestamp` epoch-ms; `.sessionId`, `.project`).
      - Cortex: `~/.snowflake/cortex/conversations/<uuid>.json` → `.created_at`.
      - Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
@@ -147,18 +167,17 @@ so it is derived from real work and ratified by Alex.
        others are context, not tasks. scribe writes everything, including standups and
        1:1s: the half-life filter in STEP 1 is where the noise dies, so expect to drop
        most of them.
-     Optionally rank/cluster the candidates with the **archeologist skill** (spawn a
-     `delegate`/`scout` subagent with skill `archeologist` — there is no archeologist
-     *agent* in pi) — but treat its output as a LEAD, not as quotable content. For
-     small windows, skip it: inline reading is faster.
-   - **Read raw** the candidate transcripts directly (Read/Bash on the `.jsonl` /
-     SQLite, per the patterns in the archeologist skill) so STEP 1–5 operate on real
-     text and quotes are verbatim. Two pitfalls: sessions can span the watermark —
-     filter entries by per-message timestamps (CC/Pi `.timestamp`, Cortex
-     `user_sent_time`), don't trust session-start alone; and a sweep will rediscover
-     its own prior bard sessions (first user message = this skill's text) — skip
-     them as mechanics, and expect Cortex sidecar files (`*.history.jsonl`) to be
-     JSONL, one object per line, not a JSON array.
+   - **Read raw every candidate you intend to distil**, from the locator the briefing
+     gave you (Read/Bash on the `.jsonl` / SQLite, per the patterns in the archeologist
+     skill), so STEP 1–5 operate on real text and quotes are verbatim. When a locator
+     points at a store this session cannot read raw (M365 mail or Teams), the briefing's
+     verbatim excerpt is your only source — quote exactly that and never widen it into
+     something it does not say. Two pitfalls: sessions can span the watermark — filter
+     entries by per-message timestamps (CC/Pi `.timestamp`, Cortex `user_sent_time`),
+     don't trust session-start alone; and a sweep will rediscover its own prior bard
+     sessions (first user message = this skill's text) — skip them as mechanics, and
+     expect Cortex sidecar files (`*.history.jsonl`) to be JSONL, one object per line,
+     not a JSON array.
    - **AI attention pass** — before distillation, explicitly scan every candidate for
      durable AI work even when AI was not the session's main topic: model or tool
      choices, agents, skills, prompts, evals, context or memory, governance, security,
@@ -167,11 +186,13 @@ so it is derived from real work and ratified by Alex.
 4. Run the **Generation prompt** (below) over the raw material.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
-6. **Update the root TODO board** (`<vault>/Todo.md`) — see **Root TODO board
-   (`Todo.md`)**. Use one Edit pass over the existing file. Preserve everything above
+6. **Update the root TODO board** (`<vault>/Todo.md`). **Read
+   [Board rules](references/todo-board.md) first** — it owns every board rule and every
+   rule there is binding. Use one Edit pass over the existing file. Preserve everything
+   above
    `<!-- BARD:START -->`; if the marker is absent, append the whole BARD List block at
    the END of the file. Dedupe against every existing board line, open and done. Derive
-   each new item's horizon from the rules below, place it under its fixed-map topic
+   each new item's horizon from those rules, place it under its fixed-map topic
    heading, and insert it at the top of that topic group. Use the short open-line format
    with no topic emoji on open lines. Re-check every open item against the swept sessions;
    auto-complete clearly finished items, restore its topic emoji, move it to the top of
@@ -184,7 +205,8 @@ so it is derived from real work and ratified by Alex.
    to match. This is another existing file bard edits in place.
 8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
    session-start timestamp swept this run. It must be a **real session-start you
-   actually swept**, copied from the index — never a rounded day boundary. A watermark
+   actually swept**, taken from the index scan or the newest timestamp the briefing
+   observed — the max real value, never a rounded day boundary. A watermark
    of `...T00:00:00Z` re-sweeps that whole day on the next run (seen on 2026-09-04,
    where the prior run left `2026-09-03T00:00:00Z`). **Then read the file back and
    confirm.** Alex's zsh has `noclobber` set, so a plain `> state.json` fails with
@@ -218,7 +240,7 @@ Same as a sweep but ignores `watermark` (re-walks all history). Dedupe against
 
 ## Generation prompt (the core)
 
-Run this per candidate item from the archeologist, with `existing_notes`,
+Run this per candidate item in the briefing, with `existing_notes`,
 `existing_tags`, and `hubs` in context.
 
 > **ROLE.** You are bard's knowledge distiller. Turn raw AI-coding session
@@ -326,7 +348,10 @@ Never fabricate one; omit the key if enrichment found nothing. Body is markdown 
 
 ### PROVENANCE (hard)
 
-Quote real session content; do not paraphrase into something unsaid. Provenance
+Quote real session content; do not paraphrase into something unsaid. The verbatim
+text comes from a raw read of the locator the briefing gave you, or — for a store
+this session cannot reach — from the briefing's verbatim excerpt. **A summary is never
+quotable.** Provenance
 not in the session and not confirmable via STEP 2b (`gh`/`ado`/Exa) → "not
 available," never invented. A `resource` URL must be one STEP 2b actually verified.
 Confidential material → `confidential: true` + verbatim label in `classification`
@@ -362,193 +387,10 @@ bound lookback; write the newest session-start swept after a successful run.
 (capital T only), not `TODO.md`. It is Alex's file, seeded from swept sessions. Alex
 curates; bard is the scribe. It has no frontmatter and is not a knowledge note.
 
-**Ownership split is a hard rule.** Everything above the
-`<!-- BARD:START -->` marker belongs to Alex. bard never edits it, reorders it, or
-reads it as task input. bard edits ONLY from the marker down and never adds frontmatter
-to this file. If the marker is absent, bard appends the whole block at the END of the
-file — never at the top. The retired `Bard/TODO.md` is a pointer stub only; it is not
-the board.
-
-The block below the marker has this structure:
-
-```markdown
-<!-- BARD:START — bard owns everything below this line. Alex owns everything above. -->
-
-# BARD List
-
-_Seeded by `/bard` from swept sessions. Newest first in each topic group. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
-
-## Open
-
-### 🔥 This week
-#### 📊 Grafana
-- [ ] Send Tyler the alerting done message `(01a025e2)` ⏫
-#### 🔐 Security
-- [ ] Rotate the Snowflake SCIM token `(8bf834c5)` 🔺
-
-### 📅 This month
-#### 🏛️ Enterprise Architecture
-- [ ] Fix the 5 overdue EA milestones `(da41d7ea)` 🔼
-
-### ⏳ Waiting on others
-#### ☁️ AWS
-- [ ] Bucket-policy owner repoints aws:SourceVpce `(aa2f6ad0)` 🔼
-
-### 🧊 Someday
-#### 🔐 Security
-- [ ] Scope the org-wide Firemon decommission `(f1fd2740)` 🔽
-
-## Done
-
-_Last ~4 weeks. Older rolls to [[Done Archive]]._
-
-- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
-```
-
-### Line format and parser constraint
-
-Open lines are exactly:
-
-```text
-- [ ] <short imperative description> `(<session id>)` <priority emoji>
-```
-
-Done lines are exactly:
-
-```text
-- [x] <topic emoji> <short description> `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
-```
-
-Descriptions are short imperatives. Target 80 characters or fewer; hard cap 90. Drop
-detail — the session id is the record. The breadcrumb is the session id only, backticked.
-It has no `session ` prefix, repo, or ` · ` separator. The `####` heading carries the
-topic emoji, so open lines have no topic emoji. The priority emoji is the last token on
-an open line. On a done line, the priority emoji and `✅ YYYY-MM-DD` are the last two
-fields. The installed Obsidian Tasks plugin (v8.3.0) parses trailing fields with
-`$`-anchored regexes in a loop. Any text after the priority emoji stops it parsing. Put
-the breadcrumb before the priority, never after it. Every line carries exactly one
-priority emoji.
-
-### Priority
-
-Use Obsidian Tasks native symbols:
-
-| emoji | level | when |
-|---|---|---|
-| 🔺 | Highest | a hard deadline within ~7 days **whether or not a date string appears** ("needs it today", "2.1 days before retention", "before Friday's freeze"); an exposed credential or secret; production broken; a legal, regulatory, or counsel deliverable |
-| ⏫ | High | a **named person or team is waiting on you** (Jeremy, Tyler, counsel, CAB, the DBAs); OR it blocks a specific PR, ticket, or someone else's work; OR it is tied to a real-world event — townhall, forum, review, release — even with no written date |
-| 🔼 | Medium | real work, nobody named is waiting, no deadline |
-| 🔽 | Low | cleanup or hygiene, no consequence if it slips a month |
-| ⏬ | Lowest | someday/maybe, parked with no owner |
-
-Grade from the EVIDENCE, not the wording. A deadline counts even when it is implied
-rather than written as a date. A person counts when they are named anywhere in the
-thread, not only when the session proves they are blocked.
-
-**Spread check — both directions.** A one-sided cap fails: capping only the top drains
-everything into 🔼, which is just as useless as marking everything ⏫. After grading,
-check the distribution against these targets and re-grade before writing if it misses:
-
-| priority | target share of open items |
-|---|---|
-| 🔺 | 5–12% |
-| ⏫ | 15–25% |
-| 🔼 | 45–65% |
-| 🔽 + ⏬ | the remainder |
-
-**⏫ must never be 0.** Zero high means the bar was read as demanding proof no real
-board ever has. Report the final distribution in the sweep report.
-
-**Count the spread in Python, never with `grep -o`.** BSD `grep -o '🔺\|⏫\|🔼'` does not
-alternate correctly over these multi-byte symbols: on 2026-09-04 it reported all 115
-open items as ⏫, and only the implausibility of a 100% result caught it. A subtly wrong
-count would have "confirmed" a bad board. Read the file, take the LAST priority symbol
-on each `- [ ]` line, and tally with `collections.Counter`.
-
-**Re-grading moves the item.** Horizon is derived from priority, so demoting ⏫→🔼 to
-land inside the band also moves that line out of `🔥 This week` into `📅 This month`
-(or into `⏳ Waiting on others` if the next action turned out to be someone else's).
-Do the spread pass BEFORE placing lines, or re-place every line you re-graded.
-
-### Topic emoji
-
-Fixed map. Reuse these symbols. Never invent a new one:
-
-`☁️` AWS / cloud · `❄️` Snowflake · `🏗️` Terraform / IaC · `📊` Grafana /
-observability · `🔐` security / access / credentials · `🏛️` enterprise architecture /
-governance / docs · `🎫` Azure DevOps / process · `🐙` GitHub · `🧪` testing / QA · `🤖`
-AI / agents / skills · `👥` people / hiring / comms · `💰` cost / licensing · `🗄️`
-databases / SQL Server · `📦` anything else.
-
-### Horizon derivation and seeding
-
-Horizon is DERIVED, never guessed from prose. The fixed horizon set and order are:
-`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`, `### 🧊 Someday`.
-Test `⏳ Waiting on others` FIRST — ownership beats priority.
-
-| horizon | rule |
-|---|---|
-| 🔥 This week | priority 🔺 or ⏫ AND the next action is Alex's |
-| 📅 This month | priority 🔼 AND the next action is Alex's |
-| ⏳ Waiting on others | the next action belongs to someone else, at any priority |
-| 🧊 Someday | priority 🔽 or ⏬, or parked with no owner |
-
-Topic sub-headings use the fixed topic-emoji map, written as `#### <emoji> <name>`
-(e.g. `#### ❄️ Snowflake`). Order them in fixed map order for predictable scanning,
-not by size. Omit any heading with zero items — horizon and topic alike. The board never
-shows an empty section.
-
-Use high recall. Seed everything bard seeds today: Alex's commitments, unanswered
-"want me to X?" offers, `PARKED`/`DRAFTED`/gated items, open questions, and handoffs.
-Never invent a task. If the session did not defer it, it does not go on the board.
-
-### Ordering, completion, and curation
-
-A new item goes at the TOP of its `####` topic group, never appended at the bottom. Create
-horizon and topic headings only when they contain an item. Keep both heading levels in
-fixed order. `## Done` stays flat; insert a newly completed item at the top of `## Done`.
-On every sweep, bard re-checks every open item against the swept sessions. When a session
-clearly shows an item finished — for example, a merged PR, applied change, shipped report,
-or sent message — bard checks the box, restores the topic emoji from its `####` heading,
-appends `✅ <ISO date>`, and MOVES the line to the top of `## Done`. This is mandatory,
-not best effort.
-
-`## Done` holds only the last ~4 weeks. Anything older rolls over to
-`<vault>/Bard/Done Archive.md`; pruning now means moving, not deleting. The archive is
-never deleted or shortened. It has frontmatter `type: board`, `# Done Archive`, and
-`## YYYY-MM` month sections, newest month first, with newest items first inside each
-month. Archive lines use the same flat Done format. The verified `Bard.base` filter uses
-`file.inFolder("Bard")` and excludes `type == "board"`, so the archive stays out of the
-base by type; that folder filter excludes the root `<vault>/Todo.md`, not the archive.
-A future full retrospective rebuild writes its finished-work haul into `Done Archive.md`,
-never into `Todo.md`. The roll-over/prune step never deletes archive content.
-
-bard adds items, marks done, and rolls over old `## Done` entries. It never deletes an
-open item Alex has not actioned. Secrets, PII, and regulated specifics stay off the board,
-the same as notes.
-
-### Alex edits this board by hand — re-read it immediately before writing
-
-`Todo.md` is a live file Alex works in Obsidian between sweeps. He ticks items off
-himself, adds his own, and edits text. **Never write the board from state read earlier in
-the run.** Re-read it as the last step before the write, and diff against what the sweep
-started with.
-
-- An item Alex checked himself is a REAL completion. Keep his `✅ <date>` and move it to
-  `## Done`. Never revert it to `- [ ]`, and never restamp it with a different date.
-- An item Alex added by hand stays, even with no breadcrumb and no priority emoji. Grade
-  and file it, do not delete it for failing the format.
-- An item Alex edited keeps his wording.
-
-This is a data-loss class, not a style rule: a sweep that trusts stale state silently
-erases work Alex already did.
-
-### Bulk clear (only when Alex asks)
-
-When Alex asks to clear the board, archive it — do not mark it done.
-Read [Bulk clear](references/bulk-clear.md) only for that request, before changing
-`Todo.md` or `Bard/Done Archive.md`. A bulk clear never deletes items or invents
-completion dates; keep real completions separate from unverified cleared items.
+**Read [Board rules](references/todo-board.md) before you touch it.** That file owns the
+ownership split, the line formats and the parser constraint, the priority scale and
+spread check, the topic-emoji map, horizon derivation, ordering and completion, roll-over
+to `Done Archive.md`, and the hand-edit rules. Every rule there is binding.
 
 ## Evidence capture
 
@@ -608,5 +450,6 @@ obsidian sync:status vault=Alex   # expect "status: synced"
 - Never use `sync off` / `reload` / `restart` / destructive `sync:restore` in a sweep.
   Only `sync:status` (read-only) is part of the flow.
 
-See `references/obsidian-setup.md` for the root `Todo.md`, `Bard.base`, hub-note
-template, and the one-time graph-color-group setup.
+See [Board rules](references/todo-board.md) for the board's formats and decisions, and
+`references/obsidian-setup.md` for the one-time scaffolding: `Bard.base`, the hub-note
+template, the board and archive templates, and the graph-color-group setup.
