@@ -5,12 +5,12 @@ A collection of skills for Claude Code and opencode — modular instruction pack
 ## Install
 
 ```bash
-git clone --recurse-submodules https://github.com/acastro2/alex-skills.git ~/.agents/skills
+git clone https://github.com/acastro2/alex-skills.git ~/.agents/skills
 ```
 
 This puts each skill at `~/.agents/skills/<name>/SKILL.md`, which opencode discovers automatically.
 
-Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/skills/` — see [opencode skills docs](https://opencode.ai/docs/skills/).
+Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/skills/` — see [opencode skills docs](https://opencode.ai/v2/docs/skills/).
 
 ### Voice skill
 
@@ -21,29 +21,17 @@ Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/sk
 
 ## Skill creator
 
-`skill-creator/SKILL.md` routes structure work to OpenAI's creator and evaluation work to Anthropic's creator. Both stay unchanged in Git submodules at `.upstream/codex` and `.upstream/claude`. The hidden parent keeps them out of normal Pi and Codex skill discovery; do not register `.upstream/` as a skill search path.
+`skill-creator/SKILL.md` routes structure work to OpenAI's creator and evaluation work to Anthropic's creator. Both creators are vendored into `skill-creator/vendor/` as pinned copies. There are no Git submodules.
 
 ```mermaid
 flowchart LR
-    A[skill-creator/SKILL.md] --> B[.upstream/codex: structure]
-    A --> C[.upstream/claude: evaluation]
+    A[skill-creator/SKILL.md] --> B[vendor/codex: structure]
+    A --> C[vendor/claude: evaluation]
 ```
 
-For an existing clone, run from the repository root (Git changes require approval when an agent runs them):
+The vendored entry file is `CREATOR.md`, not `SKILL.md`, because OpenCode discovers any file named exactly `SKILL.md` at any depth, with dot-directories and symlinks included. A vendored `SKILL.md` would register a second skill, and a nested one sorts after `skill-creator/SKILL.md` and shadows the wrapper.
 
-```bash
-git submodule update --init --recursive -- .upstream/codex .upstream/claude
-```
-
-This restores the recorded versions. To deliberately test newer upstream versions:
-
-```bash
-git submodule update --remote -- .upstream/codex .upstream/claude
-git diff --submodule=log
-git submodule status
-```
-
-Review the changed creator instructions and scripts, then rerun validation and a representative skill task before recording the new pins. Do not edit files inside the submodules. Upstream licenses remain in their repositories. Install this wrapper with the parent repository, not as a standalone `.skill` archive.
+`skill-creator/vendor/PROVENANCE.md` records the source repositories, pinned commits, dates, and licenses. To move to a newer upstream commit, re-copy both directories, rename the new `SKILL.md` to `CREATOR.md`, drop any `__pycache__`, update that table, then rerun validation and a representative skill task. Do not edit files inside `vendor/`. Upstream licenses stay in each vendored directory. Because the sources now live inside the skill, `skill-creator/` installs standalone.
 
 ## Skill anatomy
 

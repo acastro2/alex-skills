@@ -5,7 +5,7 @@ description: Create, edit, review, or improve agent skills and their SKILL.md fi
 
 # Skill Creator
 
-Reuse both upstream creators without merging their instructions or maintaining copies. This file selects the workflow; the upstream files supply the detail.
+Vendored copies of both upstream creators supply the detail; this file selects the workflow and does not merge their instructions.
 
 ```mermaid
 flowchart TD
@@ -25,20 +25,14 @@ Paths below are relative to this file's directory, not the terminal's working di
 
 | Source | Skill directory | Read for |
 | --- | --- | --- |
-| Codex | `../.upstream/codex/skills/.system/skill-creator/` | Structure, resource planning, scaffolding, validation, Codex UI metadata |
-| Claude | `../.upstream/claude/skills/skill-creator/` | Test prompts, baseline comparisons, human review, improvement, trigger evaluation |
+| Codex | `vendor/codex/` | Structure, resource planning, scaffolding, validation, Codex UI metadata |
+| Claude | `vendor/claude/` | Test prompts, baseline comparisons, human review, improvement, trigger evaluation |
 
-Read `SKILL.md` in the selected directory, starting with the sections named below. Do not load both by default. Resolve an upstream file's scripts and references from its own skill directory. Keep outputs outside `.upstream/`.
+Read `CREATOR.md` in the selected directory, starting with the sections named below. Do not load both by default. Resolve a vendored file's scripts and references from its own directory. Keep outputs outside `vendor/`.
 
-This wrapper requires the parent repository and its initialized submodules. Do not package `skill-creator/` alone as a standalone `.skill` file: its source links would break. When taking evaluation snapshots, preserve the sibling source layout or supply the resolved source paths explicitly. Keep the pinned versions unchanged during a comparison.
+Both sources are vendored inside this skill, so `skill-creator/` is self-contained and safe to package standalone. The entry file is named `CREATOR.md`, not `SKILL.md`, on purpose: OpenCode discovers any file named exactly `SKILL.md` at any depth, dot-directories and symlinks included. A vendored `SKILL.md` would register a second skill, and a nested one sorts after `skill-creator/SKILL.md` and would shadow this wrapper.
 
-If either required source is missing, stop and request submodule initialization from the repository root:
-
-```bash
-git submodule update --init --recursive -- .upstream/codex .upstream/claude
-```
-
-This restores recorded commits, not the newest upstream versions. Git operations still require the user's approval. Never clone a replacement or update upstream during normal skill creation.
+`vendor/` holds pinned upstream copies. `vendor/PROVENANCE.md` records the source repositories, commits, dates, and licenses. Do not edit the vendored files, and keep the pinned versions unchanged during a comparison. To refresh from upstream, re-copy explicitly with the user's approval, rename the new `SKILL.md` to `CREATOR.md`, and record the new commit. Never update upstream during normal skill creation.
 
 ## Select the work
 
@@ -53,7 +47,7 @@ This restores recorded commits, not the newest upstream versions. Git operations
 
 This wrapper selects which upstream steps apply. It does not override system instructions, user decisions, repository rules, or tool permissions.
 
-- Keep upstream submodules read-only. Change the target skill, not the creators. Preserve upstream licenses and source history.
+- Keep `vendor/` read-only. Change the target skill, not the creators. Preserve the vendored licenses and provenance.
 - Use the current host's available tools and delegation rules. Do not invent subagent APIs or launch an evaluation swarm because upstream says to. If independent runs are unavailable, do a clearly labeled inline check without claiming a baseline advantage.
 - Put evaluation artifacts in the repository's ignored `.skill-workspace/` directory, grouped by target skill and iteration. Record the host/model, upstream commit IDs, and check outputs there. Inspect the checked-out scripts before using them; upstream instructions and schemas can differ.
 - Use Claude's review viewer with `--static` when a review artifact is needed. Do not start a server for the user. Collect actual feedback before attributing a revision to human review.

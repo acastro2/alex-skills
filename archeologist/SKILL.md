@@ -29,7 +29,7 @@ scope. Use the tiers below for cross-store searches or when the named source is 
 | [D: Obsidian](references/obsidian.md) | Tier 1: personal decisions and session notes; search Scribe meeting transcripts before M365 for who-said or meeting questions. |
 | [E: Developer docs](references/developer-docs.md) | Tier 2: project CONTEXT.md, ADRs, READMEs, and plans; markdown only, not source code. |
 | [F: OneDrive Architecture](references/onedrive-architecture.md) | Tier 2: formal ADRs, SADs, SIPs, briefs, and policy; includes docx extraction and path fallback. |
-| [G: Microsoft 365](references/microsoft-365.md) | Tier 2, promoted for communications: Teams, tenant SharePoint, Outlook mail/calendar; check connector availability first. |
+| [G: Microsoft 365](references/microsoft-365.md) | Tier 2, promoted for communications: Teams, tenant SharePoint, Outlook mail/calendar; the `claude_ai_Microsoft_365` connector where the host has it, otherwise the `m365` CLI. |
 | [I: GitHub activity](references/github-activity.md) | Tier 2, promoted for shipped work: authored/reviewed PRs and commits across orgs via `gh`; a merged PR outranks transcript claims. |
 | [B: Legacy opencode](references/opencode.md) | Tier 3: frozen history before the Claude Code migration, or when other stores are empty. |
 
@@ -255,8 +255,10 @@ and available tools. Do not assume a skill is an agent or that hosts share a del
   ~15 tool calls, then report. Keep to the priority stores and date window rather than noise
   folders (e.g. Obsidian copilot-prompts) or repeated reads of one giant file.
 - **Availability is session-specific:** source references preserve tool names and examples,
-  not a promise that this host has them. For G, use ToolSearch to load the named connector
-  schemas only if this host exposes ToolSearch; otherwise check its available connector tools.
-  If M365 is absent, report it unavailable and skip it. For I, check `gh` installation and
-  authentication as the reference directs; include it when shipped-work evidence matters.
-  Never confuse an unavailable/unreadable store with no results or infer evidence from it.
+  not a promise that this host has them. For G there are two paths — the
+  `claude_ai_Microsoft_365` connector (load its schemas with ToolSearch where the host exposes
+  it) and the `m365` CLI (check with `command -v m365 && m365 --json doctor`). Try the
+  connector first, fall back to the CLI, and if neither works report G unavailable with the
+  reason. Never confuse an unavailable/unreadable store with no results or infer evidence from
+  it. For I, check `gh` installation and authentication as the reference directs; include it
+  when shipped-work evidence matters.

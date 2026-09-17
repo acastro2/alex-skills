@@ -55,7 +55,9 @@ mid-sentence if the source transcript did. Say so in the recap footer rather tha
 > **Open Questions / Risks** — bullets for anything raised but unresolved, including who needs to
 > weigh in to close it.
 >
-> **Artifacts Referenced** — list any docs, decks, diagrams, or links mentioned, with the file name.
+> **Artifacts Referenced** — list any docs, decks, diagrams, or links mentioned. Link each one to its
+> org-readable location and label the link with the document's own title; where no published copy
+> exists yet, give the file name and say so.
 >
 > Rules: Attribute decisions and actions to the specific person who owns them. Do not invent owners
 > or dates. Skip pleasantries, tangents, and status updates that led nowhere. Write in plain, direct
@@ -78,6 +80,21 @@ No em dashes.
   "let's circle back next week," the Outcome is at best [Partially achieved].
 - **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers.
   Attribute to the person who actually spoke the commitment.
+- **Artifacts Referenced carries links, not just filenames.** This is the traceability line: a reader
+  must be able to go from the recap to the RFC, the ADR, the PR, or the deck behind an update.
+  - **Link the primary record, not a folder.** A merged PR, an ADO item, the portfolio row, the
+    published RFC/ADR/SAD, or the deck itself.
+  - **Label with the document's own title, never an ID and never a raw URL.** Framework docs carry
+    no identifier except `STD-NNNN` and `ADR-NNNN`, so there is no `RFC-0007` to cite — the title is
+    the identifier. Never invent an ID to make a link look tidy.
+  - **Never link an unpublished doc.** Until the file is in the Architecture Documents library it has
+    no stable URL. Name it and say it is not yet published. A link that 403s or lands on a
+    placeholder filename is worse than no link.
+  - **The exclusion screen applies to the link target.** No personal-OneDrive URLs
+    (`-my.sharepoint.com`), no access-restricted evidence, nothing the screen would keep off a board
+    row.
+  - If the note names no artifact for a topic, leave it out. An invented link is a fabrication like
+    any other.
 - **Do not print the recap into the terminal.** Alex does not read it there, and a 1,300-word page
   pasted into a CLI is noise. Generate it, verify it against the note, run `docs-reviewer`,
   address the findings, stage it to SharePoint, and hand back **the link plus a short summary of
