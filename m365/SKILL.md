@@ -22,11 +22,11 @@ holds may carry broader scopes than it uses, but nothing in this surface can rea
 
 ## First, confirm it is installed
 
-Paths here resolve from this skill's own directory — the host reports that path when the
-skill loads.
+Run `command -v m365`. If it is missing, set `SKILL_DIR` to the absolute base directory
+reported when this skill loaded, then run the installer:
 
 ```bash
-command -v m365 || scripts/install.sh
+bash "$SKILL_DIR/scripts/install.sh"
 ```
 
 ## Then check it before trusting it
@@ -42,12 +42,14 @@ Answer these in order:
 2. Which surfaces say `ok`. A surface that says `fail: <code>` is unavailable **this run**;
    report it as missing data, never as "no results".
 3. Do not proceed on a partial `doctor` without saying which parts are down.
+4. Query only the healthy surfaces needed for the user's request. Describe findings after
+   reading the results; doctor only proves availability.
 
 ## The commands
 
 ```
-m365 doctor [--json]                auth + which surfaces answer
-m365 login | logout                 sign in / delete the cached token
+m365 --json doctor                 auth + which surfaces answer
+m365 login                         user-run browser sign-in
 m365 whoami
 m365 mail search "<query>" [--sender X] [--after ISO] [--limit N]
 m365 mail read <id> [--max-chars N]
@@ -57,13 +59,14 @@ m365 teams messages <chat-id> [--limit N] [--max-chars N]
 m365 teams search "<query>" [--limit N]
 m365 sharepoint search "<query>" [--sites] [--limit N]
 m365 sharepoint read <url> [--drive ID]
-m365 request GET <path> [--param k=v]
+m365 request <path> [--param k=v]
 ```
 
 `mail search` takes one axis at a time: Graph rejects `$search` together with `$filter`, so
 passing `--after` drops the query text and you get recent mail instead of matches. Check the
 result against what you asked for.
 
+Put `--json` before the command, as in `m365 --json request /me`.
 Flags, defaults and return shapes are authoritative in
 [cli-reference.md](references/cli-reference.md).
 
@@ -82,9 +85,8 @@ Flags, defaults and return shapes are authoritative in
 
 ## The raw escape hatch
 
-`m365 request GET <path>` hits any Graph read endpoint directly, for anything the verbs do
-not cover. **Read verbs only** — it accepts `GET`. Use it when you need a field the trimmed
-output drops.
+`m365 request <path>` sends a Graph GET request for fields the named commands omit.
+The method is fixed; pass only the path, for example `m365 --json request /me`.
 
 ## What not to do
 

@@ -16,8 +16,7 @@ skill-creator directories are copied here.
 
 Upstream names it `SKILL.md`. OpenCode discovers **any** file named exactly
 `SKILL.md` at any depth under a skill source, with dot-directories and symlinks
-included. A vendored `SKILL.md` would therefore register a second skill, and a
-nested one sorts after `skill-creator/SKILL.md` and would shadow the wrapper.
+included. A vendored `SKILL.md` would therefore register another skill.
 Renaming the vendored entry file keeps it a plain resource file.
 
 ## Refresh

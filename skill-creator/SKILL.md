@@ -30,7 +30,7 @@ Paths below are relative to this file's directory, not the terminal's working di
 
 Read `CREATOR.md` in the selected directory, starting with the sections named below. Do not load both by default. Resolve a vendored file's scripts and references from its own directory. Keep outputs outside `vendor/`.
 
-Both sources are vendored inside this skill, so `skill-creator/` is self-contained and safe to package standalone. The entry file is named `CREATOR.md`, not `SKILL.md`, on purpose: OpenCode discovers any file named exactly `SKILL.md` at any depth, dot-directories and symlinks included. A vendored `SKILL.md` would register a second skill, and a nested one sorts after `skill-creator/SKILL.md` and would shadow this wrapper.
+Both creators are bundled inside this skill. Prose work also requires the sibling `alex-voice/` skill. The vendored entry files are named `CREATOR.md` because OpenCode discovers nested `SKILL.md` files as separate skills. Keep only this wrapper named `SKILL.md`.
 
 `vendor/` holds pinned upstream copies. `vendor/PROVENANCE.md` records the source repositories, commits, dates, and licenses. Do not edit the vendored files, and keep the pinned versions unchanged during a comparison. To refresh from upstream, re-copy explicitly with the user's approval, rename the new `SKILL.md` to `CREATOR.md`, and record the new commit. Never update upstream during normal skill creation.
 

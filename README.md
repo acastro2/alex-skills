@@ -29,9 +29,9 @@ flowchart LR
     A --> C[vendor/claude: evaluation]
 ```
 
-The vendored entry file is `CREATOR.md`, not `SKILL.md`, because OpenCode discovers any file named exactly `SKILL.md` at any depth, with dot-directories and symlinks included. A vendored `SKILL.md` would register a second skill, and a nested one sorts after `skill-creator/SKILL.md` and shadows the wrapper.
+The vendored entry file is `CREATOR.md` because OpenCode discovers nested `SKILL.md` files as separate skills. Keep only the wrapper named `SKILL.md` so the copies stay out of the skill list.
 
-`skill-creator/vendor/PROVENANCE.md` records the source repositories, pinned commits, dates, and licenses. To move to a newer upstream commit, re-copy both directories, rename the new `SKILL.md` to `CREATOR.md`, drop any `__pycache__`, update that table, then rerun validation and a representative skill task. Do not edit files inside `vendor/`. Upstream licenses stay in each vendored directory. Because the sources now live inside the skill, `skill-creator/` installs standalone.
+`skill-creator/vendor/PROVENANCE.md` records the source repositories, pinned commits, dates, and licenses. To move to a newer upstream commit, re-copy both directories, rename the new `SKILL.md` to `CREATOR.md`, drop any `__pycache__`, update that table, then rerun validation and a representative skill task. Do not edit files inside `vendor/`. Upstream licenses stay in each vendored directory. Both creators are bundled inside `skill-creator/`; prose work also requires the sibling `alex-voice/` skill.
 
 ## Skill anatomy
 

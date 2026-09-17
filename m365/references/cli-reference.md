@@ -5,7 +5,9 @@ verb in the surface.
 
 ## JSON policy
 
-`--json` on any command returns exactly one object on stdout.
+Put `--json` before the command, for example `m365 --json doctor`.
+Successful data commands and handled API errors return one object on stdout.
+Login and logout print plain text; argument errors use argparse's stderr output and exit 2.
 
 **Success** — HTTP 200, `ok: true`, payload under `data`:
 
@@ -31,7 +33,7 @@ dates and short previews. Fields the verbs drop are reachable with `request`.
 
 | Command | Graph call | Returns |
 |---|---|---|
-| `doctor [--json]` | `/me`, then one probe per surface | auth state, cache path, per-surface `ok` / `fail:<code>` |
+| `--json doctor` | `/me`, then one probe per surface | auth state, cache path, per-surface `ok` / `fail:<code>` |
 | `whoami` | `/me` | displayName, userPrincipalName |
 | `login` | authorize + token | caches a refresh token |
 | `logout` | — | deletes the cache |
@@ -43,7 +45,7 @@ dates and short previews. Fields the verbs drop are reachable with `request`.
 | `teams search <query> [--limit N]` | `POST /search/query` `chatMessage` | `hits[]` |
 | `sharepoint search <query> [--sites] [--limit N]` | `/sites?search=` or `POST /search/query` `driveItem` | `sites[]` or `documents[]` |
 | `sharepoint read <url> [--drive ID]` | `/shares/u!<b64>` or `/drives/{d}/items/{i}` | name, size, webUrl, downloadUrl, lastModified |
-| `request GET <path> [--param k=v]` | any read endpoint | `response` |
+| `request <path> [--param k=v]` | Graph GET; no method argument | `response` |
 
 Defaults: `--limit` 20 (messages, events, documents, sites), 25 (chats, hits), 50 (chat
 messages). Nothing pages automatically; if a result set looks truncated, raise `--limit`.
@@ -90,4 +92,4 @@ cd scripts && python3 -m unittest tests
 - **Files content** — `sharepoint read` returns metadata and a `downloadUrl`, not the file's
   bytes.
 - **Channels** — `teams messages` reads chats. Channel message reading is reachable with
-  `request GET /teams/{id}/channels/{id}/messages`, not yet a verb.
+   `m365 request /teams/{id}/channels/{id}/messages`, not yet a verb.
