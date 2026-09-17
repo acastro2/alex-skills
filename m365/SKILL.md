@@ -22,8 +22,11 @@ holds may carry broader scopes than it uses, but nothing in this surface can rea
 
 ## First, confirm it is installed
 
+Paths here resolve from this skill's own directory — the host reports that path when the
+skill loads.
+
 ```bash
-command -v m365 || ~/.agents/skills/m365/scripts/install.sh
+command -v m365 || scripts/install.sh
 ```
 
 ## Then check it before trusting it
@@ -44,19 +47,25 @@ Answer these in order:
 
 ```
 m365 doctor [--json]                auth + which surfaces answer
+m365 login | logout                 sign in / delete the cached token
 m365 whoami
 m365 mail search "<query>" [--sender X] [--after ISO] [--limit N]
-m365 mail read <id>
+m365 mail read <id> [--max-chars N]
 m365 calendar search [--after ISO] [--before ISO] [--limit N]
 m365 teams chats [--limit N]
-m365 teams messages <chat-id> [--limit N]
+m365 teams messages <chat-id> [--limit N] [--max-chars N]
 m365 teams search "<query>" [--limit N]
-m365 sharepoint search "<query>" [--docs|--sites] [--limit N]
+m365 sharepoint search "<query>" [--sites] [--limit N]
 m365 sharepoint read <url> [--drive ID]
 m365 request GET <path> [--param k=v]
 ```
 
-Full surface, output shapes and the JSON policy: [cli-reference.md](references/cli-reference.md).
+`mail search` takes one axis at a time: Graph rejects `$search` together with `$filter`, so
+passing `--after` drops the query text and you get recent mail instead of matches. Check the
+result against what you asked for.
+
+Flags, defaults and return shapes are authoritative in
+[cli-reference.md](references/cli-reference.md).
 
 ## The read path you should use
 

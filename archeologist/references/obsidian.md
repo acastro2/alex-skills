@@ -9,7 +9,8 @@ Two sub-folders matter most: `Bard/` (distilled decisions, lessons, patterns) an
 `scribe` skill from Teams transcripts and HiDock call recordings, each with a summary,
 decisions, actions, and the verbatim transcript). For "who said", "when did we meet",
 or "what was decided in <meeting>" questions, search `Scribe/Meetings/Transcripts/`
-BEFORE the Microsoft 365 connector: it is local, already cleaned, and covers calls Teams
+BEFORE reaching for Microsoft 365 (the `claude_ai_Microsoft_365` connector, or the `m365`
+CLI): it is local, already cleaned, and covers calls Teams
 never transcribed. Note filenames start with the meeting date and local time
 (`2026-09-02 1500 Architecture Advisory Board.md`).
 
