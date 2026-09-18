@@ -1,6 +1,6 @@
 ---
 name: agent-creator
-description: Create or update OpenCode subagent definitions stored as Markdown files under @agent/. Use when asked to add a new agent, modify an existing agent's prompt/config, or adjust tools/permissions.
+description: Create or update OpenCode subagent definitions in ~/.config/opencode/agents/. Use when asked to add an agent, change its role or prompt, or adjust its permissions.
 license: MIT
 compatibility: opencode
 disable-model-invocation: true
@@ -11,80 +11,57 @@ metadata:
 
 # Agent Creator
 
-Create and maintain agent definition files in `@agent/` (backed by `/Users/alexandrecastro/.config/opencode/agents/`). Each agent is a single Markdown file with YAML frontmatter that configures tools/permissions plus a prompt body.
+Maintain Markdown agent definitions in `~/.config/opencode/agents/`. YAML frontmatter selects the model, mode, and permissions. The body defines the role.
 
 ## Output target
 
-- New agent: write `@agent/<agent_name>.md`
-- Update agent: edit `@agent/<agent_name>.md` in place
+- New agent: write `~/.config/opencode/agents/<agent_name>.md`.
+- Update agent: edit its existing file in place.
 
 Prefer `snake_case` file names to match existing agents.
 
 ## Workflow
 
-1. Identify whether this is **create** or **update**.
-   - If the user didn’t provide a name, propose a `snake_case` name and confirm.
+1. Load the OpenCode skill and consult the V2 agents and permissions docs. Read the existing definition, project instructions, and global permissions in `~/.config/opencode/opencode.jsonc`.
+2. Recover the role, inputs, and expected result from the request. Ask only for missing decisions. Classify by the work: changing remote tickets or SharePoint pages makes an agent a writer, even if it rarely edits local files.
+3. Apply the shared permission policy below.
+4. Keep the description and first paragraph consistent with the role. Give the agent responsibility for routine work and scoped verification. Return missing decisions and actual blockers to the parent. Keep user-required review or publication steps explicit.
+5. Validate the YAML and inspect the running server's resolved rules with `opencode api get /api/agent/<agent_id>`. Verify shell inheritance, edit behavior, delegation, and the global deny/ask rules. A rule count alone proves none of these.
 
-2. Gather requirements (ask only what’s needed).
-   - What the agent does (1–2 sentences)
-   - Typical inputs it will receive
-   - Required output format (if any)
-   - Tools it actually needs (read/write/edit/bash/grep/glob/mermaid)
-   - Guardrails: what it must never do
+## Shared permission policy
 
-3. Choose minimal permissions.
-   - Default to no `bash`.
-   - Default to `edit: "deny"` unless the agent must modify files.
-   - If the agent needs `edit`, prefer `permission.edit: "ask"` (human-in-the-loop) unless explicitly requested otherwise.
-   - If enabling `bash`, restrict it with an allowlist (never broad `"*": "allow"`).
-   - Tool enablement is now part of the `permission` block (e.g., `read: "allow"`).
-
-4. Write/update YAML frontmatter.
-   - Always include `description` and `mode: subagent`.
-   - Add `temperature` only when you need deterministic behavior.
-
-5. Write/update the body prompt.
-   - Start with a direct role statement: “You are …”
-   - Define responsibilities, constraints, and output format.
-   - Include a short checklist when the task is failure-prone.
-
-6. Validate.
-   - File exists in `@agent/`
-   - Frontmatter parses as YAML
-   - Permissions use string values (e.g., `"allow"`, `"deny"`, `"ask"`)
+- All agents inherit global shell, read, and directory permissions. Keep shell rules in the global configuration; omit agent-level shell allowlists, wildcard defaults, and copied git/Vault rules. Agent rules run last, so even a local `shell: ask` can weaken a global deny.
+- Writers add only a `subagent` deny. Examples: ADO, SharePoint, blog writing, GitHub issue creation, and implementation workers.
+- Read-only agents add an `edit` deny and a `subagent` deny. Their body limits shell and remote operations to inspection. `edit: deny` controls the edit tools; it does not make shell commands read-only.
+- Workers return blockers to their parent rather than launching more workers.
+- Reuse the existing format for small edits. New definitions use native V2 `permissions` rules. Keep each definition in one format; supported legacy `permission` blocks need no migration just for style.
+- Check `~/.config/opencode/cli.json` before promising an approval prompt. `session.permissions: autoaccept` accepts requests automatically; `prompt` shows them. Change this user-wide setting only when requested.
 
 ## Agent file template
 
-Use this as a starting point and remove unused parts. Note that the `tools` field is deprecated and merged into `permission`.
+Writer template; preserve any existing model selection when updating:
 
 ```yaml
 ---
 description: <one-sentence description; include when to use>
 mode: subagent
-# temperature: 0.1  # optional
-permission:
-  read: "allow"
-  glob: "allow"
-  grep: "allow"
-  write: "deny"
-  edit: "deny"
-  bash: "deny"
-  # mermaid*: "allow" # optional
+permissions:
+  - action: subagent
+    resource: "*"
+    effect: deny
 ---
 ```
 
-### Bash allowlist example
+For a read-only agent, add this rule and state the inspection-only role in the body:
 
 ```yaml
-permission:
-  bash:
-    "git status *": "allow"
-    "git diff *": "allow"
-    "*": "deny"
+  - action: edit
+    resource: "*"
+    effect: deny
 ```
 
 ## Update rules
 
 - Preserve what the user didn’t ask to change.
 - If the agent’s **role** changes, update the `description` and the first paragraph of the body to match.
-- If adding capabilities, tighten permissions to the smallest allowlist that still works.
+- Verify a routine shell command is allowed, global blocked commands stay blocked, and global approval-required commands stay `ask`. Inspect the resolved policy without executing destructive commands.

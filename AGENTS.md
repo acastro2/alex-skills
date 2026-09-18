@@ -30,7 +30,7 @@ skill-name/
 
 - No root-level build system, package manager, or CI. Each skill is independent.
 - Run `python3 scripts/validate_skill_graph.py` for local skill frontmatter and sibling-reference checks. For skill-specific validation, follow `skill-creator/SKILL.md`.
-- `.skill-workspace/` is gitignored — skills may create temp working dirs there.
+- Put evaluation workspaces and snapshots under `~/.agents/skill-workspace/alex-skills/`, outside this repository. OpenCode scans nested `SKILL.md` files even inside ignored dot-directories, so an in-repo snapshot can replace a live skill.
 
 ## Conventions
 
