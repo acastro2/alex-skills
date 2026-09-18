@@ -131,10 +131,28 @@ so it is derived from real work and ratified by Alex.
      and the verbatim label on anything confidential. This is the lane that reaches
      mail, Teams, calendar, tenant SharePoint, and GitHub activity — stores the local
      indexes below cannot see. An unavailable store in the briefing is missing data, not
-     empty data: name it in the sweep report, never let it pass silently. Comms mostly
-     dies at the half-life filter (STEP 1) — expect to drop standups, 1:1s, and routine
-     threads; what survives is usually a commitment ("I'll send X by Friday"), which is
-     a board candidate, not a knowledge note.
+     empty data: name it in the sweep report, never let it pass silently.
+
+     **Demand the coverage ledger, and check it before you trust the briefing.** The
+     archeologist owes one line per store — what it ran and how many hits (its
+     **Coverage** rule). No ledger, or a store missing from it, means that lane was not
+     swept: send the agent back or sweep it yourself. "All stores reachable" is a
+     statement about the connection, not about the search.
+
+     **A zero from a comms store is a coverage failure until proven otherwise.** Teams,
+     mail and calendar are never actually silent across a working week. Verified
+     2026-09-18: a sweep returned zero Teams items, the lane was accepted as quiet, and
+     the week's biggest item — a production outage being worked in a channel — never
+     reached the notes or the board. If the ledger shows 0 for Teams or mail, run
+     targeted `chat_message_search` / `outlook_email_search` queries directly on this
+     window before you accept it: the topics already on the board, the people who owe
+     Alex something, and the systems that broke. Cheap, and it is the lane you cannot
+     reconstruct later.
+
+     Comms mostly dies at the half-life filter (STEP 1) — expect to drop standups, 1:1s,
+     and routine threads; what survives is usually a commitment ("I'll send X by
+     Friday"), which is a board candidate, not a knowledge note. That is a reason to
+     filter hard, never a reason to skip the search.
    - **Also scan the time indexes — they are the cursor.** The briefing is a
      summarizer's view and cannot be trusted to enumerate every session start. Scan
      these and take the union with the briefing. The scan is a filename glob: cheap,

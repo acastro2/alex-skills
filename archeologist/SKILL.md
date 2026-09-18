@@ -51,6 +51,30 @@ happened across a window rather than answer one question — covers **ALL stores
 A skipped store is missing data, and missing data reported as silence is worse than a
 reported error. Name every store you could not reach, and why.
 
+**Report coverage as a ledger, not a claim.** "All stores reachable" describes the
+connection, not the search. Close every sweep with one line per store: what you actually
+ran, and how many hits came back. Three states, and they are never interchangeable:
+
+| State | Means | Written as |
+|---|---|---|
+| unavailable | could not reach it | `unavailable — <reason>` |
+| searched, 0 hits | ran the query, nothing matched | `searched, 0 hits` |
+| not searched | scoped out on purpose | `not searched — <why>` |
+
+A store you searched and found nothing in is reported, never omitted. Omission reads to the
+caller as "nothing happened there", which is a different claim and usually a false one.
+
+**Break G down by substore.** Mail, calendar, Teams chats, Teams channels and SharePoint are
+five different searches behind one connector, so "G reachable" can hide the fact that no Teams
+query ever ran. List them separately.
+
+**Zero hits in a busy store is a coverage failure until proven otherwise.** Verified
+2026-09-18: a sweep reported both target stores reachable, returned zero Teams items, and had
+in fact searched only mail, calendar and SharePoint. The caller read it as a quiet week in
+Teams and missed a live production outage that was being worked in a channel at that moment.
+Before reporting 0 for an active store over a multi-day window, run at least one more query
+with different terms and say in the ledger which terms you tried.
+
 ## Core Philosophy
 
 Past context is only useful if it is accurate, traceable, and current. Every finding must be:
@@ -167,6 +191,19 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
 | GitHub | `<repo>#<N>` / `@<sha7>` | PR merged / commit date | "..." |
 | M365 | `Teams "<chat>"` / `Mail "<subj>"` / `SP <file>` | message/event date | "..." |
 | opencode | `sess_xxx` | YYYY-MM-DD | "..." |
+
+### Coverage
+| Store | Searched | Hits |
+|--------|---------|------|
+| A Claude Code | `grep -ril "<term>" ~/.claude/projects` | 4 |
+| G/Teams chats | `chat_message_search "<kw1>" / "<kw2>"`, <window> | 0 |
+| G/Teams channels | `chat_message_search "<kw>"`, <window> | 3 |
+| G/Mail | `outlook_email_search "<kw>"` | 6 |
+| I GitHub | `gh search prs --author @me --updated ">=<date>"` | 16 |
+
+One row per store touched, **including every zero**. A sweep lists all of A-I; a targeted
+question lists the tiers it ran. `unavailable` and `not searched` are valid Hits values and
+carry their reason.
 
 ### Verification Status
 - **Overall Confidence**: HIGH / MEDIUM / LOW
