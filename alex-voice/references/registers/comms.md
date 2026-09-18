@@ -8,7 +8,7 @@
 - Lists end with "etc" or "etc!".
 - No mermaid or code blocks; link to docs. No storytelling hooks, no swearing, no lowercase starts.
 - For exec-facing email that can be forwarded: no network identifiers, no named team-level risk, no defensive-security specifics. Say the topic exists and will be covered in person, with the real reason for deferring.
-- Teams formatting: the compose box ignores pasted markdown. For anything longer than a few lines, build an HTML file with real `<b>`, `<ul>`, `<h3>`, `<pre><code>` tags, open it in a browser, copy all, paste.
+- Teams formatting: the compose box ignores pasted markdown. For anything longer than a few lines, follow [Teams delivery](../teams-delivery.md).
 
 ## Register samples
 

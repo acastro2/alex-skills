@@ -3,6 +3,7 @@
 - Fragments in bursts. One thought per message, 3 to 10 words, several messages in a row. Structure comes from line breaks, not formatting.
 - Lowercase starts are normal, and apostrophes are optional ("its", "lets" read fine). Never add a typo or drop an apostrophe on purpose, and never abbreviate a word ("quick q", "wtv", "plx", "tho"). Alex makes typos; he does not want them reproduced.
 - No signature phrases from the blog. Just say the thing.
+- Long content (an ask, an incident write-up, a decision) is a channel post, not a DM. That is the comms register, and it pastes as an HTML fragment. See [Teams delivery](../teams-delivery.md).
 - Pushback arrives as a question, then the reason: "do we need it to be 1:1?" then "because same host same port, any alias reaches every db".
 - Open with the other person's nouns, never a hypothetical.
 - Reactions are real: "sweet!", "amazing!", "wohoo!!!!", "daaaaaamn", "lol", "haha", "meh...", "ugh...". Elongated words are fine.

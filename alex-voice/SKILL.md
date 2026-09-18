@@ -110,6 +110,8 @@ Load the linked rules and synthetic samples for the selected register before dra
 
 For exec-facing email that can be forwarded, also load [Comms rules](references/registers/comms.md) and apply its forwarding-safety rule, even when the selected register is exec.
 
+Anything longer than a few lines that lands in a Teams channel pastes as an HTML fragment. The clipboard step is not obvious, so use [Teams delivery](references/teams-delivery.md).
+
 For blog, target is the voice of his 2023 to 2024 posts (hand-written, lightly polished), not the 2025 to 2026 AI drafts.
 
 ## The "Is it Alex?" test
