@@ -138,33 +138,31 @@ roll-over rules all live in [todo-board.md](todo-board.md).
 
 # BARD List
 
-_Seeded by `/bard` from swept sessions. Newest first in each topic group. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
+_Seeded by `/bard` from swept sessions. Max 12 open, 5 this week; overflow lives in [[Backlog]]. Sorted by priority, then topic. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
 
 ## Open
 
 ### 🔥 This week
-#### 📊 Grafana
-- [ ] Send Tyler the alerting done message `(01a025e2)` ⏫
-#### 🔐 Security
-- [ ] Rotate the Snowflake SCIM token `(8bf834c5)` 🔺
+- [ ] 📊 Send Tyler the alerting done message [[Grafana alerting rollout closed with Tyler's sign-off]] `(01a025e2)` ⏫
+- [ ] 🔐 Rotate the Snowflake SCIM token [[Snowflake SCIM token expires silently]] `(8bf834c5)` 🔺
 
 ### 📅 This month
-#### 🏛️ Enterprise Architecture
-- [ ] Fix the 5 overdue EA milestones `(da41d7ea)` 🔼
+- [ ] 🏛️ Fix the 5 overdue EA milestones [[EA Projects board audit]] `(da41d7ea)` 🔼
 
 ### ⏳ Waiting on others
-#### ☁️ AWS
-- [ ] Bucket-policy owner repoints aws:SourceVpce `(aa2f6ad0)` 🔼
-
-### 🧊 Someday
-#### 🔐 Security
-- [ ] Scope the org-wide Firemon decommission `(f1fd2740)` 🔽
+- [ ] ☁️ Bucket-policy owner repoints aws:SourceVpce [[S3 VPC endpoint policy pin]] `(aa2f6ad0)` 🔼
 
 ## Done
 
 _Last ~4 weeks. Older rolls to [[Done Archive]]._
 
-- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
+- [x] 🏛️ Published the 08-19 AAB recap [[AAB recap 2026-08-19]] `(da41d7ea)` ⏫ ✅ 2026-08-21
+
+## Legend
+
+_Topic:_ ☁️ AWS · ❄️ Snowflake · 🏗️ Terraform · 📊 Grafana · 🔐 Security · 🏛️ EA & docs · 🎫 Azure DevOps · 🐙 GitHub · 🧪 Testing · 🤖 AI & agents · 👥 People · 💰 Cost · 🗄️ Databases · 📦 Other
+_Priority:_ 🔺 deadline ≤7d, secret, prod, legal · ⏫ someone waits on you, or an event · 🔼 real work, no deadline · 🔽 hygiene · ⏬ someday
+_Line:_ `- [ ] <topic> <next action> [[Bard note]] (session id) <priority>` — click the note for context, `claude --resume <id>` for the raw session. Overflow lives in [[Backlog]].
 ```
 
 Optional priority-sorted view for the root board:
@@ -229,4 +227,21 @@ bard's):
   { "query": "tag:#bard/unreviewed", "color": { "a": 1, "rgb": 15695415 } },
   { "query": "tag:#bard/new",        "color": { "a": 1, "rgb": 15779635 } }
 ]
+```
+
+
+## `Bard/Backlog.md` template
+
+```markdown
+---
+type: board
+---
+
+# Backlog
+
+_Uncapped overflow from [[Todo]]. Items that failed the intake gate (no consequence, not one next action, or no evidence note yet), fell off a cap, or aged out. bard promotes an item to the board when a later session shows it now passes the gate._
+
+- [ ] 🔐 Scope the org-wide Firemon decommission [[Firemon decommission scoping]] `(f1fd2740)` 🔽
+
+- [ ] 📦 Decide whether to build the vault health widget `(3c1e9a02)` ⏬
 ```

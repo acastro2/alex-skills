@@ -38,6 +38,7 @@ Three frames govern it:
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`
 - Root TODO board: `<vault>/Todo.md` (the one living board both Alex and bard edit — see **Root TODO board (`Todo.md`)** below; verified to exist)
+- Backlog: `<vault>/Bard/Backlog.md` (uncapped overflow; everything that fails the board's intake gate or falls off a cap — see **Root TODO board (`Todo.md`)** below)
 - Done archive: `<vault>/Bard/Done Archive.md` (completed items older than ~4 weeks; see **Root TODO board (`Todo.md`)** below)
 - Retired board pointer: `<vault>/Bard/TODO.md` (pointer stub only; never treat it as the board)
 - Evidence folder: `<vault>/Evidence/` (authored deliverables copied from repos/OneDrive — see **Evidence capture** below)
@@ -52,8 +53,8 @@ Three frames govern it:
 - Write ONLY inside `Bard/` and `Evidence/`, with the root vault `Todo.md` as the
   named board exception. Never edit a hub or an existing knowledge note during a sweep
   (note→hub direction means hubs never need rewriting). `Todo.md`,
-  `Bard/Done Archive.md`, and `Evidence/README.md` are the only existing files bard
-  updates in place. `Bard/Done Archive.md` is inside the existing `Bard/` scope; no
+  `Bard/Backlog.md`, `Bard/Done Archive.md`, and `Evidence/README.md` are the only
+  existing files bard updates in place. `Bard/Done Archive.md` is inside the existing `Bard/` scope; no
   additional write-scope exception is needed. On `Todo.md`, bard edits ONLY from the
   `<!-- BARD:START -->` marker down: never edit, reorder, or read as task input anything
   above it, and never add frontmatter to that file. The retired `Bard/TODO.md` is a
@@ -97,9 +98,9 @@ so it is derived from real work and ratified by Alex.
    - one minimal hub note per approved hub (see `references/obsidian-setup.md`),
    - `Bard.base` (copy from `references/obsidian-setup.md`),
    - the BARD List block in the root `<vault>/Todo.md` (template in
-     `references/obsidian-setup.md`). Use the two-level `## Open` structure: a derived
-     horizon heading, then a fixed-map topic heading. Insert new items at the top of
-     their topic group, using the short open and Done-line formats. Keep only the last ~4 weeks
+     `references/obsidian-setup.md`). Use the flat `## Open` structure: a derived
+     horizon heading, then lines prefixed with their fixed-map topic emoji, sorted by
+     priority then topic. Use the short open and Done-line formats. Keep only the last ~4 weeks
      in `## Done`; roll older items to `<vault>/Bard/Done Archive.md`, never delete
      them. If `<!-- BARD:START -->` is already present, leave the block alone;
      otherwise append the whole block at the end of the file,
@@ -191,11 +192,16 @@ so it is derived from real work and ratified by Alex.
    rule there is binding. Use one Edit pass over the existing file. Preserve everything
    above
    `<!-- BARD:START -->`; if the marker is absent, append the whole BARD List block at
-   the END of the file. Dedupe against every existing board line, open and done. Derive
-   each new item's horizon from those rules, place it under its fixed-map topic
-   heading, and insert it at the top of that topic group. Use the short open-line format
-   with no topic emoji on open lines. Re-check every open item against the swept sessions;
-   auto-complete clearly finished items, restore its topic emoji, move it to the top of
+   the END of the file. Dedupe against every existing board line, open and done, and
+   against `Bard/Backlog.md`. Run every candidate through the intake gate (consequence,
+   one next action, Bard note exists); failures go to the backlog, not the board. Derive
+   each board item's horizon from those rules, prefix it with its fixed-map topic
+   emoji, and sort it by priority then topic inside the horizon (no topic sub-headings). Every line carries the
+   `[[Bard note]]` evidence wikilink and the session id before the priority emoji. Age
+   out items with no evidence for 30 days, then enforce the caps (5 in `🔥 This week`,
+   12 open total) by demoting to the backlog. Promote backlog items that now pass the
+   gate. Re-check every open item against the swept sessions;
+   auto-complete clearly finished items, keep the topic emoji, move it to the top of
    flat `## Done`, and append the ISO date. Roll `## Done` entries older than ~4 weeks
    to `<vault>/Bard/Done Archive.md`; move them, never delete them. This is one of the
    existing files bard edits in place.
@@ -220,8 +226,9 @@ so it is derived from real work and ratified by Alex.
    after it times out too (verified 2026-09-03 by scribe, again 2026-09-04 by bard).
 10. **Report**: per note `created | updated | skipped` + reason, plus any
    `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
-   summary of TODO-board changes (N added by horizon and topic, M marked done, R rolled
-   over to `Done Archive.md`), a line for evidence files copied (N added, and any PII
+   summary of TODO-board changes (N added by horizon and topic, M marked done, D demoted
+   to `Backlog.md` and why, P promoted from it, A aged out, R rolled over to
+   `Done Archive.md`, and the final open count against the 12/5 caps), a line for evidence files copied (N added, and any PII
    files deliberately excluded), and the vault sync status. Alex reviews in Obsidian
    via the `Bard.base` dashboard + health view.
 
@@ -388,9 +395,10 @@ bound lookback; write the newest session-start swept after a successful run.
 curates; bard is the scribe. It has no frontmatter and is not a knowledge note.
 
 **Read [Board rules](references/todo-board.md) before you touch it.** That file owns the
-ownership split, the line formats and the parser constraint, the priority scale and
-spread check, the topic-emoji map, horizon derivation, ordering and completion, roll-over
-to `Done Archive.md`, and the hand-edit rules. Every rule there is binding.
+ownership split, the intake gate and caps (12 open, 5 this week) with the `Backlog.md`
+overflow, the line formats with the mandatory `[[Bard note]]` evidence link and the parser
+constraint, the priority scale and spread check, the topic-emoji map, horizon derivation,
+ordering, aging and completion, roll-over to `Done Archive.md`, and the hand-edit rules. Every rule there is binding.
 
 ## Evidence capture
 

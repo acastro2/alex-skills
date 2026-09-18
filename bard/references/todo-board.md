@@ -7,12 +7,13 @@ board's formats and decisions.
 
 - Identity
 - Ownership split
+- Intake gate, caps, and the backlog
 - Board structure
 - Line format and parser constraint
 - Priority
 - Topic emoji
 - Horizon derivation and seeding
-- Ordering, completion, and curation
+- Ordering, completion, aging, and curation
 - Alex edits this board by hand
 - Bulk clear
 
@@ -30,11 +31,57 @@ down and never adds frontmatter to this file. If the marker is absent, bard appe
 whole block at the END of the file — never at the top. The retired `Bard/TODO.md` is a
 pointer stub only; it is not the board.
 
+## Intake gate, caps, and the backlog
+
+The board is the short list of things that hurt if they fall through the cracks. It is
+NOT a record of everything a session deferred. Decided 2026-09-18 after the board hit 108
+open items and stopped being readable.
+
+**Gate.** An item goes on the board only when ALL of these hold:
+
+1. **Consequence if dropped.** At least one: a deadline (written or implied), a named
+   person or team waiting on Alex, production or a secret at risk, or a promise Alex made
+   to a named person. Unanswered "want me to X?" offers, `PARKED`/`DRAFTED` ideas, open
+   questions with no owner, and hygiene never pass the gate on their own.
+2. **One next action.** The line is a single step Alex can finish in one sitting. A
+   project, epic, or multi-step effort is not a board item. It lives in the backlog as one
+   line, and ONLY its next step sits on the board. Split before you place.
+3. **Evidence is reachable.** The line carries the source session id, and a wikilink to
+   the Bard note written from that session whenever one exists (see line format). When
+   no note exists yet, the item may still go on the board with the session id alone, but
+   the sweep report lists it under "board items without a note" and the NEXT sweep writes
+   that note. Hand-added items with no session id are exempt.
+
+**Caps.** Hard limits, checked after every sweep and before the write:
+
+| scope | cap |
+|---|---|
+| `🔥 This week` | 5 |
+| all `## Open` lines | 12 |
+
+Over a cap, move lines to the backlog until under it: lowest priority first, then oldest
+source session first. Never bump an item Alex added or edited by hand; ask instead.
+Report every moved line in the sweep report.
+
+**Backlog.** Everything that fails the gate or falls off a cap goes to
+`<vault>/Bard/Backlog.md`. It is uncapped and uses the same line format as an open board
+line (wikilink, session id, priority), so no context is lost. Structure: frontmatter
+`type: board` (keeps it out of `Bard.base`), `# Backlog`, then one flat list in the same line format, sorted by priority then
+topic-map order, the same as the board. The backlog is the only place high recall
+lives. When a later session shows a backlog item now passes the gate (a name appears, a
+date appears, a step becomes concrete), promote it to the board. bard reads the backlog
+on every sweep for exactly that check.
+
 ## Board structure
 
 Below the marker: `# BARD List`, then `## Open` holding horizon headings
-(`### <emoji> <name>`), each holding topic headings (`#### <emoji> <name>`) with the
-task lines, then a flat `## Done`. The full block template lives in
+(`### <emoji> <name>`), each holding a flat list of task lines, then a flat `## Done`,
+then `## Legend` (three italic lines: topic emoji map, priority scale, line anatomy).
+The legend is the LAST thing in the file; bard keeps it there and keeps it in sync with
+the maps in this file. `Bard/Backlog.md` ends with the same legend.
+There are NO topic sub-headings (decided 2026-09-18: with a 12-item board, a `####`
+heading per single item doubled the visual noise). The topic emoji is the first token of
+every line instead. The full block template lives in
 [obsidian-setup.md](obsidian-setup.md).
 
 ## Line format and parser constraint
@@ -42,23 +89,34 @@ task lines, then a flat `## Done`. The full block template lives in
 Open lines are exactly:
 
 ```text
-- [ ] <short imperative description> `(<session id>)` <priority emoji>
+- [ ] <topic emoji> <next action> [[<Bard note title>]] `(<session id>)` <priority emoji>
 ```
 
 Done lines are exactly:
 
 ```text
-- [x] <topic emoji> <short description> `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
+- [x] <topic emoji> <next action> [[<Bard note title>]] `(<session id>)` <priority emoji> ✅ YYYY-MM-DD
 ```
 
-Descriptions are short imperatives. Target 80 characters or fewer; hard cap 90. Drop
-detail — the session id is the record. The breadcrumb is the session id only, backticked.
-It has no `session ` prefix, repo, or ` · ` separator. The `####` heading carries the
-topic emoji, so open lines have no topic emoji. The priority emoji is the last token on
-an open line. On a done line, the priority emoji and `✅ YYYY-MM-DD` are the last two
-fields. The installed Obsidian Tasks plugin (v8.3.0) parses trailing fields with
+The description is a short imperative naming ONE next action. Target 60 characters or
+fewer for the description, hard cap 90. There is no cap on the whole line: the wikilink
+carries the full note title so Alex sees which note it opens.
+
+**Evidence link (mandatory).** `[[<Bard note title>]]` is a wikilink to the Bard note
+written from the source session; find it by matching the line's session id against the
+note's `source:` frontmatter (the 8-char id is the prefix of the full id). One click in
+Obsidian gives Alex the What, the decisions, and the people. If several notes share the
+session, link the one whose title best matches the action. If no note exists yet, omit
+the wikilink, keep the session id, report the gap, and write the note on the next sweep
+(see gate). The backticked session id stays beside the link so
+`claude --resume <id>` still works when the note is not enough. The id has no `session `
+prefix, repo, or ` · ` separator.
+
+Every line, open or done, starts with its topic emoji from the fixed map. The
+priority emoji is the last token on an open line. On a done line, the priority emoji and
+`✅ YYYY-MM-DD` are the last two fields. The installed Obsidian Tasks plugin (v8.3.0) parses trailing fields with
 `$`-anchored regexes in a loop. Any text after the priority emoji stops it parsing. Put
-the breadcrumb before the priority, never after it. Every line carries exactly one
+the wikilink and the session id before the priority, never after it. Every line carries exactly one
 priority emoji.
 
 ## Priority
@@ -103,10 +161,11 @@ open items as ⏫, and only the implausibility of a 100% result caught it. A sub
 count would have "confirmed" a bad board. Read the file, take the LAST priority symbol
 on each `- [ ]` line, and tally with `collections.Counter`.
 
-**Re-grading moves the item.** Horizon is derived from priority, so demoting ⏫→🔼 to
-land inside the band also moves that line out of `🔥 This week` into `📅 This month`
-(or into `⏳ Waiting on others` if the next action turned out to be someone else's).
-Do the spread pass BEFORE placing lines, or re-place every line you re-graded.
+**Re-grading moves the item.** Horizon is derived from priority, so demoting an item can
+move it out of `🔥 This week` (or into `⏳ Waiting on others` if the next action turned
+out to be someone else's). Do the spread pass BEFORE placing lines, or re-place every line
+you re-graded. With a 12-item board the spread targets are a sanity check, not a quota:
+a board of 12 real consequences may legitimately be mostly 🔺/⏫.
 
 ## Topic emoji
 
@@ -121,34 +180,34 @@ databases / SQL Server · `📦` anything else.
 ## Horizon derivation and seeding
 
 Horizon is DERIVED, never guessed from prose. The fixed horizon set and order are:
-`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`, `### 🧊 Someday`.
+`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`.
 Test `⏳ Waiting on others` FIRST — ownership beats priority.
 
 | horizon | rule |
 |---|---|
-| 🔥 This week | priority 🔺 or ⏫ AND the next action is Alex's |
-| 📅 This month | priority 🔼 AND the next action is Alex's |
+| 🔥 This week | the top 5 Alex-owned items by priority (🔺 before ⏫), ties broken by the nearest deadline or event |
+| 📅 This month | every other Alex-owned item: 🔺/⏫ that missed the top 5 sort first as "next up", then 🔼 |
 | ⏳ Waiting on others | the next action belongs to someone else, at any priority |
-| 🧊 Someday | priority 🔽 or ⏬, or parked with no owner |
 
-Topic sub-headings use the fixed topic-emoji map, written as `#### <emoji> <name>`
-(e.g. `#### ❄️ Snowflake`). Order them in fixed map order for predictable scanning,
-not by size. Omit any heading with zero items — horizon and topic alike. The board never
-shows an empty section.
+There is no `🧊 Someday` horizon any more. Priority 🔽 or ⏬, or parked with no owner, means
+the item failed the gate: it belongs in `Bard/Backlog.md`, not on the board.
 
-Use high recall. Seed everything bard seeds today: Alex's commitments, unanswered
-"want me to X?" offers, `PARKED`/`DRAFTED`/gated items, open questions, and handoffs.
-Never invent a task. If the session did not defer it, it does not go on the board.
+Inside a horizon, order lines by priority (🔺 first), then by fixed topic-map order, then
+newest first. Omit any horizon heading with zero items. The board never shows an empty
+section.
 
-## Ordering, completion, and curation
+Seed with high recall into the BACKLOG, then let the gate pick the board. Capture every
+commitment, unanswered "want me to X?" offer, `PARKED`/`DRAFTED`/gated item, open question,
+and handoff, but only the ones that pass the intake gate land on `Todo.md`. Never invent
+a task. If the session did not defer it, it goes nowhere.
 
-A new item goes at the TOP of its `####` topic group, never appended at the bottom. Create
-horizon and topic headings only when they contain an item. Keep both heading levels in
-fixed order. `## Done` stays flat; insert a newly completed item at the top of `## Done`.
+## Ordering, completion, aging, and curation
+
+A new item goes into its horizon at the position its priority and topic dictate (see
+ordering above). Create a horizon heading only when it contains an item. `## Done` stays flat; insert a newly completed item at the top of `## Done`.
 On every sweep, bard re-checks every open item against the swept sessions. When a session
 clearly shows an item finished — for example, a merged PR, applied change, shipped report,
-or sent message — bard checks the box, restores the topic emoji from its `####` heading,
-appends `✅ <ISO date>`, and MOVES the line to the top of `## Done`. This is mandatory,
+or sent message — bard checks the box, keeps the topic emoji, appends `✅ <ISO date>`, and MOVES the line to the top of `## Done`. This is mandatory,
 not best effort.
 
 `## Done` holds only the last ~4 weeks. Anything older rolls over to
@@ -161,8 +220,14 @@ base by type; that folder filter excludes the root `<vault>/Todo.md`, not the ar
 A future full retrospective rebuild writes its finished-work haul into `Done Archive.md`,
 never into `Todo.md`. The roll-over/prune step never deletes archive content.
 
-bard adds items, marks done, and rolls over old `## Done` entries. It never deletes an
-open item Alex has not actioned. Secrets, PII, and regulated specifics stay off the board,
+**Aging.** An open board item with no evidence in any swept session for 30 days (count
+from the source session's timestamp, or from the last session that mentioned it) moves to
+`Bard/Backlog.md` with its wikilink and session id intact, and is listed in the sweep
+report. Items Alex added or edited by hand are exempt: bard never ages them out, it asks.
+
+bard adds items, marks done, promotes from and demotes to the backlog, and rolls over
+old `## Done` entries. It never deletes an item anywhere: off the board means into the
+backlog. Secrets, PII, and regulated specifics stay off the board,
 the same as notes.
 
 ## Alex edits this board by hand — re-read it immediately before writing
