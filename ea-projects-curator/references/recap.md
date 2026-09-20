@@ -65,10 +65,44 @@ mid-sentence if the source transcript did. Say so in the recap footer rather tha
 > screen.
 
 Load [Alex's voice](../../alex-voice/SKILL.md) (comms register) before drafting: this is internal comms in Alex's name.
-No em dashes.
+No em dashes, with the `<h1>` title separator as the one documented exception (see below).
+
+**Check it with `voice_check.py --register docs`, not comms.** Measured both ways on the rendered
+`2026-09-16` page (2026-09-18). Under **docs** the page throws one warning; under comms it throws
+three that do not apply. The comms register describes a message aimed at people (greeting, closer,
+exclamation marks); this page is a written record. Calibrate against the published issues too:
+`2026-09-09-AAB-Recap.aspx` has **0 question marks, 0 exclamation marks and 1 em dash** (the `<h1>`
+separator) in 1,408 words.
+
+So, reading the output:
+- The **`?` warning is expected on every recap** and is not a defect. A question mark or an
+  exclamation mark that appears inside a recap means someone's voice leaked into the record.
+- The **`<h1>` em dash is the one documented exception** and shows up as a BLOCKER in the checker,
+  which does not know about the exception. Nothing else may be an em dash.
+- **`The` sentence starts, sentence length and banned phrases are real signals.** The 2026-09-18 pass
+  on the 09-16 page found 12 sentences opening with "The" and fixed them by rewording the opener
+  only; the rate went from 7.6% to 1.1%. Fix openers by rewording, never by dropping the article
+  ("Git flow is not friendly" is fine; "Delay is ADP propagation" is not).
+- **Voice edits on a recap are wording-only.** Never touch a fact, an owner, a tag or a quoted
+  position to make a sentence read better. If a sentence is only fixable by changing what it claims,
+  leave it and say so.
+
+
+**Run `voice_check.py` on the RENDERED page text, not the content JSON.** Strip the tags from the
+generated canvas and check that. The renderer's own cosmetic characters count as prose: on 2026-09-18
+an em dash used as the empty-cell placeholder in the Action items table passed a JSON-only check and
+was caught only by reading the rendered page. `render_page.py` now hard-fails on any em dash outside
+the `<h1>`, so this specific one cannot come back, but the rule stands for anything else.
 
 ## Recap gates (on top of the prompt)
 
+- **Write the Executive Summary band too — it is part of this deliverable.** The page opens with a
+  band for the executive leadership team, who read the page but were not in the room. It is generated
+  from this recap and may not introduce a fact the recap does not already carry. Full rules are in
+  [SKILL.md, Executive Summary](../SKILL.md#executive-summary--the-elt-readers-gate-new-2026-09-18):
+  one plain-words `headline`, 2–3 bold-lead `points`, and a `footer` that says whether leadership
+  must act. It goes through the review table as its own numbered line, and it is the line Alex reads
+  most closely.
 - **The full exclusion screen applies to every line of the recap**, same as board rows. The forum
   discusses live security detail; the recap is org-visible. Keep it effect-side: never name a
   specific exposed endpoint, a live unremediated weakness, vendor-commercial posture, or personnel
@@ -187,7 +221,7 @@ Known findings this review reliably surfaces on a first draft, so pre-empt them:
   release model and the approval gap are the same story), and fold an open question into the topic
   that already covers it rather than saying it twice.
 - **Do not bold both the topic lead-in and the tag** on every bullet. That is the inline-header
-  vertical-list tell (humanizer 15 and 16). Lead-in bold, tag in muted Deck Slate.
+  vertical-list tell (humanizer 15 and 16). Lead-in bold, tag in the muted `#55636E`.
 - **Do not repeat "Not stated" down a whole column.** Leave the cell empty and put one footnote under
   the table.
 - **Keep attribution out of the action text.** "Proposed by X" belongs in the Owner cell.

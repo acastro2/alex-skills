@@ -13,15 +13,16 @@ description: >
 Turn the scattered evidence of what Enterprise Architecture actually did — prior AI sessions, ADRs/SADs, ADO epics, GitHub PRs — into a small set of executive-legible rows on the EA Projects board. You are a **filter and transformer**, not a retriever and not a scribe: you receive raw signals, decide what qualifies, shape it for a non-architect CTO, and then **ask** before you write.
 
 ```
-scribe note ─→ recap ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ STAGE ─→ hand back link
+scribe note ─→ recap + exec summary ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ RENDER ─→ STAGE ─→ hand back link
 archeologist     ─┐
 ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLE ─→ write ─→ report
                        (board rows, intake, comments)     (approve by line)
 ```
-The recap goes straight to a staged SharePoint draft; only board/intake/comment writes wait on the
-numbered table. Never paste the recap into the terminal.
+The page body is rendered from content by `references/render_page.py`, and the **Executive Summary
+band is a reviewed line** because the ELT reads it. Board/intake/comment writes wait on the numbered
+table; the recap's other sections do not. Never paste the recap into the terminal.
 
-**Every weekly run owes TWO deliverables, and the board is the SECOND one.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility): the **Forum recap** component plus the generated evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM. Hand Alex the link; he publishes org-visible comms himself. Gather evidence once, compose both components, use one review table, and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+**Every weekly run owes THREE components, and the board is the SECOND deliverable.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility). The page carries the **Executive Summary** band (the ELT reader's gate), the **Forum recap**, and the evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM and the page title area hidden. Hand Alex the link; he publishes org-visible comms himself. The page body is rendered by [references/render_page.py](references/render_page.py) from a content JSON — never written by hand. Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
 
 **The Forum recap component is GENERATED from the scribe transcript note by default** — you read the note the `scribe` skill already wrote, you do not fetch or parse the Teams transcript yourself, and you do not wait for Alex to paste notes. See **Forum recap — generate it from the scribe transcript note** below for shared note lookup; read [references/recap.md](references/recap.md) when drafting or reviewing the recap for the exact prompt and all recap checks. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no scribe note exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
@@ -281,12 +282,98 @@ newsletter gates below for a delivery-only draft and state that it has no forum 
 
 ## Weekly newsletter — Architecture Weekly
 
-Every weekly page carries TWO components under the title **Architecture Weekly — Month D, YYYY**.
-Component 1 is the **Forum recap** (generated from the scribe note using
-[references/recap.md](references/recap.md), or Alex's pasted notes rendered verbatim when he supplies them). Component 2 is the generated **What Enterprise
-Architecture shipped** panel at the bottom. They answer different questions: the forum record says
-what the group decided; the delivery panel says what EA shipped. Drop any delivery item that
-restates the forum recap.
+Every weekly page carries THREE components under the title **Architecture Weekly — Month D, YYYY**.
+Component 1 is the **Executive Summary** band at the top (see the gate below). Component 2 is the
+**Forum recap** (generated from the scribe note using
+[references/recap.md](references/recap.md), or Alex's pasted notes rendered verbatim when he supplies
+them). Component 3 is the generated **What Enterprise Architecture shipped** panel at the bottom.
+They answer different questions: the summary is for the executive leadership team who read the page
+but were not in the room; the forum record says what the group decided; the delivery panel says what
+EA shipped. Drop any delivery item that restates the forum recap.
+
+### The page body is rendered, never written
+
+**Run [references/render_page.py](references/render_page.py); do not write page HTML.** The run's job
+is content, the script's job is markup:
+
+```
+recap-content.json  →  render_page.py  →  canvas.json  →  stage_news_recap.py --canvas
+```
+
+The script owns every tag, style and colour, and it refuses to emit `class=`, `<style>`, custom
+elements, `font-family` or anything else the SharePoint rich text editor would fight. Read its
+docstring for the content schema. Filling in HTML by hand is what produced the drift between the
+09-09 and 09-16 pages; two files cannot disagree if only one of them holds markup.
+
+**The design is fixed (approved by Alex 2026-09-18, from the Claude Design mock).** Navy header band,
+teal rule, Executive Summary band, Forum recap section, navy shipped panel. Section order:
+Executive Summary → Forum recap (Objective, Outcome, TL;DR, Decisions made, Action items, Topics
+discussed, Open questions and risks, Artifacts referenced, Spoke in this session) → What Enterprise
+Architecture shipped.
+
+**Colour is the mock's palette, deliberately not the Attain brand palette** — Alex's call
+2026-09-18. `#12395C` navy band, `#0E8FA8` teal rule, `#1A4E7A` shipped band, `#E6F0F7` light
+surfaces, `#23303B` body, `#55636E` muted, `#0E6E96` links, `#D4DDE4` borders. Full list with every
+role is in the `render_page.py` palette block. Do not substitute Venice Blue or any other brand token.
+
+**Fonts come from the site theme.** No `font-family` is emitted anywhere. The Architecture site
+renders Segoe UI and the page inherits it, so the page stays consistent with every other page on the
+site. Hierarchy comes from size, weight, colour and letter-spacing.
+
+### The SharePoint editor does not show this page faithfully (measured 2026-09-18)
+
+Alex edited a staged page, saved it, and reported it as broken. It was not. Reading the stored canvas
+back after his save: **144 of 147 inline `style` attributes survived, including the navy band's
+`background-color`.** The read view renders fully styled. What he saw was the **rich text editor's own
+view**, which drops backgrounds, borders and heading sizes from view while leaving them in the stored
+page.
+
+So:
+
+- **Never judge this page in edit mode.** Use Preview, or the read view. Tell Alex this whenever he
+  edits a page, because the editor will look broken and he will say so.
+- **The editor's only real mutation is the Action items table.** On the first save the RTE wraps it in
+  `<figure class="table canvasRteResponsiveTable" title="Table" style="width:100%;">`, adds a
+  `<colgroup>` of three `33.33%` columns, and moves the table's `border-collapse` and `margin-top` out
+  of the markup. SharePoint's own `canvasRteResponsiveTable` CSS then supplies the collapsed borders,
+  and the three columns become equal width, so Action rows wrap to two lines more often. That is
+  accepted, not fought: the table still reads correctly and the `td` styles survive.
+- **A `class=` attribute in a read-back canvas is SharePoint's, not drift.** `render_page.py
+  --check-only` is for the RENDERED canvas. Do not "fix" a saved page's `<figure>` wrapper, and do not
+  treat it as a validation failure.
+- The page's own inline styles are durable across edits. Rule 2 ("safe for Alex to edit by hand") holds,
+  with the table-wrapper exception noted above.
+
+### Visual verification — the run can look at the page itself
+
+A read-back proves storage, not appearance. Use the **`browser-control` skill** to actually see the
+rendered page: it drives Alex's own Chromium browser with his profile and cookies, so SharePoint
+renders authenticated. The OpenCode `tools.browser.*` catalog needs the desktop app plus an
+experimental setting and is usually unavailable; `browser-control` is the path that works.
+
+Two gotchas that cost real time on 2026-09-18, so nobody repeats them:
+
+- **`fullPage: true` does not capture the whole page.** The scroll container is inner, so a full-page
+  shot comes back the same size as a viewport shot. Scroll the container instead:
+  `await page.getByRole("heading", { name: "Topics discussed" }).scrollIntoViewIfNeeded()`, then take
+  viewport shots.
+- **`page.goto` churns through SharePoint's auth redirect query strings** (`?sw=bypass&bypassReason=…`)
+  before settling on the real URL. Wait, then read `page.url()`; a noisy redirect chain is normal.
+
+**When to run it:** mandatory whenever the renderer or the page layout changed, and once before Alex's
+first publish of a new format. A content-only week does not need it. Always hand Alex the link anyway —
+his eyes are the final check, and he catches things the shot does not.
+
+
+### The page title area is hidden
+
+The navy band carries the page title, so the SharePoint title must not repeat above it. **Verified
+2026-09-18 twice:** `2026-08-12-AAB-Recap.aspx` stores `LayoutWebpartsContent = [{"controlType":0}]`
+and shows no title region, and the 09-16 page staged with the same value was rendered in a browser and
+shows the navy band as the first thing on the page. Pages left at the default (`null`) render the title
+twice. `stage_news_recap.py` sets the field by default and exits non-zero if it did not stick. If a
+staged draft ever does show a duplicated title, report it; the fallback is to drop the words
+"Architecture Weekly" from the band, never to accept the duplicate.
 
 **Sources — reuse the run's retrieval sweep, never double-fetch:** the curation run's own WRITTEN /
 UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub
@@ -295,17 +382,51 @@ ADO epic/feature movement, and verified artifacts found by the archeologist. The
 not provide a complete GitHub activity feed; query GitHub directly. Use the same auth preflight as
 everything else.
 
-**Shape:** use the approved light-blue information surface (`#C9E7F4`), Venice Blue left edge
-(`#094682`), dark text (`#1D3E50`), and Deck Slate evidence text (`#325477`). Add 3–6 items; a thin
-week gets 2 or none. Each item contains:
-- One bold, outcome-first sentence, ≤ ~20 words and exec-legible in the same voice as
-  `NextMilestone`. No session IDs, ticket IDs, or technical provenance in the sentence.
-- An `Evidence:` line with one or two descriptive, underlined Venice Blue links. Link directly to
+**Shape:** the shipped panel is the navy `#1A4E7A` band carrying the light-blue `#E6F0F7` surface, as
+the renderer builds it. Add 3–6 items; a thin week gets 2 or none. Each item contains:
+- One outcome-first sentence, ≤ ~20 words and exec-legible in the same voice as `NextMilestone`.
+  It renders bold in `#12395C`. No session IDs, ticket IDs, or technical provenance in the sentence.
+- An `Evidence:` line with one or two descriptive, underlined links in `#0E6E96`. Link directly to
   the primary org-readable record: merged PR, closed ADO item, current portfolio row, the RFC or ADR
   this work resolves into, or equivalent artifact. Labels describe the destination
   (`Runtime migration`, `Portfolio outcome`), never raw URLs, `click here`, or naked IDs. The forum
-  recap's **Artifacts Referenced** section carries the same linking rule — see
+  recap's **Artifacts referenced** section carries the same linking rule — see
   [references/recap.md](references/recap.md).
+
+### Executive Summary — the ELT reader's gate (new 2026-09-18)
+
+**Why it exists:** the executive leadership team reads this page. They were not in the room and they
+do not know the project vocabulary, so the band answers "what did this mean, and does anyone need me?"
+in the first ten seconds.
+
+Generated by the run, and it is the **highest-scrutiny line in the whole review table**:
+
+- **`headline`** — one sentence, plain words. It says what was decided and what it changes, in the
+  same voice as a `NextMilestone`. No acronym, no product codename, no vendor name that a non-engineer
+  would not know. If a term is unavoidable, gloss it in the sentence.
+- **`points`** — 3 to 4, each a bold two-or-three-word lead plus one or two plain sentences.
+  The set must cover **both halves of the week: what the forum decided, and what EA shipped.** Order
+  them decisions, then shipped, then still open, with the footer's ask last. Do not put the shipped
+  point after "Still open": the band should end on delivery, not on two asks in a row. *Why it matters*
+  beats *what was configured*. Do not restate the TL;DR.
+- **Composition rule: the summary is a roll-up, nothing new.** Every sentence must trace to a decision,
+  an action, an open item, or a shipped item that is already on the page. Alex's own framing
+  (2026-09-18): *"the summary should be a combination of our decisions plus what we done, nothing really
+  new or novelty."* A stated **consequence** of a documented decision is fine ("rotating a credential no
+  longer needs a code change" comes from the "no code change and no key manifest" decision). A new
+  fact, a new judgement, or a new recommendation is not. If the summary seems to need a fact the recap
+  does not carry, the recap is missing it, not the summary.
+- **Compress the shipped half to one line; never list the shipped items.** The navy panel at the bottom
+  of the page already lists every item with its evidence links, so a full list in the band makes the
+  reader read the same nouns twice in one scroll. Name the headline delivery and the theme of the rest
+  (`The new US brand's non-prod network went live, and the Claude and Snowflake tooling picked up three
+  more deliveries.`). Approved 2026-09-19, over four separate items.
+- **`footer`** — the one line that says whether leadership must act: `No decision is waiting on
+  leadership this week.` or the named decision and the named person holding it. Never leave it blank
+  and never soften a real pending decision into silence. `Still open` in the points covers EA-internal
+  loose ends; the footer covers what is waiting on leadership. They are different questions, keep both.
+- Put it through the review table as its own numbered line (`Row` = `Recap page`, `Field` =
+  `executive summary`). Never stage a page with an unreviewed summary.
 
 **Gates (all mandatory):**
 - **Scope is EA's own delivery, and the heading says so.** The panel is titled **What Enterprise
