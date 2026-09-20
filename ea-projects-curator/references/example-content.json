@@ -1,0 +1,69 @@
+{
+  "title": "Architecture Weekly — September 16, 2026",
+  "subtitle": "Forum held Wednesday 16 September. Delivery covering 12 to 18 September 2026.",
+  "exec_summary": {
+    "headline": "Architecture agreed one way to store service credentials, so rotating one no longer needs a code change.",
+    "points": [
+      {"lead": "Decided.", "text": "Every brand moves its service credentials to the managed store. Teams stop keeping their own copies, so a rotation is an operations task instead of a release."},
+      {"lead": "Shipped.", "text": "The new US brand's non-prod network went live, and the Claude and Snowflake tooling picked up three more deliveries."},
+      {"lead": "Still open.", "text": "Two teams have not named a migration date. Architecture is chasing both and will report next week."}
+    ],
+    "footer": "No decision is waiting on leadership this week."
+  },
+  "objective": "Agree a single way to store and rotate service credentials across the brands.",
+  "outcome": {"tag": "Achieved", "text": "The group agreed the managed store, and a named owner is running the rollout."},
+  "tldr": "One store for every brand, no code change to rotate a credential, and the rollout starts next sprint.",
+  "decisions": [
+    {
+      "lead": "Service credentials move to the managed store.",
+      "text": "Every brand reads from it at run time instead of holding its own copy.",
+      "rationale": "Rotation needs no code change and no key manifest, so an expired credential stops being a release-blocking incident.",
+      "owner": "Platform lead (Platform Engineering)"
+    },
+    {
+      "lead": "Break-glass access stays manual.",
+      "text": "The group kept the manual path for now and will revisit once the store is in production.",
+      "rationale": "Automating it before the store carries real traffic would add a second untested path to the same problem.",
+      "owner": "Security lead (Information Security)"
+    }
+  ],
+  "actions": [
+    {"action": "Confirm a migration date for the two remaining teams.", "owner": "Platform lead", "due": "Next sprint"},
+    {"action": "Write the rotation runbook and put it through review.", "owner": "Architecture", "due": ""}
+  ],
+  "topics": [
+    {"title": "Credential storage.", "summary": "Two options were compared against rotation cost. The managed store won on operations, not on price.", "tag": "Decided"},
+    {"title": "Break-glass access.", "summary": "The group wants an automated path but not before the store is proven in production.", "tag": "Parked"},
+    {"title": "Migration sequencing.", "summary": "Two teams have not given a date. Architecture is following up outside the forum.", "tag": "Needs follow-up"}
+  ],
+  "open_questions": [
+    "Who owns the break-glass path once the managed store carries production traffic?",
+    "What is the rollback position if a brand cannot migrate inside the agreed window?"
+  ],
+  "artifacts": [
+    "Credential rotation design note. Screen-shared; file name not stated.",
+    "Platform runbook index. Referenced by name only."
+  ],
+  "speakers": "Alexandre Castro, Platform lead, Security lead",
+  "speakers_source": "Teams meeting transcript, 3:00pm to 4:01pm Central.",
+  "shipped": {
+    "window": "12 to 18 September 2026",
+    "items": [
+      {
+        "sentence": "The new US brand's non-prod network went live and is carrying traffic.",
+        "evidence": [{"label": "Network and transit access", "url": "https://example.invalid/pull/1"}]
+      },
+      {
+        "sentence": "Snowflake cost reporting now refreshes on its own every morning.",
+        "evidence": [
+          {"label": "Reporting pipeline", "url": "https://example.invalid/pull/2"},
+          {"label": "Portfolio outcome", "url": "/sites/Architecture/Lists/EA%20Portfolio"}
+        ]
+      },
+      {
+        "sentence": "Architecture published the credential rotation standard for review.",
+        "evidence": [{"label": "Rotation standard", "url": "https://example.invalid/pull/3"}]
+      }
+    ]
+  }
+}

@@ -44,23 +44,34 @@ deliberately NOT the Attain brand palette; he asked for the mock's colours.
     on navy: date #C7DCEB, eyebrow #7FD4E8, shipped eyebrow #A9CCE4, footer #9FBFD6
     callouts: green bg #E7F3ED / edge #1C6B4A / lead #155A3D
               amber bg #FBF1DF / edge #A2620A / text #3A2F1C / divider #EBDCBE
+    exec divider #C3D6E4      on-band text #FFFFFF
+
+Every colour the page emits is a named constant below. A bare hex in a builder is
+drift: name it, and add it to this list too.
 
 USAGE
 -----
     python3 render_page.py recap-content.json canvas.json
-    python3 render_page.py --check-only canvas.json     # validate a hand-made canvas
+    python3 render_page.py --check-only canvas.json     # validate a rendered canvas
+    python3 render_page.py --text canvas.json           # plain text, for voice_check.py
 
-The script refuses to emit forbidden constructs rather than warning. A failure here
-means the template was edited, which is exactly what must not happen quietly.
+`references/example-content.json` is a complete, valid input. It is the worked example
+and the smoke test: render it after any change to this script.
 
-CONTENT SCHEMA (all keys required unless marked optional)
----------------------------------------------------------
+The script refuses rather than warning, on markup AND on content shape. A failure here
+means the template was edited or the content is incomplete, and neither must happen
+quietly. Content is checked all the way down, not just at the top level, so a missing
+`rationale` on one decision is a named error and not a traceback.
+
+CONTENT SCHEMA (every key below is required; only `decisions[].lead`,
+`exec_summary.points[].lead` and `actions[].due` may be omitted or empty)
+---------------------------------------------------------------------------
 {
   "title":     "Architecture Weekly — September 16, 2026",
   "subtitle":  "Forum held Wednesday 16 September. Delivery covering 12 to 18 September 2026.",
-  "exec_summary": {                       # optional block, but see SKILL.md gate
+  "exec_summary": {                       # REQUIRED; the ELT reader's gate
     "headline": "One sentence, plain words, no acronyms.",
-    "points":   [{"lead": "Bold lead-in.", "text": "What it means."}],
+    "points":   [{"lead": "Bold lead-in.", "text": "What it means."}],   # 3 or 4
     "footer":   "The line that says whether leadership must act."
   },
   "objective": "Text.",
@@ -82,6 +93,7 @@ CONTENT SCHEMA (all keys required unless marked optional)
 import json
 import re
 import sys
+from html import unescape
 
 # --- palette -----------------------------------------------------------------
 NAVY = "#12395C"
@@ -99,12 +111,20 @@ EYEBROW_ON_NAVY = "#7FD4E8"
 DATE_ON_NAVY = "#C7DCEB"
 SHIPPED_EYEBROW = "#A9CCE4"
 FOOTER_ON_NAVY = "#9FBFD6"
+EXEC_DIVIDER = "#C3D6E4"
+ON_BAND = "#FFFFFF"       # text on the navy and shipped bands
 
 GREEN_BG, GREEN_EDGE, GREEN_LEAD = "#E7F3ED", "#1C6B4A", "#155A3D"
 AMBER_BG, AMBER_EDGE, AMBER_TEXT, AMBER_DIV = "#FBF1DF", "#A2620A", "#3A2F1C", "#EBDCBE"
 
 TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}
+OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
 OUTCOME_GREEN = {"Achieved"}
+
+# SKILL.md, Executive Summary gate. Enforced, not suggested: a band that quietly comes
+# out at two points is the drift this script exists to stop, and it is the line Alex
+# reads most closely.
+EXEC_POINTS_MIN, EXEC_POINTS_MAX = 3, 4
 
 # --- validation ---------------------------------------------------------------
 FORBIDDEN = [
@@ -143,6 +163,90 @@ def link(url, label):
             f"{esc(label)}</a>")
 
 
+# --- content validation -------------------------------------------------------
+# Every key is named where it lives, so a failure says "decisions[2].rationale" and not
+# KeyError. The top-level-only check this replaces let a missing nested key reach the
+# builders and come out as a traceback, which reads like the script is broken.
+def need(obj, key, where, kind=str, allow_empty=False):
+    if not isinstance(obj, dict):
+        die(f"{where} must be an object, got {type(obj).__name__}")
+    if key not in obj:
+        die(f"{where} is missing required key {key!r}")
+    value = obj[key]
+    if not isinstance(value, kind):
+        die(f"{where}.{key} must be {kind.__name__}, got {type(value).__name__}")
+    if not allow_empty and not value:
+        die(f"{where}.{key} is empty; fill it or the page ships with a hole in it")
+    return value
+
+
+def need_list(obj, key, where, min_len=1):
+    items = need(obj, key, where, kind=list, allow_empty=min_len == 0)
+    if len(items) < min_len:
+        die(f"{where}.{key} needs at least {min_len} item(s), got {len(items)}")
+    return items
+
+
+def check_content(c):
+    for key in ("title", "subtitle", "objective", "tldr", "speakers", "speakers_source"):
+        need(c, key, "content")
+
+    e = need(c, "exec_summary", "content", kind=dict)
+    need(e, "headline", "exec_summary")
+    # Never blank, and never softened into silence: SKILL.md, Executive Summary gate.
+    need(e, "footer", "exec_summary")
+    points = need_list(e, "points", "exec_summary", min_len=EXEC_POINTS_MIN)
+    if len(points) > EXEC_POINTS_MAX:
+        die(f"exec_summary.points has {len(points)}; SKILL.md sets {EXEC_POINTS_MIN} to "
+            f"{EXEC_POINTS_MAX}. Merge two points, do not widen the band.")
+    for i, pt in enumerate(points):
+        need(pt, "text", f"exec_summary.points[{i}]")
+        if "lead" in pt:
+            need(pt, "lead", f"exec_summary.points[{i}]", allow_empty=True)
+
+    o = need(c, "outcome", "content", kind=dict)
+    need(o, "text", "outcome")
+    tag = need(o, "tag", "outcome")
+    if tag not in OUTCOME_TAGS:
+        die(f"outcome.tag must be one of {list(OUTCOME_TAGS)} — got {tag!r}. A typo here "
+            f"renders amber and reads to the org as 'Partially achieved'.")
+
+    for i, d in enumerate(need_list(c, "decisions", "content")):
+        where = f"decisions[{i}]"
+        for key in ("text", "rationale", "owner"):
+            need(d, key, where)
+
+    for i, a in enumerate(need_list(c, "actions", "content")):
+        where = f"actions[{i}]"
+        need(a, "action", where)
+        need(a, "owner", where)
+        if "due" in a:
+            need(a, "due", where, allow_empty=True)
+
+    for i, t in enumerate(need_list(c, "topics", "content")):
+        where = f"topics[{i}]"
+        need(t, "title", where)
+        need(t, "summary", where)
+        if need(t, "tag", where) not in TOPIC_TAG_COLOR:
+            die(f"{where}.tag must be one of {sorted(TOPIC_TAG_COLOR)} — got {t['tag']!r}")
+
+    for key in ("open_questions", "artifacts"):
+        for i, item in enumerate(need_list(c, key, "content")):
+            if not isinstance(item, str) or not item.strip():
+                die(f"{key}[{i}] must be a non-empty string, got {item!r}")
+
+    sh = need(c, "shipped", "content", kind=dict)
+    need(sh, "window", "shipped")
+    for i, it in enumerate(need_list(sh, "items", "shipped")):
+        where = f"shipped.items[{i}]"
+        need(it, "sentence", where)
+        # An item with no evidence renders as a bare "Evidence:" with nothing after it.
+        # The panel's whole claim is that it is evidence-backed, so this is a hard stop.
+        for j, ev in enumerate(need_list(it, "evidence", where)):
+            need(ev, "label", f"{where}.evidence[{j}]")
+            need(ev, "url", f"{where}.evidence[{j}]")
+
+
 # --- block builders -----------------------------------------------------------
 def rule(color=TEAL, width="48px", height="3px"):
     return (f'<div style="background-color:{color};height:{height};width:{width};'
@@ -165,7 +269,7 @@ def section_title(text):
             f'color:{NAVY};font-weight:400;">{esc(text)}</h2>')
 
 
-def callout(bg, edge, inner, divider=None):
+def callout(bg, edge, inner):
     border = f"border-left:4px solid {edge};"
     return f'<div style="background-color:{bg};{border}padding:16px 18px;">{inner}</div>'
 
@@ -186,16 +290,17 @@ def header(c):
     inner = (f'<div style="font-size:12px;line-height:16px;letter-spacing:2px;'
              f'color:{EYEBROW_ON_NAVY};margin-bottom:8px;">ENTERPRISE ARCHITECTURE</div>'
              f'<h1 style="margin:0 0 8px 0;font-size:27px;line-height:33px;'
-             f'color:#FFFFFF;font-weight:400;">{esc(c["title"])}</h1>'
+             f'color:{ON_BAND};font-weight:400;">{esc(c["title"])}</h1>'
              f'<div style="font-size:14px;line-height:20px;color:{DATE_ON_NAVY};">'
              f'{esc(c["subtitle"])}</div>')
     return band(NAVY, inner, "26px 26px 24px 26px") + rule(height="4px", width="100%")
 
 
 def exec_summary(c):
-    e = c.get("exec_summary")
-    if not e:
-        return ""
+    # Required, not optional. This band is the one component SKILL.md calls the ELT
+    # reader's gate; the script used to skip it silently when the key was absent, which
+    # is the one omission nobody would notice until the page was already staged.
+    e = c["exec_summary"]
     parts = [micro_label("Executive summary", top="0"),
              f'<h2 style="margin:0 0 16px 0;font-size:19px;line-height:27px;'
              f'color:{NAVY};font-weight:400;">{esc(e["headline"])}</h2>']
@@ -204,14 +309,14 @@ def exec_summary(c):
         parts.append(p(lead + esc(pt["text"])))
     if e.get("footer"):
         parts.append(f'<p style="margin:14px 0 0 0;padding-top:14px;font-size:14px;'
-                     f'line-height:20px;color:{MUTED};border-top:1px solid #C3D6E4;">'
+                     f'line-height:20px;color:{MUTED};border-top:1px solid {EXEC_DIVIDER};">'
                      f'{esc(e["footer"])}</p>')
     return band(LIGHT, "".join(parts), "26px 26px 24px 26px")
 
 
 def outcome_block(c):
     o = c["outcome"]
-    tag = o["tag"]
+    tag = o["tag"]   # vocabulary checked in check_content
     bg = GREEN_BG if tag in OUTCOME_GREEN else AMBER_BG
     edge = GREEN_EDGE if tag in OUTCOME_GREEN else AMBER_EDGE
     lead = GREEN_LEAD if tag in OUTCOME_GREEN else AMBER_EDGE
@@ -239,7 +344,7 @@ def decision_cards(c):
 
 def action_table(c):
     th = (f'background-color:{NAVY};border:1px solid {NAVY};padding:9px 11px;'
-          f'color:#FFFFFF;text-align:left;font-size:14px;font-weight:400;')
+          f'color:{ON_BAND};text-align:left;font-size:14px;font-weight:400;')
     td = (f'border:1px solid {BORDER};padding:9px 11px;vertical-align:top;'
           f'color:{BODY};font-size:14px;line-height:20px;')
     # An empty Due cell, never a dash. House rule: do not repeat "Not stated" down a column; the
@@ -289,7 +394,7 @@ def speakers_line(c):
 
 def shipped_panel(c):
     s = c["shipped"]
-    head = (f'<h2 style="margin:0 0 4px 0;font-size:21px;line-height:28px;color:#FFFFFF;'
+    head = (f'<h2 style="margin:0 0 4px 0;font-size:21px;line-height:28px;color:{ON_BAND};'
             f'font-weight:400;">What Enterprise Architecture shipped</h2>'
             f'<div style="font-size:13px;line-height:19px;color:{SHIPPED_EYEBROW};">'
             f'{esc(s["window"])}</div>')
@@ -308,9 +413,7 @@ def shipped_panel(c):
 
 
 def build(c):
-    body = [header(c)]
-    if e := exec_summary(c):
-        body.append(e)
+    body = [header(c), exec_summary(c)]
     body.append(section_title("Forum recap"))
     body.append(micro_label("Objective") + p(esc(c["objective"])))
     body.append(micro_label("Outcome") + outcome_block(c))
@@ -328,37 +431,90 @@ def build(c):
     return "".join(body)
 
 
+def markup_only(html):
+    """Everything inside a tag, and nothing outside one.
+
+    Every text node is run through esc() first, so `<` and `>` reach the body only as
+    tag delimiters. That makes this split exact: what comes back is the markup this
+    script generated, with all author-supplied prose removed.
+
+    It has to be exact, because the forbidden-construct scan used to run over the whole
+    body and so fired on ordinary sentences. "What is our position: buy or build?" in an
+    open question hit `position:` and failed the render with a message about markup.
+    """
+    return "".join(re.findall(r"<[^>]*>", html))
+
+
+def prose_only(html):
+    """The text nodes, minus the <h1> title. Used for the dash ban, which is about what
+    Alex writes and not about what the builders emit."""
+    return re.sub(r"<[^>]*>", " ", re.sub(r"<h1.*?</h1>", "", html, flags=re.S))
+
+
+def to_text(html):
+    """Plain text of the rendered page, for `voice_check.py`.
+
+    recap.md requires the voice check to run on the RENDERED page and not on the content
+    JSON, because the renderer's own cosmetic characters count as prose. Without this the
+    instruction needed a hand-rolled tag strip every week, which is exactly the kind of
+    manual step that quietly stops happening."""
+    text = re.sub(r"<(?:br\s*/?|/(?:p|h1|h2|h3|li|div|tr|table|ul|thead|tbody))>", "\n", html)
+    text = re.sub(r"<[^>]*>", " ", text)
+    text = unescape(text).replace("\u00a0", " ")
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.split("\n")]
+    return "\n".join(line for line in lines if line) + "\n"
+
+
 def validate(html):
+    markup = markup_only(html)
     for bad in FORBIDDEN:
-        if bad in html:
-            die(f"forbidden construct in output: {bad!r}. The markup is owned by this "
+        if bad in markup:
+            die(f"forbidden construct in the MARKUP: {bad!r}. The markup is owned by this "
                 f"script; edit the builders, not the output.")
-    if "{{" in html:
+    if "{{" in markup:
         die("unsubstituted token in output")
-    # Em dashes are banned in everything Alex writes, except the house-format <h1> title
-    # separator. The renderer leaked one through the Action items empty-cell placeholder on
-    # 2026-09-18, which is why this is a hard check and not a note in a review checklist.
-    if "\u2014" in re.sub(r"<h1.*?</h1>", "", html, flags=re.S):
-        die("em dash outside the <h1> title. Alex bans them; use a comma, a colon, or a full stop.")
+    # Dashes are banned in everything Alex writes, except the house-format <h1> title
+    # separator. The renderer leaked an em dash through the Action items empty-cell
+    # placeholder on 2026-09-18, which is why this is a hard check and not a checklist note.
+    prose = prose_only(html)
+    for char, name in (("\u2014", "em dash"), ("\u2013", "en dash")):
+        if char in prose:
+            die(f"{name} outside the <h1> title. Alex bans them; use a comma, a colon, "
+                f"or a full stop.")
+
+
+def read_canvas(path):
+    try:
+        canvas = json.load(open(path))
+    except (OSError, ValueError) as err:
+        die(f"cannot read canvas {path!r}: {err}")
+    try:
+        return canvas[0]["innerHTML"]
+    except (KeyError, IndexError, TypeError):
+        die(f"{path!r} is not a CanvasContent1 array with an innerHTML body")
 
 
 def main():
     args = sys.argv[1:]
     if not args:
-        die(__doc__.split("USAGE")[1].split("The script")[0].strip())
-    if args[0] == "--check-only":
-        canvas = json.load(open(args[1]))
-        validate(canvas[0]["innerHTML"])
+        die(__doc__.split("USAGE")[1].split("`references/example")[0].strip())
+    if args[0] in ("--check-only", "--text"):
+        if len(args) != 2:
+            die(f"usage: render_page.py {args[0]} <canvas.json>")
+        body = read_canvas(args[1])
+        if args[0] == "--text":
+            sys.stdout.write(to_text(body))
+            return
+        validate(body)
         print(f"OK: {args[1]} has no forbidden constructs")
         return
     if len(args) != 2:
         die("usage: render_page.py <content.json> <canvas.json>")
-    content = json.load(open(args[0]))
-    for key in ("title", "subtitle", "objective", "outcome", "tldr", "decisions",
-                "actions", "topics", "open_questions", "artifacts", "speakers",
-                "speakers_source", "shipped"):
-        if key not in content:
-            die(f"content JSON is missing required key: {key!r}")
+    try:
+        content = json.load(open(args[0]))
+    except (OSError, ValueError) as err:
+        die(f"cannot read content {args[0]!r}: {err}")
+    check_content(content)
     body = build(content)
     validate(body)
     canvas = [{"controlType": 4, "id": "00000000-0000-0000-0000-0000000000aa",

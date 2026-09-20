@@ -87,12 +87,23 @@ So, reading the output:
   position to make a sentence read better. If a sentence is only fixable by changing what it claims,
   leave it and say so.
 
+**Run `voice_check.py` on the RENDERED page text, not the content JSON.** The renderer's own
+cosmetic characters count as prose: on 2026-09-18 an em dash used as the empty-cell placeholder in
+the Action items table passed a JSON-only check and was caught only by reading the rendered page.
+`render_page.py` now hard-fails on any em dash or en dash outside the `<h1>`, so that one cannot
+come back, but the rule stands for anything else. Two commands, no hand-rolled tag strip:
 
-**Run `voice_check.py` on the RENDERED page text, not the content JSON.** Strip the tags from the
-generated canvas and check that. The renderer's own cosmetic characters count as prose: on 2026-09-18
-an em dash used as the empty-cell placeholder in the Action items table passed a JSON-only check and
-was caught only by reading the rendered page. `render_page.py` now hard-fails on any em dash outside
-the `<h1>`, so this specific one cannot come back, but the rule stands for anything else.
+```sh
+python3 references/render_page.py --text canvas.json > /tmp/page.txt
+python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
+```
+
+`--text` reads the rendered canvas, so it also covers a canvas read back from SharePoint.
+
+**voice_check exits 1 on a clean page, by design.** The `<h1>` em dash is a BLOCKER to the checker,
+which does not know about the exception. The pass condition is `BLOCKER: em dash x1` and nothing
+else. Two blockers, or a blocker naming anything but the em dash, is a real failure. Do not read the
+non-zero exit as a failed page.
 
 ## Recap gates (on top of the prompt)
 
@@ -100,9 +111,10 @@ the `<h1>`, so this specific one cannot come back, but the rule stands for anyth
   band for the executive leadership team, who read the page but were not in the room. It is generated
   from this recap and may not introduce a fact the recap does not already carry. Full rules are in
   [SKILL.md, Executive Summary](../SKILL.md#executive-summary--the-elt-readers-gate-new-2026-09-18):
-  one plain-words `headline`, 2–3 bold-lead `points`, and a `footer` that says whether leadership
+  one plain-words `headline`, 3 to 4 bold-lead `points`, and a `footer` that says whether leadership
   must act. It goes through the review table as its own numbered line, and it is the line Alex reads
-  most closely.
+  most closely. `render_page.py` refuses to render a page without it, and refuses a band outside 3 to
+  4 points, so a short band is a content fix and not a thing to argue with the script about.
 - **The full exclusion screen applies to every line of the recap**, same as board rows. The forum
   discusses live security detail; the recap is org-visible. Keep it effect-side: never name a
   specific exposed endpoint, a live unremediated weakness, vendor-commercial posture, or personnel

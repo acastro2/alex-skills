@@ -305,6 +305,19 @@ elements, `font-family` or anything else the SharePoint rich text editor would f
 docstring for the content schema. Filling in HTML by hand is what produced the drift between the
 09-09 and 09-16 pages; two files cannot disagree if only one of them holds markup.
 
+[references/example-content.json](references/example-content.json) is a complete, valid input: copy
+it to start a week, and render it after any change to the script to prove the script still works.
+
+**It refuses on content shape too, not just markup.** Missing `exec_summary`, a band outside 3 to 4
+points, a blank `footer`, an unknown `outcome.tag`, a decision with no `rationale`, a shipped item
+with no evidence: each is a named error naming the exact key. Fix the content; do not reach past the
+script. Its forbidden-construct scan reads the MARKUP only, so ordinary prose is safe (a sentence may
+say `position:` or `class=` without failing the render). What keeps content out of the markup is
+escaping, not the word list.
+
+`python3 references/render_page.py --text canvas.json` prints the rendered page as plain text. That
+is the input to `voice_check.py`; see [references/recap.md](references/recap.md) for the two commands.
+
 **The design is fixed (approved by Alex 2026-09-18, from the Claude Design mock).** Navy header band,
 teal rule, Executive Summary band, Forum recap section, navy shipped panel. Section order:
 Executive Summary → Forum recap (Objective, Outcome, TL;DR, Decisions made, Action items, Topics
@@ -313,8 +326,9 @@ Architecture shipped.
 
 **Colour is the mock's palette, deliberately not the Attain brand palette** — Alex's call
 2026-09-18. `#12395C` navy band, `#0E8FA8` teal rule, `#1A4E7A` shipped band, `#E6F0F7` light
-surfaces, `#23303B` body, `#55636E` muted, `#0E6E96` links, `#D4DDE4` borders. Full list with every
-role is in the `render_page.py` palette block. Do not substitute Venice Blue or any other brand token.
+surfaces, `#23303B` body, `#55636E` muted, `#0E6E96` links, `#D4DDE4` borders. Every colour the page
+emits is a named constant in the `render_page.py` palette block, with its role beside it; a bare hex
+in a builder is drift. Do not substitute Venice Blue or any other brand token.
 
 **Fonts come from the site theme.** No `font-family` is emitted anywhere. The Architecture site
 renders Segoe UI and the page inherits it, so the page stays consistent with every other page on the
@@ -364,7 +378,6 @@ Two gotchas that cost real time on 2026-09-18, so nobody repeats them:
 first publish of a new format. A content-only week does not need it. Always hand Alex the link anyway —
 his eyes are the final check, and he catches things the shot does not.
 
-
 ### The page title area is hidden
 
 The navy band carries the page title, so the SharePoint title must not repeat above it. **Verified
@@ -374,6 +387,14 @@ shows the navy band as the first thing on the page. Pages left at the default (`
 twice. `stage_news_recap.py` sets the field by default and exits non-zero if it did not stick. If a
 staged draft ever does show a duplicated title, report it; the fallback is to drop the words
 "Architecture Weekly" from the band, never to accept the duplicate.
+
+**This skill is shared between tools; the scripts it calls are not.** `stage_news_recap.py` exists
+once per tool (`~/.claude/scripts/sharepoint/` and `~/.config/opencode/scripts/sharepoint/`), and the
+two copies drifted: the title region was added to one only, so a Pi or OpenCode run staged a page with
+a duplicated title and said nothing. Both carry `--hide-title` and its verification as of 2026-09-19.
+Before you rely on any behaviour this file claims about a script, check the copy your tool actually
+runs. `auth.py` and `sharepoint_api.py` still differ between the two trees, each holding something the
+other lacks; that is open, and it belongs to Alex.
 
 **Sources — reuse the run's retrieval sweep, never double-fetch:** the curation run's own WRITTEN /
 UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub
