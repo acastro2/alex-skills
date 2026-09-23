@@ -14,6 +14,9 @@ __pycache__/
 
 # Claude Code local state
 .claude/
+# Account-skill sync lands here through the ~/.claude/skills symlink
+synced/
+.trash/
 
 # macOS
 .DS_Store
