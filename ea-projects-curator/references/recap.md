@@ -131,7 +131,7 @@ non-zero exit as a failed page.
   - **Link the primary record, not a folder.** A merged PR, an ADO item, the portfolio row, the
     published RFC/ADR/SAD, or the deck itself.
   - **Label with the document's own title, never an ID and never a raw URL.** Framework docs carry
-    no identifier except `STD-NNNN` and `ADR-NNNN`, so there is no `RFC-0007` to cite — the title is
+    no identifier except `STANDARD-NNNN` and `ADR-NNNN`, so there is no `RFC-0007` to cite — the title is
     the identifier. Never invent an ID to make a link look tidy.
   - **Never link an unpublished doc.** Until the file is in the Architecture Documents library it has
     no stable URL. Name it and say it is not yet published. A link that 403s or lands on a
