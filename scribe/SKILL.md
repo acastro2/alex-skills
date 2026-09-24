@@ -25,7 +25,8 @@ graph TD
   T2 --> P1[teams_transcript.py: VTT to turns]
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[transcribe.py: mlx-whisper + mlx-audio diarization]
-  H3 --> C[you: full transcript, summary]
+  H3 --> H4[hint_speakers.py: likely names from the text, hedged]
+  H4 --> C[you: full transcript, summary]
   P1 --> C
   C --> W[write_note.py: glossary, filler, note]
   W --> O[vault Scribe/Meetings/Transcripts/]
@@ -61,19 +62,12 @@ Mac both were already present on 2026-09-24.
   text, or summaries to Exa, a web tool, or any external service: a call recording is confidential
   even when it sounds like small talk, and Attain is a regulated lender. HiNotes cloud is not a
   source (no API, no export).
-- **Never hold a whole meeting.** Every work recording becomes a note, including calls that
-  touch HR, compensation, performance, or personal topics. Keep every note `confidential: true`
-  and keep the local-only handling rules above (Alex, 2026-09-08; reaffirmed 2026-09-23 after
-  two 1:1s were wrongly held).
-- **Withhold only HR-data segments, by Attain policy.** Attain security policy limits HR data
-  (compensation, payroll, benefits, performance, HR cases about named people) to a named
-  allowlist, and Alex's account is not on it. In a trimmed copy of the JSON
-  (`<id>.trimmed.json`), replace only those turns or sentences with
-  `[Segment withheld under Attain HR-data policy: <topic>.]`, record the span in
-  `provenance.withheld`, add one summary bullet that says so, and write the note from the
-  trimmed copy. Everything else stays in full, including org design and role definitions
-  discussed in general terms. The original JSON stays in `~/.scribe/transcripts/`. Only an
-  admin edit of the policy allowlist changes this rule.
+- **Nothing is held and nothing is withheld.** Every work recording and every Teams transcript
+  becomes a note, in full, including turns about HR, compensation, performance, personal topics,
+  and HR cases about named people. No recording is skipped on HR grounds and no note carries a
+  `[Segment withheld ...]` marker; trimmed JSON copies are no longer produced. Keep every note
+  `confidential: true`. Alex's decision, 2026-09-24, replacing the segment-withholding rule of
+  2026-09-08. Notes sync (see **Sync the vault**), so this content is intended to leave this Mac.
 - **scribe does not curate.** Every work recording and every Teams transcript becomes a note,
   including standups, 1:1s, and calls that turn out to be personal. Deciding what matters is
   bard's job, not scribe's. The Teams-wins dedup in Source B drops a HiDock copy that carries
@@ -150,9 +144,14 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 
 ## Summary and write (both sources)
 
-1. **Read the normalized JSON in full** (`turns[].text`). Do not summarize from grep hits.
-2. **Keep the full meeting** except HR-data segments (see **Hard constraints**). Summarize
-   every other topic. Apply the normal transcript cleaning below.
+1. **Hint the speaker labels, then read the normalized JSON in full.** For a HiDock recording
+   run `uv run python hint_speakers.py ~/.scribe/transcripts/<id>.json --attendees "A, B, C"`
+   first, using the calendar attendees: it writes `speaker 1 (likely Alexandre Castro)` only
+   where the transcript gives explicit evidence, cites that quote in provenance, and leaves
+   every other label anonymous. Then read `turns[].text` in full. Do not summarize from grep
+   hits.
+2. **Keep the full meeting** (see **Hard constraints**): nothing is withheld. Summarize
+   every topic. Apply the normal transcript cleaning below.
 3. **Write the summary file** to `~/.scribe/transcripts/<id>.summary.md`. Voice: neutral
    reference, terse, factual, like a bard note. Shape:
 
@@ -169,10 +168,12 @@ transcription, including a batch run. The source mechanics end at **Summary and 
    `Owner → action (due if stated)`. Only explicit commitments. Empty → omit.
    ```
 
-   HiDock turns carry anonymous labels (`speaker 0`, `speaker 1`, ...): write "speaker 2 asked
-   ..." instead of "the caller" / "the other party". A name still comes only from the
-   transcript itself or a voiceprint match (phase 2). Never label a voice as Alex from tone
-   alone.
+   HiDock turns carry speaker labels (`speaker 0`, `speaker 1`, ...). A label reads
+   `speaker 1 (likely Alexandre Castro)` only when `hint_speakers.py` found explicit textual
+   evidence and the name is an attendee; otherwise write "speaker 2 asked ..." instead of
+   "the caller" / "the other party". Never label a voice from tone alone and never invent a
+   name: voiceprint naming was evaluated and rejected, so do not re-propose it (see
+   `.scratch/scribe-diarization/phase2-decision.md`).
 4. **Write the note**:
 
    ```bash
@@ -252,6 +253,7 @@ scribe_schema: scribe.transcript/1
 
 **[00:00:12] Ana Silva:** ...        # teams
 **[00:00:12] speaker 0:** ...        # hidock (diarized; labels are arrival order, not names)
+**[00:00:12] speaker 1 (likely Alexandre Castro):** ...   # hidock with text evidence + attendee name
 **[00:00:12]** ...                   # hidock turn with no diarization overlap
 ```
 
@@ -264,6 +266,17 @@ scribe_schema: scribe.transcript/1
 - HiDock diarization labels voices, not names: up to 8 speakers, anonymous, arrival order.
   Substantive turns separate reliably (88-96% vs Teams ground truth, measured 2026-09-24); short
   backchannels ("Yeah") often land on the dominant speaker's label.
+- Speaker hints are text evidence only, never biometric: a hint needs a self-introduction
+  ("I'm Alex") or an addressed name ("Thanks, Greg.") that matches an attendee, so most calls
+  stay anonymous. Conflicting evidence gives nothing — on 2026-09-24 one label was addressed as
+  both "Brock" and "Greg" and correctly got no name. A self-introduction proves the person is
+  inside that label, not that the whole label is them.
+- The diarizer sometimes collapses a call to one label: a 63-minute, three-person call on
+  2026-09-24 came back with a single voice and 5 labelled turns. A single-label result on a
+  known multi-person call is a miss, not a quiet meeting.
+- Re-transcribing does not reliably reproduce the text: of 15 recordings re-run on 2026-09-24,
+  11 came back byte-identical and 4 differed by 1-115 words (mlx-whisper's temperature fallback
+  plus the unpinned `uv run --with` versions). Check the text before overwriting an existing note.
 - Diarization failure degrades to the old unlabeled note and says why on stderr; provenance
   records `diarization_status` (ok / skipped / failed).
 - Whisper still garbles names. The glossary fixes the known ones; the summary step catches the

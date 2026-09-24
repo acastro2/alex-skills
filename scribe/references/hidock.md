@@ -60,5 +60,14 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 5. Title and attendees for what is left: one calendar match → its subject as `--title` and its
    attendee names as `--attendees`. No match, or Pi (no M365): read the transcript and pick a
    short factual title from content (`Call about <topic>`); if the content does not say what it
-   is, `Untitled call`.
+   is, `Untitled call`. Then hint the labels with those same names, before summarizing:
+
+   ```bash
+   uv run python hint_speakers.py ~/.scribe/transcripts/<stem>.json --attendees "A, B, C"
+   ```
+
+   It writes `speaker 1 (likely Alexandre Castro)` only where the text gives explicit evidence
+   (a self-introduction, or a name addressed with punctuation after it) matching an attendee,
+   and records the quote in provenance. Everything else stays `speaker N`. On 2026-09-24 this
+   named 3 of 22 recordings; the rest had no usable evidence, which is the normal outcome.
 6. Continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).
