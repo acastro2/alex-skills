@@ -33,6 +33,13 @@
     session. These share the parent's `.sessionId` and use the identical line schema, and they
     are usually FAR more numerous than the main sessions. **Never skip them** -- most of the real
     work (delegated reads, edits, searches) lives here.
+  - `<session-uuid>/subagents/workflows/wf_<id>/agent-*.jsonl` -- subagents spawned inside a
+    workflow get one more directory level. Measured 2026-09-24 on this machine: 384 workflow
+    transcripts against 198 flat `subagents/agent-*.jsonl` under `~/.claude/projects/`, so a
+    flat `subagents/*.jsonl` glob misses the majority. The recursive enumeration below finds
+    them; the dirs also hold `agent-*.meta.json` and `journal.jsonl` (workflow bookkeeping,
+    lines like `{"type":"started","agentId":...}`, no `.message` -- harmless to the filters
+    below, which only read `user`/`assistant` lines).
   - `<session-uuid>/tool-results/*.txt` -- externalized large tool outputs (plain text, not JSON).
 - Because of that nesting, do NOT use `~/.claude/projects/*/*.jsonl` (it misses the subagent
   dirs). Always enumerate recursively. The canonical, FAST pattern for every content pass below
@@ -47,7 +54,7 @@
   - `<filter>` MUST be total (never error): see the WARNING in A2 about `xargs jq` aborting.
   - rg returns the identical file set as `grep -rli` here (no `.git` in `~/.claude`, so no ignore
     rules apply); it is just dramatically faster.
-- `~/.claude/history.jsonl` is a global fast index of user prompts: `{display, timestamp (epoch ms), project, sessionId}`. It indexes top-level prompts only -- subagent activity is not here, so still search the transcripts for delegated work.
+- `~/.claude/history.jsonl` is a global fast index of user prompts: `{display, timestamp (epoch ms), project, sessionId}` (entries that pasted content also carry `pastedContents`). It indexes top-level prompts only -- subagent activity is not here, so still search the transcripts for delegated work.
 
 ## Line schema (the fields that matter)
 

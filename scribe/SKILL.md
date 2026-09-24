@@ -58,10 +58,19 @@ run stays offline. On this Mac all three were already present on 2026-09-03.
   text, or summaries to Exa, a web tool, or any external service: a call recording is confidential
   even when it sounds like small talk, and Attain is a regulated lender. HiNotes cloud is not a
   source (no API, no export).
-- **No content-based skips or tiering.** Process calls that contain HR, compensation,
-  performance, or personal information too. Do not reject a whole meeting or remove sections
-  because of their subject matter. Keep every note `confidential: true` and keep the local-only
-  handling rules above (Alex, 2026-09-08).
+- **Never hold a whole meeting.** Every work recording becomes a note, including calls that
+  touch HR, compensation, performance, or personal topics. Keep every note `confidential: true`
+  and keep the local-only handling rules above (Alex, 2026-09-08; reaffirmed 2026-09-23 after
+  two 1:1s were wrongly held).
+- **Withhold only HR-data segments, by Attain policy.** Attain security policy limits HR data
+  (compensation, payroll, benefits, performance, HR cases about named people) to a named
+  allowlist, and Alex's account is not on it. In a trimmed copy of the JSON
+  (`<id>.trimmed.json`), replace only those turns or sentences with
+  `[Segment withheld under Attain HR-data policy: <topic>.]`, record the span in
+  `provenance.withheld`, add one summary bullet that says so, and write the note from the
+  trimmed copy. Everything else stays in full, including org design and role definitions
+  discussed in general terms. The original JSON stays in `~/.scribe/transcripts/`. Only an
+  admin edit of the policy allowlist changes this rule.
 - **scribe does not curate.** Every work recording and every Teams transcript becomes a note,
   including standups, 1:1s, and calls that turn out to be personal. Deciding what matters is
   bard's job, not scribe's. The Teams-wins dedup in Source B drops a HiDock copy that carries
@@ -139,8 +148,8 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 ## Summary and write (both sources)
 
 1. **Read the normalized JSON in full** (`turns[].text`). Do not summarize from grep hits.
-2. **Keep the full meeting.** Summarize all topics, including HR and personal discussion.
-   Apply the normal transcript cleaning below, but do not redact or skip content by tier.
+2. **Keep the full meeting** except HR-data segments (see **Hard constraints**). Summarize
+   every other topic. Apply the normal transcript cleaning below.
 3. **Write the summary file** to `~/.scribe/transcripts/<id>.summary.md`. Voice: neutral
    reference, terse, factual, like a bard note. Shape:
 

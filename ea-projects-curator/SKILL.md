@@ -3,7 +3,8 @@ name: ea-projects-curator
 description: >
   Curate Alex's EA Projects SharePoint board (EA Portfolio) and AAB surfaces on /sites/Architecture.
   Use for board population, updates and row comments; weekly maintenance; full audits; AAB Intake
-  close-outs and forum checks; or Architecture Weekly, Architecture Review Forum and AAB meeting
+  close-outs and forum checks; writing forum advice back into the RFCs and ADRs people bring
+  (copying off-site pre-reads into the Architecture library); or Architecture Weekly, Architecture Review Forum and AAB meeting
   recaps. Org-visible list writes require a numbered user-review table; recap pages are staged
   drafts for Alex to publish.
 ---
@@ -156,7 +157,7 @@ This is the point of the skill. The board is org-visible and the user must own w
 
 1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking.
 
-2. **Emit THREE sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **EA Projects updates**: lines numbered `E1, E2, ...`. Same columns in (b) and (c): `# | Row | Field | Now | → Proposed | Why | Needs you?`. He answers per table ("A: all. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
+2. **Emit FOUR sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **Brought documents**: lines numbered `D1, D2, ...` (copies and document edits, with the drafted author messages below the table; see [references/brought-docs.md](references/brought-docs.md)). (d) **EA Projects updates**: lines numbered `E1, E2, ...`. Same columns in (b), (c) and (d): `# | Row | Field | Now | → Proposed | Why | Needs you?`. He answers per table ("A: all. D: 1–4. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
 
 3. **He answers by line number.** Apply exactly the approved lines. A line needing input he didn't give (e.g. "yes" to a milestone rewrite but no date) → apply what you can, keep the gap on the open-items list; never fill it with a guess.
 
@@ -197,6 +198,7 @@ Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a s
   }
   ```
 - **`open_items`** — gaps a run couldn't close (a date only Alex knows, an empty row he's handling himself). Read them at the start of every run and re-surface any still open; resolve or re-write them at the end.
+- **`docs`** — one entry per intake item whose pre-read was placed or edited (source, Architecture copy, edits with version). Stops a re-run from copying twice or adding the same advice row twice. Shape in [references/brought-docs.md](references/brought-docs.md).
 - **`not_doing`** — decisions to keep something OFF the board (evaluated-and-rejected initiatives, declined candidates). Check it before proposing any NEW row; never re-propose an entry. This is what stops every fresh session from re-discovering the same dead idea.
 
 ## Weekly AAB control — the second operating surface
@@ -216,6 +218,14 @@ owns page assembly, not session selection or intake control.
 **2. Verify the recap was actually published, not staged.** A filename existing under `Recaps/` is not enough — check the page is real News: `PromotedState=2`, `OData__ModerationStatus=0`, and `FirstPublishedDate` present. `PromotedState=1` is still a draft (see [Weekly newsletter](#weekly-newsletter--architecture-weekly)) — report it as unpublished, don't treat it as done.
 
 **3. Verify every intake item for that session was closed out.** For each item whose site-local `Scheduledfor` date equals the selected session date, require a forum outcome: non-empty `Outcomenotes`, a status other than `New`/`Triaged`, and no past-dated `Scheduled` state. The site-local `Modified` date must be on or after the session date as a sanity check, but it does not prove the exact meeting time. Normal outcome is `Decided`; `Parked`/`Deflected` are valid with explanatory notes. A future re-`Scheduled` item is valid only when item version history or the ledger proves it moved from the selected session date and the notes explain why; otherwise report UNVERIFIED. **Separately, always query and flag every item globally where `Status=Scheduled` and `Scheduledfor` is in the past** — SharePoint's own agenda and decision-log views both hide this state (agenda filters `>= today`, log filters `Status=Decided`), so it's invisible unless this check catches it.
+
+**3a. Write the forum back into the documents people brought.** For every closed-out item of that
+session, sort its `Pre-read links`: edit a document already in Architecture Shared Documents, copy an
+off-site one into the right type folder first (behind a content screen and a sharing-scope gate), and
+alert on the rest. RFCs get `AAB Session`, `Status` Draft → Open for Advice, and advice rows from the
+scribe note; a Proposed ADR gets advice rows; nothing else is edited. Read
+[references/brought-docs.md](references/brought-docs.md) for the gates, folder rules, table map,
+upload shape, and author message. Every copy and edit is a `D#` review line.
 
 **4. Alert if next calendar week has nothing scheduled.** Check for at least one `AAB Intake` item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule the forum or confirm there isn't one. Never auto-schedule or invent a date.
 
@@ -240,6 +250,7 @@ owns page assembly, not session selection or intake control.
 |---|---|---|
 | Recap published | PASS / ALERT / UNVERIFIED | date, page Id/URL, PromotedState |
 | Intake close-out | PASS / ALERT / UNVERIFIED | item Ids/titles still open, with Status/Scheduledfor |
+| Brought documents | PASS / ALERT / UNVERIFIED | per item: in place / copied / alert (off-site, screened out, scope unverified, unresolvable) |
 | Next-week schedule | PASS / ALERT / UNVERIFIED | next-week range and items found, or none |
 
 Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification) — same idempotency discipline as EA Projects. **Intake field changes are writes to an org-visible list**: propose them through the same numbered review table as board changes, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` text or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
@@ -482,6 +493,7 @@ Skip discovery of new EA Projects initiatives; only true up what exists. Still g
 
 1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
 2. If the control shows the latest due forum has no published recap, **read that session's scribe note and draft the recap now** (use shared lookup under **Forum recap — generate it from the scribe transcript note**, then [references/recap.md](references/recap.md)), and carry it into the same review table. A missing recap is work to do this run, not just a line item to report. If the note itself is missing, tell Alex to run `/scribe teams` for that date instead of fetching the transcript yourself. The note is also the truth-check for whether the forum actually ran: a past-dated `Scheduled` intake item plus a real note means the close-out was missed, not the meeting.
+2a. Run control check 3a: write that session's forum advice back into the brought documents ([references/brought-docs.md](references/brought-docs.md)), as `D#` lines.
 3. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
 4. Flag any row whose `MilestoneDate` is > 7 days past due — a stale board is evidence against you.
 4a. Flag any row whose `TargetDate` is in the past and Status is not `6. Closed`, and any pre-Closed row with a `Target:` impact but no `TargetDate` (or the reverse). Flag any `6. Closed` row whose Impact still carries the `Target:` prefix — closing requires the target be rewritten as documented impact or the Outcome set to Killed/Superseded.
@@ -508,6 +520,6 @@ After the gate and the write, emit four markdown tables so the run is auditable:
 
 ## Safety recap
 
-Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that specific line. Run the exclusion screen on every candidate, on every title the user edits, and on every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing new rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions.
+Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that specific line. Run the exclusion screen on every candidate, on every title the user edits, and on every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing new rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the Architecture library that fails the exclusion screen or whose sharing scope you could not verify: a copy of a restricted file gives the whole org access. Never write the author's response column, never edit an Accepted ADR, and never send the author message yourself.
 
 The forum recap carries the same stakes and one extra risk: it is built from a verbatim scribe transcript note of a room where people speak freely about live security gaps, vendors and each other. **Quote nothing that the exclusion screen would block as a board row.** Attribute only what a named person actually said, never publish a garbled proper noun, never promote uncontested discussion into "Decided", and never invent an owner or a date. The recap goes out staged (`PromotedState=1`) for Alex to publish, and any line you are unsure about belongs in the review table as its own question, not softened onto the page.
