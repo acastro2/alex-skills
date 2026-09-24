@@ -54,7 +54,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "MilestoneDate": "2026-07-25T12:00:00Z"
 }
 ```
-Omit any key that's blank (e.g. no documented `ImpactUSD`, no `ExecutionLink`). The response contains the new item `Id` — record it in `curated.json`.
+Omit any key that's blank (e.g. no documented `Impact` value, no `ExecutionLink`). The response contains the new item `Id` — record it in `curated.json`.
 
 ## UPDATE an existing row (changed fields only)
 
