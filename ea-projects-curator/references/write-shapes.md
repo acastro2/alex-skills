@@ -1,10 +1,10 @@
 # EA Projects — REST write shapes
 
-Payloads for writing curated rows to the **EA Projects** list. Hand these to the `sharepoint` agent (it owns cookie auth via `~/.claude/scripts/sharepoint/`). Read this before any write. Never change permissions.
+Payloads for writing curated rows to the **EA Projects** list. Hand these to the `sharepoint` agent (it owns cookie auth via `<scripts>/sharepoint/`, the scripts tree your tool runs: `~/.claude/scripts` in Claude Code, `~/.config/opencode/scripts` in OpenCode and Pi). Read this before any write. Never change permissions.
 
 - Site: `https://attainfinance.sharepoint.com/sites/Architecture`
 - List GUID: `d2c0a30a-dab4-40a7-bc63-7268736473f2`
-- Auth: helper cookies, ~7h TTL. On 401/403 the human runs `python3 ~/.claude/scripts/sharepoint/auth.py "<site>" --refresh` (headed passkey).
+- Auth: helper cookies, ~7h TTL. On 401/403 the human runs `python3 <scripts>/sharepoint/auth.py "<site>" --refresh` (headed passkey).
 
 ## First: get the item entity type (don't hardcode)
 
