@@ -24,12 +24,14 @@ Updated: 2026-09-24 17:00 CDT
   acknowledgement ("Yeah.") is not evidence of being addressed, and a first name shared by
   several attendees names nobody. Repeatable case: `scribe/evals/evals.json` eval 5 with
   `tests/fixtures/transcript_hidock_naming.json`.
-- Known wrong record to revisit: `2026-09-01 1339 Architecture 1 on 1 - Steve Rake.md` — its
-  summary (written 2026-09-03) assigns actions to Steve that the labels now put on speaker 1
-  (Alex), e.g. the AWS pen-test invite. The labels are the better evidence; the summary needs a
-  rewrite, not a patch.
-- Uncommitted: the diarization build, the hint step, plus the SKILL.md policy edit. The working
-  tree is Alex's.
+- Rec07 summary fixed 2026-09-24 after the labels disagreed with it: the Anova/Vault design, the
+  pen-test invite and Matt's break-glass access are Alex's, the CSO offer was Alex's news to
+  Steve, and the SANS course is not approved. Owners now follow the labels.
+- `bard/SKILL.md` updated for the new note shape: the false "HiDock notes have no speaker
+  labels" line is replaced by the hedged-label rule, and people/HR material is explicitly
+  distilled like any other durable knowledge into the `People` hub (Alex, 2026-09-24).
+- Committed and pushed by Alex on 2026-09-24: `f80eb88` (diarization), `b085f4e` (edge cases and
+  tests), `a9555e6` (speaker hinting), `83ac605` (naming process; the hint script removed).
 - Verified limit: re-transcribing is not text-stable — 11 of 15 re-runs were byte-identical, 4
   differed by 1–115 words. Recorded in `scribe/SKILL.md` → Known limits.
 - Diarization misses seen in the wild: Rec82 (63-min, three attendees) returned a single label;
@@ -45,7 +47,7 @@ Updated: 2026-09-24 17:00 CDT
 
 ## Top 3 next actions
 
-1. Alex: review the rewritten notes (especially the 6 newly promoted Sep 1–4 ones) and commit.
+1. Review the rewritten notes, especially the 6 newly promoted Sep 1–4 ones.
 2. If you want names on a HiDock call, tell me which label was whom and I will re-render that
    note with them — Alex's own statement, never a tone guess.
 3. Optional backlog: the Sep 8–18 HiDock notes still carry no speaker labels; the same

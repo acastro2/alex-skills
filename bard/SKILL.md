@@ -180,12 +180,18 @@ so it is derived from real work and ratified by Alex.
        `## Decisions`, `## Actions` are scribe's digest, `## Transcript` is the verbatim
        source and the only thing you may quote. Provenance is the note path
        (`Obsidian: Scribe/Meetings/Transcripts/<file>`) plus the frontmatter
-       `provenance` block; never invent more. HiDock notes have no speaker labels
-       (`speakers: []`): never attribute a line to a person unless the transcript names
-       them. `## Actions` lines owned by Alex are board candidates for `Todo.md`; the
-       others are context, not tasks. scribe writes everything, including standups and
-       1:1s: the half-life filter in STEP 1 is where the noise dies, so expect to drop
-       most of them.
+       `provenance` block; never invent more. HiDock notes carry diarization labels
+       (`speaker 0`, `speaker 1`, ...), and scribe adds a hedge — `speaker 1 (likely
+       Alexandre Castro)` — only where the transcript's own text supports it, quoting that
+       text in `provenance.speaker_hints`. Treat a hedged name as likely, not certain: when
+       you attribute a quote or a commitment, keep the hedge or say the speaker is inferred.
+       A plain `speaker N` is unattributed — never guess who it was. `## Actions` lines owned
+       by Alex are board candidates for `Todo.md`; the others are context, not tasks. scribe
+       writes everything, including standups and 1:1s: the half-life filter in STEP 1 is
+       where the noise dies, so expect to drop most of them. People and HR material inside a
+       note is distilled like any other durable knowledge, into the `People` hub — the
+       consumer-PII ban covers third-party datafiles, not meeting knowledge (Alex,
+       2026-09-24).
    - **Read raw every candidate you intend to distil**, from the locator the briefing
      gave you (Read/Bash on the `.jsonl` / SQLite, per the patterns in the archeologist
      skill), so STEP 1–5 operate on real text and quotes are verbatim. When a locator
