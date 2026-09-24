@@ -57,7 +57,7 @@ Columns (internal name → type → allowed values). Use internal names for any 
 | `ExecutionLink` | Execution Link | Hyperlink | ADO epic/feature or GitHub URL |
 | `NextMilestone` | Next Milestone | Text | Outcome, one line |
 | `MilestoneDate` | Milestone Date | Date | The date that milestone is due |
-| `Who_x0020_is_x0020_Responsible` | Who is Responsible | Person (multi) | The people doing the work (EA lead plus named collaborators). Pre-existing column, present in both views; it is the *doers*, not the sponsor |
+| `Who_x0020_is_x0020_Responsible` | Who is Responsible | Person (multi) | The people doing the work (EA lead plus named collaborators). Pre-existing column, present in All Items and Full projects; it is the *doers*, not the sponsor |
 | `Sponsor` | Sponsor | Person (single) | The business or technology leader who owns the outcome and answers for it; blank if EA is the only stakeholder. Distinct from Who is Responsible (doers) |
 | `TargetDate` | Target Date | Date | The finish line for the whole initiative (FY-level), distinct from the next milestone |
 
