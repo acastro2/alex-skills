@@ -29,7 +29,7 @@ table; the recap's other sections do not. Never paste the recap into the termina
 
 For prose, follow [Alex's voice](../alex-voice/SKILL.md).
 
-Two invariants that override everything below:
+Three invariants that override everything below:
 
 1. **Never invent.** No initiative the evidence doesn't support; no impact claim that isn't documented. An empty cell is better than a soft one.
 2. **Never write unconfirmed.** The list is readable by the entire Technology org. The review gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
