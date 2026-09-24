@@ -25,7 +25,7 @@ graph TD
   T2 --> P1[teams_transcript.py: VTT to turns]
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[transcribe.py: mlx-whisper + mlx-audio diarization]
-  H3 --> H4[hint_speakers.py: likely names from the text, hedged]
+  H3 --> H4[you: name the labels from the text, hedged]
   H4 --> C[you: full transcript, summary]
   P1 --> C
   C --> W[write_note.py: glossary, filler, note]
@@ -144,12 +144,17 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 
 ## Summary and write (both sources)
 
-1. **Hint the speaker labels, then read the normalized JSON in full.** For a HiDock recording
-   run `uv run python hint_speakers.py ~/.scribe/transcripts/<id>.json --attendees "A, B, C"`
-   first, using the calendar attendees: it writes `speaker 1 (likely Alexandre Castro)` only
-   where the transcript gives explicit evidence, cites that quote in provenance, and leaves
-   every other label anonymous. Then read `turns[].text` in full. Do not summarize from grep
-   hits.
+1. **Name the speakers, then read the normalized JSON in full.** For a HiDock recording, work out
+   who each label is from the transcript text: a self-introduction ("I'm Alex"), someone being
+   addressed ("Thanks, Greg."), or an exchange that settles it (a name is called and that person
+   answers). Then rewrite that label in the JSON to `speaker 1 (likely Alexandre Castro)` and
+   record the quote and its timestamp in `provenance.speaker_hints`. Use only a name from the
+   attendee list, or one the transcript states. When the text does not settle a label, leave it as
+   `speaker N`: an unnamed label is fine, a wrong name is not. A one-word acknowledgement
+   ("Yeah.", "Okay.", "Sure.") is not proof that the person was addressed — the reply must be
+   substantive and responsive. A bare first name that several attendees share ("Chris") names
+   nobody: use the full name when the transcript supports it, otherwise leave the label alone.
+   Then read `turns[].text` in full. Do not summarize from grep hits.
 2. **Keep the full meeting** (see **Hard constraints**): nothing is withheld. Summarize
    every topic. Apply the normal transcript cleaning below.
 3. **Write the summary file** to `~/.scribe/transcripts/<id>.summary.md`. Voice: neutral
@@ -169,11 +174,10 @@ transcription, including a batch run. The source mechanics end at **Summary and 
    ```
 
    HiDock turns carry speaker labels (`speaker 0`, `speaker 1`, ...). A label reads
-   `speaker 1 (likely Alexandre Castro)` only when `hint_speakers.py` found explicit textual
-   evidence and the name is an attendee; otherwise write "speaker 2 asked ..." instead of
-   "the caller" / "the other party". Never label a voice from tone alone and never invent a
-   name: voiceprint naming was evaluated and rejected, so do not re-propose it (see
-   `.scratch/scribe-diarization/phase2-decision.md`).
+   `speaker 1 (likely Alexandre Castro)` only when step 1 found text evidence for it; otherwise
+   write "speaker 2 asked ..." instead of "the caller" / "the other party". Never label a voice
+   from tone alone and never invent a name: voiceprint naming was evaluated and rejected, so do
+   not re-propose it (see `.scratch/scribe-diarization/phase2-decision.md`).
 4. **Write the note**:
 
    ```bash

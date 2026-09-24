@@ -12,11 +12,22 @@ Updated: 2026-09-24 17:00 CDT
   skipped as `tier1`/personal now have full notes and their `skipped` entries are gone.
 - The two `.trimmed.json` files are retired to
   `~/.scribe/backup/2026-09-24/retired-policy-files/`; no trimmed copies are produced any more.
-- Names without biometrics: `scribe/scripts/hint_speakers.py` hedges a label
-  (`speaker 1 (likely Alexandre Castro)`) when the transcript's own text identifies it and the
-  name is a calendar attendee. Applied to the vault: 3 of 22 labelled notes named (Rec85, Rec87,
-  Rec96); the rest had no usable evidence. Conflicting evidence (Rec96's speaker 3, addressed as
-  both Brock and Greg) deliberately yields nothing.
+- Names without biometrics: the skill tells the agent to name speaker labels from the transcript
+  text itself — a self-introduction, someone being addressed, or an exchange that settles it —
+  hedged as `speaker 1 (likely Alexandre Castro)` with the quote recorded in provenance. There is
+  no script and no enrollment. Applied to the vault on 2026-09-24: **16 of 22 labelled notes
+  named**; the rest gave no usable evidence. A label the text does not settle stays `speaker N`.
+- Eval of the naming step (2026-09-24, ground truth = the Teams note for the same meeting, 3
+  meetings with 6-8 speakers, re-transcribed with diarization): across 7 agent runs it emitted 22
+  names — 17 exactly right, 1 wrong, 1 imprecise, 3 on truth too thin to verify. Roughly half the
+  labels with available truth stay anonymous. Two instruction fixes came out of it: a bare
+  acknowledgement ("Yeah.") is not evidence of being addressed, and a first name shared by
+  several attendees names nobody. Repeatable case: `scribe/evals/evals.json` eval 5 with
+  `tests/fixtures/transcript_hidock_naming.json`.
+- Known wrong record to revisit: `2026-09-01 1339 Architecture 1 on 1 - Steve Rake.md` — its
+  summary (written 2026-09-03) assigns actions to Steve that the labels now put on speaker 1
+  (Alex), e.g. the AWS pen-test invite. The labels are the better evidence; the summary needs a
+  rewrite, not a patch.
 - Uncommitted: the diarization build, the hint step, plus the SKILL.md policy edit. The working
   tree is Alex's.
 - Verified limit: re-transcribing is not text-stable — 11 of 15 re-runs were byte-identical, 4
@@ -37,7 +48,8 @@ Updated: 2026-09-24 17:00 CDT
 1. Alex: review the rewritten notes (especially the 6 newly promoted Sep 1–4 ones) and commit.
 2. If you want names on a HiDock call, tell me which label was whom and I will re-render that
    note with them — Alex's own statement, never a tone guess.
-3. Optional backlog: the Sep 1–18 HiDock notes still carry no labels; the same backfill applies.
+3. Optional backlog: the Sep 8–18 HiDock notes still carry no speaker labels; the same
+   transcribe-and-name pass applies. Also revisit the Rec07 summary noted above.
 
 ## Blockers
 

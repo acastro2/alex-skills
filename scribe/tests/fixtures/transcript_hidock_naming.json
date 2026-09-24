@@ -1,0 +1,29 @@
+{
+  "schema": "scribe.transcript/1",
+  "source": "hidock",
+  "title": null,
+  "start": "2026-08-26T20:01:00Z",
+  "end": "2026-08-26T20:21:00Z",
+  "speakers": ["speaker 0", "speaker 1", "speaker 2", "speaker 3"],
+  "turns": [
+    {"start": 12.0, "speaker": "speaker 0", "text": "Right, let's start. Ana, can you walk us through the rollout plan after this?"},
+    {"start": 26.0, "speaker": "speaker 1", "text": "Yeah."},
+    {"start": 41.0, "speaker": "speaker 2", "text": "Sure. So the rollout goes in three waves, EU first, then US, then Canada. The main risk is the data migration window."},
+    {"start": 71.0, "speaker": "speaker 3", "text": "Hi all, Bruno Costa here, I'll cover the finance side."},
+    {"start": 96.0, "speaker": "speaker 3", "text": "One thing on that. Does the migration line up with the finance cutover date?"},
+    {"start": 112.0, "speaker": "speaker 0", "text": "It does not, and that is the problem. We are two weeks out from the audit and finance has not signed off."},
+    {"start": 180.0, "speaker": "speaker 2", "text": "Then I would move the migration to October and keep the audit on the current system."}
+  ],
+  "provenance": {
+    "hidock_file": "2026Aug26-150100-Rec09.hda",
+    "audio_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "asr_model": "mlx-community/whisper-large-v3-turbo",
+    "asr_language": "en",
+    "duration_s": 1200.0,
+    "segment_count": 7,
+    "dropped_repeats": 0,
+    "diarization_model": "mlx-community/Nemotron-3-Diarization",
+    "diarization_status": "ok",
+    "diarization_spans": 9
+  }
+}
