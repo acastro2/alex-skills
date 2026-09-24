@@ -4,7 +4,8 @@ description: >-
   Turn Alex's meetings into cleaned transcript notes in the Obsidian vault at
   Scribe/Meetings/Transcripts, from two sources: Microsoft Teams transcripts (via the
   Microsoft 365 connector) and HiDock P1 call recordings (pulled over USB, transcribed
-  locally with mlx-whisper). Use when the user runs /scribe, asks to fetch, pull, clean,
+  locally with mlx-whisper, speaker-diarized locally with mlx-audio). Use when the user
+  runs /scribe, asks to fetch, pull, clean,
   or save meeting transcripts or call recordings, to sync the HiDock, or to prepare
   meeting notes for bard. On-demand only. Read-only on the device and on Microsoft 365.
   Never commits, never runs a server, never sends audio or transcripts off the Mac.
@@ -23,9 +24,9 @@ graph TD
   T[Teams meeting] --> T2[M365 connector: calendar event + transcript URI]
   T2 --> P1[teams_transcript.py: VTT to turns]
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
-  H2 --> H3[transcribe.py: mlx-whisper, local]
-  P1 --> C[you: full transcript, summary]
-  H3 --> C
+  H2 --> H3[transcribe.py: mlx-whisper + mlx-audio diarization]
+  H3 --> C[you: full transcript, summary]
+  P1 --> C
   C --> W[write_note.py: glossary, filler, note]
   W --> O[vault Scribe/Meetings/Transcripts/]
   O --> B[bard sweep later]
@@ -41,12 +42,14 @@ graph TD
   deleted after transcription; the device keeps the only copy), `~/.scribe/transcripts/`
   (normalized JSON, kept), `~/.scribe/raw/` (raw M365 payloads)
 - Scripts: `~/.agents/skills/scribe/scripts/` — run from that directory with
-  `uv run --with pyusb --with mlx-whisper python <script>` (uv caches the env; first run ~45 s)
+  `uv run --with pyusb --with mlx-whisper --with mlx-audio python <script>` (uv caches the env; first run ~45 s)
 
-**First run on a new Mac**: `brew install libusb ffmpeg` (pyusb needs libusb; whisper and ffprobe
-need ffmpeg), then run `transcribe.py` once with `--allow-download` so the
-`mlx-community/whisper-large-v3-turbo` weights (1.5 GB) land in the Hugging Face cache; every later
-run stays offline. On this Mac all three were already present on 2026-09-03.
+**First run on a new Mac**: `brew install libusb ffmpeg` (pyusb needs libusb; whisper, ffprobe
+and the diarizer need ffmpeg), then run `transcribe.py` once with `--allow-download` so the
+`mlx-community/whisper-large-v3-turbo` (1.5 GB) and `mlx-community/Nemotron-3-Diarization`
+(~200 MB) weights land in the Hugging Face cache; every later run stays offline. The diarizer
+download hits a Hugging Face Xet bug; `transcribe.py` sets `HF_HUB_DISABLE_XET=1` for it. On this
+Mac both were already present on 2026-09-24.
 
 ## Hard constraints (never violate)
 
@@ -74,7 +77,7 @@ run stays offline. On this Mac all three were already present on 2026-09-03.
 - **scribe does not curate.** Every work recording and every Teams transcript becomes a note,
   including standups, 1:1s, and calls that turn out to be personal. Deciding what matters is
   bard's job, not scribe's. The Teams-wins dedup in Source B drops a HiDock copy that carries
-  strictly less information (no speaker names) than the Teams note of the same meeting; it is
+  strictly less information (anonymous labels instead of names) than the Teams note of the same meeting; it is
   not a judgment about relevance. The sync date and minimum-duration filters still apply.
 - **Write only** inside `<vault>/Scribe/`, `~/.scribe/`, and the state file. Never touch
   `Bard/`, `Evidence/`, `Todo.md`, or any other vault folder. Never edit an existing transcript
@@ -127,7 +130,7 @@ fallback in Source B; do not assume Teams coverage.
 `outlook_calendar_search` with `query: "*"` over start −10 min to start +10 min. Skip the
 recording with reason `teams-covers` ONLY when a scribe Teams note already exists for that slot
 and the match is unambiguous (one event, same start within 10 min, similar length). Teams has
-speaker names; whisper does not, so the HiDock copy adds nothing then. In every other case,
+speaker names; the HiDock copy carries only anonymous labels, so it adds nothing then. In every other case,
 including concurrent meetings, a Teams note with almost no cues, or Source A not yet run, write
 the HiDock note; a duplicate is bard's problem, a missing meeting is not recoverable.
 `meetingTranscriptUrl` on the event is NOT proof of a transcript: every Teams meeting carries
@@ -166,8 +169,10 @@ transcription, including a batch run. The source mechanics end at **Summary and 
    `Owner → action (due if stated)`. Only explicit commitments. Empty → omit.
    ```
 
-   HiDock notes have no speaker labels: write "the caller" / "the other party" unless a name is
-   spoken. Never label a voice as Alex from tone alone.
+   HiDock turns carry anonymous labels (`speaker 0`, `speaker 1`, ...): write "speaker 2 asked
+   ..." instead of "the caller" / "the other party". A name still comes only from the
+   transcript itself or a voiceprint match (phase 2). Never label a voice as Alex from tone
+   alone.
 4. **Write the note**:
 
    ```bash
@@ -225,7 +230,7 @@ date: 2026-09-02T20:00:56Z
 end: 2026-09-02T21:25:40Z
 duration_min: 85
 source: teams            # or hidock
-speakers: ["Ana Silva", "Bruno Costa"]   # who actually spoke; [] for hidock
+speakers: ["Ana Silva", "Bruno Costa"]   # who actually spoke; ["speaker 0", ...] for hidock
 attendees: ["Ana Silva", "Bruno Costa", "Carla Reyes"]
 tags: ["scribe", "meeting", "source/teams"]
 confidential: true
@@ -246,7 +251,8 @@ scribe_schema: scribe.transcript/1
 ## Transcript
 
 **[00:00:12] Ana Silva:** ...        # teams
-**[00:00:12]** ...                   # hidock (no speaker labels)
+**[00:00:12] speaker 0:** ...        # hidock (diarized; labels are arrival order, not names)
+**[00:00:12]** ...                   # hidock turn with no diarization overlap
 ```
 
 ## Known limits
@@ -255,8 +261,11 @@ scribe_schema: scribe.transcript/1
   a copy, not a download. The cue count on stderr from `teams_transcript.py` is the only check;
   compare it against the payload if a note looks thin.
 
-- No speaker diarization on HiDock audio. Follow-up candidate: pyannote or a channel split if a
-  future firmware records stereo.
+- HiDock diarization labels voices, not names: up to 8 speakers, anonymous, arrival order.
+  Substantive turns separate reliably (88-96% vs Teams ground truth, measured 2026-09-24); short
+  backchannels ("Yeah") often land on the dominant speaker's label.
+- Diarization failure degrades to the old unlabeled note and says why on stderr; provenance
+  records `diarization_status` (ok / skipped / failed).
 - Whisper still garbles names. The glossary fixes the known ones; the summary step catches the
   rest only when you check.
 - Teams path needs Claude Code (M365 connector). In Pi, run `/scribe hidock` only.
@@ -269,6 +278,6 @@ scribe_schema: scribe.transcript/1
 cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
 ```
 
-59 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
-Teams VTT parsing, cleaning, note layout, transcription grouping, and one real-device listing
-that auto-skips when the P1 is not plugged in.
+66 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
+Teams VTT parsing, cleaning, note layout, transcription grouping, diarization alignment and
+degradation, and one real-device listing that auto-skips when the P1 is not plugged in.

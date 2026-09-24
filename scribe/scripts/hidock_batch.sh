@@ -16,6 +16,6 @@ for f in "$AUDIO"/*.mp3; do
   stem="$(basename "$f" .mp3)"
   if [ -f "$DONE/$stem.json" ]; then rm -f "$f"; continue; fi
   echo "=== transcribing $stem ===" >&2
-  uv run --with mlx-whisper python transcribe.py "$f" -o "$DONE/$stem.json" && rm -f "$f"
+  uv run --with mlx-whisper --with mlx-audio python transcribe.py "$f" -o "$DONE/$stem.json" && rm -f "$f"
 done
 echo "DONE" >&2

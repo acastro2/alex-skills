@@ -1,0 +1,22 @@
+{
+  "schema": "scribe.transcript/1",
+  "source": "hidock",
+  "title": "Diarized HiDock Recording",
+  "start": "2026-08-26T20:01:12Z",
+  "end": "2026-08-26T20:05:00Z",
+  "speakers": ["speaker 0", "speaker 1"],
+  "turns": [
+    {"start": 0.0, "speaker": "speaker 0", "text": "First labelled turn."},
+    {"start": 3.0, "speaker": "speaker 1", "text": "Reply from the second voice."},
+    {"start": 6.0, "speaker": null, "text": "Turn with no diarization overlap."},
+    {"start": 9.0, "speaker": "speaker 0", "text": "Closing remark."}
+  ],
+  "provenance": {
+    "hidock_file": "REC002.wav",
+    "audio_sha256": "deadbeef",
+    "asr_model": "whisper-large-v3",
+    "diarization_model": "mlx-community/Nemotron-3-Diarization",
+    "diarization_status": "ok",
+    "diarization_spans": 3
+  }
+}

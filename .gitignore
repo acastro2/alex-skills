@@ -27,3 +27,10 @@ synced/
 .env.*
 !.env.example
 !.env.*.example
+.scratch/scribe-diarization/phase2-decision.md
+.scratch/scribe-diarization/spec.md
+.scratch/scribe-diarization/issues/01-labeled-turns.md
+.scratch/scribe-diarization/issues/02-graceful-degradation.md
+.scratch/scribe-diarization/issues/03-skill-docs.md
+.scratch/scribe-diarization/issues/04-acceptance-run.md
+.scratch/scribe-diarization/issues/05-phase2-voiceprints-spike.md

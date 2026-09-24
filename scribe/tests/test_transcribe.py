@@ -31,6 +31,20 @@ def _fake_probe(value):
     return _probe
 
 
+def _fake_spans(spans: list[dict]):
+    def _diarize(audio_path, model):
+        return spans
+
+    return _diarize
+
+
+def _failing_diarize(exc: Exception):
+    def _diarize(audio_path, model):
+        raise exc
+
+    return _diarize
+
+
 # --- start-time resolution ---------------------------------------------------
 
 def test_start_parsed_from_hidock_filename_in_local_tz_converts_to_utc(tmp_path):
@@ -41,6 +55,7 @@ def test_start_parsed_from_hidock_filename_in_local_tz_converts_to_utc(tmp_path)
         [str(audio), "-o", str(out)],
         asr=_fake_asr([{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]),
         probe_duration=_fake_probe(60.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -57,6 +72,7 @@ def test_hidock_name_flag_used_when_audio_filename_is_generic(tmp_path):
         [str(audio), "-o", str(out), "--hidock-name", "2026Sep02-150056-Rec17.hda"],
         asr=_fake_asr([{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]),
         probe_duration=_fake_probe(60.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -73,6 +89,7 @@ def test_start_flag_overrides_filename_parsing(tmp_path):
         [str(audio), "-o", str(out), "--start", "2027-01-01T00:00:00Z"],
         asr=_fake_asr([{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]),
         probe_duration=_fake_probe(60.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -88,6 +105,7 @@ def test_no_date_in_filename_and_no_start_exits_2(tmp_path, capsys):
         [str(audio), "-o", str(out)],
         asr=_fake_asr([{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]),
         probe_duration=_fake_probe(60.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 2
@@ -111,6 +129,7 @@ def test_paragraph_gap_starts_a_new_turn(tmp_path):
         [str(audio), "-o", str(out), "--paragraph-gap", "2.0"],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(20.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -140,6 +159,7 @@ def test_running_turn_over_90_seconds_forces_a_split(tmp_path):
         [str(audio), "-o", str(out), "--paragraph-gap", "2.0"],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(100.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -169,6 +189,7 @@ def test_repeat_hallucination_guard_drops_third_and_later_and_reports_count(tmp_
         [str(audio), "-o", str(out), "--paragraph-gap", "100"],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(5.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -193,6 +214,7 @@ def test_empty_segment_after_strip_is_dropped_without_counting_as_repeat(tmp_pat
         [str(audio), "-o", str(out), "--paragraph-gap", "100"],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(3.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -214,6 +236,7 @@ def test_provenance_fields_and_end_from_probed_duration(tmp_path):
         [str(audio), "-o", str(out), "--model", "mlx-community/whisper-large-v3-turbo", "--language", "en"],
         asr=_fake_asr(segments, language="en"),
         probe_duration=_fake_probe(125.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -244,6 +267,7 @@ def test_end_falls_back_to_last_segment_end_when_probe_returns_none(tmp_path):
         [str(audio), "-o", str(out)],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(None),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -264,6 +288,7 @@ def test_output_matches_transcript_contract_and_schema_version(tmp_path, capsys)
         [str(audio), "-o", str(out), "--title", "Call with Jane"],
         asr=_fake_asr(segments),
         probe_duration=_fake_probe(10.0),
+        diarize=_fake_spans([]),
     )
 
     assert rc == 0
@@ -281,6 +306,7 @@ def test_output_matches_transcript_contract_and_schema_version(tmp_path, capsys)
     provenance_keys = {
         "hidock_file", "audio_sha256", "asr_model", "asr_language",
         "duration_s", "segment_count", "dropped_repeats",
+        "diarization_model", "diarization_status", "diarization_spans",
     }
     assert set(data["provenance"].keys()) == provenance_keys
 
@@ -288,3 +314,146 @@ def test_output_matches_transcript_contract_and_schema_version(tmp_path, capsys)
     # caller shells out and takes stdout as the file location.
     captured = capsys.readouterr()
     assert captured.out.strip() == str(out)
+
+
+# --- diarization: speaker assignment -------------------------------------------
+
+def test_assign_speakers_picks_the_span_with_the_greatest_overlap():
+    segments = [{"start": 5.0, "end": 10.0, "text": "Carry on."}]
+    spans = [
+        {"start": 0.0, "end": 6.0, "speaker": "speaker 9"},
+        {"start": 5.5, "end": 20.0, "speaker": "speaker 0"},
+    ]
+
+    assert transcribe._assign_speakers(segments, spans) == ["speaker 0"]
+
+
+def test_assign_speakers_leaves_uncovered_segments_unlabeled():
+    segments = [
+        {"start": 0.0, "end": 4.0, "text": "Covered."},
+        {"start": 40.0, "end": 44.0, "text": "Not covered."},
+    ]
+    spans = [{"start": 0.0, "end": 10.0, "speaker": "speaker 0"}]
+
+    assert transcribe._assign_speakers(segments, spans) == ["speaker 0", None]
+
+
+# --- diarization: transcript output ---------------------------------------------
+
+def test_diarized_turns_carry_labels_speakers_list_and_provenance(tmp_path):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [
+        {"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Morning."},
+        {"id": 1, "seek": 0, "start": 30.0, "end": 35.0, "text": "Morning, all."},
+    ]
+    spans = [
+        {"start": 0.0, "end": 10.0, "speaker": "speaker 0"},
+        {"start": 20.0, "end": 40.0, "speaker": "speaker 1"},
+    ]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(60.0),
+        diarize=_fake_spans(spans),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert [t["speaker"] for t in data["turns"]] == ["speaker 0", "speaker 1"]
+    assert data["speakers"] == ["speaker 0", "speaker 1"]
+    assert data["provenance"]["diarization_model"] == transcribe.DEFAULT_DIARIZATION_MODEL
+    assert data["provenance"]["diarization_status"] == "ok"
+    assert data["provenance"]["diarization_spans"] == 2
+
+
+def test_speaker_change_starts_a_new_turn_inside_the_pause_threshold(tmp_path):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [
+        {"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Question?"},
+        {"id": 1, "seek": 0, "start": 5.5, "end": 9.0, "text": "Answer."},
+    ]
+    spans = [
+        {"start": 0.0, "end": 5.2, "speaker": "speaker 0"},
+        {"start": 5.3, "end": 9.5, "speaker": "speaker 1"},
+    ]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(30.0),
+        diarize=_fake_spans(spans),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    turns = data["turns"]
+    assert [t["speaker"] for t in turns] == ["speaker 0", "speaker 1"]
+    assert turns[0]["text"] == "Question?"
+    assert turns[1]["text"] == "Answer."
+
+
+def test_no_spans_keeps_unlabeled_turns_and_reports_ok(tmp_path):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Hello."}]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(10.0),
+        diarize=_fake_spans([]),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert all(t["speaker"] is None for t in data["turns"])
+    assert data["speakers"] == []
+    assert data["provenance"]["diarization_status"] == "ok"
+    assert data["provenance"]["diarization_spans"] == 0
+
+
+# --- diarization: degradation ---------------------------------------------------
+
+def test_diarizer_failure_still_writes_an_unlabeled_note(tmp_path, capsys):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [
+        {"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Hello."},
+        {"id": 1, "seek": 0, "start": 30.0, "end": 35.0, "text": "Again."},
+    ]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(60.0),
+        diarize=_failing_diarize(RuntimeError("model not found locally")),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert all(t["speaker"] is None for t in data["turns"])
+    assert data["speakers"] == []
+    assert data["provenance"]["diarization_status"] == "failed"
+    assert data["provenance"]["diarization_spans"] == 0
+    assert "diarization failed" in capsys.readouterr().err
+
+
+def test_diarizer_missing_dependency_is_reported_as_skipped(tmp_path, capsys):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Hello."}]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(10.0),
+        diarize=_failing_diarize(ModuleNotFoundError("No module named 'mlx_audio'")),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["provenance"]["diarization_status"] == "skipped"
+    assert "diarization skipped" in capsys.readouterr().err
