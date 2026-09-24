@@ -457,3 +457,66 @@ def test_diarizer_missing_dependency_is_reported_as_skipped(tmp_path, capsys):
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["provenance"]["diarization_status"] == "skipped"
     assert "diarization skipped" in capsys.readouterr().err
+
+
+def test_uncached_offline_model_is_reported_as_skipped(tmp_path, capsys):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Hello."}]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(10.0),
+        diarize=_failing_diarize(
+            transcribe.DiarizationUnavailable("Nemotron is not cached locally; run once with --allow-download")
+        ),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["provenance"]["diarization_status"] == "skipped"
+    assert "diarization skipped" in capsys.readouterr().err
+
+
+def test_spans_that_label_no_turn_are_warned_about(tmp_path, capsys):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "Hello."}]
+    spans = [{"start": 100.0, "end": 110.0, "speaker": "speaker 0"}]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(10.0),
+        diarize=_fake_spans(spans),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["provenance"]["diarization_status"] == "ok"
+    assert "no turn got a label" in capsys.readouterr().err
+
+
+def test_speaker_labels_sort_naturally_beyond_nine(tmp_path):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [
+        {"id": 0, "seek": 0, "start": 0.0, "end": 5.0, "text": "First."},
+        {"id": 1, "seek": 0, "start": 20.0, "end": 25.0, "text": "Second."},
+    ]
+    spans = [
+        {"start": 0.0, "end": 5.0, "speaker": "speaker 2"},
+        {"start": 20.0, "end": 25.0, "speaker": "speaker 10"},
+    ]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out)],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(30.0),
+        diarize=_fake_spans(spans),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["speakers"] == ["speaker 2", "speaker 10"]

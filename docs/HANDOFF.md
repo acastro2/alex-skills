@@ -5,8 +5,11 @@ Updated: 2026-09-24 15:50 CDT
 ## Current state
 
 - Build done: tickets 01–04 complete and verified; ticket 05 (phase-2 spike) decided with a
-  real experiment. All tests pass (66). Nothing committed — the working tree is Alex's to
+  real experiment. All tests pass (69). Nothing committed — the working tree is Alex's to
   review and commit.
+- PR review 2026-09-24: 0 blockers; follow-ups fixed same day — uncached offline model now
+  `skipped` with a hint, warning when spans label no turn, natural speaker-label sort,
+  spec/doc reconciliations.
 - Artifacts: spec `.scratch/scribe-diarization/spec.md`; tickets
   `.scratch/scribe-diarization/issues/01..05` (all items ticked); phase-2 decision
   `.scratch/scribe-diarization/phase2-decision.md`.

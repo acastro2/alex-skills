@@ -278,6 +278,6 @@ scribe_schema: scribe.transcript/1
 cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
 ```
 
-66 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
+69 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
 Teams VTT parsing, cleaning, note layout, transcription grouping, diarization alignment and
 degradation, and one real-device listing that auto-skips when the P1 is not plugged in.

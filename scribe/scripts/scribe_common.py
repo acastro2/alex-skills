@@ -42,9 +42,9 @@ def dump_transcript(transcript: dict, path: str | Path) -> None:
 def merge_consecutive_turns(turns: list[dict]) -> list[dict]:
     """Merge consecutive turns from the same speaker into one, keeping the
     earliest start. Teams (and cleaning) both produce runs of same-speaker
-    fragments that read as noise unless merged. A None speaker (unlabelled
-    source, e.g. HiDock) never merges with anything, even another None turn —
-    there is no evidence two unlabelled turns share a speaker."""
+    fragments that read as noise unless merged. A None speaker (a turn with no
+    label) never merges with anything, even another None turn — there is no
+    evidence two unlabelled turns share a speaker."""
     merged: list[dict] = []
     for turn in turns:
         same_speaker = (

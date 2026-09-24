@@ -67,6 +67,7 @@ _MONTH_ABBR = {
     )
 }
 _PUNCT_PATTERN = re.compile(r"[^\w\s]")
+_SPEAKER_LABEL_PATTERN = re.compile(r"^speaker (\d+)$")
 
 
 # --- seams: real ASR and subprocess boundaries ------------------------------
@@ -98,14 +99,20 @@ def probe_duration(audio_path: str) -> float | None:
         return None
 
 
+class DiarizationUnavailable(RuntimeError):
+    """The diarizer cannot run right now, for example a model that is not cached offline."""
+
+
 def diarize(audio_path: str, model: str) -> list[dict]:
     """Default diarizer: mlx-audio over an ffmpeg-decoded 16 kHz mono WAV.
 
     Lazily imported so tests never import mlx. Returns spans with display
-    labels ("speaker 0", ...) in the model's arrival order.
+    labels ("speaker 0", ...) in the model's arrival order. Raises
+    DiarizationUnavailable when the model is not available locally.
     """
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")  # Xet transfer bug, 2026-09-24
 
+    from huggingface_hub.errors import LocalEntryNotFoundError
     from mlx_audio.vad import load
 
     with tempfile.TemporaryDirectory(prefix="scribe-diar-") as tmp:
@@ -116,7 +123,12 @@ def diarize(audio_path: str, model: str) -> list[dict]:
             check=True,
             capture_output=True,
         )
-        diarizer = load(model, strict=True)
+        try:
+            diarizer = load(model, strict=True)
+        except LocalEntryNotFoundError as exc:
+            raise DiarizationUnavailable(
+                f"{model} is not cached locally; run once with --allow-download"
+            ) from exc
         result = diarizer.generate(wav_path)
 
     return [
@@ -222,6 +234,12 @@ def _assign_speakers(segments: list[dict], spans: list[dict]) -> list[str | None
     return labels
 
 
+def _speaker_sort_key(label: str) -> tuple[int, int | str]:
+    """Sort "speaker N" labels numerically; anything else alphabetically after them."""
+    m = _SPEAKER_LABEL_PATTERN.match(label)
+    return (0, int(m.group(1))) if m else (1, label)
+
+
 # --- turn grouping -----------------------------------------------------------
 
 def _group_into_turns(segments: list[dict], paragraph_gap: float) -> list[dict]:
@@ -319,7 +337,7 @@ def main(
     try:
         spans = diarize(args.audio, args.diarization_model)
         diarization_status = "ok"
-    except ImportError as exc:
+    except (ImportError, DiarizationUnavailable) as exc:
         spans = []
         diarization_status = "skipped"
         print(f"diarization skipped: {exc}", file=sys.stderr)
@@ -335,7 +353,12 @@ def main(
     ]
 
     turns = _group_into_turns(labeled_segments, args.paragraph_gap)
-    speakers = sorted({turn["speaker"] for turn in turns if turn["speaker"] is not None})
+    speakers = sorted(
+        {turn["speaker"] for turn in turns if turn["speaker"] is not None},
+        key=_speaker_sort_key,
+    )
+    if spans and not speakers:
+        print(f"diarization warning: {len(spans)} spans but no turn got a label", file=sys.stderr)
 
     duration = probe_duration(args.audio)
     if duration is None and kept_segments:
