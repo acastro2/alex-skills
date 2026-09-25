@@ -31,6 +31,15 @@ down and never adds frontmatter to this file. If the marker is absent, bard appe
 whole block at the END of the file — never at the top. The retired `Bard/TODO.md` is a
 pointer stub only; it is not the board.
 
+**One exception: Alex's checked lines move to the archive (Alex, 2026-09-25).** On every
+sweep, every `- [x]` line ABOVE the marker moves to `Bard/Done Archive.md`, into the
+current `## YYYY-MM` section, newest first. Move it verbatim: keep Alex's wording and his
+`✅ <date>` if he wrote one; never add a topic emoji, wikilink, or priority, and never
+invent a completion date (no date written means none recorded). Delete the line from the
+top only after the archive write succeeds, and re-read `Todo.md` right before the edit.
+Unchecked `- [ ]` lines and all other text above the marker stay untouched, in order, and
+are still never read as task input. Report the count moved in the sweep report.
+
 ## Intake gate, caps, and the backlog
 
 The board is the short list of things that hurt if they fall through the cracks. It is

@@ -57,7 +57,10 @@ Three frames govern it:
   existing files bard updates in place. `Bard/Done Archive.md` is inside the existing `Bard/` scope; no
   additional write-scope exception is needed. On `Todo.md`, bard edits ONLY from the
   `<!-- BARD:START -->` marker down: never edit, reorder, or read as task input anything
-  above it, and never add frontmatter to that file. The retired `Bard/TODO.md` is a
+  above it, and never add frontmatter to that file. One exception (Alex, 2026-09-25):
+  lines above the marker that Alex checked (`- [x]`) MOVE to `Bard/Done Archive.md`
+  on every sweep, verbatim; unchecked lines above the marker are never touched (see
+  [Board rules](references/todo-board.md) → Ownership split). The retired `Bard/TODO.md` is a
   pointer stub only; bard never writes it. Knowledge notes and hubs stay
   append-only/never-touched.
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
@@ -171,7 +174,18 @@ so it is derived from real work and ratified by Alex.
        shape returns an empty string per line, which looks exactly like "this session
        had no user messages" — verify with `jq -r '.type' <file> | sort | uniq -c`
        before concluding a session is empty.
-     - opencode (legacy, first/`full` sweep only): `session.time_archived`.
+     - **opencode (every sweep, since 2026-09-25)**: `~/.local/share/opencode/opencode.db`,
+       opened read-only (`sqlite3 -readonly`). Live data is in `session_v2` (one row per
+       session; `parent_id IS NULL` = main session, non-null = subagent) and
+       `session_message` (`session_id`, `type`, `time_created` epoch-ms, `data` JSON). Select
+       sessions that have `session_message.time_created` newer than `watermark`, not
+       `session_v2.time_created` alone, because sessions span days. Text lives in `data`: a
+       `user` row has `.text`; an `assistant` row has `.content[]`, keep only
+       `type=="text"` parts (drop `reasoning` and tool parts). Skip subagent sessions unless
+       the parent points at them, and skip `*-smoke`/`cctest` scratch directories. The
+       legacy `session` table is stale (last row 2026-08); never use it as the cursor.
+       Verified 2026-09-25: 139 sessions (51 main) in one week, the second-largest store
+       after Claude Code, and the first opencode-free sweep missed all of it.
      - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
        one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
        call recordings). Frontmatter `date` is the meeting start (UTC ISO): sweep notes
@@ -215,7 +229,8 @@ so it is derived from real work and ratified by Alex.
    [Board rules](references/todo-board.md) first** — it owns every board rule and every
    rule there is binding. Use one Edit pass over the existing file. Preserve everything
    above
-   `<!-- BARD:START -->`; if the marker is absent, append the whole BARD List block at
+   `<!-- BARD:START -->`, except Alex's checked `- [x]` lines there, which move verbatim
+   to `Bard/Done Archive.md` (Ownership split exception); if the marker is absent, append the whole BARD List block at
    the END of the file. Dedupe against every existing board line, open and done, and
    against `Bard/Backlog.md`. Run every candidate through the intake gate (consequence,
    one next action, Bard note exists); failures go to the backlog, not the board. Derive
