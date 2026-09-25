@@ -19,13 +19,11 @@ change the weekly run order or who approves list writes and publishes the page.
 
 ## Teams garbles proper nouns — verify or omit, never publish a guess
 
-`scribe` already applies the glossary at `<vault>/Scribe/Glossary.md` to known garbles (Lucidchart,
-FireMon, Ivanti, ADO, CURO, Five9, SE), so most of the noise is gone before you read the note. You
-still verify every remaining proper noun in the note against what you can confirm — correct only
-what you can confirm, otherwise describe the thing without naming it — and if you confirm a new
-garble the glossary missed, append it to `<vault>/Scribe/Glossary.md` as a `- wrong => Right` line.
-That glossary file is the one scribe-owned file the curator may append to. The note may also end
-mid-sentence if the source transcript did. Say so in the recap footer rather than inventing an ending.
+`scribe` applies the glossary at `<vault>/Scribe/Glossary.md` (Lucidchart, FireMon, Ivanti, ADO,
+CURO, Five9, SE), so most noise is gone. Verify every remaining proper noun: correct only what you
+can confirm, otherwise describe the thing without naming it. A confirmed new garble is appended to
+that glossary as `- wrong => Right`; it is the one scribe-owned file the curator may append to. If
+the note ends mid-sentence, say so in the recap footer rather than inventing an ending.
 
 ## The recap prompt (Alex's wording — use it as-is)
 
@@ -100,54 +98,44 @@ read the non-zero exit as a failed page.
 
 ## Recap gates (on top of the prompt)
 
-- **Write the Executive Summary band too — it is part of this deliverable.** The page opens with a
-  band for the executive leadership team, who read the page but were not in the room. It is generated
-  from this recap and may not introduce a fact the recap does not already carry. Full rules are in
-  [SKILL.md, Executive Summary](../SKILL.md#executive-summary--the-elt-readers-gate-new-2026-09-18):
-  one plain-words `headline`, 3 to 4 bold-lead `points`, and a `footer` that says whether leadership
-  must act. It goes through the review table as its own numbered line, and it is the line Alex reads
-  most closely. `render_page.py` refuses to render a page without it, and refuses a band outside 3 to
-  4 points, so a short band is a content fix and not a thing to argue with the script about.
-- **The full exclusion screen applies to every line of the recap**, same as board rows. The forum
-  discusses live security detail; the recap is org-visible. Keep it effect-side: never name a
-  specific exposed endpoint, a live unremediated weakness, vendor-commercial posture, or personnel
-  criticism. Where a topic cannot be described safely, drop it and tell Alex why in your report
-  rather than softening it onto the page.
-- **Decision versus discussion is the highest-risk call.** Promoting an uncontested assertion into
-  "Decided" misleads everyone who reads it. If Alex asserted a scope boundary and nobody objected,
-  that is not the same as the group deciding; say what actually happened. When the session ends with
-  "let's circle back next week," the Outcome is at best [Partially achieved].
-- **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers.
-  Attribute to the person who actually spoke the commitment.
-- **Artifacts Referenced carries links, not just filenames.** This is the traceability line: a reader
-  must be able to go from the recap to the RFC, the ADR, the PR, or the deck behind an update.
-  - **Link the primary record, not a folder.** A merged PR, an ADO item, the portfolio row, the
+- **Write the Executive Summary band too.** It is generated from this recap and may not introduce a
+  fact the recap does not carry. Full rules: [SKILL.md, Executive Summary](../SKILL.md#executive-summary--the-elt-readers-gate-new-2026-09-18).
+  It goes through the review table as its own numbered line, and it is the line Alex reads most
+  closely; `render_page.py` refuses a page without it, or a band outside 3 to 4 points, so a short
+  band is a content fix, not an argument with the script.
+- **The full exclusion screen applies to every line of the recap**, same as board rows: effect-side
+  only, never a specific exposed endpoint, a live unremediated weakness, vendor-commercial posture,
+  or personnel criticism. Where a topic cannot be described safely, drop it and tell Alex why rather
+  than softening it onto the page.
+- **Decision versus discussion is the highest-risk call.** An uncontested assertion is not a decision
+  ("Alex asserted a scope boundary and nobody objected" is not the group deciding). Say what actually
+  happened; a session ending with "let's circle back next week" is at best [Partially achieved].
+- **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers;
+  attribute to the person who spoke the commitment.
+- **Artifacts Referenced carries links, not just filenames.** A reader must be able to go from the
+  recap to the RFC, the ADR, the PR, or the deck behind an update.
+  - **Link the primary record, not a folder:** a merged PR, an ADO item, the portfolio row, the
     published RFC/ADR/SAD, or the deck itself.
-  - **Label with the document's own title, never an ID and never a raw URL.** Framework docs carry
-    no identifier except `STANDARD-NNNN` and `ADR-NNNN`, so there is no `RFC-0007` to cite — the title is
+  - **Label with the document's own title, never an ID or raw URL.** Framework docs carry no
+    identifier except `STANDARD-NNNN` and `ADR-NNNN`; there is no `RFC-0007` to cite, so the title is
     the identifier. Never invent an ID to make a link look tidy.
-  - **Never link an unpublished doc.** Until the file is in the Architecture Documents library it has
-    no stable URL. Name it and say it is not yet published. A link that 403s or lands on a
-    placeholder filename is worse than no link.
-  - **The exclusion screen applies to the link target.** No personal-OneDrive URLs
-    (`-my.sharepoint.com`), no access-restricted evidence, nothing the screen would keep off a board
-    row.
-  - If the note names no artifact for a topic, leave it out. An invented link is a fabrication like
-    any other.
-- **Do not print the recap into the terminal.** Alex does not read it there, and a 1,300-word page
-  pasted into a CLI is noise. Generate it, verify it against the note, run `docs-reviewer`,
-  address the findings, stage it to SharePoint, and hand back **the link plus a short summary of
-  what you fixed**. The staged draft is the review surface: he reads it rendered, where the layout
-  problems are actually visible, and clicks Publish there. Reading back the stored
-  `CanvasContent1` is not a substitute for him seeing it.
-- The recap therefore does **not** go through the numbered review table line by line; staging it is
-  safe because `PromotedState=1` is a draft nobody else sees, and he approves by publishing. What
-  still goes in the review table: **intake close-outs, board rows, comments, and any recap judgment
-  call you could not resolve yourself** (a confidentiality trade-off, a finding that conflicts with
-  a house rule, a decision-versus-discussion call you are not sure about). Everything else you fix
-  and report.
-- A generated recap also gives you the real `Outcomenotes` for that session's AAB Intake items and
-  the evidence to close them out. Propose those as review-table lines too, never write them blind.
+  - **Never link an unpublished doc.** Until it is in the Architecture Documents library it has no
+    stable URL; name it and say it is not yet published. A 403 or a placeholder filename is worse
+    than no link.
+  - **The exclusion screen applies to the link target:** no personal-OneDrive URLs
+    (`-my.sharepoint.com`), no access-restricted evidence, nothing the screen would keep off a row.
+  - If the note names no artifact for a topic, leave it out; an invented link is a fabrication.
+- **Do not print the recap into the terminal.** Generate it, verify it against the note, run
+  `docs-reviewer`, address findings, stage it, and hand back **the link plus a short summary of what
+  you fixed**. The staged draft is the review surface: Alex reads it rendered and clicks Publish
+  there; a stored `CanvasContent1` read-back is no substitute for him seeing it.
+- The recap does **not** go through the review table line by line; `PromotedState=1` is a draft
+  nobody else sees, and Alex approves by publishing. Still in the review table: **intake close-outs,
+  board rows, comments, and any judgment call you could not resolve** (a confidentiality trade-off, a
+  finding against a house rule, a decision-versus-discussion call you are unsure about). Everything
+  else you fix and report.
+- A generated recap gives you the real `Outcomenotes` and the evidence to close out that session's
+  AAB Intake items: propose those as review-table lines, never write them blind.
 
 ## Verify the draft against the note before showing it to Alex
 
