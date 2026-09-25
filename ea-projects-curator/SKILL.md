@@ -349,65 +349,55 @@ site. Hierarchy comes from size, weight, colour and letter-spacing.
 
 ### The SharePoint editor does not show this page faithfully (measured 2026-09-18)
 
-Alex edited a staged page, saved it, and reported it as broken. It was not. Reading the stored canvas
-back after his save: **144 of 147 inline `style` attributes survived, including the navy band's
-`background-color`.** The read view renders fully styled. What he saw was the **rich text editor's own
-view**, which drops backgrounds, borders and heading sizes from view while leaving them in the stored
-page.
+The read view renders fully styled; **144 of 147 inline `style` attributes survived an edit and save,
+including the navy band's `background-color`.** The editor's own view drops backgrounds, borders and
+heading sizes while leaving them in the stored page. So:
 
-So:
-
-- **Never judge this page in edit mode.** Use Preview, or the read view. Tell Alex this whenever he
-  edits a page, because the editor will look broken and he will say so.
-- **The editor's only real mutation is the Action items table.** On the first save the RTE wraps it in
-  `<figure class="table canvasRteResponsiveTable" title="Table" style="width:100%;">`, adds a
-  `<colgroup>` of three `33.33%` columns, and moves the table's `border-collapse` and `margin-top` out
-  of the markup. SharePoint's own `canvasRteResponsiveTable` CSS then supplies the collapsed borders,
-  and the three columns become equal width, so Action rows wrap to two lines more often. That is
-  accepted, not fought: the table still reads correctly and the `td` styles survive.
+- **Never judge this page in edit mode.** Use Preview or the read view. Tell Alex this when he edits a
+  page; it will look broken and he will say so.
+- **The editor's only real mutation is the Action items table.** On first save the RTE wraps it in a
+  responsive `<figure>` and makes the three columns equal width, so Action rows wrap more often. That
+  is accepted: the table reads correctly and the `td` styles survive.
 - **A `class=` attribute in a read-back canvas is SharePoint's, not drift.** `render_page.py
-  --check-only` is for the RENDERED canvas. Do not "fix" a saved page's `<figure>` wrapper, and do not
-  treat it as a validation failure.
-- The page's own inline styles are durable across edits. Rule 2 ("safe for Alex to edit by hand") holds,
-  with the table-wrapper exception noted above.
+  --check-only` validates the RENDERED canvas; do not "fix" a saved page's `<figure>` wrapper.
+- The page's inline styles are durable across edits. Rule 2 ("safe for Alex to edit by hand") holds,
+  with the table-wrapper exception.
 
 ### Visual verification — the run can look at the page itself
 
-A read-back proves storage, not appearance. Use the **`browser-control` skill** to actually see the
-rendered page: it drives Alex's own Chromium browser with his profile and cookies, so SharePoint
-renders authenticated. The OpenCode `tools.browser.*` catalog needs the desktop app plus an
-experimental setting and is usually unavailable; `browser-control` is the path that works.
+A read-back proves storage, not appearance. Use the **`browser-control` skill** to see the rendered
+page: it drives Alex's own Chromium browser with his profile and cookies, so SharePoint renders
+authenticated. The OpenCode `tools.browser.*` catalog needs the desktop app plus an experimental
+setting and is usually unavailable.
 
-Two gotchas that cost real time on 2026-09-18, so nobody repeats them:
+Two gotchas that cost real time on 2026-09-18:
 
 - **`fullPage: true` does not capture the whole page.** The scroll container is inner, so a full-page
-  shot comes back the same size as a viewport shot. Scroll the container instead:
+  shot matches a viewport shot. Scroll the container instead:
   `await page.getByRole("heading", { name: "Topics discussed" }).scrollIntoViewIfNeeded()`, then take
   viewport shots.
-- **`page.goto` churns through SharePoint's auth redirect query strings** (`?sw=bypass&bypassReason=…`)
-  before settling on the real URL. Wait, then read `page.url()`; a noisy redirect chain is normal.
+- **`page.goto` churns through SharePoint's auth redirect query strings** before settling on the real
+  URL. Wait, then read `page.url()`; a noisy redirect chain is normal.
 
 **When to run it:** mandatory whenever the renderer or the page layout changed, and once before Alex's
-first publish of a new format. A content-only week does not need it. Always hand Alex the link anyway —
+first publish of a new format. A content-only week does not need it. Always hand Alex the link anyway;
 his eyes are the final check, and he catches things the shot does not.
 
 ### The page title area is hidden
 
 The navy band carries the page title, so the SharePoint title must not repeat above it. **Verified
-2026-09-18 twice:** `2026-08-12-AAB-Recap.aspx` stores `LayoutWebpartsContent = [{"controlType":0}]`
-and shows no title region, and the 09-16 page staged with the same value was rendered in a browser and
-shows the navy band as the first thing on the page. Pages left at the default (`null`) render the title
-twice. `stage_news_recap.py` sets the field by default and exits non-zero if it did not stick. If a
-staged draft ever does show a duplicated title, report it; the fallback is to drop the words
-"Architecture Weekly" from the band, never to accept the duplicate.
+2026-09-18:** a page storing `LayoutWebpartsContent = [{"controlType":0}]` shows no title region (the
+09-16 page rendered with the navy band first); the default (`null`) renders the title twice.
+`stage_news_recap.py` sets the field by default and exits non-zero if it did not stick. If a staged
+draft shows a duplicated title, report it; the fallback is to drop "Architecture Weekly" from the
+band, never to accept the duplicate.
 
 **This skill is shared between tools; the scripts it calls are not.** `stage_news_recap.py` exists
-once per tool (`~/.claude/scripts/sharepoint/` and `~/.config/opencode/scripts/sharepoint/`), and the
-two copies drifted: the title region was added to one only, so a Pi or OpenCode run staged a page with
-a duplicated title and said nothing. Both carry `--hide-title` and its verification as of 2026-09-19.
-Before you rely on any behaviour this file claims about a script, check the copy your tool actually
-runs. `auth.py` and `sharepoint_api.py` still differ between the two trees, each holding something the
-other lacks; that is open, and it belongs to Alex.
+once per tool, and the copies drifted before: the title region was added to one only, so a Pi or
+OpenCode run staged a page with a duplicated title and said nothing. Both carry `--hide-title` and
+its verification as of 2026-09-19. Check the copy your tool runs before trusting any script claim in
+this file; `auth.py` and `sharepoint_api.py` still differ between the trees, which is open and
+belongs to Alex.
 
 **Sources — reuse the run's retrieval sweep, never double-fetch:** the curation run's own WRITTEN /
 UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub
