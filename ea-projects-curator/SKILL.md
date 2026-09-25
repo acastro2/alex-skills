@@ -330,14 +330,13 @@ newsletter gates below for a delivery-only draft and state that it has no forum 
 
 ## Weekly newsletter — Architecture Weekly
 
-Every weekly page carries THREE components under the title **Architecture Weekly — Month D, YYYY**.
-Component 1 is the **Executive Summary** band at the top (see the gate below). Component 2 is the
-**Forum recap** (generated from the scribe note using
-[references/recap.md](references/recap.md), or Alex's pasted notes rendered verbatim when he supplies
-them). Component 3 is the generated **What Enterprise Architecture shipped** panel at the bottom.
-They answer different questions: the summary is for the executive leadership team who read the page
-but were not in the room; the forum record says what the group decided; the delivery panel says what
-EA shipped. Drop any delivery item that restates the forum recap.
+Every weekly page carries THREE components under the title **Architecture Weekly — Month D, YYYY**:
+the **Executive Summary** band at the top (see the gate below), the **Forum recap** (generated from
+the scribe note via [references/recap.md](references/recap.md), or Alex's pasted notes rendered
+verbatim), and the generated **What Enterprise Architecture shipped** panel at the bottom. They
+answer different questions: the band is for the executive leadership team who read the page but were
+not in the room; the forum record says what the group decided; the panel says what EA shipped. Drop
+any delivery item that restates the forum recap.
 
 ### The page body is rendered, never written
 
@@ -350,37 +349,31 @@ recap-content.json  →  render_page.py  →  canvas.json  →  stage_news_recap
 
 The script owns every tag, style and colour, and it refuses to emit `class=`, `<style>`, custom
 elements, `font-family` or anything else the SharePoint rich text editor would fight. Read its
-docstring for the content schema. Filling in HTML by hand is what produced the drift between the
-09-09 and 09-16 pages; two files cannot disagree if only one of them holds markup.
+docstring for the content schema. Hand-written HTML is what produced the drift between the 09-09 and
+09-16 pages; two files cannot disagree if only one holds markup.
 
 [references/example-content.json](references/example-content.json) is a complete, valid input: copy
 it to start a week, and render it after any change to the script to prove the script still works.
 
 **It refuses on content shape too, not just markup.** Missing `exec_summary`, a band outside 3 to 4
-points, a blank `footer`, an unknown `outcome.tag`, a decision with no `rationale`, a shipped item
-with no evidence: each is a named error naming the exact key. Fix the content; do not reach past the
-script. Its forbidden-construct scan reads the MARKUP only, so ordinary prose is safe (a sentence may
-say `position:` or `class=` without failing the render). What keeps content out of the markup is
-escaping, not the word list.
+points, a blank `footer`, an unknown `outcome.tag`, a decision with no `rationale`: each is a named
+error naming the exact key. Fix the content; do not reach past the script. The forbidden-construct
+scan reads the MARKUP only, so ordinary prose is safe (a sentence may say `position:` or `class=`
+without failing). Escaping, not the word list, keeps content out of the markup.
 
-`python3 references/render_page.py --text canvas.json` prints the rendered page as plain text. That
-is the input to `voice_check.py`; see [references/recap.md](references/recap.md) for the two commands.
+`python3 references/render_page.py --text canvas.json` prints the rendered page as plain text, the
+input to `voice_check.py`; see [references/recap.md](references/recap.md) for the commands.
 
-**The design is fixed (approved by Alex 2026-09-18, from the Claude Design mock).** Navy header band,
-teal rule, Executive Summary band, Forum recap section, navy shipped panel. Section order:
-Executive Summary → Forum recap (Objective, Outcome, TL;DR, Decisions made, Action items, Topics
-discussed, Open questions and risks, Artifacts referenced, Spoke in this session) → What Enterprise
-Architecture shipped.
+**Design and colour are fixed** (Alex, 2026-09-18, from the Claude Design mock): navy header band,
+teal rule, Executive Summary band, Forum recap (Objective, Outcome, TL;DR, Decisions made, Action
+items, Topics discussed, Open questions and risks, Artifacts referenced, Spoke in this session), navy
+shipped panel. The palette is the mock's, deliberately not the Attain brand: `#12395C` navy band,
+`#0E8FA8` teal rule, `#1A4E7A` shipped band, `#E6F0F7` light surfaces, `#23303B` body, `#55636E`
+muted, `#0E6E96` links, `#D4DDE4` borders. Every colour is a named constant in the `render_page.py`
+palette block; a bare hex in a builder is drift. Do not substitute Venice Blue or any brand token.
 
-**Colour is the mock's palette, deliberately not the Attain brand palette** — Alex's call
-2026-09-18. `#12395C` navy band, `#0E8FA8` teal rule, `#1A4E7A` shipped band, `#E6F0F7` light
-surfaces, `#23303B` body, `#55636E` muted, `#0E6E96` links, `#D4DDE4` borders. Every colour the page
-emits is a named constant in the `render_page.py` palette block, with its role beside it; a bare hex
-in a builder is drift. Do not substitute Venice Blue or any other brand token.
-
-**Fonts come from the site theme.** No `font-family` is emitted anywhere. The Architecture site
-renders Segoe UI and the page inherits it, so the page stays consistent with every other page on the
-site. Hierarchy comes from size, weight, colour and letter-spacing.
+**Fonts come from the site theme.** No `font-family` anywhere; the site renders Segoe UI and the
+page inherits it. Hierarchy comes from size, weight, colour and letter-spacing.
 
 ### The SharePoint editor does not show this page faithfully (measured 2026-09-18)
 
@@ -434,22 +427,20 @@ its verification as of 2026-09-19. Check the copy your tool runs before trusting
 this file; `auth.py` and `sharepoint_api.py` still differ between the trees, which is open and
 belongs to Alex.
 
-**Sources — reuse the run's retrieval sweep, never double-fetch:** the curation run's own WRITTEN /
-UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub
-retrieval (`gh search prs --author "@me" --updated ">=$SINCE"` plus commit lookup when needed),
-ADO epic/feature movement, and verified artifacts found by the archeologist. The archeologist does
-not provide a complete GitHub activity feed; query GitHub directly. Use the same auth preflight as
-everything else.
+**Sources — reuse the run's retrieval sweep, never double-fetch:** the run's own WRITTEN / UPDATED /
+COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub retrieval
+(`gh search prs --author "@me" --updated ">=$SINCE"`), ADO epic/feature movement, and verified
+artifacts from the archeologist. The archeologist does not give a complete GitHub feed; query GitHub
+directly. Same auth preflight as everything else.
 
-**Shape:** the shipped panel is the navy `#1A4E7A` band carrying the light-blue `#E6F0F7` surface, as
-the renderer builds it. Add 3–6 items; a thin week gets 2 or none. Each item contains:
-- One outcome-first sentence, ≤ ~20 words and exec-legible in the same voice as `NextMilestone`.
-  It renders bold in `#12395C`. No session IDs, ticket IDs, or technical provenance in the sentence.
-- An `Evidence:` line with one or two descriptive, underlined links in `#0E6E96`. Link directly to
-  the primary org-readable record: merged PR, closed ADO item, current portfolio row, the RFC or ADR
-  this work resolves into, or equivalent artifact. Labels describe the destination
-  (`Runtime migration`, `Portfolio outcome`), never raw URLs, `click here`, or naked IDs. The forum
-  recap's **Artifacts referenced** section carries the same linking rule — see
+**Shape:** the shipped panel is the navy `#1A4E7A` band with the light-blue `#E6F0F7` surface, as the
+renderer builds it. Add 3–6 items; a thin week gets 2 or none. Each item contains:
+- One outcome-first sentence, ≤ ~20 words, exec-legible in the voice of `NextMilestone`, rendered
+  bold in `#12395C`. No session IDs, ticket IDs, or technical provenance.
+- An `Evidence:` line with one or two descriptive, underlined links in `#0E6E96`, pointing at the
+  primary org-readable record: merged PR, closed ADO item, portfolio row, the RFC/ADR this work
+  resolves into. Labels describe the destination (`Runtime migration`, `Portfolio outcome`), never
+  raw URLs or naked IDs; the recap's **Artifacts referenced** section follows the same rule — see
   [references/recap.md](references/recap.md).
 
 ### Executive Summary — the ELT reader's gate (new 2026-09-18)
