@@ -106,21 +106,30 @@ Columns (internal name → type → allowed values). Use internal names for any 
 
 ## Comments — the narrative layer
 
-Rows carry the *state*; item comments carry the *story*. A comment is the right vehicle when a signal is real but doesn't change any column: progress inside a status, the rationale for a status/milestone move, a verification note, or a caveat about a link (e.g. "Key Artifact is a working folder — will swap to the ADR when it exists"). The row answers "where is this?"; its latest comment answers "what happened lately?".
+Rows carry the *state*; item comments carry the *story*. A comment fits a signal that is real but
+changes no column: progress inside a status, the rationale for a status or milestone move, a
+verification note, or a caveat about a link (e.g. "Key Artifact is a working folder — will swap to
+the ADR when it exists").
 
-**Propose a comment when** the week produced a meaningful signal for a row whose columns don't move (work advanced inside `4. In Progress`, evidence gathered inside `5. Verifying`), or **alongside** a field update to say *why* (especially status step-backs and milestone slips — an unexplained slip reads worse than an explained one).
-
-**Don't** comment to restate a column, log routine activity ("worked on this"), or narrate every run — a row with ten comments is a task tracker again. Rough ceiling: one comment per row per run; skip rows with nothing worth saying.
+**Propose one when** the week produced a meaningful signal for a row whose columns don't move, or
+**alongside** a field update to say *why* (an unexplained slip reads worse than an explained one).
+**Don't** restate a column, log routine activity, or narrate every run: one comment per row per run
+is the rough ceiling; skip rows with nothing worth saying.
 
 Rules (same stakes as the row — comments are org-visible):
 
-- **Full exclusion screen applies to comment text** — no privileged/counsel references, no sensitive vendor naming, no current-weakness specifics, no personnel opinions. A clean row with a dirty comment is a dirty row.
-- **Exec-legible, 1–2 sentences**, outcome-first, same voice as `NextMilestone`. No acronym soup, no session/ticket IDs in prose.
-- **Transient dependencies live in comments, not link columns.** A firewall change request, an approval ticket, a temporary blocker reference — these belong in a comment ("blocked on outbound firewall rules; change request is open: <url>"), because `KeyArtifact` is the canonical ADR/SAD and `ExecutionLink` is where the work lives; a dependency ticket is neither and will be stale in weeks. A blocker comment should say what IS done first ("runner pool is live") — "delivered, waiting on X" reads far better than a bare slip.
-- **Plain text only, no @-mentions** — a mention emails someone; that's a human's call to make, never the skill's.
-- **Append-only.** Never edit or delete an existing comment (yours or anyone's); a correction is a new comment.
-- **Question-gate every comment** like any other write: propose exact text, the user confirms/edits/skips. Re-screen user-edited text.
-- **Idempotency:** GET the item's existing comments before proposing (the user or others may have already said it — SharePoint comments are also a two-way channel, so *read* them for signals too); record posted comments in the ledger (`comments` array per row) so re-runs don't repost.
+- **Full exclusion screen applies:** no privileged/counsel references, sensitive vendor naming,
+  current-weakness specifics, or personnel opinions.
+- **Exec-legible, 1–2 sentences**, outcome-first, same voice as `NextMilestone`. No acronym soup, no
+  session/ticket IDs.
+- **Transient dependencies live in comments, not link columns.** A firewall change request or
+  approval ticket belongs in a comment, not `KeyArtifact` or `ExecutionLink`, and it will be stale in
+  weeks. Say what IS done first ("runner pool is live") — "delivered, waiting on X" beats a bare slip.
+- **Plain text only, no @-mentions** — a mention emails someone; that is a human's call.
+- **Append-only.** Never edit or delete an existing comment; a correction is a new comment.
+- **Question-gate every comment**, and re-screen text Alex edits.
+- **Idempotency:** GET existing comments first (others may have already said it, and replies are
+  signals too); record posted comments in the ledger (`comments` per row) so re-runs don't repost.
 
 REST shapes for reading/posting comments live in `references/write-shapes.md`.
 
