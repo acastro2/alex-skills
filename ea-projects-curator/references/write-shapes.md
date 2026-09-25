@@ -99,10 +99,10 @@ Headers: Content-Type: application/json;odata=nometadata | Accept: application/j
 201 returns the created comment (record `createdDate` + text in `curated.json` under the row's `comments` array).
 
 Gotchas:
-- Comments are **org-visible** like the row — the full exclusion screen applies to `text`.
-- **Append-only policy**: never DELETE or edit comments, a correction is a new comment. (The API allows `DELETE .../Comments(<id>)` on your own — don't use it.)
-- If the endpoint 404s or errors with comments disabled, the list has `CommentsDisabled=true` — report it, don't try to flip the setting.
-- `@`-mention markup (`<a data-sp-mention-user-id=...>`) exists but sends email notifications — never emit it.
+- Comments are **org-visible**: the full exclusion screen applies to `text`.
+- **Append-only**: never DELETE or edit a comment; a correction is a new comment, even though the API allows deleting your own.
+- A 404 or comments-disabled error means `CommentsDisabled=true` — report it, don't flip the setting.
+- `@`-mention markup sends email notifications — never emit it.
 
 ## Find an item Id for matching (idempotency)
 
