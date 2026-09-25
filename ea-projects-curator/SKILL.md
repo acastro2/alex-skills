@@ -67,28 +67,28 @@ Columns (internal name → type → allowed values). Use internal names for any 
 
 ## Granularity — the rule that matters most
 
-**One row = one initiative.** Not one artifact, not one meeting, not one ticket. An initiative is a body of work with its own outcome, its own decision path, and its own "done" state. The test: *would the CTO ask about this by name?*
+**One row = one initiative.** Not one artifact, not one meeting, not one ticket: a body of work with its own outcome, decision path, and "done" state. The test: *would the CTO ask about this by name?*
 
-- ADR + SAD + a POC + a comparison doc + an ADO feature that all serve the same decision → **one** row ("Privileged Access Renewal"), not five.
+- ADR + SAD + a POC + a comparison doc + an ADO feature serving one decision → **one** row ("Privileged Access Renewal"), not five.
 - Six Grafana workstreams (telemetry, profiling, alerting, IaC, onboarding, cost) → **one** row ("Observability Platform").
-- When in doubt, merge. A 40-row list is a task tracker; a ~15-row list is a portfolio.
+- When in doubt, merge: a 40-row list is a task tracker; a ~15-row list is a portfolio.
 
 ## Inclusion — a candidate must pass all four
 
-1. **Delivery, not attendance.** The strongest true verb must be authored / executed / shipped / decided / established / migrated / secured / consolidated. If it's attended / reviewed / joined / participated, exclude it (or fold it into an initiative where a delivery verb applies).
-2. **Initiative-scale.** Has a decision path or a milestone; not a one-off favor or a single meeting outcome.
-3. **Owner-of-record.** The user drove it or owns the architecture/decision. A contribution qualifies only if it's itself an artifact (e.g. authored a section of a hardening report).
+1. **Delivery, not attendance.** The verb must be authored / executed / shipped / decided / established / migrated / secured / consolidated; attended / reviewed / joined / participated is excluded unless folded into a delivery initiative.
+2. **Initiative-scale.** Has a decision path or a milestone, not a one-off favor or a single meeting outcome.
+3. **Owner-of-record.** You drove it or own the decision; a contribution qualifies only if it is itself an artifact (e.g. a section of a hardening report).
 4. **Org-shareable.** Passes the exclusion screen below.
 
 ## Exclusion screen — hard gates, run on EVERY candidate (and on every user-edited title)
 
-1. **Privileged / counsel-touched.** Anything legally privileged, marked confidential, or referencing forensic assessments, legal hold, counsel communications, breach-forensics detail, or a security codename. **Exclude entirely — not even a redacted or renamed row.** If an initiative is partially privileged, the row may cover only its non-privileged surface and link only to non-privileged artifacts; if that surface is empty, exclude the whole thing.
-2. **Vendor-sensitive naming.** Where a vendor relationship is commercially or legally sensitive, titles use neutral platform-strategy naming, never vendor-replacement framing:
+1. **Privileged / counsel-touched.** Legally privileged, confidential, forensic assessments, legal hold, counsel communications, breach-forensics detail, security codenames. **Exclude entirely — not even a redacted or renamed row.** A partially privileged initiative may cover only its non-privileged surface and link only to non-privileged artifacts; if that surface is empty, exclude the whole thing.
+2. **Vendor-sensitive naming.** Neutral platform-strategy names, never vendor-replacement framing:
    - "Privileged Access Renewal" — not "<PAM vendor> Replacement".
    - "Data Warehouse Platform Strategy" — not "<warehouse vendor> Migration/Exit".
-   - No named open-source replacements in titles or milestones. The specific tool names live inside the linked ADR, not on the board.
-3. **Scope-claiming.** No rows for unsolicited org-wide transformation plans or future territory. Rows describe delivered, in-flight, or genuinely decision-ready work only.
-4. **HR / personnel.** A published process artifact (e.g. a hiring-process improvement) is includable. Individual candidates, interview assessments, and personnel opinions never are.
+   - No named open-source replacements in titles or milestones; tool names live inside the linked ADR.
+3. **Scope-claiming.** No rows for unsolicited org-wide transformation plans or future territory; delivered, in-flight, or decision-ready work only.
+4. **HR / personnel.** A published process artifact (e.g. a hiring-process improvement) is includable; individual candidates, interview assessments, and personnel opinions never are.
 
 ## Field mapping
 
