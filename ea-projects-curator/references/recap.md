@@ -179,35 +179,31 @@ as plain text (strip the HTML). Fix what it confirms, and tell Alex what you cha
 ## Then run `docs-reviewer`, and address everything, before it goes anywhere
 
 **Mandatory, every recap, no exceptions.** Note verification proves the recap is *true*;
-`docs-reviewer` proves it is *readable*. They catch different things: the adversarial pass never
-noticed that the Decisions table claimed four decisions while Topics Discussed tagged zero as
-`[Decided]`, and it never noticed the recap was three times its own stated length limit.
+`docs-reviewer` proves it is *readable*; they catch different things (the first pass missed a
+Decisions table claiming four decisions while zero topics were tagged `[Decided]`, and a recap three
+times its stated length).
 
 Run it via the Skill tool (`attain-docs:docs-reviewer`) against the assembled page content, not the
-markdown draft, so the shipped panel and the rendered structure are in scope. Then **fix every
-BLOCKER and SIGNIFICANT finding before staging.** Do not hand Alex a review and ask what to do with
-it; he asked for the finished thing. Bring him a decision only when a finding conflicts with an
-established house rule (see the em-dash exception below) or when fixing it would change what the
-meeting actually decided.
+markdown draft, so the shipped panel and rendered structure are in scope. **Fix every BLOCKER and
+SIGNIFICANT finding before staging**; do not hand Alex a review and ask what to do with it. Bring him
+a decision only when a finding conflicts with a house rule (see the em-dash exception below) or
+fixing it would change what the meeting decided.
 
-Known findings this review reliably surfaces on a first draft, so pre-empt them:
+Findings this review reliably surfaces on a first draft, so pre-empt them:
 
-- **Outcome tags must actually vary.** If every topic is `[Needs follow-up]`, the tag carries no
-  information. Any topic matching a Decisions row is `[Decided]`; make the tables and the tags agree.
-- **Every Decisions row needs a matching topic bullet**, or the decision only exists in a table
-  nobody reads twice.
-- **Honour the "under one screen" line in the prompt.** A faithful record of a 90-minute meeting will
-  not hit 400 words, but it should not hit 1,500 either. Merge topics that are one thread (the
-  release model and the approval gap are the same story), and fold an open question into the topic
-  that already covers it rather than saying it twice.
-- **Do not bold both the topic lead-in and the tag** on every bullet. That is the inline-header
+- **Outcome tags must vary.** If every topic is `[Needs follow-up]`, the tag says nothing. Any topic
+  matching a Decisions row is `[Decided]`; make tables and tags agree.
+- **Every Decisions row needs a matching topic bullet**, or the decision lives only in a table.
+- **Honour "under one screen".** A 90-minute meeting will not hit 400 words, but it should not hit
+  1,500 either: merge topics that are one thread, and fold an open question into the topic that
+  already covers it.
+- **Do not bold both the topic lead-in and the tag** on every bullet; that is the inline-header
   vertical-list tell (humanizer 15 and 16). Lead-in bold, tag in the muted `#55636E`.
-- **Do not repeat "Not stated" down a whole column.** Leave the cell empty and put one footnote under
-  the table.
+- **Do not repeat "Not stated" down a column.** Leave the cell empty and put one footnote under it.
 - **Keep attribution out of the action text.** "Proposed by X" belongs in the Owner cell.
 
-> **Documented em-dash exception.** `docs-reviewer` flags every em dash as a BLOCKER, and the
-> humanizer rule behind it is correct for prose. The `<h1>` title is the one allowed exception:
-> `Architecture Weekly &mdash; Month D, YYYY` is the house format, fixed by the template and by
-> Alex's own recap prompt, and eight published issues already use it. Keep it there and keep prose
-> free of them. Do not re-litigate this every week; note the exception in your report and move on.
+> **Documented em-dash exception.** `docs-reviewer` flags every em dash as a BLOCKER, and that rule
+> is right for prose. The `<h1>` title is the one allowed exception: `Architecture Weekly &mdash;
+> Month D, YYYY` is the house format, fixed by the template and Alex's own prompt, and eight
+> published issues use it. Keep it there; keep prose free of them. Note the exception in your report
+> and move on.
