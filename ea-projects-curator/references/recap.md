@@ -67,31 +67,25 @@ mid-sentence if the source transcript did. Say so in the recap footer rather tha
 Load [Alex's voice](../../alex-voice/SKILL.md) (comms register) before drafting: this is internal comms in Alex's name.
 No em dashes, with the `<h1>` title separator as the one documented exception (see below).
 
-**Check it with `voice_check.py --register docs`, not comms.** Measured both ways on the rendered
-`2026-09-16` page (2026-09-18). Under **docs** the page throws one warning; under comms it throws
-three that do not apply. The comms register describes a message aimed at people (greeting, closer,
-exclamation marks); this page is a written record. Calibrate against the published issues too:
-`2026-09-09-AAB-Recap.aspx` has **0 question marks, 0 exclamation marks and 1 em dash** (the `<h1>`
-separator) in 1,408 words.
+**Check it with `voice_check.py --register docs`, not comms** (measured both ways on the 2026-09-16
+page). The comms register describes a message aimed at people (greeting, closer, exclamation marks);
+this page is a written record.
 
 So, reading the output:
 - The **`?` warning is expected on every recap** and is not a defect. A question mark or an
-  exclamation mark that appears inside a recap means someone's voice leaked into the record.
+  exclamation mark inside a recap means someone's voice leaked into the record.
 - The **`<h1>` em dash is the one documented exception** and shows up as a BLOCKER in the checker,
   which does not know about the exception. Nothing else may be an em dash.
-- **`The` sentence starts, sentence length and banned phrases are real signals.** The 2026-09-18 pass
-  on the 09-16 page found 12 sentences opening with "The" and fixed them by rewording the opener
-  only; the rate went from 7.6% to 1.1%. Fix openers by rewording, never by dropping the article
-  ("Git flow is not friendly" is fine; "Delay is ADP propagation" is not).
+- **`The` sentence starts, sentence length and banned phrases are real signals.** Fix openers by
+  rewording, never by dropping the article ("Git flow is not friendly" is fine; "Delay is ADP
+  propagation" is not).
 - **Voice edits on a recap are wording-only.** Never touch a fact, an owner, a tag or a quoted
   position to make a sentence read better. If a sentence is only fixable by changing what it claims,
   leave it and say so.
 
 **Run `voice_check.py` on the RENDERED page text, not the content JSON.** The renderer's own
-cosmetic characters count as prose: on 2026-09-18 an em dash used as the empty-cell placeholder in
-the Action items table passed a JSON-only check and was caught only by reading the rendered page.
-`render_page.py` now hard-fails on any em dash or en dash outside the `<h1>`, so that one cannot
-come back, but the rule stands for anything else. Two commands, no hand-rolled tag strip:
+cosmetic characters count as prose; `render_page.py` now hard-fails on any em dash or en dash
+outside the `<h1>`, but the rule stands for anything else. Two commands, no hand-rolled tag strip:
 
 ```sh
 python3 references/render_page.py --text canvas.json > /tmp/page.txt
@@ -100,10 +94,9 @@ python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
 
 `--text` reads the rendered canvas, so it also covers a canvas read back from SharePoint.
 
-**voice_check exits 1 on a clean page, by design.** The `<h1>` em dash is a BLOCKER to the checker,
-which does not know about the exception. The pass condition is `BLOCKER: em dash x1` and nothing
-else. Two blockers, or a blocker naming anything but the em dash, is a real failure. Do not read the
-non-zero exit as a failed page.
+**voice_check exits 1 on a clean page, by design.** The pass condition is `BLOCKER: em dash x1` and
+nothing else; two blockers, or a blocker naming anything but the em dash, is a real failure. Do not
+read the non-zero exit as a failed page.
 
 ## Recap gates (on top of the prompt)
 
