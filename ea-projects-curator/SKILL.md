@@ -222,9 +222,9 @@ verified.
 
 ## Idempotency & the ledger
 
-- **Match before emit.** Compare each candidate to existing rows by title similarity + Key Artifact URL. A match → emit an UPDATE of changed fields only, never a duplicate.
-- **Closed is immutable.** An initiative that ends becomes `6. Closed` + an `Outcome` (Delivered/Killed/Superseded); it is never deleted and never reopened — a resurrected initiative is a NEW row referencing the old (whose Outcome becomes `Superseded`). Pre-Closed statuses may step back one stage when honest (e.g. Verifying→In Progress); a row never silently disappears.
-- **Ledger `curated.json`** (kept in this skill's directory) maps each source artifact ID → the list row it fed, so overlapping re-runs are no-ops. Read it at the start, update it after writing. Shape:
+- **Match before emit.** Compare each candidate to existing rows by title similarity + Key Artifact URL; a match emits an UPDATE of changed fields, never a duplicate.
+- **Closed is immutable.** An initiative that ends becomes `6. Closed` + an `Outcome` (Delivered/Killed/Superseded); never deleted, never reopened — a resurrected initiative is a NEW row referencing the old (whose Outcome becomes `Superseded`). Pre-Closed rows may step back one stage when honest; nothing disappears silently.
+- **Ledger `curated.json`** (in this skill's directory) maps each source artifact ID → the row it fed, so overlapping re-runs are no-ops. Read it at the start, update it after writing. Shape:
   ```json
   {
     "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
@@ -246,9 +246,9 @@ verified.
     ]
   }
   ```
-- **`open_items`** — gaps a run couldn't close (a date only Alex knows, an empty row he's handling himself). Read them at the start of every run and re-surface any still open; resolve or re-write them at the end.
-- **`docs`** — one entry per intake item whose pre-read was placed or edited (source, Architecture copy, edits with version). Stops a re-run from copying twice or adding the same advice row twice. Shape in [references/brought-docs.md](references/brought-docs.md).
-- **`not_doing`** — decisions to keep something OFF the board (evaluated-and-rejected initiatives, declined candidates). Check it before proposing any NEW row; never re-propose an entry. This is what stops every fresh session from re-discovering the same dead idea.
+- **`open_items`** — gaps a run couldn't close (a date only Alex knows, an empty row he's handling). Read them every run, re-surface what is still open; resolve or re-write at the end.
+- **`docs`** — one entry per intake item whose pre-read was placed or edited; stops a re-run copying twice or adding the same advice row twice. Shape in [references/brought-docs.md](references/brought-docs.md).
+- **`not_doing`** — evaluated-and-rejected initiatives and declined candidates. Check before proposing any NEW row; never re-propose an entry. It stops every fresh session rediscovering the same dead idea.
 
 ## Weekly AAB control — the second operating surface
 
