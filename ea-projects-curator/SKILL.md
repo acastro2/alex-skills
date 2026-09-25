@@ -140,18 +140,44 @@ sweep wastes the whole run; asking for a refresh the probe shows is unnecessary 
 Always **read the live list first** (existing rows) so curation produces UPDATEs, not duplicates.
 
 - **archeologist** (primary). Ask it a scoped question, e.g. *"What architecture initiatives, ADRs/SADs, and decisions has Alex driven in the last N weeks?"* It returns a markdown briefing with predictable headers — `### Referenced Files` (Obsidian / Developer / OneDrive-Architecture), `### Evidence Chain` (a table), and `### Verification Status` (HIGH / MEDIUM / LOW). Parse loosely by header. The Evidence Chain and Referenced Files are your initiative candidates and your Key-Artifact candidates (ADR/SAD paths, especially OneDrive/Architecture `.docx`). Treat **LOW confidence** findings as questions to ask, never as asserted fact.
-- **ADO** (`ado` agent — org `CuroFinTech`, project `Tiger`). WIQL for work items created-by / assigned-to `alexandrecastro@attainfinance.com`. Fastest path: Alex's saved query **"My Open Tickets"**, GUID `fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd` (run via `_apis/wit/wiql/{guid}`, then `workitemsbatch`; also pull `System.Description` — the descriptions carry scope/non-goals the titles hide). **Epics/features** are initiative-level → candidate Execution Links. User stories/tasks are sub-initiative → fold up into the parent initiative. **Ticket state is truth-check material:** a row promising a milestone in days while its ticket sits in `New` is a slip (or the milestone text is stale); a "Closed" row whose ticket is `Active` may not be closed.
+- **ADO** (`ado` agent — org `CuroFinTech`, project `Tiger`). WIQL for items created-by / assigned-to
+  `alexandrecastro@attainfinance.com`; fastest path is Alex's saved query **"My Open Tickets"**, GUID
+  `fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd` (run via `_apis/wit/wiql/{guid}`, then `workitemsbatch`,
+  and pull `System.Description` — it carries scope the titles hide). **Epics/features** are
+  initiative-level → candidate Execution Links; stories/tasks fold up into the parent.
+  **Ticket state truth-checks the row:** a milestone in days while the ticket sits in `New` is a
+  slip; a "Closed" row with an `Active` ticket may not be closed.
 - **GitHub** (`gh`, authed as `AlexandreCastro_attain`). `gh pr list --author @me --state all` / `gh search prs` across the Attain orgs. PRs are artifacts → fold into their initiative; the repo or the ADO epic is the Execution Link.
-- **Microsoft 365** — two paths, one read-only rule. In Claude Code, the `claude_ai_Microsoft_365` MCP connector (tools are deferred; load via ToolSearch, e.g. `select:mcp__claude_ai_Microsoft_365__sharepoint_search`). Everywhere else, the **`m365` CLI** — check it first with `command -v m365 && m365 --json doctor`, then `m365 sharepoint search`, `m365 teams search`, `m365 teams chats`, `m365 mail search`, `m365 calendar search`. READ-ONLY on both: search/list/read only, never send/create/delete. Three uses:
-  - `sharepoint_search` — find the canonical **org-shared** copy of an ADR/SAD across ALL sites (better Key Artifact candidates than Internal-library or personal links; also the fastest way to answer "has this doc been re-homed yet?").
-  - `chat_message_search` / `teams_list_chats` — Teams evidence of initiative movement: decisions agreed in chat, sponsor pings, working-session follow-ups. Signals for `--maintain` status/milestone diffs and for comment drafts.
-  - `outlook_email_search` / `outlook_calendar_search` — sent proposals, sign-off threads, and the actual dates of working sessions/reviews → grounded `MilestoneDate` values instead of proposed guesses.
-  Availability caveat: the connector is interactively authenticated and may be absent in headless or scheduled runs. Try the connector, then the `m365` CLI; if neither answers, say so and fall back to the other three sources — never report an unreachable store as no results. The CLI needs a one-time `m365 login`; if `doctor` reports `no_token`, ask Alex to run it. Graph throttles at 50 req/min per user — a 429 carries `retryAfterSeconds`; wait it out, don't hammer. Comms content is evidence, not board text: never paste chat/email quotes into org-visible fields; anything privileged/counsel-touched stays out entirely per the exclusion screen. The archeologist also searches M365 natively now (its SOURCE G), so a full archeologist run already covers this — use the direct tools for targeted lookups.
+- **Microsoft 365** — two paths, one read-only rule. In Claude Code, the `claude_ai_Microsoft_365`
+  MCP connector (tools are deferred; load via ToolSearch). Everywhere else, the **`m365` CLI** —
+  check it with `command -v m365 && m365 --json doctor`, then `m365 sharepoint search`,
+  `m365 teams search`, `m365 teams chats`, `m365 mail search`, `m365 calendar search`. READ-ONLY on
+  both: search/list/read only, never send/create/delete. Three uses:
+  - `sharepoint_search` — the canonical **org-shared** copy of an ADR/SAD across ALL sites (better
+    Key Artifact candidates than Internal-library or personal links; fastest answer to "has this doc
+    been re-homed yet?").
+  - `chat_message_search` / `teams_list_chats` — Teams evidence of initiative movement: decisions
+    agreed in chat, sponsor pings, follow-ups.
+  - `outlook_email_search` / `outlook_calendar_search` — sent proposals, sign-off threads, and the
+    real dates of working sessions → grounded `MilestoneDate` values.
+  The connector is interactively authenticated and may be absent in headless runs; try the connector,
+  then the CLI, and if neither answers say so and fall back to the other three sources — never report
+  an unreachable store as no results. The CLI needs a one-time `m365 login`; if `doctor` reports
+  `no_token`, ask Alex to run it. Graph throttles at 50 req/min — a 429 carries `retryAfterSeconds`;
+  wait it out. Comms content is evidence, not board text: no chat/email quotes in org-visible fields,
+  and nothing privileged or counsel-touched at all. The archeologist searches M365 natively (SOURCE
+  G), so use the direct tools for targeted lookups only.
 
-**Fire retrieval in parallel.** For a full audit ("is the board missing or misrepresenting anything?"), launch in ONE message: the live-list read (inline REST), the ADO saved-query agent, and an archeologist sweep scoped to the last ~8 weeks (ask it to sort candidates by most-recent activity and to quarantine anything privileged in a separate flagged section). Then cross-check three ways:
-- **Missing** — evidence-backed initiatives with no row (check the `not_doing` register before proposing).
-- **Misrepresented** — rows contradicted by fresher evidence: milestone already delivered or already sent (email/Teams beats a stale field), Closed row with a live ticket or a future-dated milestone, In-Progress row with empty Impact/milestone/artifact that no evidence corroborates.
-- **Coherence** — does the portfolio read as one story? Rows investing in a platform while an exit/replacement decision is pending elsewhere; theme distribution that buries work where the CTO won't look for it (privileged-access rows filed outside Security Hardening). Coherence problems outrank any single-row fix — surface them first.
+**Fire retrieval in parallel.** For a full audit, launch in ONE message: the live-list read (inline
+REST), the ADO saved-query agent, and an archeologist sweep of the last ~8 weeks (sorted by recent
+activity, anything privileged quarantined in a flagged section). Then cross-check three ways:
+- **Missing** — evidence-backed initiatives with no row (check `not_doing` first).
+- **Misrepresented** — rows contradicted by fresher evidence: milestone already delivered or sent
+  (email/Teams beats a stale field), Closed row with a live ticket or future-dated milestone,
+  In-Progress row with empty Impact/milestone/artifact.
+- **Coherence** — does the portfolio read as one story? Rows investing in a platform while an
+  exit/replacement decision is pending; themes that bury work where the CTO won't look
+  (privileged-access rows outside Security Hardening). Coherence outranks any single-row fix.
 
 ## The review gate — one table, approve by line
 
