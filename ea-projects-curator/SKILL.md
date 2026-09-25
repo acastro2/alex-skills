@@ -518,9 +518,9 @@ A bare invocation runs this mode; only `--audit` (or "is the board missing anyth
 10. For a meaningful weekly signal with no column change, propose a comment (see Comments) rather than forcing a field move; read existing comments first to avoid repeats and catch replies.
 11. Re-surface every unresolved ledger `open_items` entry.
 
-## Full audit mode (`--audit`, or "look at everything we're doing — is the board missing or misrepresenting anything?")
+## Full audit mode (`--audit`, or "is the board missing or misrepresenting anything?")
 
-Discovery + maintenance combined: parallel retrieval (live list + ADO saved query + 8-week archeologist sweep, per the Retrieval section), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review table. Lead the report with any coherence problem; it's worth more than any single row. Rows that check out clean get said so explicitly.
+Discovery + maintenance combined: parallel retrieval (live list + ADO saved query + 8-week archeologist sweep), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review table. Lead with any coherence problem; rows that check out clean get said so explicitly.
 
 ## Output — the record
 
@@ -529,10 +529,10 @@ After the gate and the write, emit four markdown tables so the run is auditable:
 1. **WRITTEN** — new rows added: all columns + the new item Id/URL.
 2. **UPDATED** — row title + each changed field (old → new).
 3. **COMMENTED** — row title + the exact comment text posted.
-4. **EXCLUDED** — every rejected candidate + the one-line gate that killed it (`privileged` / `attendance` / `sub-initiative` / `scope-claim` / `personnel` / `vendor-sensitive-unresolved`). This makes the screen auditable and catches over-aggressive filtering on review.
+4. **EXCLUDED** — every rejected candidate + the one-line gate that killed it (`privileged` / `attendance` / `sub-initiative` / `scope-claim` / `personnel` / `vendor-sensitive-unresolved`), so the screen is auditable and over-aggressive filtering is caught on review.
 
 ## Safety recap
 
-Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that specific line. Run the exclusion screen on every candidate, on every title the user edits, and on every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing new rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the Architecture library that fails the exclusion screen or whose sharing scope you could not verify: a copy of a restricted file gives the whole org access. Never write the author's response column, never edit an Accepted ADR, and never send the author message yourself.
+Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that line. Screen every candidate, every edited title, and every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the library that fails the exclusion screen or whose sharing scope is unverified: a restricted copy gives the whole org access. Never write the author's response column, never edit an Accepted ADR, never send the author message.
 
-The forum recap carries the same stakes and one extra risk: it is built from a verbatim scribe transcript note of a room where people speak freely about live security gaps, vendors and each other. **Quote nothing that the exclusion screen would block as a board row.** Attribute only what a named person actually said, never publish a garbled proper noun, never promote uncontested discussion into "Decided", and never invent an owner or a date. The recap goes out staged (`PromotedState=1`) for Alex to publish, and any line you are unsure about belongs in the review table as its own question, not softened onto the page.
+The recap carries the same stakes plus one risk: it comes from a verbatim transcript of a room that speaks freely about live gaps, vendors and people. **Quote nothing the exclusion screen would block as a board row.** Attribute only what a named person said; never publish a garbled proper noun, promote uncontested discussion into "Decided", or invent an owner or date. The recap goes out staged (`PromotedState=1`) for Alex to publish; any unsure line belongs in the review table as its own question, not softened onto the page.
