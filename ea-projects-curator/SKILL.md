@@ -127,10 +127,12 @@ REST shapes for reading/posting comments live in `references/write-shapes.md`.
 ## Retrieval — where candidates come from
 
 **Auth preflight FIRST (2026-08-10 lesson):** before any retrieval, check the cookie cache age —
-`stat -f %m ~/.claude/scripts/sharepoint/.cookies.json` vs `date +%s`, then **probe** with one
-live GET on the EA Projects list (`$top=1`). The cookie lifetime is not a fixed 7h: on 2026-09-04
-a 28h-old cookie read, staged a page, and MERGEd rows without a single 401. Ask Alex to run
-`python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+`stat -f %m <scripts>/sharepoint/.cookies.json` vs `date +%s`, then **probe** with one
+live GET on the EA Projects list (`$top=1`), where `<scripts>` is the sharepoint scripts tree your
+tool runs — `~/.claude/scripts` in Claude Code, `~/.config/opencode/scripts` in OpenCode and Pi.
+The cookie lifetime is not a fixed 7h: on 2026-09-04 a 28h-old cookie read, staged a page, and
+MERGEd rows without a single 401. Ask Alex to run
+`python3 <scripts>/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
 only when the probe fails (401/403), and say so at the top of the report so he can do it while
 retrieval (ADO/GitHub/archeologist sweeps) runs in parallel. Reactively discovering a 403 after the
 sweep wastes the whole run; asking for a refresh the probe shows is unnecessary wastes his.
@@ -167,7 +169,7 @@ This is the point of the skill. The board is org-visible and the user must own w
 
 ## Writing to the list
 
-Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a small confirmed batch, write inline with the helper (`sys.path` → `~/.claude/scripts/sharepoint`, module is **`sharepoint_api`** — there is no `sharepoint_helper` — `make_session()` no args + `get_request_digest(session, site)`; the CLI verbs like `sharepoint_api.py create` need `SHAREPOINT_SITE_URL` exported or they exit with "Set SHAREPOINT_SITE_URL"); one script MERGE-ing all approved items beats N agent round-trips. Payloads and field shapes (hyperlink, currency, date, the `ListItemEntityTypeFullName` — read it live, don't hardcode; create vs MERGE-update) are documented in `references/write-shapes.md`; read it before writing. **Verify every write:** MERGE → 204, comment POST → 201, then GET the changed fields back. Ensure auth is fresh (the helper's cookies have a ~7h TTL); if a call 401/403s, tell the user to run `python3 ~/.claude/scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh` (headed passkey — a human step). **Never change list or site permissions.**
+Hand confirmed rows to the **`sharepoint` agent** for the REST write, or for a small confirmed batch, write inline with the helper (`sys.path` → `~/.claude/scripts/sharepoint`, module is **`sharepoint_api`** — there is no `sharepoint_helper` — `make_session()` no args + `get_request_digest(session, site)`; the CLI verbs like `sharepoint_api.py create` need `SHAREPOINT_SITE_URL` exported or they exit with "Set SHAREPOINT_SITE_URL"); one script MERGE-ing all approved items beats N agent round-trips. Payloads and field shapes (hyperlink, currency, date, the `ListItemEntityTypeFullName` — read it live, don't hardcode; create vs MERGE-update) are documented in `references/write-shapes.md`; read it before writing. **Verify every write:** MERGE → 204, comment POST → 201, then GET the changed fields back. Ensure auth is fresh (the helper's cookies have a ~7h TTL); if a call 401/403s, tell the user to run `python3 <scripts>/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh` (headed passkey — a human step). **Never change list or site permissions.**
 
 **If the network dies mid-batch** (TLS/connection aborts — GETs and POSTs both failing, curl showing TCP connect then HTTP 000 — usually the corporate security stack, not auth): don't lose confirmed-but-unwritten changes. Save them as an idempotent script in the scratchpad (checks existing comments before posting, safe to re-run twice), tell the user exactly which writes landed (verified) and which are pending, and re-run the script when connectivity returns. A write is only "done" once verified.
 
