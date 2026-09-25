@@ -300,39 +300,33 @@ Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after liv
 
 ## Forum recap — generate it from the scribe transcript note
 
-The forum's own record is the note the `scribe` skill writes from the Teams meeting transcript. Read
-that note and write the recap from it; do not wait for pasted notes, and do not fetch or parse the
-Teams transcript yourself — that job belongs to `scribe` now.
+The forum's own record is the note the `scribe` skill writes from the Teams transcript. Read that
+note; never wait for pasted notes, and never fetch or parse the transcript yourself.
 
 ### Step 1 — read the scribe transcript note
 
-Path pattern: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <Meeting title>.md`, where the
-date/time is the meeting start in America/Chicago and the title is the calendar subject — e.g.
-`2026-09-02 1500 Architecture Advisory Board.md`.
+Path: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <Meeting title>.md`, meeting start in
+America/Chicago, e.g. `2026-09-02 1500 Architecture Advisory Board.md`.
 
-Find the right occurrence by the forum's actual date: it runs **Wednesdays, 3:00–4:00pm Central**
-(verified cadence across 8 sessions), subject **`Architecture Advisory Board`** — not "Architecture
-Review Forum," that public name never appears on the note. Match on the Wednesday date of the forum
-you're recapping.
+The forum runs **Wednesdays, 3:00–4:00pm Central** (verified across 8 sessions), subject
+**`Architecture Advisory Board`** (never "Architecture Review Forum" on the note). Match on the
+Wednesday date of the forum you're recapping.
 
-**Read the `## Transcript` section in full before drafting** — the recap has to be faithful, so do
-not summarize from grep hits. The frontmatter `speakers` list is your attendance line; it is who
-actually spoke, which is not the same as who was invited.
+**Read the `## Transcript` section in full before drafting**; never summarize from grep hits. The
+frontmatter `speakers` list is your attendance line: who actually spoke, not who was invited.
 
-**If the note does not exist, stop the recap** and tell Alex to run `/scribe teams` for that date.
-Do not fetch the transcript yourself as a fallback — a note you have not looked for is not an
-absence.
+**If the note does not exist, stop the recap** and tell Alex to run `/scribe teams` for that date; a
+note you have not looked for is not an absence.
 
 ### Recap drafting and review
 
-For recap drafting, verification, or weekly page assembly (including delivery-only drafts and
-Alex's pasted-note override), read [references/recap.md](references/recap.md). It holds proper-noun
-handling, Alex's exact prompt, recap gates, note verification, and the mandatory `docs-reviewer`
-pass on the assembled page. Board-only tasks do not need this reference.
+For drafting, verification, or page assembly (including delivery-only drafts and Alex's
+pasted-note override), read [references/recap.md](references/recap.md): proper-noun handling, Alex's
+exact prompt, recap gates, note verification, and the mandatory `docs-reviewer` pass. Board-only
+tasks do not need it.
 
-A genuinely missing note stops the **forum recap component**, not the whole weekly page.
-Ask Alex to run `/scribe teams` for that date. If he supplied no notes either, follow the
-newsletter gates below for a delivery-only draft and state that it has no forum record.
+A missing note stops the forum recap component, not the whole page. If Alex supplied no notes either,
+follow the newsletter gates for a delivery-only draft and state that it carries no forum record.
 
 ## Weekly newsletter — Architecture Weekly
 
