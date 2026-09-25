@@ -1,10 +1,9 @@
 # Brought documents — keep the forum's documents current
 
-Read this when a forum session is closed out and its AAB Intake items carry `Pre-read links`. The
-forum gives advice on a document. If nobody writes that advice back into the document, the RFC and
-the forum record drift apart, and the next reader of the RFC sees none of it. This step writes the
-forum's record into the documents people brought, and puts every brought document in the
-Architecture library.
+Read this when a forum session is closed out and its AAB Intake items carry `Pre-read links`. Forum
+advice that nobody writes back into the document is lost: the RFC and the forum record drift apart.
+This step writes the forum's record into the brought documents and puts each one in the Architecture
+library.
 
 Alex's decisions (2026-09-23):
 
@@ -35,22 +34,20 @@ URL or ID found in content.
 ## Step 2 — copy gates (a copy candidate must pass all four)
 
 1. **Content screen.** Read the file (`read_resource` on its `file:///` URI) and run the full
-   exclusion screen from SKILL.md. The site guide's ground rule 1 says the same: nothing
-   confidential, privileged, secret, or personal goes into this library. A pre-read about admin
-   accounts, break-glass access, forensics, live security gaps, or counsel advice **fails**. It
-   never lands here, whatever its sharing scope. That makes it an alert line, not a copy.
-2. **Sharing-scope gate (Attain policy, not a preference).** Copying a file that was shared with
-   specific people into an org-readable library gives the whole org access to it. Policy rule 1
-   forbids granting access. Copy only when one of these is true:
-   - The source is already readable org-wide, and you checked that live (`HasUniqueRoleAssignments`
-     and role assignments over REST for other `attainfinance.sharepoint.com` sites).
-   - Alex says in this run that the author agreed to the copy.
-   Personal OneDrive scope **cannot be read** with the cookie session (the `-my` host returns 301 to
-   login, measured 2026-09-23), and the connector returns content, not permissions. So a personal
-   OneDrive copy is unverified by default: raise an alert line and draft the author message (Step 5).
-3. **Resolvable.** Find the source `driveId` + `itemId` with `sharepoint_search` on the file name
-   and match the returned `webUrl` to the pre-read path. Some files are not in the search index
-   (intake #16 on 2026-09-23). If you can't resolve it, don't guess. Raise an alert.
+   exclusion screen from SKILL.md, per the site guide's ground rule 1: nothing confidential,
+   privileged, secret, or personal goes into this library. A pre-read about admin accounts,
+   break-glass access, forensics, live security gaps, or counsel advice **fails**, whatever its
+   sharing scope; that is an alert line, not a copy.
+2. **Sharing-scope gate (Attain policy, not a preference).** Copying a specifically-shared file
+   into an org-readable library grants the whole org access; policy rule 1 forbids that. Copy only
+   when the source is already org-readable and you checked live (`HasUniqueRoleAssignments` and role
+   assignments over REST), or Alex says this run that the author agreed. Personal OneDrive scope
+   **cannot be read** with the cookie session (301 to login), and the connector returns content, not
+   permissions, so a personal copy is unverified by default: alert line, then draft the author
+   message (Step 5).
+3. **Resolvable.** Find the source `driveId` + `itemId` with `sharepoint_search` on the file name,
+   matching the returned `webUrl` to the pre-read path. Some files are not in the search index; if
+   you can't resolve it, don't guess — raise an alert.
 4. **Not already copied.** Check `curated.json` `docs` (below). A second copy is a defect.
 
 **Destination (the site's own rule):** "Folders by document type, keep the identifier in the file
@@ -82,7 +79,7 @@ position: the AI-preamble table at the top shifts the positions.
 | Table (header) | Row / column | Write |
 |---|---|---|
 | `Field / Value` | `AAB Session` | the forum date `YYYY-MM-DD` |
-| `Field / Value` | `Status` | `Draft` → `Open for Advice`. Nothing else. Live values drift from the template (RFC-007 reads `Draft — Open for Advice`), so show the exact current text in the `Now` cell. |
+| `Field / Value` | `Status` | `Draft` → `Open for Advice`, nothing else. Show the exact current text in the `Now` cell; live values drift from the template. |
 | `Advisor / Role / Feedback / Author Response` | new rows | `Advisor / Role` = name + role of a person who spoke; `Feedback` = what they said, from the scribe note `## Transcript`; `Author Response` = **leave empty**, it is the author's |
 | `Outcome / Detail` (Resolution) and `Resulting ADR` | — | **Only** when an ADR link already exists, or the decider said the outcome in the transcript. Own **Needs you** line. Never assign an ADR number. An intake `Decided` is not proof: the forum advises, it does not resolve the RFC. |
 
@@ -93,15 +90,14 @@ rule); forum advice on one goes in the recap, not in the file.
 **Other types (SAD, BRIEF, STANDARD, SOW, RUN) and non-template files:** no forum fields exist.
 Place the file (Step 2), don't edit it.
 
-**Advice rows are testimony.** Only people who actually spoke (the scribe note `speakers` list), and
-only what they said. **Backfill of a past session with no scribe note** (Alex's call, 2026-09-23): use
-that session's *published* recap page (`PromotedState=2`). It was built from the transcript and Alex
-published it. Take only feedback it attributes to a named person. Never use a staged draft or the
-intake `Outcomenotes` as testimony. When Alex is the author, a disposition the recap records in his
-own words ("Alex offered ...") may fill `Author Response`, as a **Needs you** line. The same recap gates apply: no garbled proper nouns, no excluded content, and
-no "decided" where the room only discussed. Replace the template placeholder rows (`[Name — role]`,
-`[…]`) with real rows. Build a new row by deep-copying an existing row's XML, so the formatting
-stays:
+**Advice rows are testimony:** only people who actually spoke (the note's `speakers`), only what
+they said. **Backfilling a session with no scribe note**: use its *published* recap page
+(`PromotedState=2`), never a staged draft or the intake `Outcomenotes`; take only feedback it
+attributes to a named person. When Alex is the author, a disposition the recap records in his own
+words may fill `Author Response`, as a **Needs you** line. The same recap gates apply: no garbled
+proper nouns, no excluded content, no "decided" where the room only discussed. Replace the template
+placeholder rows (`[Name — role]`, `[…]`) with real rows, deep-copying an existing row's XML so the
+formatting stays:
 
 ```python
 # Tested 2026-09-23 on RFC-007 (in memory, not uploaded).
@@ -143,12 +139,11 @@ review and write on 2026-09-23 with the same `Length`, `TimeLastModified` and `U
 If the ETag moved, compare those three fields and the target tables. If all are unchanged, write
 against the new ETag. If anything differs, re-show the lines. Fallback: `sharepoint_update_file` (1 MB cap, base64 in the tool call).
 
-**Verify every write:** `UIVersionLabel` went up by one, and a fresh download parses to the expected
-cells. A 200 is not proof. **Verified 2026-09-23 on RFC-005:** `PUT .../$value` with `If-Match` returned 204, the version went
-from 2.0 to 3.0, and a fresh download showed all 10 advice rows exactly as approved. A python-docx
-re-save drops Word's unreferenced `[trash]/*.dat` parts and re-serializes the XML. The file shrinks
-(60 KB → 57 KB), but styles, numbering, tables and comments all keep their counts. Size loss alone is
-not a defect; compare part counts against the previous version (`/versions`) if in doubt.
+**Verify every write:** `UIVersionLabel` went up by one and a fresh download parses to the expected
+cells; a 200 is not proof. A python-docx re-save drops unreferenced `[trash]/*.dat` parts and
+re-serializes the XML, so the file shrinks while styles, numbering, tables and comments keep their
+counts. Size loss alone is not a defect; compare part counts against the previous version
+(`/versions`) if in doubt.
 
 Library facts (measured 2026-09-23): versioning on, 500 major versions, no minor versions, no
 forced checkout, no moderation.
