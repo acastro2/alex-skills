@@ -163,9 +163,11 @@ Where possible, attach PRs and related work items as **link relations** instead 
 
 Always verify before API calls:
 
+**First resolve the project.** New work goes only to the five living projects: `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`. Tiger, Risk Analytics and Marketing are closed to new work — read them for legacy items only.
+
 ```bash
 AUTH=(-u ":$AZURE_DEVOPS_PAT")
-BASE="https://dev.azure.com/CuroFinTech/Tiger"
+BASE="https://dev.azure.com/CuroFinTech/Software%20Engineering"  # the team's living project
 
 # Auto-detect Story-equivalent type (Agile / Scrum / Basic differ)
 curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitemtypes?api-version=7.1" \
@@ -203,7 +205,7 @@ curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitems/1234?api-version=7.1&\$expand=al
 
 - `/fields/System.Title`
 - `/fields/System.Description` (HTML, PARCH-6)
-- `/fields/System.AreaPath` (e.g. `Tiger\Echo`)
+- `/fields/System.AreaPath` (e.g. `Software Engineering\Alpha`)
 - `/fields/System.IterationPath`
 
 **Recommended**:

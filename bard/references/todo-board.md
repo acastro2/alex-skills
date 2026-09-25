@@ -194,7 +194,9 @@ the item failed the gate: it belongs in `Bard/Backlog.md`, not on the board.
 
 Inside a horizon, order lines by priority (🔺 first), then by fixed topic-map order, then
 newest first. Omit any horizon heading with zero items. The board never shows an empty
-section.
+section. When `## Open` itself holds no horizon with items, omit `## Open` too; `## Done`
+stays even when empty, and `## Legend` is always last (settled 2026-09-24: the 10-case eval
+run produced an empty board two ways, so the rule is now explicit).
 
 Seed with high recall into the BACKLOG, then let the gate pick the board. Capture every
 commitment, unanswered "want me to X?" offer, `PARKED`/`DRAFTED`/gated item, open question,

@@ -49,7 +49,7 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "DecisionNeeded": "CTO",
   "Impact": "$478K/yr documented savings",
   "KeyArtifact": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://.../ADR-0002.aspx", "Description": "ADR-0002 Privileged Access"},
-  "ExecutionLink": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://dev.azure.com/CuroFinTech/Tiger/...", "Description": "ADO epic"},
+  "ExecutionLink": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://dev.azure.com/CuroFinTech/<living-project>/_workitems/edit/1234", "Description": "ADO epic"},
   "NextMilestone": "Options memo to the CTO",
   "MilestoneDate": "2026-07-25T12:00:00Z"
 }

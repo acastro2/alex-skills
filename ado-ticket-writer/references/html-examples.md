@@ -92,7 +92,7 @@ Tables render but the rich-text editor sometimes reformats them. Keep them simpl
 To embed an image, first upload it via the attachments API, then reference the returned URL:
 
 ```html
-<img src="https://dev.azure.com/CuroFinTech/Tiger/_apis/wit/attachments/{guid}" alt="diagram" />
+<img src="https://dev.azure.com/CuroFinTech/{project}/_apis/wit/attachments/{guid}" alt="diagram" />
 ```
 
 ---

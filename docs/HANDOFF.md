@@ -30,6 +30,18 @@ Updated: 2026-09-24 17:00 CDT
 - `bard/SKILL.md` updated for the new note shape: the false "HiDock notes have no speaker
   labels" line is replaced by the hedged-label rule, and people/HR material is explicitly
   distilled like any other durable knowledge into the `People` hub (Alex, 2026-09-24).
+- Rec91's "Roy" was corrected to **Roi** on 2026-09-25 (label, transcript text and provenance all
+  updated in that JSON, note re-rendered). **No glossary line was added on purpose**: Rec01 (the
+  Sep 1 LexisNexis call) contains a different "Roy" ("I have King Roy", "I think Roy is here,
+  Spencer"), so a global `Roy => Roi` rule would corrupt a vendor's name. If a Roi garble keeps
+  coming back, check whether the tape is an Attain call before adding anything global.
+- bard's eval suite was run and repaired 2026-09-24: 10 cases (8 board + 2 new meeting-path),
+  **35/35 with-skill**, graded programmatically. It exposed that every fixture still encoded the
+  pre-2026-09-18 board shape (`####` sub-headings, `🧊 Someday`), so the fixtures were migrated,
+  case 1's expectation corrected (🔺 → 🔼 against the direction test), the watermark rule made
+  gradeable, the empty-`## Open` rule written into `todo-board.md`, and case 6's archive fixture
+  given its required `type: board`. See `bard/evals/README.md` for the full findings list.
+  `evals/` is gitignored by repo policy, so the whole suite is local-only.
 - Committed and pushed by Alex on 2026-09-24: `f80eb88` (diarization), `b085f4e` (edge cases and
   tests), `a9555e6` (speaker hinting), `83ac605` (naming process; the hint script removed).
 - Verified limit: re-transcribing is not text-stable — 11 of 15 re-runs were byte-identical, 4

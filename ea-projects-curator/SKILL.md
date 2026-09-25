@@ -149,10 +149,9 @@ sweep wastes the whole run; asking for a refresh the probe shows is unnecessary 
 Always **read the live list first** (existing rows) so curation produces UPDATEs, not duplicates.
 
 - **archeologist** (primary). Ask it a scoped question, e.g. *"What architecture initiatives, ADRs/SADs, and decisions has Alex driven in the last N weeks?"* It returns a markdown briefing with predictable headers — `### Referenced Files` (Obsidian / Developer / OneDrive-Architecture), `### Evidence Chain` (a table), and `### Verification Status` (HIGH / MEDIUM / LOW). Parse loosely by header. The Evidence Chain and Referenced Files are your initiative candidates and your Key-Artifact candidates (ADR/SAD paths, especially OneDrive/Architecture `.docx`). Treat **LOW confidence** findings as questions to ask, never as asserted fact.
-- **ADO** (`ado` agent — org `CuroFinTech`, project `Tiger`). WIQL for items created-by / assigned-to
-  `alexandrecastro@attainfinance.com`; fastest path is Alex's saved query **"My Open Tickets"**, GUID
-  `fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd` (run via `_apis/wit/wiql/{guid}`, then `workitemsbatch`,
-  and pull `System.Description` — it carries scope the titles hide). **Epics/features** are
+- **ADO** (`ado` agent — org `CuroFinTech`; living projects are `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`; Tiger, Risk Analytics and Marketing are closed to new work and hold legacy items only). WIQL for items created-by / assigned-to
+  `alexandrecastro@attainfinance.com`: run it org-wide (`POST /_apis/wit/wiql` with no `[System.TeamProject] = @project` filter), then `workitemsbatch`,
+  and pull `System.Description` — it carries scope the titles hide. The old saved query **"My Open Tickets"** (`fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd`) is scoped by `@project`, so it only sees one project; do not use it for a cross-project sweep. **Epics/features** are
   initiative-level → candidate Execution Links; stories/tasks fold up into the parent.
   **Ticket state truth-checks the row:** a milestone in days while the ticket sits in `New` is a
   slip; a "Closed" row with an `Active` ticket may not be closed.

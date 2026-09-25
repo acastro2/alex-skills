@@ -237,8 +237,8 @@ def main() -> None:
             title="[ECHO] Enable OAuth2 Google authentication for users",
             description_html=description_html,
             acceptance_criteria_html=ac_html,
-            area_path="Tiger\\Echo",
-            iteration_path="Tiger",
+            area_path="Software Engineering\\Alpha",
+            iteration_path="Software Engineering",
             tags=["auth", "oauth2"],
             priority=2,
         )

@@ -1,6 +1,6 @@
 # Azure DevOps REST API Guide
 
-Quick reference for common Azure DevOps work item API operations against `https://dev.azure.com/CuroFinTech/Tiger`.
+Quick reference for common Azure DevOps work item API operations against one of the five living projects at `https://dev.azure.com/CuroFinTech` — `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`. Tiger, Risk Analytics and Marketing are closed to new work; read them for legacy items only.
 
 ## Authentication
 
@@ -8,7 +8,7 @@ All requests use Basic Auth with empty username and a Personal Access Token:
 
 ```bash
 AUTH=(-u ":$AZURE_DEVOPS_PAT")
-BASE="https://dev.azure.com/CuroFinTech/Tiger"
+BASE="https://dev.azure.com/CuroFinTech/Software%20Engineering"  # substitute the team's living project
 ```
 
 Required PAT scopes: `vso.work` (read) and `vso.work_write` (create/update).
@@ -64,11 +64,11 @@ WIQL (Work Item Query Language) is ADO's SQL-like query syntax. POST a query, ge
 QUERY='{"query":"SELECT [System.Id],[System.Title],[System.State] FROM WorkItems WHERE [System.TeamProject]=@project AND [System.WorkItemType]=\"User Story\" AND [State] <> \"Closed\" ORDER BY [System.ChangedDate] DESC"}'
 
 curl -s "${AUTH[@]}" -X POST -H "Content-Type: application/json" \
-  "$BASE/Echo/_apis/wit/wiql?api-version=7.1&\$top=20" \
+  "$BASE/Alpha/_apis/wit/wiql?api-version=7.1&\$top=20" \
   -d "$QUERY" | jq '.workItems[].id'
 ```
 
-`@project` and `@me` are server-side macros. `@currentIteration('[Tiger]\Echo')` gives the current sprint of a team.
+`@project` and `@me` are server-side macros. `@currentIteration('[Software Engineering]\Alpha')` gives the current sprint of a team; substitute the real project and team.
 
 WIQL gotchas:
 
@@ -96,6 +96,8 @@ curl -s "${AUTH[@]}" \
 # Agile  → "User Story", "Bug", "Task", "Epic", "Feature"
 # Scrum  → "Product Backlog Item", "Bug", "Task", "Epic", "Feature"
 # Basic  → "Issue", "Epic", "Task"
+# Living projects here use custom sets (SE ships User Story, Bug, Epic, Task,
+# Spike, Operational Work, ITCC, CC and Milestone), so always list first.
 ```
 
 Then POST a JSON Patch document. **Note the literal `$` before the type name in the URL** — URL-encode spaces as `%20`:
@@ -108,8 +110,8 @@ curl -s "${AUTH[@]}" -X POST -H "Content-Type: application/json-patch+json" \
     {"op":"add","path":"/fields/System.Title","value":"[ECHO] Enable OAuth2 Google login"},
     {"op":"add","path":"/fields/System.Description","value":"<h3>1. Constitutional Intent</h3><p>...</p>"},
     {"op":"add","path":"/fields/Microsoft.VSTS.Common.AcceptanceCriteria","value":"<ul><li>Given user is logged out, When they click Google, Then OAuth flow starts</li></ul>"},
-    {"op":"add","path":"/fields/System.AreaPath","value":"Tiger\\Echo"},
-    {"op":"add","path":"/fields/System.IterationPath","value":"Tiger"},
+    {"op":"add","path":"/fields/System.AreaPath","value":"Software Engineering\\Alpha"},
+    {"op":"add","path":"/fields/System.IterationPath","value":"Software Engineering"},
     {"op":"add","path":"/fields/System.Tags","value":"auth; oauth2"}
   ]'
 ```
@@ -178,7 +180,7 @@ curl -s "${AUTH[@]}" -X PATCH -H "Content-Type: application/json-patch+json" \
     "op":"add","path":"/relations/-",
     "value":{
       "rel":"System.LinkTypes.Related",
-      "url":"https://dev.azure.com/CuroFinTech/Tiger/_apis/wit/workItems/5678",
+      "url":"https://dev.azure.com/CuroFinTech/Software%20Engineering/_apis/wit/workItems/5678",
       "attributes":{"comment":"related to"}
     }
   }]'
@@ -213,13 +215,13 @@ curl -s "${AUTH[@]}" \
   "$BASE/_apis/wit/classificationnodes/iterations?api-version=7.1&\$depth=3"
 ```
 
-Area/iteration values for fields use **backslash separators**, e.g. `Tiger\Echo` (in JSON: `"Tiger\\Echo"`).
+Area/iteration values for fields use **backslash separators**, e.g. `Software Engineering\Alpha` (in JSON: `"Software Engineering\\Alpha"`).
 
 ### Team Settings (default area + current iteration)
 
 ```bash
 curl -s "${AUTH[@]}" \
-  "$BASE/Echo/_apis/work/teamsettings?api-version=7.1" | jq '.'
+  "$BASE/Alpha/_apis/work/teamsettings?api-version=7.1" | jq '.'
 ```
 
 ### Stored Queries
