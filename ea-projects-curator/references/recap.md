@@ -1,13 +1,13 @@
 # Forum recap
 
-Read this for recap drafting and review, including weekly page assembly. Board-only tasks do not
-need it. Shared source lookup and missing-note handling stay in
-[SKILL.md, Forum recap](../SKILL.md#forum-recap--generate-it-from-the-scribe-transcript-note).
-Alex's pasted notes still win verbatim; the prompt below is for generated recaps.
+Read this for recap drafting, review, and page assembly; board-only tasks do not need it. Source
+lookup and missing-note handling stay in
+[SKILL.md, Forum recap](../SKILL.md#forum-recap--generate-it-from-the-scribe-transcript-note);
+Alex's pasted notes win verbatim and the prompt below is for generated recaps.
 
-Apply the [shared exclusion screen and review gate](../SKILL.md). Assemble the page using
-[Weekly newsletter](../SKILL.md#weekly-newsletter--architecture-weekly); this reference does not
-change the weekly run order or who approves list writes and publishes the page.
+Apply the [shared exclusion screen and review gate](../SKILL.md); assemble the page per
+[Weekly newsletter](../SKILL.md#weekly-newsletter--architecture-weekly). This reference does not
+change the run order or who approves writes and publishes the page.
 
 ## Contents
 
