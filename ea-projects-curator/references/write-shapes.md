@@ -23,14 +23,14 @@ Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_Portfo
   ```
 - **Date** (`MilestoneDate`) — ISO 8601. Send **noon UTC** (`2026-07-25T12:00:00Z`) not midnight, so a timezone offset can't roll the displayed date back a day. Omit the key for no date.
 - **Text** (`Title`, `NextMilestone`) — plain string.
-- **Person, multi** (`Who_x0020_is_x0020_Responsible`) — write the `...Id` field with an int collection, and
-  resolve each person first with `POST /_api/web/ensureuser` body `{"logonName": "i:0#.f|membership|<email>"}`
-  (verbose headers) → `d.Id`. Verified 2026-09-04:
+- **Person, multi** (`Who_x0020_is_x0020_Responsible`) — write the `...Id` field with an int collection;
+  resolve each person with `POST /_api/web/ensureuser` (`{"logonName": "i:0#.f|membership|<email>"}`,
+  verbose headers) → `d.Id`. Verified 2026-09-04:
   ```json
   "Who_x0020_is_x0020_ResponsibleId": {"__metadata": {"type": "Collection(Edm.Int32)"}, "results": [12, 34]}
   ```
-  Sending `Who_x0020_is_x0020_Responsible` (no `Id` suffix) or names as strings is rejected. The list
-  replaces the whole set, so include existing members you want to keep. **Person, single** (`Sponsor`):
+  The bare `Who_x0020_is_x0020_Responsible` (no `Id`) or names as strings is rejected. The list
+  replaces the whole set, so include members you want to keep. **Person, single** (`Sponsor`):
   `"SponsorId": <int>`.
 - **Date** (`TargetDate`) — same noon-UTC rule as `MilestoneDate`.
 
@@ -71,7 +71,7 @@ Headers: ...odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | I
   "MilestoneDate": "2026-08-08T12:00:00Z"
 }
 ```
-Send only the fields that changed. `If-Match: *` overwrites regardless of etag (fine for a single-owner board); use the real etag if you want optimistic concurrency. A successful MERGE returns `204 No Content`.
+Send only changed fields. `If-Match: *` overwrites regardless of etag (fine for a single-owner board; use the real etag for optimistic concurrency). A successful MERGE returns `204 No Content`.
 
 ## Comments on an item (narrative layer)
 
@@ -91,7 +91,7 @@ Response `value[]`: each has `id`, `text`, `author.email`, `createdDate`, `isRep
 POST /_api/web/lists(guid'd2c0a30a-dab4-40a7-bc63-7268736473f2')/items(<itemId>)/Comments
 Headers: Content-Type: application/json;odata=nometadata | Accept: application/json;odata=nometadata | X-RequestDigest: <digest>
 ```
-> **Use `nometadata` here, NOT `odata=verbose`** (verified 2026-08-03). The comments endpoint takes a bare `{"text": ...}` body with no `__metadata`, so verbose mode rejects it with `400 InvalidClientQueryException: "An entry without a type name was found, but no expected type was specified."` Item MERGE/create above still needs verbose.
+> **Use `nometadata` here, NOT `odata=verbose`** (verified 2026-08-03). The endpoint takes a bare `{"text": ...}` body with no `__metadata`; verbose mode rejects it with `400 InvalidClientQueryException: "An entry without a type name was found, but no expected type was specified."` Item MERGE/create still needs verbose.
 
 ```json
 {"text": "Verification evidence gathered; on track for the 07-25 options memo."}
@@ -135,7 +135,7 @@ If the site timezone no longer maps to America/Chicago, mark date-based checks U
 ```
 GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor,Outcomenotes,Modified&$top=100&$orderby=Scheduledfor desc
 ```
-Use this to find the latest due session and every item scheduled for that exact site-local session date. Treat a date scheduled for today as due only when the exact-date recap or same-day outcome data shows the session happened; otherwise verify the previous session and report today as upcoming/UNVERIFIED.
+Use this to find the latest due session and its items. Treat a session dated today as due only when the exact-date recap or same-day outcome shows it happened; otherwise verify the previous session and report today upcoming/UNVERIFIED.
 
 ## Read: every stale scheduled item
 
@@ -144,7 +144,7 @@ Replace `<today-start-utc>` with site-local midnight converted to UTC, including
 ```
 GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor,Outcomenotes,Modified&$filter=Status eq 'Scheduled' and Scheduledfor lt datetime'<today-start-utc>'&$orderby=Scheduledfor asc
 ```
-This dedicated query catches past-dated `Scheduled` rows that both normal views hide. Follow `d.__next` until absent; never treat the first page as the full result.
+This catches past-dated `Scheduled` rows the normal views hide. Follow `d.__next` until absent; never treat the first page as the full result.
 
 ## Read: next calendar week's schedule
 
@@ -153,7 +153,7 @@ Replace both placeholders with the DST-aware UTC instants for next Monday and th
 ```
 GET /_api/web/lists(guid'80c68e54-eadf-4cf3-946a-3c0e432056a5')/items?$select=Id,Title,Status,Scheduledfor&$filter=Status eq 'Scheduled' and Scheduledfor ge datetime'<next-monday-utc>' and Scheduledfor lt datetime'<following-monday-utc>'&$orderby=Scheduledfor asc
 ```
-No returned item after all pages are read means ALERT: Alex must schedule the forum or confirm there is no session.
+No item after all pages are read means ALERT: Alex must schedule the forum or confirm there is none.
 
 ## Read: published recap evidence
 
@@ -175,4 +175,4 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "Outcomenotes": "Approved for pilot; Security to confirm scope by 08-20."
 }
 ```
-Send only the fields Alex approved in the review table — never invent `Outcomenotes` text or a `Scheduledfor` date. For a `Scheduledfor` write, use noon UTC (`2026-08-19T12:00:00Z`) to avoid a timezone rollback. A successful MERGE returns `204 No Content`; **verify with a follow-up GET** on the changed fields before reporting the write as done.
+Send only fields Alex approved — never invent `Outcomenotes` or a `Scheduledfor` date. For `Scheduledfor`, use noon UTC to avoid a timezone rollback. A successful MERGE returns `204 No Content`; **verify with a follow-up GET** before reporting the write as done.
