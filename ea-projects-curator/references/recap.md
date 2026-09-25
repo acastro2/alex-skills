@@ -161,52 +161,39 @@ non-zero exit as a failed page.
 Every one of these was a real error in the first generated recap (2026-08-26), caught by an
 adversarial pass, not by re-reading. Run the check; do not trust the draft.
 
-- **No spoken name means Unassigned.** "Take one person from your team and ask them to try it" said
-  to the room is not an assignment to the four managers you infer were present. Never derive an
-  owner from who attended, who runs a team, or who the ask logically lands on. Only a name actually
-  spoken in connection with the commitment becomes an owner.
-- **Read the turns AFTER an apparent decision before recording it.** A scope boundary Alex states
-  can be reversed in the very next turn. In the 08-26 draft "firewall changes stay out of ITCC" was
-  recorded as decided while the next speaker offered to move firewall tracking IN and drop the
-  separate product, which made the recap contradict itself.
-- **Cross-check the Decisions table against the Action Items table.** If a row says something is
-  settled and an action item says someone is looking into changing it, one of them is wrong. That
-  contradiction is the cheapest error to catch and the most embarrassing to publish.
-- **Conditional agreement is not agreement.** "I agree, but it still needs X" is a condition; carry
-  the condition or do not claim the agreement.
-- **Driving the screen is not authorship.** Alex demoing someone's ticket does not make it his, and
-  someone answering questions about their own artifact did not necessarily present it.
-- **Never stitch two remarks into one quote.** If the phrasing spans utterances minutes apart, write
-  it as prose, not as a quotation.
+- **No spoken name means Unassigned.** Never derive an owner from who attended or whose ask it
+  logically is; only a name spoken with the commitment becomes an owner.
+- **Read the turns AFTER an apparent decision before recording it.** A scope boundary can be
+  reversed in the very next turn (the 08-26 draft recorded a firewall boundary that the next
+  speaker was already moving).
+- **Cross-check the Decisions table against the Action Items table.** A settled row and an action
+  to revisit it cannot both be true; it is the cheapest error to catch and the worst to publish.
+- **Conditional agreement is not agreement.** Carry the condition or do not claim the agreement.
+- **Driving the screen is not authorship.** Answering questions about your own artifact is not
+  presenting it.
+- **Never stitch two remarks into one quote.** Write prose when the phrasing spans utterances.
 - **Decisions `Owner` = who made the call, not who will execute it.** On 2026-09-02 the draft
-  credited Thomas Hofstetter with "audit log to Loki" and "signing keys in Secrets Manager", and Job
-  Lali with the check-in cadence; the transcript shows Alex dictating all three and them saying
-  "makes sense" / "gotcha". The Action Items table is where the executor's name belongs. When one
-  person proposed and another accepted with conditions, name both with what each contributed
-  ("Thomas Hofstetter (OpenIddict), Alexandre Castro (JWTs alongside)").
-- **When the room contradicts itself about what a system IS, do not pick a side silently.** The
-  presenter called Tiger Auth "internal only"; Flor said it also authenticates customers. A recap
-  that repeats the first as fact is wrong on the record. Describe the system per the correction and
-  attribute the correction, or leave the scope out.
-- **Carry the counter-evidence, not just the loudest thread.** A recap that reports only the
-  pushback misrepresents the room. The 08-26 draft omitted the emergency change type, the fact the
-  ticket never blocks the work, and that PCI already requires recording cardholder-environment
-  changes; all three narrow the overhead objection it led with.
-- **A speaker with no visible contribution is a smell.** Diff the note's speaker list against
-  the names appearing in the recap. On 08-26 that gap hid the originator of an action item, credited
-  to Alex instead. Either credit them or knowingly decide they added nothing.
-- **Leadership criticism goes ownerless.** "Rick asked me why we didn't know before they did" names
-  a senior leader challenging a named manager over a security miss. Keep the question, drop the
-  people: "leadership has asked how we catch this ourselves."
+  credited Thomas Hofstetter and Job Lali with calls Alex had dictated; both said only "makes
+  sense" / "gotcha". The Action Items table carries the executor. Name both people when one
+  proposed and another accepted with conditions.
+- **When the room contradicts itself about what a system IS, do not pick a side silently.**
+  Describe it per the correction and attribute it, or leave the scope out.
+- **Carry the counter-evidence, not just the loudest thread.** Report what narrows an objection
+  (the 08-26 draft omitted the emergency change type, that the ticket never blocks the work, and
+  that PCI already requires the recording).
+- **A speaker with no visible contribution is a smell.** Diff the note's speaker list against the
+  recap's names; on 08-26 the gap hid an action item's originator. Credit them or decide they
+  added nothing.
+- **Leadership criticism goes ownerless.** Keep the question, drop the people: "leadership has
+  asked how we catch this ourselves."
 
 Cheapest reliable form of this check (verified 2026-09-04): spawn **one** `general-purpose`
 subagent on `sonnet` with the note path, the plain-text draft path, and all four lenses
 (attribution, decision-versus-discussion, numbers and quotes, omissions and confidentiality), told
-to return a `# | Lens | Recap text | Problem | Transcript evidence [hh:mm:ss] | Severity` table and
-to find errors rather than approve. One agent with four lenses caught three attribution BLOCKERs
-in ~2 minutes for ~95K tokens; four agents would have re-read the same 43-minute transcript four
-times. Keep the draft as plain text (strip the HTML) so the verifier reads what a reader reads.
-Fix what it confirms, and tell Alex what you changed and why.
+to return a `# | Lens | Recap text | Problem | Transcript evidence [hh:mm:ss] | Severity` table
+and to find errors rather than approve. One agent with four lenses caught three attribution
+BLOCKERs in ~2 minutes; four agents would re-read the same transcript four times. Keep the draft
+as plain text (strip the HTML). Fix what it confirms, and tell Alex what you changed and why.
 
 ## Then run `docs-reviewer`, and address everything, before it goes anywhere
 
