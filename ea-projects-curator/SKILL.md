@@ -252,44 +252,39 @@ verified.
 
 ## Weekly AAB control — the second operating surface
 
-Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory Board forum queue), plus the weekly **AAB Recap** News post (the "newsletter" — you generate its forum recap from the scribe transcript note, and publishing the page stays Alex's action). This control runs **first**, before any EA Projects check, in both `--maintain` and `--audit`.
+Alex curates a second list alongside the EA Projects board: **AAB Intake** (the Architecture Advisory
+Board forum queue), plus the weekly **AAB Recap** News post (you generate its forum recap from the
+scribe note; publishing stays Alex's action). This control runs **first**, before any EA Projects
+check, in both `--maintain` and `--audit`.
 
-- **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime stored as **DateOnly**), `Outcomenotes` (text), `Modified`.
-- **Recaps folder:** `/sites/Architecture/SitePages/Recaps` — page name pattern `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
-- **Timezone/week:** read SharePoint `RegionalSettings/TimeZone` live; verified 2026-08-10 as Central Time (America/Chicago). A calendar week is Monday–Sunday. If the site timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
+- **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime, **DateOnly**), `Outcomenotes`, `Modified`.
+- **Recaps folder:** `/sites/Architecture/SitePages/Recaps`, page name `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
+- **Timezone/week:** read `RegionalSettings/TimeZone` live (Central Time, America/Chicago). A calendar week is Monday–Sunday; if the timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
 
 Use [references/write-shapes.md](references/write-shapes.md) for the control's REST read/write shapes.
 Run these checks before EA Projects checks; [Weekly newsletter](#weekly-newsletter--architecture-weekly)
 owns page assembly, not session selection or intake control.
 
-**1. Pick the session to verify — dynamically, never a hard-coded weekday.** Use site-local dates. Normally select the latest `Scheduledfor` before today: prefer the current week, otherwise the previous week's latest. Treat a session scheduled for **today** as due only when live evidence shows it has happened (the exact-date recap exists, or an intake item already carries a same-day forum outcome); otherwise label today upcoming/UNVERIFIED and verify the previous session so a morning run does not raise three false alerts. If neither current nor previous week has a date, derive the expected forum date from the cadence of the most recent 3–4 published recap filenames and flag that the intake list has no anchor — don't silently skip the check.
+**1. Pick the session to verify — dynamically, never a hard-coded weekday.** Prefer the latest `Scheduledfor` before today: the current week, else the previous week's latest. A session dated **today** counts as due only when live evidence shows it happened (the exact-date recap exists, or an intake item carries a same-day outcome); otherwise label today upcoming/UNVERIFIED and verify the previous session, so a morning run raises no false alerts. If neither week has a date, derive the expected forum date from the last 3–4 published recap filenames and flag that the intake list has no anchor; never silently skip the check.
 
-**2. Verify the recap was actually published, not staged.** A filename existing under `Recaps/` is not enough — check the page is real News: `PromotedState=2`, `OData__ModerationStatus=0`, and `FirstPublishedDate` present. `PromotedState=1` is still a draft (see [Weekly newsletter](#weekly-newsletter--architecture-weekly)) — report it as unpublished, don't treat it as done.
+**2. Verify the recap was published, not staged.** A filename under `Recaps/` is not enough: require `PromotedState=2`, `OData__ModerationStatus=0`, and a `FirstPublishedDate`. `PromotedState=1` is a draft — report it as unpublished, don't treat it as done.
 
-**3. Verify every intake item for that session was closed out.** For each item whose site-local `Scheduledfor` date equals the selected session date, require a forum outcome: non-empty `Outcomenotes`, a status other than `New`/`Triaged`, and no past-dated `Scheduled` state. The site-local `Modified` date must be on or after the session date as a sanity check, but it does not prove the exact meeting time. Normal outcome is `Decided`; `Parked`/`Deflected` are valid with explanatory notes. A future re-`Scheduled` item is valid only when item version history or the ledger proves it moved from the selected session date and the notes explain why; otherwise report UNVERIFIED. **Separately, always query and flag every item globally where `Status=Scheduled` and `Scheduledfor` is in the past** — SharePoint's own agenda and decision-log views both hide this state (agenda filters `>= today`, log filters `Status=Decided`), so it's invisible unless this check catches it.
+**3. Verify every intake item for that session was closed out.** For each item whose site-local `Scheduledfor` equals the session date: non-empty `Outcomenotes`, a status other than `New`/`Triaged`, and no past-dated `Scheduled` state. Normal outcome is `Decided`; `Parked`/`Deflected` are valid with notes. `Modified` must be on or after the session date (a sanity check, not proof). A future re-`Scheduled` item is valid only when version history or the ledger proves it moved from the session date and the notes explain why; otherwise UNVERIFIED. **Separately, always flag every item globally where `Status=Scheduled` and `Scheduledfor` is past** — SharePoint's agenda and decision-log views both hide that state.
 
-**3a. Write the forum back into the documents people brought.** For every closed-out item of that
-session, sort its `Pre-read links`: edit a document already in Architecture Shared Documents, copy an
-off-site one into the right type folder first (behind a content screen and a sharing-scope gate), and
-alert on the rest. RFCs get `AAB Session`, `Status` Draft → Open for Advice, and advice rows from the
-scribe note; a Proposed ADR gets advice rows; nothing else is edited. Read
-[references/brought-docs.md](references/brought-docs.md) for the gates, folder rules, table map,
-upload shape, and author message. Every copy and edit is a `D#` review line.
+**3a. Write the forum back into the documents people brought.** For every closed-out item, sort its `Pre-read links`: edit documents already in Architecture Shared Documents, copy off-site ones into the right type folder first (behind the content screen and sharing-scope gate), and alert on the rest. RFCs get `AAB Session`, `Status` Draft → Open for Advice, and advice rows from the scribe note; a Proposed ADR gets advice rows; nothing else is edited. See [references/brought-docs.md](references/brought-docs.md). Every copy and edit is a `D#` review line.
 
-**4. Alert if next calendar week has nothing scheduled.** Check for at least one `AAB Intake` item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule the forum or confirm there isn't one. Never auto-schedule or invent a date.
+**4. Alert if next calendar week has nothing scheduled.** Check for at least one intake item with `Status=Scheduled` and `Scheduledfor` in `[next Monday, following Monday)`. None found → prominent alert to Alex to schedule or confirm nothing. Never auto-schedule or invent a date.
 
 > **Scheduling is Alex's, by default.** (2026-09-04: "don't touch the other stuff I will schedule
-> it manually.") An empty next week and any unscheduled `New` items are an **alert** listing the
-> candidates. Propose `Scheduledfor` + `Status=Scheduled` on an existing item only when Alex has
-> already named the date himself (in the forum, in chat, or in this run), and even then as its own
-> `A#` line marked **Needs you**. Never infer a date from cadence.
+> it manually.") An empty next week and unscheduled `New` items are an **alert** listing the
+> candidates. Propose `Scheduledfor` + `Status=Scheduled` on an existing item only when Alex named
+> the date himself, and then as its own `A#` line marked **Needs you**. Never infer a date from
+> cadence.
 >
-> **Never create an AAB Intake item. Ever.** (Corrected 2026-08-28, after a run proposed one as a
-> review-table line and Alex rejected it outright.) The intake list is **the queue people submit
-> their own topics to** — it is their to-do surface, not a scheduling table for the curator to
-> populate. An empty next week is an **alert only**; it never becomes a proposed row, not even a
-> gated one. The curator's writes to this list are limited to closing out items that already exist:
-> `Status`, `Outcomenotes`, and `Scheduledfor` on an item somebody else raised.
+> **Never create an AAB Intake item. Ever.** The intake list is **the queue people submit their own
+> topics to**, not a scheduling table for the curator. An empty next week is an **alert only**, never
+> a proposed row. The curator's writes here close out items that already exist: `Status`,
+> `Outcomenotes`, and `Scheduledfor` on an item somebody else raised.
 
 **Report before EA Projects findings under this exact heading:**
 
@@ -302,7 +297,7 @@ upload shape, and author message. Every copy and edit is a `D#` review line.
 | Brought documents | PASS / ALERT / UNVERIFIED | per item: in place / copied / alert (off-site, screened out, scope unverified, unresolvable) |
 | Next-week schedule | PASS / ALERT / UNVERIFIED | next-week range and items found, or none |
 
-Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification) — same idempotency discipline as EA Projects. **Intake field changes are writes to an org-visible list**: propose them through the same numbered review table as board changes, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` text or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
+Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification). **Intake field changes are writes to an org-visible list**: propose them through the numbered review table, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
 
 ## Forum recap — generate it from the scribe transcript note
 
