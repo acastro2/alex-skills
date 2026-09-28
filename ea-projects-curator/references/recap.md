@@ -48,7 +48,7 @@ the note ends mid-sentence, say so in the recap footer rather than inventing an 
 > made, with the named owner. Mark owner as "Unassigned" if no one was named.
 >
 > **Topics Discussed** — one bullet per topic. For each: a one-line summary, then the outcome tag in
-> brackets — [Decided], [Needs follow-up], or [Parked]. Keep each to two sentences max.
+> brackets — [Decided], [Needs follow-up], or [Parked]. Keep the summary to two sentences, then add 3-6 detail bullets per topic (what was proposed, the key points, pushback, and how it resolved), each as **Bold label:** explanation (Alex, 2026-09-28).
 >
 > **Open Questions / Risks** — bullets for anything raised but unresolved, including who needs to
 > weigh in to close it.
@@ -63,7 +63,42 @@ the note ends mid-sentence, say so in the recap footer rather than inventing an 
 > screen.
 
 Load [Alex's voice](../../alex-voice/SKILL.md) (comms register) before drafting: this is internal comms in Alex's name.
-No em dashes, with the `<h1>` title separator as the one documented exception (see below).
+No em dashes anywhere, the title included: since 2026-09-28 it reads "Architecture Weekly, Month D, YYYY".
+
+**Alex-voice the whole page, end to end (Alex, 2026-09-28: "this recap sounds extremely AI
+generated").** A recap that only passes `voice_check.py` still reads as AI. After the content is
+final, do a full rewrite pass with the `alex-voice` skill (docs register) over every prose field:
+headline, points, objective, outcome, TL;DR, decision text and rationale, actions, topic summaries,
+every topic bullet, open questions, artifacts, shipped sentences. Wording only: facts, owners, tags
+and decisions do not move. What the 09-23 pass changed, and what to repeat:
+
+- **Alex's own points are first person.** "I recommended it", "My point to the application teams",
+  "I asked that…", "I think WebSocket is the better pick… so I honestly can't make that call". Other
+  people stay named in third person.
+- **His real words where he said them.** Pull short phrases from the transcript when they carry his
+  voice ("I don't disagree", "to see if anybody screams", "that is the whole point of this work").
+- **Plain, spoken words over tidy ones.** "there is no secret needed to get the secrets", "If the
+  write fails, it fails", "fell through the cracks". No "Additionally", no "ensures", no "leverages".
+- **Break the AI rhythm.** Keep "The…" sentence starts under ~8%, vary openers, allow one aside in
+  parentheses per topic and one exclamation on the page where there is real good news.
+- Keep the pre-voice content JSON next to the new one so Alex can compare.
+
+**Read the forum's meeting chat too, not only the transcript.** Follow-up questions land there after
+the meeting (on 2026-09-24 Jeremy Gaerke posted a list of questions, and Steve Rake and Alex answered
+in the thread). Read it with `chat_message_search` / `read_resource` on
+`teams:///chats/19:meeting_<id>@thread.v2/messages` (the id is inside the scribe note's
+`transcript_uri`). Answered questions become detail in the topics; still-open ones become open
+questions or actions, marked "From the meeting chat".
+
+**Open questions are only real, owned-or-ownable gaps.** Before you list one, check the transcript
+and the chat for an answer, and drop any that duplicates an action. A compliance or regulatory
+question nobody in the room raised is not an open question: on 2026-09-28 Alex removed a privacy-law
+question ("that's bs"), which matches the memory rule on invented compliance angles. When unsure,
+ask Alex before you publish it.
+
+**Advice rows into the brought RFC may go in before the recap is published when Alex asks** (he did
+on 2026-09-28). Source them from the scribe transcript and the meeting chat, never from a guess, and
+record in the ledger that they were written before publish.
 
 **Check it with `voice_check.py --register docs`, not comms** (measured both ways on the 2026-09-16
 page). The comms register describes a message aimed at people (greeting, closer, exclamation marks);
@@ -72,8 +107,6 @@ this page is a written record.
 So, reading the output:
 - The **`?` warning is expected on every recap** and is not a defect. A question mark or an
   exclamation mark inside a recap means someone's voice leaked into the record.
-- The **`<h1>` em dash is the one documented exception** and shows up as a BLOCKER in the checker,
-  which does not know about the exception. Nothing else may be an em dash.
 - **`The` sentence starts, sentence length and banned phrases are real signals.** Fix openers by
   rewording, never by dropping the article ("Git flow is not friendly" is fine; "Delay is ADP
   propagation" is not).
@@ -82,8 +115,8 @@ So, reading the output:
   leave it and say so.
 
 **Run `voice_check.py` on the RENDERED page text, not the content JSON.** The renderer's own
-cosmetic characters count as prose; `render_page.py` now hard-fails on any em dash or en dash
-outside the `<h1>`, but the rule stands for anything else. Two commands, no hand-rolled tag strip:
+cosmetic characters count as prose; `render_page.py` hard-fails on any em dash or en dash anywhere
+on the page. Two commands, no hand-rolled tag strip:
 
 ```sh
 python3 references/render_page.py --text canvas.json > /tmp/page.txt
@@ -92,9 +125,7 @@ python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
 
 `--text` reads the rendered canvas, so it also covers a canvas read back from SharePoint.
 
-**voice_check exits 1 on a clean page, by design.** The pass condition is `BLOCKER: em dash x1` and
-nothing else; two blockers, or a blocker naming anything but the em dash, is a real failure. Do not
-read the non-zero exit as a failed page.
+**The pass condition is zero BLOCKERs.** Warnings are judgment calls; a BLOCKER is a real failure.
 
 ## Recap gates (on top of the prompt)
 
@@ -112,6 +143,13 @@ read the non-zero exit as a failed page.
   happened; a session ending with "let's circle back next week" is at best [Partially achieved].
 - **Never invent an owner or a due date.** "Unassigned" and "Not stated" are correct answers;
   attribute to the person who spoke the commitment.
+- **Artifacts Referenced ALWAYS carries a link (Alex, 2026-09-28). No link, no line.**
+  `render_page.py` now refuses an artifact without `{label, url}`. "Screen-shared; file name not
+  stated" is not acceptable any more: find the org-readable record behind what was shown, in this
+  order: the brought document in the Architecture library, the ADO epic or story, the GitHub PR or
+  branch, the AAB Intake item (which carries the pre-read). A personal-OneDrive file never gets
+  linked (the org gets a 403); link the intake item that holds it instead, and say so in the note.
+  Verify every URL resolves before staging (`gh api`, the ADO work item, a SharePoint GET).
 - **Artifacts Referenced carries links, not just filenames.** A reader must be able to go from the
   recap to the RFC, the ADR, the PR, or the deck behind an update.
   - **Link the primary record, not a folder:** a merged PR, an ADO item, the portfolio row, the
@@ -186,7 +224,7 @@ times its stated length).
 Run it via the Skill tool (`attain-docs:docs-reviewer`) against the assembled page content, not the
 markdown draft, so the shipped panel and rendered structure are in scope. **Fix every BLOCKER and
 SIGNIFICANT finding before staging**; do not hand Alex a review and ask what to do with it. Bring him
-a decision only when a finding conflicts with a house rule (see the em-dash exception below) or
+a decision only when a finding conflicts with a house rule or
 fixing it would change what the meeting decided.
 
 Findings this review reliably surfaces on a first draft, so pre-empt them:
@@ -194,16 +232,15 @@ Findings this review reliably surfaces on a first draft, so pre-empt them:
 - **Outcome tags must vary.** If every topic is `[Needs follow-up]`, the tag says nothing. Any topic
   matching a Decisions row is `[Decided]`; make tables and tags agree.
 - **Every Decisions row needs a matching topic bullet**, or the decision lives only in a table.
-- **Honour "under one screen".** A 90-minute meeting will not hit 400 words, but it should not hit
-  1,500 either: merge topics that are one thread, and fold an open question into the topic that
-  already covers it.
+- **Depth over one screen (Alex, 2026-09-28).** A long forum deserves a full record: the 09-23 page
+  read "a bit shallow" at ~1,000 words for a 76-minute meeting. Keep the executive summary, TL;DR and
+  Decisions tight, and carry the depth in each topic's `points` (3-6 bullets: proposal, key points,
+  pushback, resolution). The one-screen line in Alex's prompt above now applies to the top of the page
+  only. Still merge topics that are one thread, and still screen every bullet.
 - **Do not bold both the topic lead-in and the tag** on every bullet; that is the inline-header
-  vertical-list tell (humanizer 15 and 16). Lead-in bold, tag in the muted `#55636E`.
+  vertical-list tell (humanizer 15 and 16). The renderer owns this now: the tag is a chip.
 - **Do not repeat "Not stated" down a column.** Leave the cell empty and put one footnote under it.
 - **Keep attribution out of the action text.** "Proposed by X" belongs in the Owner cell.
 
-> **Documented em-dash exception.** `docs-reviewer` flags every em dash as a BLOCKER, and that rule
-> is right for prose. The `<h1>` title is the one allowed exception: `Architecture Weekly &mdash;
-> Month D, YYYY` is the house format, fixed by the template and Alex's own prompt, and eight
-> published issues use it. Keep it there; keep prose free of them. Note the exception in your report
-> and move on.
+> **No em-dash exception any more.** The title uses a comma (2026-09-28), so a `docs-reviewer`
+> em-dash BLOCKER is always real: fix it.

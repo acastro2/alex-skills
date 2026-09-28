@@ -92,7 +92,7 @@ Place the file (Step 2), don't edit it.
 
 **Advice rows are testimony:** only people who actually spoke (the note's `speakers`), only what
 they said. **Backfilling a session with no scribe note**: use its *published* recap page
-(`PromotedState=2`), never a staged draft or the intake `Outcomenotes`; take only feedback it
+(`PromotedState=2`), never a staged draft or the intake `Outcomenotes`. Exception: when Alex explicitly asks to write the advice before publishing (2026-09-28), source it from the scribe `## Transcript` and the meeting chat and record that in the ledger; take only feedback it
 attributes to a named person. When Alex is the author, a disposition the recap records in his own
 words may fill `Author Response`, as a **Needs you** line. The same recap gates apply: no garbled
 proper nouns, no excluded content, no "decided" where the room only discussed. Replace the template

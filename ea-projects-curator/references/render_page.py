@@ -14,40 +14,24 @@ WHO CONSUMES THE OUTPUT
 `stage_news_recap.py --kind recap --id <page_id> --canvas canvas.json`. That script
 does the SharePoint plumbing; this one only builds the body.
 
-SHAREPOINT RULES THE MARKUP OBEYS (verified against live page canvases, 2026-09-18)
------------------------------------------------------------------------------------
-1. Inline `style` attributes survive in the stored canvas AND on a published page.
-   108 of them read back byte-identical on 2026-09-09-AAB-Recap.aspx.
-2. `h1`/`h2`/`h3`, `p`, `ul`/`li`, `strong`, `em`, `span`, `a`, `table` and styled
-   `div` containers all survive. A div carrying background, padding, border-radius and
-   a 6px left border read back whole.
-3. `class=`, `<style>` blocks and custom elements are NOT emitted. The page is a
-   Text web part edited by a human in the SharePoint rich text editor, so the markup
-   must be plain and editable.
-4. NO `font-family`. The site renders Segoe UI from its theme and the page inherits
-   it, so the page stays consistent with every other page on the site. Hierarchy comes
-   from size, weight, colour and letter-spacing.
-5. No fixed pixel page width and no page background. The SharePoint page section owns
-   the width; the design's 600px email card and grey page background are email-only
-   artefacts and are dropped.
+SHAREPOINT RULES THE MARKUP OBEYS (measured 2026-09-18 to 2026-09-28)
+--------------------------------------------------------------------
+1. Inline `style` attributes survive a save, and so do `<style>`, `class=`, flex, grid,
+   `border-radius`, `font-family` and inline `<svg>`. Everything here is inline anyway.
+2. SharePoint silently STRIPS `gap` and `grid-template-columns` on save. Two-column rows
+   are fixed-width flex children; space between items is padding.
+3. SharePoint's page CSS OVERRIDES `margin` on `<div>` at render time (stored, not
+   applied). Blocks are spaced with padding or `spacer()`. Margins on `p`, `h1`, `h2` and
+   inline `span`s do apply.
+4. Text inside a styled `<div>` does NOT inherit the div's `color` or `font-size`: set
+   them on the text's own `<span>` or `<p>`.
+5. Real `<table>` cells get dark gridlines forced on, so the action table is `<div>` rows.
+6. No fixed page width and no page background: the SharePoint section owns the width.
+Storage is not proof. After any change here, screenshot the read view.
 
-The palette is the one Alex approved from the Claude Design mock on 2026-09-18. It is
-deliberately NOT the Attain brand palette; he asked for the mock's colours.
-
-    navy band      #12395C      teal header rule  #0E8FA8
-    shipped band   #1A4E7A      shipped surface     #E6F0F7
-    exec + light   #E6F0F7      card border top     #1A4E7A
-    section title  #12395C      micro-label         #1A4E7A
-    body text      #23303B      rationale text      #3C4A55
-    muted text     #55636E      links               #0E6E96
-    borders        #D4DDE4      shipped divider     #CFE0EE
-    on navy: date #C7DCEB, eyebrow #7FD4E8, shipped eyebrow #A9CCE4, footer #9FBFD6
-    callouts: green bg #E7F3ED / edge #1C6B4A / lead #155A3D
-              amber bg #FBF1DF / edge #A2620A / text #3A2F1C / divider #EBDCBE
-    exec divider #C3D6E4      on-band text #FFFFFF
-
-Every colour the page emits is a named constant below. A bare hex in a builder is
-drift: name it, and add it to this list too.
+The design and palette are Alex's Claude Design mock "Architecture Weekly Recap"
+(2026-09-28), deliberately not the Attain brand palette. Every colour the page emits is a
+named constant below; a bare hex in a builder is drift.
 
 USAGE
 -----
@@ -63,31 +47,34 @@ means the template was edited or the content is incomplete, and neither must hap
 quietly. Content is checked all the way down, not just at the top level, so a missing
 `rationale` on one decision is a named error and not a traceback.
 
-CONTENT SCHEMA (every key below is required; only `decisions[].lead`,
-`exec_summary.points[].lead` and `actions[].due` may be omitted or empty)
----------------------------------------------------------------------------
+CONTENT SCHEMA (required unless marked optional)
+------------------------------------------------
 {
-  "title":     "Architecture Weekly — September 16, 2026",
-  "subtitle":  "Forum held Wednesday 16 September. Delivery covering 12 to 18 September 2026.",
-  "exec_summary": {                       # REQUIRED; the ELT reader's gate
+  "title":     "Architecture Weekly, September 23, 2026",
+  "subtitle":  "Forum held Wednesday, September 23. Delivery covering September 19 to 25, 2026.",
+  "exec_summary": {
     "headline": "One sentence, plain words, no acronyms.",
-    "points":   [{"lead": "Bold lead-in.", "text": "What it means."}],   # 3 or 4
-    "footer":   "The line that says whether leadership must act."
+    "points":   [{"lead": "Decided.", "text": "What it means."}],   # 3 or 4; lead optional
+    "footer":   "Nothing needs leadership this week"   # status chip: green if it starts No/Nothing
   },
   "objective": "Text.",
-  "outcome":   {"tag": "Achieved", "text": "Text."},   # tag: Achieved | Partially achieved | Not achieved
+  "outcome":   {"tag": "Achieved", "text": "Text."},   # Achieved | Partially achieved | Not achieved
   "tldr":      "Text.",
-  "decisions": [{"lead": "Bold first sentence.", "text": "Rest.", "rationale": "Text.", "owner": "Name (role)"}],
-  "actions":   [{"action": "Text.", "owner": "Name", "due": "Next sprint"}],   # due may be ""
-  "topics":    [{"title": "Short name.", "summary": "Two sentences max.", "tag": "Decided"}],
+  "decisions": [{"lead": "Bold first sentence.", "text": "Rest.", "rationale": "Text.",
+                 "owner": "Name, Name", "chip": "Topic label"}],        # lead, chip optional
+  "actions":   [{"action": "Text.", "owner": "Name | Unassigned (who asked)",
+                 "due": "Next sprint", "source": "chat"}],             # due, source optional
+  "topics":    [{"title": "Short name.", "summary": "One or two sentences.", "tag": "Decided",
+                 "owner": "Name",                                       # optional
+                 "points": [{"lead": "Label", "text": "Explanation."}]}],  # optional, 3-6
                                                        # tag: Decided | Needs follow-up | Parked
-  "open_questions": ["Text."],
-  "artifacts":      ["Document name. Screen-shared; file name not stated."],
+  "open_questions": [{"text": "Question.", "next": "Who decides / next step", "source": "chat"}],
+  "artifacts":      [{"label": "Document title", "url": "https://...", "note": "Optional."}],
   "speakers":       "Alexandre Castro, Chris Goodrich, ...",
   "speakers_source": "Teams meeting transcript, 3:00pm to 4:01pm Central.",
-  "shipped": {"window": "12 to 18 September 2026",
-              "items": [{"sentence": "Outcome-first sentence.",
-                         "evidence": [{"label": "Network and transit access", "url": "https://..."}]}]}
+  "shipped": {"window": "September 19 to 25, 2026",
+              "items": [{"sentence": "Outcome-first sentence.", "category": "Infrastructure",
+                         "evidence": [{"label": "Network change", "url": "https://..."}]}]}
 }
 """
 import json
@@ -95,29 +82,34 @@ import re
 import sys
 from html import unescape
 
-# --- palette -----------------------------------------------------------------
-NAVY = "#12395C"
-SHIPPED_BAND = "#1A4E7A"
-TEAL = "#0E8FA8"
-LIGHT = "#E6F0F7"
-BODY = "#23303B"
-RATIONALE = "#3C4A55"
-MUTED = "#55636E"
-LABEL = "#1A4E7A"
-LINK = "#0E6E96"
-BORDER = "#D4DDE4"
-SHIPPED_DIVIDER = "#CFE0EE"
-EYEBROW_ON_NAVY = "#7FD4E8"
-DATE_ON_NAVY = "#C7DCEB"
-SHIPPED_EYEBROW = "#A9CCE4"
-FOOTER_ON_NAVY = "#9FBFD6"
-EXEC_DIVIDER = "#C3D6E4"
-ON_BAND = "#FFFFFF"       # text on the navy and shipped bands
+# --- palette (design v2, Alex 2026-09-28, from the "Architecture Weekly Recap" mock) ---
+NAVY = "#17375E"
+ACCENT = "#2A9FD6"
+GOLD = "#DFD4B8"
+OLIVE = "#6B5A2E"
+LIGHT = "#E8F0F7"
+BODY = "#1F2A37"
+MUTED = "#5F6670"
+LABEL = "#2A6FB0"
+LINK = "#0B5CAD"
+BORDER = "#D7DEE6"
+ROW_DIV = "#E6EAEF"
+ZEBRA = "#FAFBFC"
+EYEBROW_ON_NAVY = "#9CC6E8"
+DATE_ON_NAVY = "#D5E3F0"
+EXEC_DIVIDER = "#C9D8E6"
+ON_BAND = "#FFFFFF"
+WHITE = "#FFFFFF"
 
-GREEN_BG, GREEN_EDGE, GREEN_LEAD = "#E7F3ED", "#1C6B4A", "#155A3D"
-AMBER_BG, AMBER_EDGE, AMBER_TEXT, AMBER_DIV = "#FBF1DF", "#A2620A", "#3A2F1C", "#EBDCBE"
+GREEN_BG, GREEN_EDGE, GREEN_LEAD = "#EAF5EE", "#2E8B57", "#1D5E36"
+GREEN_BORDER = "#B9DCC6"
+AMBER_BG, AMBER_EDGE, AMBER_TEXT, AMBER_DIV = "#FBEFD9", "#C9812F", "#7A4108", "#F1E2C9"
+AMBER_SURFACE, AMBER_BORDER, AMBER_NUM = "#FFFAF2", "#E8CFA8", "#C9812F"
+CHIP = {"green": ("#E3F1E8", "#1D5E36"), "amber": ("#FBEFD9", "#7A4108"),
+        "gray": ("#EEF0F3", "#4A5563"), "blue": ("#E6EEF6", "#17375E")}
+CHIP_DOT = {"green": "#2E8B57", "amber": "#C9812F"}
 
-TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}
+TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}   # valid tags
 OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
 OUTCOME_GREEN = {"Achieved"}
 
@@ -128,9 +120,9 @@ EXEC_POINTS_MIN, EXEC_POINTS_MAX = 3, 4
 
 # --- validation ---------------------------------------------------------------
 FORBIDDEN = [
-    "class=", "<style", "</style", "mso-", "@media", "sc-raw", "sc-camel", "<x-dc",
-    'role="presentation"', "font-family", "position:", "<script", "<!--",
-    "data-sp-", "display:flex", "display:grid",
+    "<script", "javascript:",   # safety
+    # SharePoint strips these two on save (2026-09-28): use padding and fixed-width flex.
+    "gap:", "grid-template",
 ]
 
 
@@ -152,15 +144,10 @@ def esc_attr(s):
 
 def safe_url(u):
     if not isinstance(u, str):
-        die(f"evidence url must be a string, got {u!r}")
+        die(f"url must be a string, got {u!r}")
     if u.startswith("https://") or u.startswith("/sites/"):
         return esc_attr(u)
-    die(f"evidence url must be https:// or /sites/... — got {u!r}")
-
-
-def link(url, label):
-    return (f'<a href="{safe_url(url)}" style="color:{LINK};text-decoration:underline;">'
-            f"{esc(label)}</a>")
+    die(f"url must be https:// or /sites/..., got {u!r}")
 
 
 # --- content validation -------------------------------------------------------
@@ -187,6 +174,12 @@ def need_list(obj, key, where, min_len=1):
     return items
 
 
+def optional_str(obj, keys, where):
+    for k in keys:
+        if k in obj and not isinstance(obj[k], str):
+            die(f"{where}.{k} must be a string, got {type(obj[k]).__name__}")
+
+
 def check_content(c):
     for key in ("title", "subtitle", "objective", "tldr", "speakers", "speakers_source"):
         need(c, key, "content")
@@ -208,227 +201,381 @@ def check_content(c):
     need(o, "text", "outcome")
     tag = need(o, "tag", "outcome")
     if tag not in OUTCOME_TAGS:
-        die(f"outcome.tag must be one of {list(OUTCOME_TAGS)} — got {tag!r}. A typo here "
+        die(f"outcome.tag must be one of {list(OUTCOME_TAGS)}, got {tag!r}. A typo here "
             f"renders amber and reads to the org as 'Partially achieved'.")
 
     for i, d in enumerate(need_list(c, "decisions", "content")):
         where = f"decisions[{i}]"
         for key in ("text", "rationale", "owner"):
             need(d, key, where)
+        optional_str(d, ("lead", "chip"), where)
 
     for i, a in enumerate(need_list(c, "actions", "content")):
         where = f"actions[{i}]"
         need(a, "action", where)
         need(a, "owner", where)
-        if "due" in a:
-            need(a, "due", where, allow_empty=True)
+        optional_str(a, ("due", "source"), where)
 
     for i, t in enumerate(need_list(c, "topics", "content")):
         where = f"topics[{i}]"
         need(t, "title", where)
         need(t, "summary", where)
+        optional_str(t, ("owner",), where)
+        for j, p in enumerate(t.get("points") or []):
+            if isinstance(p, dict):
+                need(p, "lead", f"{where}.points[{j}]")
+                need(p, "text", f"{where}.points[{j}]")
+            elif not isinstance(p, str) or not p.strip():
+                die(f"{where}.points[{j}] must be a non-empty string or {{lead, text}}")
         if need(t, "tag", where) not in TOPIC_TAG_COLOR:
-            die(f"{where}.tag must be one of {sorted(TOPIC_TAG_COLOR)} — got {t['tag']!r}")
+            die(f"{where}.tag must be one of {sorted(TOPIC_TAG_COLOR)}, got {t['tag']!r}")
 
-    for key in ("open_questions", "artifacts"):
-        for i, item in enumerate(need_list(c, key, "content")):
-            if not isinstance(item, str) or not item.strip():
-                die(f"{key}[{i}] must be a non-empty string, got {item!r}")
+    for i, item in enumerate(need_list(c, "open_questions", "content")):
+        if isinstance(item, dict):
+            need(item, "text", f"open_questions[{i}]")
+            optional_str(item, ("next", "source"), f"open_questions[{i}]")
+        elif not isinstance(item, str) or not item.strip():
+            die(f"open_questions[{i}] must be a string or {{text, next, source}}, got {item!r}")
+    # Artifacts ALWAYS carry a link (Alex, 2026-09-28). A bare file name is a hard stop.
+    for i, item in enumerate(need_list(c, "artifacts", "content")):
+        where = f"artifacts[{i}]"
+        if not isinstance(item, dict):
+            die(f"{where} must be {{label, url, note}} with a real link, got {item!r}")
+        need(item, "label", where)
+        safe_url(need(item, "url", where))
+        optional_str(item, ("note",), where)
 
     sh = need(c, "shipped", "content", kind=dict)
     need(sh, "window", "shipped")
     for i, it in enumerate(need_list(sh, "items", "shipped")):
         where = f"shipped.items[{i}]"
         need(it, "sentence", where)
+        optional_str(it, ("category",), where)
         # An item with no evidence renders as a bare "Evidence:" with nothing after it.
         # The panel's whole claim is that it is evidence-backed, so this is a hard stop.
         for j, ev in enumerate(need_list(it, "evidence", where)):
             need(ev, "label", f"{where}.evidence[{j}]")
-            need(ev, "url", f"{where}.evidence[{j}]")
+            safe_url(need(ev, "url", f"{where}.evidence[{j}]"))
 
 
-# --- block builders -----------------------------------------------------------
-def rule(color=TEAL, width="48px", height="3px"):
-    return (f'<div style="background-color:{color};height:{height};width:{width};'
-            f'line-height:{height};font-size:0;margin-bottom:6px;">&nbsp;</div>')
+# --- block builders (see SHAREPOINT RULES in the module docstring) -------------
+
+def spacer(px):
+    """Vertical space. SharePoint's page CSS overrides `margin` on <div> at render time
+    (measured 2026-09-28: stored, but not applied), so spacing between blocks is a spacer."""
+    return (f'<div style="height:{px}px;line-height:{px}px;font-size:0;">&nbsp;</div>')
 
 
-def micro_label(text, top="26px"):
-    """Literal uppercase, not text-transform. The design uses literal caps and the
-    property would be one more thing the rich text editor could drop on save."""
-    return (f'<h3 style="margin:{top} 0 8px 0;font-size:12px;line-height:16px;'
-            f'letter-spacing:1.5px;color:{LABEL};font-weight:400;">'
-            f"{esc(text.upper())}</h3>")
+def _initials(name):
+    parts = [w for w in re.split(r"[\s-]+", name) if w and w[0].isalpha()]
+    return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper() if parts else "?"
 
 
-def section_title(text):
-    """Heading only. There used to be a 48px accent rule under it, and it read as a stray
-    underline that collided with the top border of the block below (Alex, 2026-09-18: "just
-    remove the underline"). Do not bring it back."""
-    return (f'<h2 style="margin:34px 0 14px 0;font-size:22px;line-height:28px;'
-            f'color:{NAVY};font-weight:400;">{esc(text)}</h2>')
+def _owners(owner):
+    """'Flor Delgado Perez, Uday Parande' -> ['Flor Delgado Perez', 'Uday Parande']."""
+    return [o.strip() for o in re.split(r",| and ", owner) if o.strip()]
 
 
-def callout(bg, edge, inner):
-    border = f"border-left:4px solid {edge};"
-    return f'<div style="background-color:{bg};{border}padding:16px 18px;">{inner}</div>'
+def avatar(name, empty=False):
+    if empty:
+        return (f'<span style="display:inline-block;width:24px;height:24px;line-height:21px;'
+                f'border-radius:50%;background-color:{WHITE};color:{AMBER_TEXT};'
+                f'border:1.5px dashed {AMBER_EDGE};font-size:11px;font-weight:600;'
+                f'text-align:center;vertical-align:middle;margin-right:8px;">?</span>')
+    return (f'<span style="display:inline-block;width:26px;height:26px;line-height:26px;'
+            f'border-radius:50%;background-color:{NAVY};color:{ON_BAND};font-size:11px;'
+            f'font-weight:600;text-align:center;vertical-align:middle;margin-right:8px;">'
+            f'{esc(_initials(name))}</span>')
 
 
-def band(bg, inner, pad="24px 26px"):
-    return f'<div style="background-color:{bg};padding:{pad};">{inner}</div>'
+def person(name):
+    if name.lower().startswith("unassigned"):
+        rest = name[len("unassigned"):].strip(" ()")
+        note = (f'<div style="font-size:12px;line-height:16px;color:{MUTED};padding:2px 0 0 34px;">'
+                f'{esc(rest)}</div>' if rest else "")
+        return (f'<span style="display:inline-block;margin:2px 18px 2px 0;font-size:14px;'
+                f'color:{AMBER_TEXT};">{avatar("", empty=True)}Unassigned</span>{note}')
+    return (f'<span style="display:inline-block;margin:2px 18px 2px 0;font-size:14px;'
+            f'color:{BODY};">{avatar(name)}{esc(name)}</span>')
 
 
-def p(text, size="15px", line="23px", color=BODY, **extra):
-    styles = [f"margin:{extra.pop('margin', '0 0 12px 0')}", f"font-size:{size}",
-              f"line-height:{line}", f"color:{color}"]
-    styles += [f"{k.replace('_', '-')}:{v}" for k, v in extra.items()]
-    return f'<p style="{";".join(styles)};">{text}</p>'
+def people(owner):
+    return "".join(person(o) for o in _owners(owner))
+
+
+def chip(text, kind="gray"):
+    bg, fg = CHIP[kind]
+    dot = (f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;'
+           f'background-color:{CHIP_DOT[kind]};margin-right:6px;vertical-align:middle;"></span>'
+           if kind in CHIP_DOT else "")
+    return (f'<span style="display:inline-block;height:24px;line-height:24px;padding:0 10px;'
+            f'border-radius:2px;background-color:{bg};color:{fg};font-size:12px;font-weight:600;'
+            f'white-space:nowrap;margin-right:8px;vertical-align:middle;">{dot}{esc(text)}</span>')
+
+
+TAG_CHIP = {"Decided": "green", "Needs follow-up": "amber", "Parked": "gray"}
+
+
+def eyebrow(text, color=None, top=0):
+    lead = spacer(top) if top else ""
+    return lead + (f'<div style="padding-bottom:8px;font-size:11px;letter-spacing:1.5px;'
+                   f'font-weight:600;color:{color or NAVY};">{esc(text.upper())}</div>')
+
+
+def section_title(text, count=None, tone="blue"):
+    badge = ""
+    if count is not None:
+        bg, fg = CHIP[tone]
+        badge = (f'<span style="display:inline-block;min-width:26px;height:24px;line-height:24px;'
+                 f'padding:0 8px;border-radius:2px;background-color:{bg};color:{fg};'
+                 f'font-size:13px;font-weight:600;text-align:center;margin-left:12px;'
+                 f'vertical-align:middle;">{count}</span>')
+    return (f'<h2 style="margin:48px 0 18px 0;font-size:24px;line-height:30px;font-weight:600;'
+            f'color:{NAVY};">{esc(text)}{badge}</h2>')
+
+
+def p(text, size="14px", line="22px", color=BODY, margin="0 0 10px 0"):
+    return f'<p style="margin:{margin};font-size:{size};line-height:{line};color:{color};">{text}</p>'
+
+
+def kv_row(label, value, label_w="110px", label_color=None, caps=True):
+    """Two-column row without grid (grid-template-columns is stripped on save)."""
+    return (f'<div style="display:flex;padding-bottom:12px;">'
+            f'<div style="flex:0 0 {label_w};max-width:{label_w};padding-right:20px;">'
+            + (f'<span style="font-size:11px;letter-spacing:1.5px;font-weight:600;line-height:22px;'
+               f'color:{label_color or LABEL};">{esc(label.upper())}</span>' if caps else
+               f'<span style="font-size:14px;font-weight:600;line-height:22px;color:{label_color or NAVY};">'
+               f'{esc(label)}</span>')
+            + '</div>'
+            f'<div style="flex:1 1 auto;min-width:0;font-size:14px;line-height:22px;color:{BODY};">'
+            f'{value}</div></div>')
 
 
 # --- sections -----------------------------------------------------------------
 def header(c):
-    inner = (f'<div style="font-size:12px;line-height:16px;letter-spacing:2px;'
-             f'color:{EYEBROW_ON_NAVY};margin-bottom:8px;">ENTERPRISE ARCHITECTURE</div>'
-             f'<h1 style="margin:0 0 8px 0;font-size:27px;line-height:33px;'
-             f'color:{ON_BAND};font-weight:400;">{esc(c["title"])}</h1>'
-             f'<div style="font-size:14px;line-height:20px;color:{DATE_ON_NAVY};">'
-             f'{esc(c["subtitle"])}</div>')
-    return band(NAVY, inner, "26px 26px 24px 26px") + rule(height="4px", width="100%")
+    return (f'<div style="background-color:{NAVY};padding:26px 24px 22px 24px;'
+            f'border-bottom:4px solid {ACCENT};">'
+            f'<div style="font-size:11px;letter-spacing:2px;color:{EYEBROW_ON_NAVY};font-weight:600;">'
+            f'ENTERPRISE ARCHITECTURE</div>'
+            f'<h1 style="margin:6px 0 0 0;font-size:26px;line-height:32px;color:{ON_BAND};'
+            f'font-weight:400;">{esc(c["title"])}</h1>'
+            f'<div style="font-size:13px;line-height:19px;color:{DATE_ON_NAVY};padding-top:8px;">'
+            f'{esc(c["subtitle"])}</div></div>')
 
 
 def exec_summary(c):
-    # Required, not optional. This band is the one component SKILL.md calls the ELT
-    # reader's gate; the script used to skip it silently when the key was absent, which
-    # is the one omission nobody would notice until the page was already staged.
+    """Mock 2026-09-28: eyebrow left, leadership status chip right (green when nothing needs
+    leadership, amber when a decision is waiting), then points with a coloured dot and lead:
+    decided/agreed green, shipped navy, still open amber."""
     e = c["exec_summary"]
-    parts = [micro_label("Executive summary", top="0"),
-             f'<h2 style="margin:0 0 16px 0;font-size:19px;line-height:27px;'
-             f'color:{NAVY};font-weight:400;">{esc(e["headline"])}</h2>']
+    footer = e["footer"]
+    calm = footer.lower().startswith(("no ", "nothing"))
+    tone = "green" if calm else "amber"
+    top = (f'<div style="display:flex;align-items:center;padding-bottom:14px;">'
+           f'<div style="flex:1 1 auto;min-width:0;"><span style="font-size:11px;letter-spacing:1.5px;'
+           f'font-weight:600;color:{NAVY};">EXECUTIVE SUMMARY</span></div>'
+           f'<div style="flex:0 0 auto;"><span style="display:inline-block;padding:4px 12px;'
+           f'background-color:{CHIP[tone][0]};color:{CHIP[tone][1]};border:1px solid {GREEN_BORDER if calm else AMBER_BORDER};'
+           f'font-size:13px;font-weight:600;line-height:18px;">'
+           f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;'
+           f'background-color:{CHIP_DOT[tone]};margin-right:8px;vertical-align:middle;"></span>{esc(footer.rstrip("."))}</span></div></div>')
+    head = (f'<div style="padding-bottom:16px;"><span style="font-size:18px;line-height:25px;font-weight:600;'
+            f'color:{NAVY};">{esc(e["headline"])}</span></div>')
+    def tone_of(lead):
+        l = lead.lower()
+        if "open" in l: return AMBER_TEXT, CHIP_DOT["amber"]
+        if "decid" in l or "agree" in l: return GREEN_LEAD, CHIP_DOT["green"]
+        return NAVY, NAVY
+    pts = []
     for pt in e["points"]:
-        lead = f'<strong style="color:{NAVY};">{esc(pt["lead"])}</strong> ' if pt.get("lead") else ""
-        parts.append(p(lead + esc(pt["text"])))
-    if e.get("footer"):
-        parts.append(f'<p style="margin:14px 0 0 0;padding-top:14px;font-size:14px;'
-                     f'line-height:20px;color:{MUTED};border-top:1px solid {EXEC_DIVIDER};">'
-                     f'{esc(e["footer"])}</p>')
-    return band(LIGHT, "".join(parts), "26px 26px 24px 26px")
+        col, dot = tone_of(pt.get("lead", ""))
+        lead = f'<strong style="color:{col};">{esc(pt["lead"])}</strong> ' if pt.get("lead") else ""
+        pts.append(f'<div style="display:flex;padding-bottom:12px;">'
+                   f'<div style="flex:0 0 16px;max-width:16px;line-height:22px;font-size:14px;">'
+                   f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:{dot};vertical-align:middle;"></span></div>'
+                   f'<div style="flex:1 1 auto;min-width:0;"><span style="font-size:14px;line-height:22px;color:{BODY};">'
+                   f'{lead}{esc(pt["text"])}</span></div></div>')
+    return f'<div style="background-color:{LIGHT};padding:24px 24px 12px 24px;">{top}{head}{"".join(pts)}</div>'
 
 
-def outcome_block(c):
+def forum_recap(c):
     o = c["outcome"]
-    tag = o["tag"]   # vocabulary checked in check_content
-    bg = GREEN_BG if tag in OUTCOME_GREEN else AMBER_BG
-    edge = GREEN_EDGE if tag in OUTCOME_GREEN else AMBER_EDGE
-    lead = GREEN_LEAD if tag in OUTCOME_GREEN else AMBER_EDGE
-    inner = f'<strong style="color:{lead};">{esc(tag)}.</strong> {esc(o["text"])}'
-    return callout(bg, edge, p(inner, size="15px", line="23px"))
+    green = o["tag"] in OUTCOME_GREEN
+    bg, edge, lead = (GREEN_BG, GREEN_EDGE, GREEN_LEAD) if green else (AMBER_BG, AMBER_EDGE, AMBER_TEXT)
+    outcome = (f'<div style="background-color:{bg};border-left:4px solid {edge};padding:16px 20px;'
+               f'font-size:14px;line-height:22px;color:{BODY};">'
+               f'<strong style="color:{lead};">{esc(o["tag"])}.</strong> {esc(o["text"])}</div>')
+    return (section_title("Forum recap")
+            + eyebrow("Objective") + p(esc(c["objective"]), margin="0 0 20px 0")
+            + eyebrow("Outcome") + outcome
+            + eyebrow("TL;DR", top=20) + p(esc(c["tldr"]), margin="0"))
 
 
 def decision_cards(c):
     out = []
     for d in c["decisions"]:
-        lead = f'<strong>{esc(d["lead"])}</strong> ' if d.get("lead") else ""
+        chips = chip("Decided", "green") + (chip(d["chip"], "gray") if d.get("chip") else "")
+        lead = f'<strong style="color:{NAVY};">{esc(d["lead"])}</strong> ' if d.get("lead") else ""
         out.append(
-            f'<div style="border:1px solid {BORDER};border-top:3px solid {SHIPPED_BAND};'
-            f'padding:16px 18px;margin-top:14px;">'
-            f'<p style="margin:0 0 6px 0;font-size:15px;line-height:23px;color:{NAVY};">{lead}{esc(d["text"])}</p>'
-            f'<div style="font-size:11px;line-height:15px;letter-spacing:1.2px;color:{LINK};'
-            f'margin-bottom:4px;">RATIONALE</div>'
-            f'<p style="margin:0 0 12px 0;font-size:14px;line-height:21px;color:{RATIONALE};">'
-            f'{esc(d["rationale"])}</p>'
-            f'<p style="margin:0;font-size:13px;line-height:19px;color:{MUTED};">'
-            f'<span style="color:{LINK};">Owner</span> &nbsp;{esc(d["owner"])}</p>'
-            f"</div>")
-    return "".join(out)
+            f'<div style="border:1px solid {BORDER};border-top:3px solid {NAVY};padding:20px 22px;">'
+            f'<div style="padding-bottom:10px;">{chips}</div>'
+            f'<p style="margin:0 0 14px 0;font-size:15px;line-height:23px;color:{BODY};">{lead}{esc(d["text"])}</p>'
+            + kv_row("Rationale", esc(d["rationale"]), label_color=LINK)
+            + kv_row("Owner", people(d["owner"]), label_color=LINK)
+            + '</div>' + spacer(12))
+    return section_title("Decisions made", len(c["decisions"])) + "".join(out)
 
 
 def action_table(c):
-    th = (f'background-color:{NAVY};border:1px solid {NAVY};padding:9px 11px;'
-          f'color:{ON_BAND};text-align:left;font-size:14px;font-weight:400;')
-    td = (f'border:1px solid {BORDER};padding:9px 11px;vertical-align:top;'
-          f'color:{BODY};font-size:14px;line-height:20px;')
-    # An empty Due cell, never a dash. House rule: do not repeat "Not stated" down a column; the
-    # footnote under the table carries it. A dash would also be an em dash, which is banned.
-    rows = "".join(
-        f"<tr><td style=\"{td}\">{esc(a['action'])}</td>"
-        f"<td style=\"{td}\">{esc(a['owner'])}</td>"
-        f"<td style=\"{td}\">{esc(a.get('due') or '')}</td></tr>"
-        for a in c["actions"])
-    return (f'<table style="width:100%;border-collapse:collapse;margin-top:10px;">'
-            f'<thead><tr><th style="{th}">Action</th><th style="{th}">Owner</th>'
-            f'<th style="{th}">Due</th></tr></thead><tbody>{rows}</tbody></table>')
+    """Div rows, not <table>: SharePoint forces dark gridlines onto tables (measured 2026-09-22),
+    and the mock has a navy header bar, faint row dividers and zebra rows (Alex, 2026-09-28)."""
+    def row(a_html, o_html, d_html, style):
+        return (f'<div style="display:flex;align-items:center;{style}">'
+                f'<div style="flex:1 1 auto;min-width:0;padding-right:20px;">{a_html}</div>'
+                f'<div style="flex:0 0 280px;max-width:280px;padding-right:20px;">{o_html}</div>'
+                f'<div style="flex:0 0 130px;max-width:130px;">{d_html}</div></div>')
+    head = row(*(f'<span style="font-size:13px;font-weight:600;color:{ON_BAND};">{h}</span>' for h in ("Action", "Owner", "Due")),
+               f"background-color:{NAVY};color:{ON_BAND};font-size:13px;font-weight:600;padding:12px 20px;")
+    rows = []
+    for i, a in enumerate(c["actions"]):
+        src = (f'<div style="padding-bottom:6px;">{chip("From meeting chat", "gray")}</div>'
+               if a.get("source") == "chat" else "")
+        due = (f'<span style="font-size:13px;color:{BODY};">{esc(a["due"])}</span>' if a.get("due")
+               else f'<span style="font-size:13px;color:{MUTED};">No date</span>')
+        owners = "".join(f'<div style="padding:2px 0;">{person(o)}</div>' for o in _owners(a["owner"]))
+        unassigned = a["owner"].lower().startswith("unassigned")
+        zebra = (f"background-color:{AMBER_SURFACE};" if unassigned
+                 else f"background-color:{ZEBRA};" if i % 2 else "")
+        rows.append(row(f"{src}<span style=\"font-size:14px;line-height:21px;color:{BODY};\">{esc(a['action'])}</span>", owners, due,
+                        f"padding:14px 20px;border-top:1px solid {ROW_DIV};font-size:14px;line-height:21px;color:{BODY};{zebra}"))
+    table = f'<div style="border:1px solid {BORDER};">{head}{"".join(rows)}</div>'
+    note = p('"No date" means no date was stated in the session.', size="13px", color=MUTED,
+             margin="10px 0 0 0")
+    return section_title("Action items", len(c["actions"])) + table + note
+
+
+def topic_block(t):
+    """Mock 2026-09-28: header row, full-width divider, Title Case label rows. A topic
+    tagged Needs follow-up gets the amber card."""
+    amber = t["tag"] == "Needs follow-up"
+    bg = f"background-color:{AMBER_SURFACE};" if amber else ""
+    edge = AMBER_BORDER if amber else BORDER
+    div = AMBER_DIV if amber else BORDER
+    head = (f'<div style="display:flex;align-items:flex-start;padding:20px 22px;">'
+            f'<div style="flex:1 1 auto;min-width:0;padding-right:16px;">'
+            f'<span style="font-size:17px;line-height:24px;font-weight:600;color:{NAVY};">{esc(t["title"].rstrip("."))}</span>'
+            f'<div style="padding-top:4px;"><span style="font-size:14px;line-height:21px;color:{MUTED};">{esc(t["summary"])}</span></div></div>'
+            f'<div style="flex:0 0 auto;white-space:nowrap;padding-top:2px;">'
+            + (person(t["owner"]) if t.get("owner") else "")
+            + chip(t["tag"], TAG_CHIP[t["tag"]]) + '</div></div>')
+    rows = ""
+    for pt in t.get("points") or []:
+        if isinstance(pt, dict):
+            rows += kv_row(pt["lead"], esc(pt["text"]), label_w="170px", caps=False)
+        else:
+            rows += p(esc(pt))
+    body = (f'<div style="padding:18px 22px 8px 22px;border-top:1px solid {div};">{rows}</div>'
+            if rows else "")
+    return (f'<div style="border:1px solid {edge};{bg}">{head}{body}</div>' + spacer(14))
 
 
 def topic_list(c):
+    return section_title("Topics discussed", len(c["topics"])) + "".join(topic_block(t) for t in c["topics"])
+
+
+def open_questions(c):
     items = []
-    for t in c["topics"]:
-        color = TOPIC_TAG_COLOR.get(t["tag"])
-        if not color:
-            die(f"topic tag must be one of {sorted(TOPIC_TAG_COLOR)} — got {t['tag']!r}")
+    for i, q in enumerate(c["open_questions"], 1):
+        if isinstance(q, str):
+            q = {"text": q}
+        src = (f'<div style="padding-top:4px;"><span style="font-size:12px;color:{MUTED};">From the meeting chat</span></div>'
+               if q.get("source") == "chat" else "")
         items.append(
-            f'<li style="margin-bottom:12px;font-size:15px;line-height:23px;color:{BODY};">'
-            f'<strong>{esc(t["title"])}</strong> {esc(t["summary"])} '
-            f'<span style="color:{color};">[{esc(t["tag"])}]</span></li>')
-    return f'<ul style="margin:14px 0 0 0;padding-left:22px;">{"".join(items)}</ul>'
+            f'<div style="display:flex;align-items:flex-start;padding:16px 22px;{("border-top:1px solid " + AMBER_DIV + ";") if i > 1 else ""}">'
+            f'<div style="flex:0 0 38px;max-width:38px;font-size:20px;line-height:24px;font-weight:600;'
+            f'color:{AMBER_NUM};">{i}</div>'
+            f'<div style="flex:1 1 auto;min-width:0;font-size:14px;line-height:21px;color:{BODY};padding-right:14px;">'
+            f'{esc(q["text"])}{src}</div>'
+            + (f'<div style="flex:0 0 auto;">{chip(q["next"], "gray")}</div>' if q.get("next") else "")
+            + '</div>')
+    box = (f'<div style="background-color:{AMBER_SURFACE};border:1px solid {AMBER_BORDER};">'
+           f'{"".join(items)}</div>')
+    return section_title("Open questions and risks", len(c["open_questions"]), tone="amber") + box
 
 
-def bullet_list(items, amber=False):
-    if amber:
-        rows = []
-        for i, q in enumerate(items):
-            border = f"border-top:1px solid {AMBER_DIV};" if i else ""
-            rows.append(f'<p style="margin:0;padding:8px 0;font-size:15px;line-height:22px;'
-                        f'color:{AMBER_TEXT};{border}">{esc(q)}</p>')
-        return callout(AMBER_BG, AMBER_EDGE, "".join(rows))
-    lis = "".join(f'<li style="margin-bottom:8px;font-size:15px;line-height:23px;color:{BODY};">'
-                  f"{esc(x)}</li>" for x in items)
-    return f'<ul style="margin:14px 0 0 0;padding-left:22px;">{lis}</ul>'
+def artifact_list(items):
+    """Two-column cards with an icon, per the 2026-09-28 mock. Every card is a link
+    (Alex, 2026-09-28). No gap/grid: 50%-wide flex cells padded apart."""
+    icon = ('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + NAVY + '" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>'
+            '<path d="M14 3v6h6"></path></svg>')
+    cells = []
+    for k, a in enumerate(items):
+        pad = "padding:0 6px 12px 0;" if k % 2 == 0 else "padding:0 0 12px 6px;"
+        note = (f'<div style="font-size:12px;line-height:17px;color:{MUTED};padding-top:2px;">'
+                f'{esc(a["note"])}</div>' if a.get("note") else "")
+        cells.append(
+            f'<div style="flex:0 0 50%;max-width:50%;box-sizing:border-box;{pad}">'
+            f'<div style="display:flex;align-items:center;border:1px solid {BORDER};padding:14px 16px;height:100%;box-sizing:border-box;">'
+            f'<div style="flex:0 0 38px;width:38px;height:38px;background-color:{CHIP["blue"][0]};'
+            f'display:flex;align-items:center;justify-content:center;">{icon}</div>'
+            f'<div style="flex:1 1 auto;min-width:0;padding-left:14px;">'
+            f'<a href="{safe_url(a["url"])}" style="font-size:14px;line-height:20px;font-weight:600;'
+            f'color:{LINK};text-decoration:underline;">{esc(a["label"])}</a>{note}</div></div></div>')
+    grid = f'<div style="display:flex;flex-wrap:wrap;">{"".join(cells)}</div>'
+    return section_title("Artifacts referenced", len(items)) + grid
 
 
 def speakers_line(c):
-    return (f'<p style="margin:26px 0 0 0;padding-top:14px;border-top:1px solid {BORDER};'
-            f'font-size:13px;line-height:20px;color:{MUTED};font-style:italic;">'
-            f'Spoke in this session: {esc(c["speakers"])}. '
-            f'Source: {esc(c["speakers_source"])}</p>')
+    return p(f'<strong style="color:{NAVY};">Spoke in this session:</strong> {esc(c["speakers"])}. '
+             f'Source: {esc(c["speakers_source"])}', size="13px", line="19px", color=MUTED,
+             margin="18px 0 0 0")
 
 
 def shipped_panel(c):
-    s = c["shipped"]
-    head = (f'<h2 style="margin:0 0 4px 0;font-size:21px;line-height:28px;color:{ON_BAND};'
-            f'font-weight:400;">What Enterprise Architecture shipped</h2>'
-            f'<div style="font-size:13px;line-height:19px;color:{SHIPPED_EYEBROW};">'
-            f'{esc(s["window"])}</div>')
+    sh = c["shipped"]
+    n = len(sh["items"])
+    head = (f'<div style="display:flex;align-items:flex-end;">'
+            f'<div style="flex:1 1 auto;min-width:0;">'
+            f'<div style="font-size:11px;letter-spacing:2px;font-weight:600;color:{GOLD};">'
+            f'DELIVERED BY ENTERPRISE ARCHITECTURE</div>'
+            f'<div style="font-size:24px;line-height:30px;font-weight:600;color:{ON_BAND};padding-top:6px;">'
+            f'What Enterprise Architecture shipped</div>'
+            f'<div style="font-size:13px;color:{DATE_ON_NAVY};padding-top:6px;">{esc(sh["window"])}</div></div>'
+            f'<div style="flex:0 0 auto;text-align:right;color:{ON_BAND};">'
+            f'<div style="font-size:48px;line-height:48px;font-weight:600;color:{GOLD};">{n}</div>'
+            f'<div style="font-size:12px;color:{DATE_ON_NAVY};">{"delivery" if n == 1 else "deliveries"}<br>this week</div>'
+            f'</div></div>')
     items = []
-    for it in s["items"]:
-        ev = " &middot; ".join(link(e["url"], e["label"]) for e in it["evidence"])
-        items.append(
-            f'<p style="margin:0;padding:14px 0 4px 0;font-size:15px;line-height:22px;'
-            f'color:{NAVY};border-top:1px solid {SHIPPED_DIVIDER};"><strong>{esc(it["sentence"])}</strong></p>'
-            f'<p style="margin:0;padding:0 0 12px 0;font-size:13px;line-height:19px;'
-            f'color:{MUTED};">Evidence: {ev}</p>')
-    inner = (f'<div style="background-color:{LIGHT};padding:18px;">{"".join(items)}</div>')
-    return (f'<div style="background-color:{SHIPPED_BAND};padding:26px 26px 30px 26px;'
-            f'margin-top:34px;">{head}<div style="height:14px;font-size:0;line-height:0;">&nbsp;</div>'
-            f"{inner}</div>")
+    for it in sh["items"]:
+        # Mock 2026-09-28: gold check square + small-caps category in olive, then the
+        # sentence, then evidence as bordered link buttons with an arrow.
+        check = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + NAVY + '" '
+                 'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>')
+        cat = (f'<div style="display:flex;align-items:center;">'
+               f'<div style="flex:0 0 28px;width:28px;height:28px;background-color:{GOLD};display:flex;'
+               f'align-items:center;justify-content:center;">{check}</div>'
+               f'<span style="padding-left:10px;font-size:11px;letter-spacing:1.5px;font-weight:600;'
+               f'color:{OLIVE};">{esc(it.get("category", "Delivered").upper())}</span></div>')
+        arrow = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + LINK + '" '
+                 'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;">'
+                 '<path d="M7 17L17 7M8 7h9v9"></path></svg>')
+        ev = "".join(f'<a href="{safe_url(e["url"])}" style="display:inline-block;font-size:12px;font-weight:600;'
+                     f'text-decoration:none;border:1px solid {EXEC_DIVIDER};padding:5px 10px;color:{LINK};'
+                     f'margin:0 8px 6px 0;">{esc(e["label"])} {arrow}</a>' for e in it["evidence"])
+        items.append(spacer(10) + f'<div style="background-color:{ON_BAND};padding:20px 22px;">'
+                     f'<div style="padding-bottom:12px;">{cat}</div>'
+                     f'<div style="padding-bottom:12px;"><span style="font-size:15px;line-height:22px;font-weight:600;color:{NAVY};">{esc(it["sentence"])}</span></div>'
+                     f'<div>{ev}</div></div>')
+    return spacer(48) + (f'<div style="background-color:{NAVY};border-top:4px solid {GOLD};padding:32px 28px 28px 28px;">'
+            f'{head}{"".join(items)}</div>')
 
 
 def build(c):
-    body = [header(c), exec_summary(c)]
-    body.append(section_title("Forum recap"))
-    body.append(micro_label("Objective") + p(esc(c["objective"])))
-    body.append(micro_label("Outcome") + outcome_block(c))
-    body.append(micro_label("TL;DR") + p(esc(c["tldr"])))
-    body.append(section_title("Decisions made") + decision_cards(c))
-    body.append(section_title("Action items") + action_table(c)
-                + p("An empty Due cell means no date was stated in the session.",
-                    size="13px", color=MUTED, margin="10px 0 0 0"))
-    body.append(section_title("Topics discussed") + topic_list(c))
-    body.append(section_title("Open questions and risks")
-                + bullet_list(c["open_questions"], amber=True))
-    body.append(section_title("Artifacts referenced") + bullet_list(c["artifacts"]))
-    body.append(speakers_line(c))
-    body.append(shipped_panel(c))
-    return "".join(body)
+    return "".join([header(c), exec_summary(c), forum_recap(c), decision_cards(c),
+                    action_table(c), topic_list(c), open_questions(c),
+                    artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)])
 
 
 def markup_only(html):
@@ -446,9 +593,8 @@ def markup_only(html):
 
 
 def prose_only(html):
-    """The text nodes, minus the <h1> title. Used for the dash ban, which is about what
-    Alex writes and not about what the builders emit."""
-    return re.sub(r"<[^>]*>", " ", re.sub(r"<h1.*?</h1>", "", html, flags=re.S))
+    """The text nodes. Used for the dash ban, which is about what Alex writes."""
+    return re.sub(r"<[^>]*>", " ", html)
 
 
 def to_text(html):
@@ -471,16 +617,17 @@ def validate(html):
         if bad in markup:
             die(f"forbidden construct in the MARKUP: {bad!r}. The markup is owned by this "
                 f"script; edit the builders, not the output.")
+    # SharePoint's page CSS overrides margin on <div> at render time (2026-09-28): use
+    # padding or spacer(). A margin on a div is stored but silently not applied.
+    if re.search(r'<div style="[^"]*(?<![a-z-])margin', markup):
+        die("margin on a <div>: SharePoint does not apply it. Use padding or spacer().")
     if "{{" in markup:
         die("unsubstituted token in output")
-    # Dashes are banned in everything Alex writes, except the house-format <h1> title
-    # separator. The renderer leaked an em dash through the Action items empty-cell
-    # placeholder on 2026-09-18, which is why this is a hard check and not a checklist note.
+    # Dashes are banned everywhere, the title included (it uses a comma since 2026-09-28).
     prose = prose_only(html)
     for char, name in (("\u2014", "em dash"), ("\u2013", "en dash")):
         if char in prose:
-            die(f"{name} outside the <h1> title. Alex bans them; use a comma, a colon, "
-                f"or a full stop.")
+            die(f"{name} in the page. Alex bans them; use a comma, a colon, or a full stop.")
 
 
 def read_canvas(path):

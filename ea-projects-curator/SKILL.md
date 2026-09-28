@@ -14,7 +14,7 @@ description: >
 Turn the scattered evidence of what Enterprise Architecture actually did — prior AI sessions, ADRs/SADs, ADO epics, GitHub PRs — into a small set of executive-legible rows on the EA Projects board. You are a **filter and transformer**, not a retriever and not a scribe: you receive raw signals, decide what qualifies, shape it for a non-architect CTO, and then **ask** before you write.
 
 ```
-scribe note ─→ recap + exec summary ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ RENDER ─→ STAGE ─→ hand back link
+scribe note + meeting chat ─→ recap (deep topics) ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ alex-voice pass ─→ RENDER ─→ STAGE ─→ hand back link
 archeologist     ─┐
 ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLE ─→ write ─→ report
                        (board rows, intake, comments)     (approve by line)
@@ -193,6 +193,8 @@ This is the point of the skill. The board is org-visible and the user must own w
 
 1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking.
 
+**Name items, never bare IDs** (Alex, 2026-09-28: "Row 47 means nothing to me"): the `Row` column and every report line lead with the initiative or intake item's name; an ID may follow in parentheses.
+
 2. **Emit FOUR sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **Brought documents**: lines numbered `D1, D2, ...` (copies and document edits, with the drafted author messages below the table; see [references/brought-docs.md](references/brought-docs.md)). (d) **EA Projects updates**: lines numbered `E1, E2, ...`. Same columns in (b), (c) and (d): `# | Row | Field | Now | → Proposed | Why | Needs you?`. He answers per table ("A: all. D: 1–4. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
 
 3. **He answers by line number.** Apply exactly the approved lines. A line needing input he didn't give (e.g. "yes" to a milestone rewrite but no date) → apply what you can, keep the gap on the open-items list; never fill it with a guess.
@@ -346,9 +348,10 @@ is content, the script's job is markup:
 recap-content.json  →  render_page.py  →  canvas.json  →  stage_news_recap.py --canvas
 ```
 
-The script owns every tag, style and colour, and it refuses to emit `class=`, `<style>`, custom
-elements, `font-family` or anything else the SharePoint rich text editor would fight. Read its
-docstring for the content schema. Hand-written HTML is what produced the drift between the 09-09 and
+The script owns every tag, style and colour. Read its docstring for the content schema. There is
+**no "SharePoint-native markup only" rule any more** (Alex, 2026-09-28: "that doesn't hold"): the page
+may use whatever styling the design needs. The only markup the script refuses is `<script>` and
+`javascript:`, for safety. Hand-written HTML is what produced the drift between the 09-09 and
 09-16 pages; two files cannot disagree if only one holds markup.
 
 [references/example-content.json](references/example-content.json) is a complete, valid input: copy
@@ -356,23 +359,40 @@ it to start a week, and render it after any change to the script to prove the sc
 
 **It refuses on content shape too, not just markup.** Missing `exec_summary`, a band outside 3 to 4
 points, a blank `footer`, an unknown `outcome.tag`, a decision with no `rationale`: each is a named
-error naming the exact key. Fix the content; do not reach past the script. The forbidden-construct
-scan reads the MARKUP only, so ordinary prose is safe (a sentence may say `position:` or `class=`
-without failing). Escaping, not the word list, keeps content out of the markup.
+error naming the exact key. Fix the content; do not reach past the script. The safety scan reads
+the MARKUP only, so ordinary prose is safe. Escaping keeps content out of the markup.
 
 `python3 references/render_page.py --text canvas.json` prints the rendered page as plain text, the
 input to `voice_check.py`; see [references/recap.md](references/recap.md) for the commands.
 
-**Design and colour are fixed** (Alex, 2026-09-18, from the Claude Design mock): navy header band,
-teal rule, Executive Summary band, Forum recap (Objective, Outcome, TL;DR, Decisions made, Action
-items, Topics discussed, Open questions and risks, Artifacts referenced, Spoke in this session), navy
-shipped panel. The palette is the mock's, deliberately not the Attain brand: `#12395C` navy band,
-`#0E8FA8` teal rule, `#1A4E7A` shipped band, `#E6F0F7` light surfaces, `#23303B` body, `#55636E`
-muted, `#0E6E96` links, `#D4DDE4` borders. Every colour is a named constant in the `render_page.py`
-palette block; a bare hex in a builder is drift. Do not substitute Venice Blue or any brand token.
+**Design and colour are fixed** (Alex, 2026-09-28, from the Claude Design mock "Architecture Weekly
+Recap"; it replaced the 09-18 design). Sections, in order: navy header band with a blue accent rule,
+Executive Summary band (the `footer` renders as a status chip top right: green when it starts "No"/"Nothing", amber otherwise, so write it short and without a period; points carry a coloured dot and lead: Decided/Also agreed green, Shipped navy, Still open amber), Forum recap (Objective, Outcome callout, TL;DR), **Decisions made** as cards
+(Decided chip + topic chip, then Rationale / Owner rows), **Action items** table (owner initials
+avatars, a dashed avatar for Unassigned, a "From meeting chat" chip, grey "No date"), **Topics
+discussed** as cards (title, summary, owner avatar, status chip, then Label / Explanation rows),
+**Open questions and risks** as a numbered list with a next-step chip, **Artifacts referenced** as two-column icon cards (always
+linked), the speakers line, and the navy **What Enterprise Architecture shipped** panel with a gold rule,
+a delivery count, and a category chip per item. Section titles carry a count badge. Palette: `#17375E`
+navy, `#2A9FD6` accent, `#DFD4B8` gold, `#E8F0F7` light, `#1F2A37` body, `#5F6670` muted, `#0B5CAD`
+links, `#D7DEE6` borders; chips green / amber / gray / blue. Every colour is a named constant in
+`render_page.py`.
 
-**Fonts come from the site theme.** No `font-family` anywhere; the site renders Segoe UI and the
-page inherits it. Hierarchy comes from size, weight, colour and letter-spacing.
+**What SharePoint really does to this markup (measured 2026-09-28, throwaway page, then the live
+draft):** it KEEPS `<style>`, `class=`, `display:flex|grid`, `border-radius`, `font-family`; it
+silently STRIPS `gap` and `grid-template-columns`; and its page CSS OVERRIDES `margin` on `<div>` at
+render time (stored, not applied). Text inside a `<div>` does NOT inherit that div's `color` or `font-size` either (the action table header rendered dark-on-navy and the rows at ~17px): set colour and size on the text's own `<span>`/`<p>`. Real `<table>` cells get forced dark gridlines, so tables are built from flex `<div>` rows. Inline `<svg>` icons survive and render (artifact cards). Two-column card layouts = `flex-wrap` with 50%-wide cells padded apart. So the renderer inlines every style, spaces blocks with padding or
+`spacer()`, and builds two-column rows from fixed-width flex children. `render_page.py` refuses
+`gap:`, `grid-template` and any `<div>` margin, so this cannot regress. Storage is not proof: always
+screenshot the read view after a renderer change (browser-control, scroll to each heading).
+
+New optional content fields (see the `render_page.py` docstring): `decisions[].chip`,
+`actions[].source: "chat"`, `topics[].owner`, `topics[].points[] = {lead, text}`,
+`open_questions[] = {text, next, source}`, `shipped.items[].category`, `artifacts[] = {label, url,
+note}` (url required).
+
+**Fonts default to the site theme** (Segoe UI). A `font-family` is allowed when a design change
+calls for one; it is no longer banned.
 
 ### The SharePoint editor does not show this page faithfully (measured 2026-09-18)
 
@@ -382,13 +402,10 @@ heading sizes while leaving them in the stored page. So:
 
 - **Never judge this page in edit mode.** Use Preview or the read view. Tell Alex this when he edits a
   page; it will look broken and he will say so.
-- **The editor's only real mutation is the Action items table.** On first save the RTE wraps it in a
-  responsive `<figure>` and makes the three columns equal width, so Action rows wrap more often. That
-  is accepted: the table reads correctly and the `td` styles survive.
 - **A `class=` attribute in a read-back canvas is SharePoint's, not drift.** `render_page.py
-  --check-only` validates the RENDERED canvas; do not "fix" a saved page's `<figure>` wrapper.
-- The page's inline styles are durable across edits. Rule 2 ("safe for Alex to edit by hand") holds,
-  with the table-wrapper exception.
+  --check-only` validates the RENDERED canvas; do not "fix" what SharePoint adds on save.
+- The page's inline styles are durable across edits, so it is safe for Alex to edit by hand. There
+  is no `<table>` on the page any more (the action table is `<div>` rows).
 
 ### Visual verification — the run can look at the page itself
 
@@ -432,11 +449,13 @@ COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitH
 artifacts from the archeologist. The archeologist does not give a complete GitHub feed; query GitHub
 directly. Same auth preflight as everything else.
 
-**Shape:** the shipped panel is the navy `#1A4E7A` band with the light-blue `#E6F0F7` surface, as the
+**Shape:** the shipped panel is the navy band with a gold top rule and a delivery count, as the
 renderer builds it. Add 3–6 items; a thin week gets 2 or none. Each item contains:
+- A `category` (Process, Infrastructure, AI tooling, Data, ...), shown in small caps beside a gold
+  check square.
 - One outcome-first sentence, ≤ ~20 words, exec-legible in the voice of `NextMilestone`, rendered
-  bold in `#12395C`. No session IDs, ticket IDs, or technical provenance.
-- An `Evidence:` line with one or two descriptive, underlined links in `#0E6E96`, pointing at the
+  bold navy. No session IDs, ticket IDs, or technical provenance.
+- One or two evidence links, rendered as bordered link buttons with an arrow, pointing at the
   primary org-readable record: merged PR, closed ADO item, portfolio row, the RFC/ADR this work
   resolves into. Labels describe the destination (`Runtime migration`, `Portfolio outcome`), never
   raw URLs or naked IDs; the recap's **Artifacts referenced** section follows the same rule — see
@@ -487,7 +506,7 @@ Generated by the run, and it is the **highest-scrutiny line in the whole review 
 - Put each complete item through the review table as one line (`Row` = `Recap page`, `Field` =
   `shipped item`), with the exact sentence, link labels, and target URLs. Apply only approved lines
   and re-screen anything Alex edits.
-- Stage with `--stage` / `PromotedState=1`; publishing stays Alex's click. Never re-stage a page whose
+- Stage with `--stage` / `PromotedState=1`; publishing stays Alex's click. `stage_news_recap.py` needs an existing page `--id`: for a new week, create a blank page first with `sharepoint_api.create_page(site, title)` and pass its `Id` (done for the 09-23 page, Id 61). Never re-stage a page whose
   `FirstPublishedDate` is set, because that demotes a live News post.
 - Build the delivery-only draft, flagged as carrying no forum record, ONLY when the forum genuinely
   produced nothing to recap: no scribe note exists and Alex pasted no notes. A note you have not
