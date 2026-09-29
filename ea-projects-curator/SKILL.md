@@ -386,6 +386,8 @@ render time (stored, not applied). Text inside a `<div>` does NOT inherit that d
 `gap:`, `grid-template` and any `<div>` margin, so this cannot regress. Storage is not proof: always
 screenshot the read view after a renderer change (browser-control, scroll to each heading).
 
+**Print (Save as PDF), measured 2026-09-28:** SharePoint fixes the body height, so a long page printed ONE page. The renderer opens every body with `<div class="aw-recap">` plus a print-only `<style>` (`PRINT_CSS`): it resets html/body so the issue flows, keeps cards whole (`page-break-inside`) and starts the shipped panel on a new page. `validate()` refuses a body without it. SharePoint's sanitizer strips `:has()`, `@page`, `break-*` and `print-color-adjust` on save, so the page cannot force backgrounds to print. Instead a print theme (Alex, 2026-09-28) turns dark bands white with a navy border and navy text, so the page reads the same with or without **Background graphics**. Any new light-on-dark element needs a print-theme class (`aw-band`, `aw-inv`, `aw-olive`, `aw-avatar`, `aw-tint`, `aw-rule`). Check a change on the SAVED draft (CDP `Page.printToPDF`, with `emulateMedia` cleared), never only on an injected DOM.
+
 New optional content fields (see the `render_page.py` docstring): `decisions[].chip`,
 `actions[].source: "chat"`, `topics[].owner`, `topics[].points[] = {lead, text}`,
 `open_questions[] = {text, next, source}`, `shipped.items[].category`, `artifacts[] = {label, url,

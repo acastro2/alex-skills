@@ -139,6 +139,12 @@ review and write on 2026-09-23 with the same `Length`, `TimeLastModified` and `U
 If the ETag moved, compare those three fields and the target tables. If all are unchanged, write
 against the new ETag. If anything differs, re-show the lines. Fallback: `sharepoint_update_file` (1 MB cap, base64 in the tool call).
 
+A **423 (`SPFileLockException`, "locked for shared use by ...")** means someone has the file open in
+Office right now, often the author or Alex. It is not an edit conflict and not an auth failure: do not
+retry in a loop, never delete and re-upload to get around it, and never force it. Keep the line
+pending, tell Alex who holds the lock (the message names them), and re-run after the file is closed
+(measured 2026-09-28 on the tech catalog upload).
+
 **Verify every write:** `UIVersionLabel` went up by one and a fresh download parses to the expected
 cells; a 200 is not proof. A python-docx re-save drops unreferenced `[trash]/*.dat` parts and
 re-serializes the XML, so the file shrinks while styles, numbering, tables and comments keep their

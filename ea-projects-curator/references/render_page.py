@@ -27,6 +27,9 @@ SHAREPOINT RULES THE MARKUP OBEYS (measured 2026-09-18 to 2026-09-28)
    them on the text's own `<span>` or `<p>`.
 5. Real `<table>` cells get dark gridlines forced on, so the action table is `<div>` rows.
 6. No fixed page width and no page background: the SharePoint section owns the width.
+7. Print (Save as PDF) needs the `PRINT_CSS` block: SharePoint fixes the body height,
+   so without it one page prints. Colours print only with "Background graphics" ticked. The body opens with `<div class="aw-recap">` plus
+   that block, and validate() refuses a page without it (2026-09-28).
 Storage is not proof. After any change here, screenshot the read view.
 
 The design and palette are Alex's Claude Design mock "Architecture Weekly Recap"
@@ -124,6 +127,40 @@ FORBIDDEN = [
     # SharePoint strips these two on save (2026-09-28): use padding and fixed-width flex.
     "gap:", "grid-template",
 ]
+
+# --- print (Save as PDF) --------------------------------------------------------
+# Measured 2026-09-28 on the published 09-23 issue: SharePoint gives <body> a fixed
+# viewport height with overflow:auto, so Save as PDF printed ONE page of a 5,800px issue.
+# Resetting html/body under @media print lets the whole issue flow onto every page.
+# SharePoint's CSS sanitizer (verified on save, same day) KEEPS html/body and class
+# selectors and `page-break-*`, and STRIPS `:has()` selectors, `@page`, `break-*` and
+# `print-color-adjust`. So colours print only when the reader ticks "Background
+# graphics" in the print dialog; nothing in the page can force it. Only rules that
+# survive a save are listed here, so the stored page matches this constant.
+# `.aw-keep` blocks never split across pages; `.aw-head` never sits alone at a page end;
+# `.aw-newpage` starts the shipped panel on a fresh page. The print theme classes
+# (`aw-band`, `aw-inv`, `aw-olive`, `aw-avatar`, `aw-tint`, `aw-rule`) sit on every element
+# that carries light-on-dark colour on screen; a new dark element needs one too.
+PRINT_CSS = (
+    "@media print{"
+    "html,body{height:auto !important;min-height:0 !important;max-height:none !important;"
+    "overflow:visible !important;position:static !important;display:block !important;}"
+    ".aw-recap .aw-keep{page-break-inside:avoid;}"
+    ".aw-recap h2,.aw-recap .aw-head{page-break-after:avoid;}"
+    ".aw-recap .aw-newpage{page-break-before:always;}"
+    # Print theme (Alex, 2026-09-28): the page must read the same with or without
+    # "Background graphics". Dark bands turn white with a navy border and navy text,
+    # so neither setting leaves light text on a missing (or present) navy fill.
+    f".aw-recap .aw-band{{background-color:{WHITE} !important;border:2px solid {NAVY} !important;}}"
+    f".aw-recap .aw-inv{{color:{NAVY} !important;}}"
+    f".aw-recap .aw-olive{{color:{OLIVE} !important;}}"
+    f".aw-recap .aw-avatar{{background-color:{WHITE} !important;color:{NAVY} !important;border:1px solid {NAVY} !important;}}"
+    f".aw-recap .aw-tint{{border:1px solid {BORDER} !important;}}"
+    f".aw-recap .aw-rule{{background-color:{WHITE} !important;border-bottom:2px solid {NAVY} !important;}}"
+    "}")
+STYLE_BLOCK = f"<style>{PRINT_CSS}</style>"
+KEEP = ' class="aw-keep"'
+HEAD = ' class="aw-head"'
 
 
 def die(msg):
@@ -282,7 +319,7 @@ def avatar(name, empty=False):
                 f'border-radius:50%;background-color:{WHITE};color:{AMBER_TEXT};'
                 f'border:1.5px dashed {AMBER_EDGE};font-size:11px;font-weight:600;'
                 f'text-align:center;vertical-align:middle;margin-right:8px;">?</span>')
-    return (f'<span style="display:inline-block;width:26px;height:26px;line-height:26px;'
+    return (f'<span class="aw-avatar" style="display:inline-block;width:26px;height:26px;line-height:26px;'
             f'border-radius:50%;background-color:{NAVY};color:{ON_BAND};font-size:11px;'
             f'font-weight:600;text-align:center;vertical-align:middle;margin-right:8px;">'
             f'{esc(_initials(name))}</span>')
@@ -318,7 +355,7 @@ TAG_CHIP = {"Decided": "green", "Needs follow-up": "amber", "Parked": "gray"}
 
 def eyebrow(text, color=None, top=0):
     lead = spacer(top) if top else ""
-    return lead + (f'<div style="padding-bottom:8px;font-size:11px;letter-spacing:1.5px;'
+    return lead + (f'<div{HEAD} style="padding-bottom:8px;font-size:11px;letter-spacing:1.5px;'
                    f'font-weight:600;color:{color or NAVY};">{esc(text.upper())}</div>')
 
 
@@ -340,7 +377,7 @@ def p(text, size="14px", line="22px", color=BODY, margin="0 0 10px 0"):
 
 def kv_row(label, value, label_w="110px", label_color=None, caps=True):
     """Two-column row without grid (grid-template-columns is stripped on save)."""
-    return (f'<div style="display:flex;padding-bottom:12px;">'
+    return (f'<div{KEEP} style="display:flex;padding-bottom:12px;">'
             f'<div style="flex:0 0 {label_w};max-width:{label_w};padding-right:20px;">'
             + (f'<span style="font-size:11px;letter-spacing:1.5px;font-weight:600;line-height:22px;'
                f'color:{label_color or LABEL};">{esc(label.upper())}</span>' if caps else
@@ -353,13 +390,13 @@ def kv_row(label, value, label_w="110px", label_color=None, caps=True):
 
 # --- sections -----------------------------------------------------------------
 def header(c):
-    return (f'<div style="background-color:{NAVY};padding:26px 24px 22px 24px;'
+    return (f'<div class="aw-keep aw-band" style="background-color:{NAVY};padding:26px 24px 22px 24px;'
             f'border-bottom:4px solid {ACCENT};">'
-            f'<div style="font-size:11px;letter-spacing:2px;color:{EYEBROW_ON_NAVY};font-weight:600;">'
+            f'<div class="aw-inv" style="font-size:11px;letter-spacing:2px;color:{EYEBROW_ON_NAVY};font-weight:600;">'
             f'ENTERPRISE ARCHITECTURE</div>'
-            f'<h1 style="margin:6px 0 0 0;font-size:26px;line-height:32px;color:{ON_BAND};'
+            f'<h1 class="aw-inv" style="margin:6px 0 0 0;font-size:26px;line-height:32px;color:{ON_BAND};'
             f'font-weight:400;">{esc(c["title"])}</h1>'
-            f'<div style="font-size:13px;line-height:19px;color:{DATE_ON_NAVY};padding-top:8px;">'
+            f'<div class="aw-inv" style="font-size:13px;line-height:19px;color:{DATE_ON_NAVY};padding-top:8px;">'
             f'{esc(c["subtitle"])}</div></div>')
 
 
@@ -395,14 +432,14 @@ def exec_summary(c):
                    f'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background-color:{dot};vertical-align:middle;"></span></div>'
                    f'<div style="flex:1 1 auto;min-width:0;"><span style="font-size:14px;line-height:22px;color:{BODY};">'
                    f'{lead}{esc(pt["text"])}</span></div></div>')
-    return f'<div style="background-color:{LIGHT};padding:24px 24px 12px 24px;">{top}{head}{"".join(pts)}</div>'
+    return f'<div class="aw-keep aw-tint" style="background-color:{LIGHT};padding:24px 24px 12px 24px;">{top}{head}{"".join(pts)}</div>'
 
 
 def forum_recap(c):
     o = c["outcome"]
     green = o["tag"] in OUTCOME_GREEN
     bg, edge, lead = (GREEN_BG, GREEN_EDGE, GREEN_LEAD) if green else (AMBER_BG, AMBER_EDGE, AMBER_TEXT)
-    outcome = (f'<div style="background-color:{bg};border-left:4px solid {edge};padding:16px 20px;'
+    outcome = (f'<div{KEEP} style="background-color:{bg};border-left:4px solid {edge};padding:16px 20px;'
                f'font-size:14px;line-height:22px;color:{BODY};">'
                f'<strong style="color:{lead};">{esc(o["tag"])}.</strong> {esc(o["text"])}</div>')
     return (section_title("Forum recap")
@@ -417,7 +454,7 @@ def decision_cards(c):
         chips = chip("Decided", "green") + (chip(d["chip"], "gray") if d.get("chip") else "")
         lead = f'<strong style="color:{NAVY};">{esc(d["lead"])}</strong> ' if d.get("lead") else ""
         out.append(
-            f'<div style="border:1px solid {BORDER};border-top:3px solid {NAVY};padding:20px 22px;">'
+            f'<div{KEEP} style="border:1px solid {BORDER};border-top:3px solid {NAVY};padding:20px 22px;">'
             f'<div style="padding-bottom:10px;">{chips}</div>'
             f'<p style="margin:0 0 14px 0;font-size:15px;line-height:23px;color:{BODY};">{lead}{esc(d["text"])}</p>'
             + kv_row("Rationale", esc(d["rationale"]), label_color=LINK)
@@ -429,13 +466,14 @@ def decision_cards(c):
 def action_table(c):
     """Div rows, not <table>: SharePoint forces dark gridlines onto tables (measured 2026-09-22),
     and the mock has a navy header bar, faint row dividers and zebra rows (Alex, 2026-09-28)."""
-    def row(a_html, o_html, d_html, style):
-        return (f'<div style="display:flex;align-items:center;{style}">'
+    def row(a_html, o_html, d_html, style, cls=KEEP):
+        return (f'<div{cls} style="display:flex;align-items:center;{style}">'
                 f'<div style="flex:1 1 auto;min-width:0;padding-right:20px;">{a_html}</div>'
                 f'<div style="flex:0 0 280px;max-width:280px;padding-right:20px;">{o_html}</div>'
                 f'<div style="flex:0 0 130px;max-width:130px;">{d_html}</div></div>')
-    head = row(*(f'<span style="font-size:13px;font-weight:600;color:{ON_BAND};">{h}</span>' for h in ("Action", "Owner", "Due")),
-               f"background-color:{NAVY};color:{ON_BAND};font-size:13px;font-weight:600;padding:12px 20px;")
+    head = row(*(f'<span class="aw-inv" style="font-size:13px;font-weight:600;color:{ON_BAND};">{h}</span>' for h in ("Action", "Owner", "Due")),
+               f"background-color:{NAVY};color:{ON_BAND};font-size:13px;font-weight:600;padding:12px 20px;",
+               cls=' class="aw-keep aw-head aw-rule"')
     rows = []
     for i, a in enumerate(c["actions"]):
         src = (f'<div style="padding-bottom:6px;">{chip("From meeting chat", "gray")}</div>'
@@ -461,7 +499,7 @@ def topic_block(t):
     bg = f"background-color:{AMBER_SURFACE};" if amber else ""
     edge = AMBER_BORDER if amber else BORDER
     div = AMBER_DIV if amber else BORDER
-    head = (f'<div style="display:flex;align-items:flex-start;padding:20px 22px;">'
+    head = (f'<div class="aw-keep aw-head" style="display:flex;align-items:flex-start;padding:20px 22px;">'
             f'<div style="flex:1 1 auto;min-width:0;padding-right:16px;">'
             f'<span style="font-size:17px;line-height:24px;font-weight:600;color:{NAVY};">{esc(t["title"].rstrip("."))}</span>'
             f'<div style="padding-top:4px;"><span style="font-size:14px;line-height:21px;color:{MUTED};">{esc(t["summary"])}</span></div></div>'
@@ -491,7 +529,7 @@ def open_questions(c):
         src = (f'<div style="padding-top:4px;"><span style="font-size:12px;color:{MUTED};">From the meeting chat</span></div>'
                if q.get("source") == "chat" else "")
         items.append(
-            f'<div style="display:flex;align-items:flex-start;padding:16px 22px;{("border-top:1px solid " + AMBER_DIV + ";") if i > 1 else ""}">'
+            f'<div{KEEP} style="display:flex;align-items:flex-start;padding:16px 22px;{("border-top:1px solid " + AMBER_DIV + ";") if i > 1 else ""}">'
             f'<div style="flex:0 0 38px;max-width:38px;font-size:20px;line-height:24px;font-weight:600;'
             f'color:{AMBER_NUM};">{i}</div>'
             f'<div style="flex:1 1 auto;min-width:0;font-size:14px;line-height:21px;color:{BODY};padding-right:14px;">'
@@ -516,7 +554,7 @@ def artifact_list(items):
         note = (f'<div style="font-size:12px;line-height:17px;color:{MUTED};padding-top:2px;">'
                 f'{esc(a["note"])}</div>' if a.get("note") else "")
         cells.append(
-            f'<div style="flex:0 0 50%;max-width:50%;box-sizing:border-box;{pad}">'
+            f'<div{KEEP} style="flex:0 0 50%;max-width:50%;box-sizing:border-box;{pad}">'
             f'<div style="display:flex;align-items:center;border:1px solid {BORDER};padding:14px 16px;height:100%;box-sizing:border-box;">'
             f'<div style="flex:0 0 38px;width:38px;height:38px;background-color:{CHIP["blue"][0]};'
             f'display:flex;align-items:center;justify-content:center;">{icon}</div>'
@@ -536,16 +574,16 @@ def speakers_line(c):
 def shipped_panel(c):
     sh = c["shipped"]
     n = len(sh["items"])
-    head = (f'<div style="display:flex;align-items:flex-end;">'
+    head = (f'<div class="aw-keep aw-head" style="display:flex;align-items:flex-end;">'
             f'<div style="flex:1 1 auto;min-width:0;">'
-            f'<div style="font-size:11px;letter-spacing:2px;font-weight:600;color:{GOLD};">'
+            f'<div class="aw-olive" style="font-size:11px;letter-spacing:2px;font-weight:600;color:{GOLD};">'
             f'DELIVERED BY ENTERPRISE ARCHITECTURE</div>'
-            f'<div style="font-size:24px;line-height:30px;font-weight:600;color:{ON_BAND};padding-top:6px;">'
+            f'<div class="aw-inv" style="font-size:24px;line-height:30px;font-weight:600;color:{ON_BAND};padding-top:6px;">'
             f'What Enterprise Architecture shipped</div>'
-            f'<div style="font-size:13px;color:{DATE_ON_NAVY};padding-top:6px;">{esc(sh["window"])}</div></div>'
+            f'<div class="aw-inv" style="font-size:13px;color:{DATE_ON_NAVY};padding-top:6px;">{esc(sh["window"])}</div></div>'
             f'<div style="flex:0 0 auto;text-align:right;color:{ON_BAND};">'
-            f'<div style="font-size:48px;line-height:48px;font-weight:600;color:{GOLD};">{n}</div>'
-            f'<div style="font-size:12px;color:{DATE_ON_NAVY};">{"delivery" if n == 1 else "deliveries"}<br>this week</div>'
+            f'<div class="aw-olive" style="font-size:48px;line-height:48px;font-weight:600;color:{GOLD};">{n}</div>'
+            f'<div class="aw-inv" style="font-size:12px;color:{DATE_ON_NAVY};">{"delivery" if n == 1 else "deliveries"}<br>this week</div>'
             f'</div></div>')
     items = []
     for it in sh["items"]:
@@ -564,18 +602,19 @@ def shipped_panel(c):
         ev = "".join(f'<a href="{safe_url(e["url"])}" style="display:inline-block;font-size:12px;font-weight:600;'
                      f'text-decoration:none;border:1px solid {EXEC_DIVIDER};padding:5px 10px;color:{LINK};'
                      f'margin:0 8px 6px 0;">{esc(e["label"])} {arrow}</a>' for e in it["evidence"])
-        items.append(spacer(10) + f'<div style="background-color:{ON_BAND};padding:20px 22px;">'
+        items.append(spacer(10) + f'<div class="aw-keep aw-tint" style="background-color:{ON_BAND};padding:20px 22px;">'
                      f'<div style="padding-bottom:12px;">{cat}</div>'
                      f'<div style="padding-bottom:12px;"><span style="font-size:15px;line-height:22px;font-weight:600;color:{NAVY};">{esc(it["sentence"])}</span></div>'
                      f'<div>{ev}</div></div>')
-    return spacer(48) + (f'<div style="background-color:{NAVY};border-top:4px solid {GOLD};padding:32px 28px 28px 28px;">'
+    return spacer(48) + (f'<div class="aw-newpage aw-band" style="background-color:{NAVY};border-top:4px solid {GOLD};padding:32px 28px 28px 28px;">'
             f'{head}{"".join(items)}</div>')
 
 
 def build(c):
-    return "".join([header(c), exec_summary(c), forum_recap(c), decision_cards(c),
+    # One root with the print block first: the print CSS finds the page through it.
+    return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join([header(c), exec_summary(c), forum_recap(c), decision_cards(c),
                     action_table(c), topic_list(c), open_questions(c),
-                    artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)])
+                    artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)]) + '</div>'
 
 
 def markup_only(html):
@@ -594,7 +633,13 @@ def markup_only(html):
 
 def prose_only(html):
     """The text nodes. Used for the dash ban, which is about what Alex writes."""
-    return re.sub(r"<[^>]*>", " ", html)
+    return re.sub(r"<[^>]*>", " ", without_style(html))
+
+
+def without_style(html):
+    """The body minus the print block. The CSS is markup this script owns, not prose, and
+    its `>` combinators would otherwise leak into the text checks."""
+    return html.replace(STYLE_BLOCK, "")
 
 
 def to_text(html):
@@ -604,6 +649,7 @@ def to_text(html):
     JSON, because the renderer's own cosmetic characters count as prose. Without this the
     instruction needed a hand-rolled tag strip every week, which is exactly the kind of
     manual step that quietly stops happening."""
+    html = without_style(html)
     text = re.sub(r"<(?:br\s*/?|/(?:p|h1|h2|h3|li|div|tr|table|ul|thead|tbody))>", "\n", html)
     text = re.sub(r"<[^>]*>", " ", text)
     text = unescape(text).replace("\u00a0", " ")
@@ -612,6 +658,12 @@ def to_text(html):
 
 
 def validate(html):
+    # The print block must be there, once, and unedited: without it Save as PDF prints
+    # one page (2026-09-28). Any other <style> is a hand edit.
+    if html.count("<style") != 1 or not html.startswith('<div class="aw-recap">' + STYLE_BLOCK):
+        die("the page must open with the aw-recap root and the print block, and have no "
+            "other <style>. Edit PRINT_CSS, not the output.")
+    html = without_style(html)
     markup = markup_only(html)
     for bad in FORBIDDEN:
         if bad in markup:

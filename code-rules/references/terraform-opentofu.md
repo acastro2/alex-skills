@@ -15,14 +15,16 @@ Attain-specific module, runner, and reusable-workflow choices apply only to Atta
 
 - **Use a module from `terraform-aws-modules` when it cleanly covers the AWS requirement.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules and Attain's standard, not official AWS modules.
 - **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why the module was rejected.
-- **Pin registry modules to an exact version.** OpenTofu's dependency lock file does not lock modules. Check the Registry and use the latest stable compatible release when adding or upgrading a module. This example shows the required exact-pin shape:
+- **Use a `~>` constraint on registry modules, never an exact version.** OpenTofu's dependency lock file locks providers, not modules, so the constraint is the only thing that keeps a module off a new major. Check the Registry for the latest stable release, then set the minimum to the oldest release that supports every input the configuration uses. This is the required shape:
 
   ```hcl
   module "vpc" {
     source  = "terraform-aws-modules/vpc/aws"
-    version = "6.6.1"
+    version = "~> 6.3"
   }
   ```
+
+  `~> 6.3` means `>= 6.3.0, < 7.0.0`, so patches and new minors arrive without a code change, while the next major stays a deliberate one.
 
 **Why:** standard modules keep common AWS patterns consistent and reduce code we own. The fit check prevents a large abstraction from making a simple resource harder to understand.
 
@@ -50,7 +52,7 @@ Attain-specific module, runner, and reusable-workflow choices apply only to Atta
 ### Make version constraints tell the truth
 
 - **Every module declares its own `required_providers`.** A reusable module declares provider sources and compatibility, but it does not contain `provider` configuration blocks. The calling root module supplies provider configurations.
-- **Always use `~>` (pessimistic) constraints, for `required_version` and for every provider.** Never use a bare `>=`. A bare minimum silently admits the next major release (`>= 6.0.0` accepts `7.0.0`) with no warning. `~>` caps the range before the next major, so a major upgrade becomes a deliberate, reviewed, versioned change. Write the minimum honestly, never lower it just to end in `.0`.
+- **Always use `~>` (pessimistic) constraints, for `required_version`, every provider, and every registry module.** Never use a bare `>=`. A bare minimum silently admits the next major release (`>= 6.0.0` accepts `7.0.0`) with no warning. `~>` caps the range before the next major, so a major upgrade becomes a deliberate, reviewed, versioned change. Write the minimum honestly, never lower it just to end in `.0`.
 - **A reusable module sets a real minimum and lets later minors in, but still blocks the next major.** `~> 1.6` is `>= 1.6.0, < 2.0.0`; `~> 6.0` is `>= 6.0.0, < 7.0.0`. The minimum must be the oldest version that supports every feature the module uses.
 
   ```hcl
