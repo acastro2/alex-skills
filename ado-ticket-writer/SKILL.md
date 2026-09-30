@@ -169,7 +169,7 @@ Always verify before API calls:
 AUTH=(-u ":$AZURE_DEVOPS_PAT")
 BASE="https://dev.azure.com/CuroFinTech/Software%20Engineering"  # the team's living project
 
-# Auto-detect Story-equivalent type (Agile / Scrum / Basic differ)
+# List EVERY work item type in the project, then match each ticket to one (see "Choose the type")
 curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitemtypes?api-version=7.1" \
   | jq '.value[] | .name'
 
@@ -180,6 +180,65 @@ curl -s "${AUTH[@]}" "$BASE/_apis/wit/classificationnodes/iterations?api-version
 # For updates, fetch current state + rev
 curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitems/1234?api-version=7.1&\$expand=all"
 ```
+
+**Same checks through the Azure DevOps MCP connector** (when you use the `mcp__claude_ai_Azure_DevOps__*` tools instead of curl):
+
+- Type schema, fields, states: `wit_work_item` with `action: get_type` and the type name. The result is large; read states, required fields and custom `Curo.*` fields from the saved file.
+- Team area and default iteration: `work` with `action: get_team_settings`.
+- Duplicate check before every create: `wit_query` with `action: wiql`, searching the area for the title you are about to use. Run it again before retrying a create that returned an error: the create may have landed.
+
+### Choose the type
+
+Never default to the Story type. List the types first, then pick per ticket:
+
+| The ticket is... | Type | Set also |
+|---|---|---|
+| A timeboxed investigation, exploration, inventory or spike | **Spike** | `Curo.Spike.TimeboxValue` + `Curo.Spike.TimeboxUnit` (e.g. 2, Days); `Curo.Spike.Outcome` when it closes |
+| A defect in something that already shipped | **Bug** | `Microsoft.VSTS.TCM.ReproSteps` |
+| Planned delivery with a user-visible outcome | **User Story** (or the project's Story equivalent) | AcceptanceCriteria |
+| Run-the-business work with no new outcome | **Operational Work**, if the project has it | |
+| A change record | **CC** / **ITCC** | follow `attain-change-control` |
+| An ask from another team that an IT team fulfills in the same ticket (Information Technology only) | **Request** | the intake fields in "The IT Request" below |
+
+Never mark a spike with a `spike` tag on a Story: use the Spike type. If the type you need is not in the list, say so and ask; do not substitute.
+
+**Known custom sets (verify, they drift):** Software Engineering ships User Story, Bug, Epic, Task, Spike, Operational Work, ITCC, CC and Milestone. Information Technology has at least Epic, Feature, User Story and Spike (checked 2026-09-29). In Information Technology, Spike and User Story have a `Ready` state; Feature only has New/Active/Resolved/Closed and is hidden on the Enterprise Architecture team backlog, so a Feature there cannot be moved to Ready on the board.
+
+Changing the type of an existing item works: update `System.WorkItemType` (it keeps the ID and links), then re-set the state, since states differ per type.
+
+#### The IT Request (Information Technology only)
+
+A `Request` is an internal team-to-team ask that the requested IT team fulfills **in the same ticket**. It does not spawn a child Story, Bug, Spike or Operational Work item by default. It exists only in the `Information Technology` project.
+
+**Not a Request:**
+
+- Non-project Help Desk work: that stays in Ivanti.
+- Production change approval: that stays in an `ITCC` for an IT change, or a `CC` for an in-house application change. Link the ITCC to the Request; do not approve inside the Request.
+- Work IT plans for itself: a `User Story`, `Spike` or `Operational Work`.
+
+**Intake fields.** Created By is not the requester, and Assigned To is not the requested team, so set the request fields:
+
+| Field | Rule |
+|---|---|
+| `Curo.IT.Planned` | Always required |
+| `Curo.IT.NeededByDate` | Required in New, Ready and In Progress |
+| `Curo.IT.RequestUrgentChoice` | Required in New, Ready and In Progress; if Urgent = Yes, `Curo.IT.UrgencyReason` is required too |
+| `Curo.IT.Requester`, `Curo.IT.RequestingTeam` | Who asked, and for which team |
+| `Curo.IT.DeadlineReason`, `Curo.IT.RequestCategory`, `Curo.IT.RequestServiceCategory`, `Curo.IT.RequestBusinessArea`, `Curo.IT.RequestPurpose` | The context the requested team needs |
+| `Curo.IT.RequestPriority` | 1 to 12. The requester describes urgency; the requested team owns queue order |
+
+Identity fields take the person's email, and the person must be a member of the project.
+
+**States:** New → Ready → In Progress → Validating (non-production path) or Pending (production path, through a linked ITCC) → Closed.
+
+**Two checks before it closes:**
+
+1. **Internal validation**: IT confirms the work is done, in `Curo.IT.ValidatedBy`, `Curo.IT.ValidatedDate` and `Curo.IT.ValidationNotes`.
+2. **Requester verification**: the requester, or the nominated `Curo.IT.RequestVerifier`, confirms it landed, in `Curo.IT.VerifiedBy`, `Curo.IT.VerifiedDate` and `Curo.IT.VerificationNotes`. Someone may verify on the requester's behalf only with evidence in the notes.
+
+Moving to Validating or Pending with validation evidence and a nominated verifier starts the verification round: the verifier gets a Teams message and an email, then a weekday reminder. The flow closes the Request when it accepts the verification. Closing needs Validated By, Validation Notes, Verified By and Verified Date filled.
+
+Source: the `ado-restructuring` repo, `docs/knowledge/information-technology/request-model.md` and `request-verification.md`. The rules drift, so read those first when in doubt.
 
 ### Creating New Work Items
 

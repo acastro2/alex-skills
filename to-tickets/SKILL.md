@@ -69,7 +69,7 @@ Publish through the `ado` agent. Read `~/.pi/agent/agents/ado.md` and `~/.agents
 Publish **in dependency order, blockers first**, so each ticket can reference real IDs as it is created.
 
 - **Title**: the repo's ADO title convention. At Attain the shape is `[SERVICE] Short outcome`.
-- **Type**: the Story-equivalent type for the project, detected by the agent, never assumed.
+- **Type**: list every work item type in the project first, then choose per ticket, never assumed. A spike, investigation or inventory is the project's **Spike** type with its timebox fields set, never a Story tagged `spike`. Delivery tickets use the Story-equivalent type. See `ado-ticket-writer` "Choose the type".
 - **Description**: what to build and the acceptance criteria, as HTML. Never raw Markdown.
 - **Acceptance criteria**: mirror into `Microsoft.VSTS.Common.AcceptanceCriteria`.
 - **Blocking edges**: use ADO's dependency link. The blocked ticket gets `System.LinkTypes.Dependency-Reverse` pointing at its blocker, which makes the blocker a **predecessor**. Confirm the direction on the first ticket before creating the rest of the links; a reversed dependency graph is worse than none.

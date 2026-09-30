@@ -96,8 +96,11 @@ curl -s "${AUTH[@]}" \
 # Agile  → "User Story", "Bug", "Task", "Epic", "Feature"
 # Scrum  → "Product Backlog Item", "Bug", "Task", "Epic", "Feature"
 # Basic  → "Issue", "Epic", "Task"
-# Living projects here use custom sets (SE ships User Story, Bug, Epic, Task,
-# Spike, Operational Work, ITCC, CC and Milestone), so always list first.
+# Living projects here use custom sets (Software Engineering ships User Story,
+# Bug, Epic, Task, Spike, Operational Work, ITCC, CC and Milestone; Information
+# Technology has at least Epic, Feature, User Story and Spike), so always list
+# first, then choose per ticket
+# (SKILL.md "Choose the type"): a spike is the Spike type, never a tagged Story.
 ```
 
 Then POST a JSON Patch document. **Note the literal `$` before the type name in the URL** — URL-encode spaces as `%20`:
