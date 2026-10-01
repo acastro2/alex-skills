@@ -102,7 +102,8 @@ The method is fixed; pass only the path, for example `m365 --json request /me`.
 
 **Meeting transcripts are not available here.** `OnlineMeetingTranscript.Read.All` requires
 admin consent that the tenant has not granted to this tool. Teams transcripts stay a
-Claude-connector capability; the `scribe` skill runs in Claude Code for that reason.
+Claude-connector capability; the `scribe` skill reaches them in OpenCode through the
+`ask-claude` subagent (`scribe/references/teams-opencode.md`).
 
 ## Three examples
 

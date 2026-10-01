@@ -187,11 +187,44 @@ activity, anything privileged quarantined in a flagged section). Then cross-chec
   exit/replacement decision is pending; themes that bury work where the CTO won't look
   (privileged-access rows outside Security Hardening). Coherence outranks any single-row fix.
 
+## Typed gates — `ask_jev`
+
+Four judgments run on every candidate every run — does it qualify, which `Status`, which
+`DecisionNeeded`, which `Theme` — and dedupe runs on every match. Make them typed `ask_jev`
+calls instead of prose. Why: a typed answer returns a value **plus a confidence**, so the
+same evidence gets the same label next week and the uncertain calls surface as questions
+instead of hiding in a paragraph. A prose label drifts, and a board that disagrees with
+itself costs more than a wrong row.
+
+Question sets and copy-paste request bodies: [references/jev-gates.md](references/jev-gates.md).
+
+- **One call per candidate**, in the same parallel batch as retrieval. `state` carries the
+  clustered evidence plus the matched live row; Jev sees only what is in `state`, and the
+  questions in one call cannot see each other.
+- **Gate on confidence.** `row_qualifies` ≥ 0.80 → propose; ≤ 0.20 → screened out, with the
+  reason in the report's screened-out list; between → `Needs you? yes`. A `choice` at ≥ 0.80
+  confidence → recommend that value; below → still propose, but `Needs you? yes` with the
+  confidence and the runner-up in the `Why` cell. These thresholds are defaults; move them
+  deliberately, never per run.
+- **Jev never passes a hard gate.** The exclusion screen, `not_doing`, and the three
+  invariants above are rules. A probability must never admit a privileged row, revive a
+  declined idea, or justify a write. Jev judges fit; the rules judge admissibility.
+- **`Status` stays a proposal.** Jev's answer becomes its own `E#` line marked **Needs you** —
+  never an applied value (invariant 3).
+- **`Title` wording is not a Jev question.** Voice and brevity stay with the field mapping.
+- **A low-confidence stop goes on `open_items`**, so the next run re-asks instead of
+  re-guessing. Add no new ledger keys.
+- **If `ask_jev` is unavailable** (no MCP server, no key, blocked network — the security stack
+  does this), say so in the report and decide as before. Never invent a Jev answer, and never
+  record one you did not run.
+- **`state` leaves the machine** for the OpenCode Zen endpoint. Send the initiative, its
+  artifacts and the row — never a raw transcript, a credential, or privileged text.
+
 ## The review gate — one table, approve by line
 
 This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex's confirmed preference (2026-07-28, after rejecting an `AskUserQuestion` batch): **numbered markdown tables** he can scan in seconds and answer with line numbers ("1 to 13 are good, 15 skip"). Refined 2026-09-04 after he rejected a 32-line merged table ("makes it confusing for me... I need it break down by recap, aab intake updates and ea portfolio updates"): **one table per surface, never one merged list.**
 
-1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking.
+1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; run the typed gates on each candidate; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking. A low-confidence gate verdict is what the `Why` cell is for.
 
 **Name items, never bare IDs** (Alex, 2026-09-28: "Row 47 means nothing to me"): the `Row` column and every report line lead with the initiative or intake item's name; an ID may follow in parentheses.
 

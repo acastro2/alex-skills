@@ -1,79 +1,66 @@
-# HANDOFF — scribe speaker diarization + no-withholding policy
+# HANDOFF — Jev typed gates in ea-projects-curator + archeologist
 
-Updated: 2026-09-24 17:00 CDT
+Updated: 2026-09-29 11:14 CDT
 
 ## Current state
 
-- Phase 1 is shipped **and now in use**: 22 HiDock recordings re-transcribed with speaker labels
-  and their notes re-rendered — the 15 Sep 21–23 notes, the 6 recordings previously held on
-  HR/personal grounds (Sep 1–4), and today's Rec96 (`Tech Ops Leader Meeting`).
-- Policy change (Alex, 2026-09-24): **nothing is held and nothing is withheld.** The HR-data
-  segment withholding rule is removed from `scribe/SKILL.md`; the 6 recordings previously
-  skipped as `tier1`/personal now have full notes and their `skipped` entries are gone.
-- The two `.trimmed.json` files are retired to
-  `~/.scribe/backup/2026-09-24/retired-policy-files/`; no trimmed copies are produced any more.
-- Names without biometrics: the skill tells the agent to name speaker labels from the transcript
-  text itself — a self-introduction, someone being addressed, or an exchange that settles it —
-  hedged as `speaker 1 (likely Alexandre Castro)` with the quote recorded in provenance. There is
-  no script and no enrollment. Applied to the vault on 2026-09-24: **16 of 22 labelled notes
-  named**; the rest gave no usable evidence. A label the text does not settle stays `speaker N`.
-- Eval of the naming step (2026-09-24, ground truth = the Teams note for the same meeting, 3
-  meetings with 6-8 speakers, re-transcribed with diarization): across 7 agent runs it emitted 22
-  names — 17 exactly right, 1 wrong, 1 imprecise, 3 on truth too thin to verify. Roughly half the
-  labels with available truth stay anonymous. Two instruction fixes came out of it: a bare
-  acknowledgement ("Yeah.") is not evidence of being addressed, and a first name shared by
-  several attendees names nobody. Repeatable case: `scribe/evals/evals.json` eval 5 with
-  `tests/fixtures/transcript_hidock_naming.json`.
-- Rec07 summary fixed 2026-09-24 after the labels disagreed with it: the Anova/Vault design, the
-  pen-test invite and Matt's break-glass access are Alex's, the CSO offer was Alex's news to
-  Steve, and the SANS course is not approved. Owners now follow the labels.
-- `bard/SKILL.md` updated for the new note shape: the false "HiDock notes have no speaker
-  labels" line is replaced by the hedged-label rule, and people/HR material is explicitly
-  distilled like any other durable knowledge into the `People` hub (Alex, 2026-09-24).
-- Rec91's "Roy" was corrected to **Roi** on 2026-09-25 (label, transcript text and provenance all
-  updated in that JSON, note re-rendered). **No glossary line was added on purpose**: Rec01 (the
-  Sep 1 LexisNexis call) contains a different "Roy" ("I have King Roy", "I think Roy is here,
-  Spencer"), so a global `Roy => Roi` rule would corrupt a vendor's name. If a Roi garble keeps
-  coming back, check whether the tape is an Attain call before adding anything global.
-- bard's eval suite was run and repaired 2026-09-24: 10 cases (8 board + 2 new meeting-path),
-  **35/35 with-skill**, graded programmatically. It exposed that every fixture still encoded the
-  pre-2026-09-18 board shape (`####` sub-headings, `🧊 Someday`), so the fixtures were migrated,
-  case 1's expectation corrected (🔺 → 🔼 against the direction test), the watermark rule made
-  gradeable, the empty-`## Open` rule written into `todo-board.md`, and case 6's archive fixture
-  given its required `type: board`. See `bard/evals/README.md` for the full findings list.
-  `evals/` is gitignored by repo policy, so the whole suite is local-only.
-- Committed and pushed by Alex on 2026-09-24: `f80eb88` (diarization), `b085f4e` (edge cases and
-  tests), `a9555e6` (speaker hinting), `83ac605` (naming process; the hint script removed).
-- Verified limit: re-transcribing is not text-stable — 11 of 15 re-runs were byte-identical, 4
-  differed by 1–115 words. Recorded in `scribe/SKILL.md` → Known limits.
-- Diarization misses seen in the wild: Rec82 (63-min, three attendees) returned a single label;
-  Rec88 hit the 8-speaker cap.
-
-## Decisions
-
-- Phase 1: anonymous labels on HiDock notes (mlx-audio + `mlx-community/Nemotron-3-Diarization`).
-- No HR withholding and no holding anywhere; every recording becomes a full note, 2026-09-24.
-- Phase 2 (voiceprint → names) is **rejected**, not deferred: biometric consent, volunteers-only
-  coverage, and Teams already names the multi-person calls. See
-  `.scratch/scribe-diarization/phase2-decision.md`.
+- **Shipped this session (uncommitted):** `ask_jev` typed gates wired into two skills. Both
+  edits are additive — a `## Typed gates — ask_jev` section in each `SKILL.md`, a short
+  cross-reference where the gate fires, and one new reference file per skill:
+  - `ea-projects-curator/SKILL.md` + `ea-projects-curator/references/jev-gates.md` —
+    gates the five candidate judgments (`row_qualifies` noul, `status`, `decision_needed`,
+    `theme`, `dedupe`) and routes low-confidence results to the review table as
+    `Needs you? yes` lines. Reference file carries the ready-to-run request body.
+  - `archeologist/SKILL.md` + `archeologist/references/jev-gates.md` — gates the mixed
+    question type, the G/I tier promotions, and `evidence_strength`.
+- **Why typed:** the same judgments ran in prose every run, so labels could drift; a typed
+  answer carries a confidence, so uncertain calls become questions instead of labels.
+- **Design rules the edits enforce:** Jev never passes a hard gate (exclusion screen,
+  `not_doing`, the three invariants); the archeologist's confidence rubric outranks a Jev
+  score; `Status` stays Alex's column; `state` sent to Jev is a short summary, never a raw
+  transcript, credential, or privileged text; an unavailable `ask_jev` is reported, never faked.
+- **Verified 2026-09-29:** `scripts/validate_skill_graph.py` PASS (37 skills); Codex
+  `quick_validate.py` valid for both; `pytest scripts/tests ea-projects-curator/tests` 63
+  passed; `pre-commit run --files` all hooks pass; four live `jev` calls with the exact new
+  bodies (curator 5 answers, `dedupe` 0.99; archeologist `question_type` Mixed 0.53 →
+  union of source sets, `evidence_strength` 1.38 lean with the rubric overriding to LOW); both
+  archeologist behavioural evals re-run, 13/13 expectations pass, briefings in
+  `~/.agents/skill-workspace/alex-skills/archeologist/2026-09-29-jev-gates/`.
+- **Not done:** bard and scribe were deliberately left alone (bard is lower stakes and feeds
+  the curator; scribe's rules are already deterministic). No new agents: the earlier decision
+  "no router agent, call `ask_jev` directly" holds, and Jev is its own model so no lane is pinned.
 
 ## Top 3 next actions
 
-1. Review the rewritten notes, especially the 6 newly promoted Sep 1–4 ones.
-2. If you want names on a HiDock call, tell me which label was whom and I will re-render that
-   note with them — Alex's own statement, never a tone guess.
-3. Optional backlog: the Sep 8–18 HiDock notes still carry no speaker labels; the same
-   transcribe-and-name pass applies. Also revisit the Rec07 summary noted above.
+1. Review and commit the four changed files (Alex commits; `jev-routing/SKILL.md` is staged
+   as added but deleted on disk — the leftover of the earlier revert, decide what to do with it).
+2. Run a real curator `--maintain` week with the gates on, then move the thresholds
+   (0.80 / 0.20 defaults) only if the review table shows they are wrong.
+3. If wanted, wire the same gate into `bard` (intake gate, `type`, priority).
 
 ## Blockers
 
-None.
+- The three questions from the earlier Jev session are still unanswered and still block the
+  corpus/shortlist/EA-intake work (not this work): what "EA intake" means in Alex's words,
+  which corpus to classify, and what produces the shortlist. `ea-projects-curator` does not
+  need them — its corpus is the board itself.
 
 ## Pointers (do not rediscover)
 
-- Rollback material for today: `~/.scribe/backup/2026-09-24/` (old JSONs, old notes, retired
-  policy files). MP3s are deleted as always; the device still holds every recording Sep 1–24.
-- Spec + evidence: `.scratch/scribe-diarization/spec.md`; tickets `issues/01..05`.
-- Headline numbers: 72-min call diarized in 1.96 s, 198 MB model, 8-speaker cap; the diarizer
-  download needs `HF_HUB_DISABLE_XET=1` once.
-- Session: `ses_f2b19eaa6ffeGBIQnPXt6q27xw`
+- Stuck session, read-only diagnosis: `ses_f12264570ffeHIM8tJj2BWDNfG` — every turn since
+  2026-09-29 10:47 fails with `OpenAI Chat assistant messages only support text, reasoning,
+  and tool-call content for now` (protocol lowering, not the provider). Untested workaround:
+  switch it back to `claude-code/claude-opus-5-5` or `muse-spark-1.3-contributor`.
+- Jev wiring: `~/.local/bin/jev`, `~/.local/bin/jev-mcp` (MCP server `jev`, tool `ask_jev`),
+  registered in `~/.config/opencode/opencode.jsonc` and `~/.claude.json`. Endpoint
+  `https://opencode.ai/zen/v1/systemone`, model `jev-1.13-free`.
+- The `score` answer is a float on the ordered scale with a `legend` — read the lean, not the
+  nearest integer (recorded in `archeologist/references/jev-gates.md`).
+
+## Prior workstream — scribe speaker diarization (2026-09-24, unchanged)
+
+State: Phase 1 shipped and in use; "nothing is held and nothing is withheld" policy live;
+Phase 2 voiceprinting rejected, not deferred. Its own next actions were: review the rewritten
+notes (the 6 newly promoted Sep 1–4 ones), name labels on request from Alex's own statement,
+and optionally re-transcribe the Sep 8–18 HiDock notes. Full detail: git history of this file,
+`ses_f2b19eaa6ffeGBIQnPXt6q27xw`, and `.scratch/scribe-diarization/`.

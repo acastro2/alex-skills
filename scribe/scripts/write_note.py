@@ -5,7 +5,7 @@ Usage:
     python3 write_note.py <transcript.json> --vault <vault_root> \\
         [--summary-file summary.md] [--description "text"] [--title "text"] \\
         [--glossary <vault>/Scribe/Glossary.md] \\
-        [--attendees "A,B"] [--tags a,b] [--force] [--dry-run]
+        [--attendees "A,B"] [--tags a,b] [--dir Scribe/Personal] [--force] [--dry-run]
 
 Cleaning (deterministic, see scribe_common.clean_turns): glossary replacement,
 filler-word removal, duplicate-word collapse, whitespace collapse, then
@@ -13,6 +13,8 @@ consecutive same-speaker turns are re-merged and empty turns dropped.
 
 Note path: <vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <title>.md,
 where HHMM is the local time (America/Chicago) of the transcript start.
+--dir puts the note in another vault-relative folder instead, for recordings that
+Alex says are personal rather than work (Scribe/Personal, for example).
 
 On success prints only the written path to stdout; stats go to stderr.
 --dry-run prints the note body to stdout and writes nothing.
@@ -153,11 +155,19 @@ def build_note(
     return note, cleaned_turns, glossary_replacements
 
 
-def note_path_for(vault: str, transcript: dict, title_override: str | None = None) -> Path:
+DEFAULT_DIR = "Scribe/Meetings/Transcripts"
+
+
+def note_path_for(
+    vault: str,
+    transcript: dict,
+    title_override: str | None = None,
+    directory: str = DEFAULT_DIR,
+) -> Path:
     date_str, hhmm = common.local_date_and_hhmm(transcript["start"])
     sanitized_title = common.sanitize_title_for_filename(title_override or transcript.get("title"))
     filename = f"{date_str} {hhmm} {sanitized_title}.md"
-    return Path(vault) / "Scribe" / "Meetings" / "Transcripts" / filename
+    return Path(vault) / directory / filename
 
 
 def main() -> None:
@@ -171,6 +181,11 @@ def main() -> None:
         help="Override the frontmatter description; wins over the summary-derived one",
     )
     parser.add_argument("--title", default=None, help="Override the transcript title (note heading and filename)")
+    parser.add_argument(
+        "--dir",
+        default=DEFAULT_DIR,
+        help=f"Vault-relative folder for the note (default: {DEFAULT_DIR})",
+    )
     parser.add_argument("--glossary", default=None, help="Markdown glossary file (- wrong => Right per line)")
     parser.add_argument("--attendees", default=None, help="Comma-separated attendee names")
     parser.add_argument("--tags", default=None, help="Comma-separated extra tags")
@@ -186,7 +201,7 @@ def main() -> None:
     note, cleaned_turns, glossary_replacements = build_note(
         transcript, glossary, args.summary_file, attendees, tags, args.description, args.title
     )
-    note_path = note_path_for(args.vault, transcript, args.title)
+    note_path = note_path_for(args.vault, transcript, args.title, args.dir)
 
     if args.dry_run:
         sys.stdout.write(note)

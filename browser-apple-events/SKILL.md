@@ -10,8 +10,7 @@ description: >-
   depending on focus. Use read-only Accessibility inspection for controls Apple
   Events cannot reach. AX writes are disabled; request manual clicks for unreachable
   iframe controls. Do not ask again merely for inspection transport permission.
-  No blind input, clipboard, CDP,
-  Playwright, WebDriver, or extension fallback. For plain web research rather than
+  No blind input, clipboard, CDP, WebDriver, or extension fallback. For plain web research rather than
   interaction with an existing browser session, use the research skills instead.
 ---
 

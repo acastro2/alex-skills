@@ -305,6 +305,19 @@ def test_mixed_speakers_still_merges_named_runs_around_null_turns(run_script, fi
     assert "**[00:00:04] Bruno Costa:** Sounds good. Let's continue." in content
 
 
+def test_dir_flag_puts_the_note_in_another_vault_folder(run_script, fixtures_dir, tmp_path):
+    # Alex's personal recordings leave the work stream: Scribe/Personal, not Scribe/Meetings.
+    result = run_script(
+        "write_note.py", str(fixtures_dir / "transcript_basic.json"),
+        "--vault", str(tmp_path), "--dir", "Scribe/Personal",
+    )
+    assert result.returncode == 0, result.stderr
+    path = Path(result.stdout.strip())
+    assert path == tmp_path / "Scribe" / "Personal" / "2026-08-26 1501 Architecture Advisory Board.md"
+    assert path.exists()
+    assert not (tmp_path / "Scribe" / "Meetings").exists()
+
+
 def test_title_flag_overrides_transcript_title_in_heading_and_filename(fixtures_dir, tmp_path, run_script):
     result = run_script(
         "write_note.py", str(fixtures_dir / "transcript_null_title.json"),

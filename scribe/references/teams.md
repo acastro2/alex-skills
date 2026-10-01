@@ -1,6 +1,9 @@
 # Source A — Microsoft Teams
 
 Verified end to end by ea-projects-curator on 2026-08-28; the mechanics moved here unchanged.
+These steps run directly in Claude Code. In OpenCode the same steps are the `ask-claude`
+subagent's brief and the payload is recovered from disk afterwards: see
+[Source A in OpenCode](teams-opencode.md).
 
 1. Load the tools:
    `ToolSearch("select:mcp__claude_ai_Microsoft_365__outlook_calendar_search,mcp__claude_ai_Microsoft_365__read_resource")`.

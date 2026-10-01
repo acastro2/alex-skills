@@ -3,13 +3,14 @@ name: scribe
 description: >-
   Turn Alex's meetings into cleaned transcript notes in the Obsidian vault at
   Scribe/Meetings/Transcripts, from two sources: Microsoft Teams transcripts (via the
-  Microsoft 365 connector) and HiDock P1 call recordings (pulled over USB, transcribed
+  Microsoft 365 connector — directly in Claude Code, or through the ask-claude
+  subagent in OpenCode) and HiDock P1 call recordings (pulled over USB, transcribed
   locally with mlx-whisper, speaker-diarized locally with mlx-audio). Use when the user
   runs /scribe, asks to fetch, pull, clean,
   or save meeting transcripts or call recordings, to sync the HiDock, or to prepare
   meeting notes for bard. On-demand only. Read-only on the device and on Microsoft 365.
   Never commits, never runs a server, never sends audio or transcripts off the Mac.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, ToolSearch, mcp__claude_ai_Microsoft_365__outlook_calendar_search, mcp__claude_ai_Microsoft_365__read_resource
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, ToolSearch, mcp__claude_ai_Microsoft_365__outlook_calendar_search, mcp__claude_ai_Microsoft_365__read_resource
 ---
 
 # scribe — meetings → cleaned transcript notes
@@ -23,6 +24,8 @@ into the vault. It does not distill knowledge (bard does) and does not publish a
 graph TD
   T[Teams meeting] --> T2[M365 connector: calendar event + transcript URI]
   T2 --> P1[teams_transcript.py: VTT to turns]
+  T2 -.OpenCode only: ask-claude fetch, payload recovered from its session logs.-> S[claude_session_payloads.py: payload + WEBVTT]
+  S --> P1
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[transcribe.py: mlx-whisper + mlx-audio diarization]
   H3 --> H4[you: name the labels from the text, hedged]
@@ -98,13 +101,19 @@ Argument decides the mode. With no argument, run both sources for the window sin
   state, Teams events not yet in state, and the skipped map. Use it before a big run or when a
   note seems missing.
 
-Teams needs the Microsoft 365 connector, so it works in Claude Code only. HiDock works in
-Claude Code and Pi.
+Teams needs the Microsoft 365 connector. Claude Code reads it directly. OpenCode
+delegates the fetch to the `ask-claude` subagent and recovers the payload from that
+subagent's session logs — read [Source A in OpenCode](references/teams-opencode.md)
+first. Pi has neither: run `/scribe hidock` only there. HiDock is local scripts, so it
+runs on every host.
 
 ## Source routing
 
 - **Teams intake:** for `/scribe teams` or the Teams part of `/scribe`, read
-  [Source A: Microsoft Teams](references/teams.md) before fetching transcripts.
+  [Source A: Microsoft Teams](references/teams.md) before fetching transcripts. In
+  OpenCode, read [Source A in OpenCode](references/teams-opencode.md) too: there the
+  fetch is delegated to `ask-claude` and the payload is recovered from that
+  subagent's session logs on disk.
 - **HiDock intake:** for `/scribe hidock` or the HiDock part of `/scribe`, read
   [Source B: HiDock P1](references/hidock.md) before accessing the device.
 - **Combined run:** finish Teams notes through **Summary and write** first. Then
@@ -115,8 +124,10 @@ Claude Code and Pi.
   transcribe, write summaries/notes, or update state.
 
 Run all shell commands from `~/.agents/skills/scribe/scripts/`, not from the
-reference directory. HiDock-only in Pi has no M365 connector: use the no-calendar
-fallback in Source B; do not assume Teams coverage.
+reference directory; `claude_session_payloads.py` is the exception, because it
+derives the Claude Code project from the working directory. HiDock-only in Pi has
+no M365 connector: use the no-calendar fallback in Source B; do not assume Teams
+coverage.
 
 ### Teams-first dedupe
 
@@ -136,6 +147,7 @@ HiDock note and let the summary say which meeting it turned out to be.
 ## Source A — Microsoft Teams
 
 Use the Teams intake route above. The source mechanics end at **Summary and write**.
+In OpenCode they run through [Source A in OpenCode](references/teams-opencode.md).
 
 ## Source B — HiDock P1
 
@@ -195,7 +207,9 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 5. **Glossary upkeep**: when you confirmed a garble → real name during the summary, append a
    `- wrong => Right` line to `<vault>/Scribe/Glossary.md`. Only confirmed ones.
 6. **State**: add the item to `.scribe-state.json` (`teams.<eventId>` or `hidock.<deviceFile>` →
-   note path, plus `skipped.<id>` → reason). When Alex asks to recover a previously skipped
+   note path, plus `skipped.<id>` → reason). On an OpenCode Teams run,
+   `claude_session_payloads.py` prints the `state teams.<eventId> -> <note path>` line to copy.
+   When Alex asks to recover a previously skipped
    recording, use its existing local JSON even if it is older than the watermark. Remove its
    old `skipped` entry only after the note is successfully written. Do not backfill unrelated
    historical skips unless requested. Set `last_run` to now (ISO) at the end.
@@ -285,7 +299,22 @@ scribe_schema: scribe.transcript/1
   records `diarization_status` (ok / skipped / failed).
 - Whisper still garbles names. The glossary fixes the known ones; the summary step catches the
   rest only when you check.
-- Teams path needs Claude Code (M365 connector). In Pi, run `/scribe hidock` only.
+- Teams needs the M365 connector: Claude Code reads it directly, OpenCode through the
+  `ask-claude` bridge ([Source A in OpenCode](references/teams-opencode.md)). Pi has
+  neither, so run `/scribe hidock` there.
+- In OpenCode, look for the payload in the subagent's session artifacts, never in its
+  reply: it has no write tool and a long reply can be truncated without saying so.
+- `m365 calendar search` drops recurring instances, because its `$filter` on
+  `start/dateTime` matches the series start. Enumerate a day with
+  `m365 request /me/calendarView` instead; the connector's own calendar list is the
+  other source that agrees with it.
+- `FORBIDDEN 3003` means no transcript is readable for that meeting. On 2026-09-30 that
+  was a meeting whose organiser sits on curo.com, but its join URL carried the same
+  tenant id as every other meeting, so the cause is unverified. The HiDock copy is the
+  record.
+- A transcript-only meeting (no recording) still yields the full transcript; its OneDrive
+  artifact is a black placeholder MP4 with no captions and no audio, so OneDrive is not a
+  source for Teams text.
 - The state file is the only dedupe. Deleting it re-processes everything; `write_note.py` then
   refuses to overwrite existing notes, which is the safety net.
 
@@ -295,6 +324,7 @@ scribe_schema: scribe.transcript/1
 cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
 ```
 
-69 tests: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
-Teams VTT parsing, cleaning, note layout, transcription grouping, diarization alignment and
-degradation, and one real-device listing that auto-skips when the P1 is not plugged in.
+Coverage: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
+Teams VTT parsing, Claude Code session recovery, cleaning, note layout, transcription grouping,
+diarization alignment and degradation, and one real-device listing that auto-skips when the P1 is
+not plugged in.

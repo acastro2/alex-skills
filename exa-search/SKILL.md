@@ -8,6 +8,8 @@ description: "Call Exa Search directly with cURL or raw HTTP. Use when an agent 
 > Requires API key: Get one at https://dashboard.exa.ai/api-keys
 >
 > Header: `x-api-key: $EXA_API_KEY`
+>
+> If this session exposes Exa MCP tools, use them instead of cURL. The cURL path below is the fallback where the MCP is not available.
 
 ## Set up authentication
 

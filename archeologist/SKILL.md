@@ -44,6 +44,34 @@ Default search order:
   "what did I commit", "which repos did I touch", performance/activity reviews), promote
   Source I into Tier 1 — transcripts show intent; GitHub shows what landed.
 
+## Typed gates — `ask_jev`
+
+Three of the calls below are typed judgments you would otherwise make in prose: the question
+type (Phase 1 step 3), which stores get promoted into Tier 1 (Phase 2 step 2), and the
+confidence level (Phase 5). Gate the **ambiguous** ones with `ask_jev`. Why: a typed answer
+returns a value **plus a confidence**, so a question that mixes two types gets the same
+treatment twice, and the confidence call carries a second opinion you can show the reader.
+
+Question sets and copy-paste request bodies: [references/jev-gates.md](references/jev-gates.md).
+
+- **The tier rules above stay authoritative.** Promote G for comms questions and I for
+  shipped-work questions because the rule says so. `ask_jev` adjudicates the mixed case, where
+  two rules point at different source sets.
+- **An uncertain promotion is paid for with a query.** `promote_*` ≥ 0.80 → promote; ≤ 0.20 →
+  leave in Tier 2; between → search it anyway and say in the coverage ledger that the
+  promotion was uncertain. A missed store reads as silence, and silence is a false claim.
+- **The rubric owns confidence.** `evidence_strength` is a second opinion; when it disagrees
+  with the rubric, the rubric wins and the disagreement is named in the rationale. A model
+  saying HIGH is not evidence that a file still exists.
+- **`ask_jev` is not a source.** It never returns evidence, never turns a 0-hit store into a
+  hit, and never appears in the coverage ledger as a store that was searched.
+- **A sweep still covers all stores A–I**, whatever the gates suggest.
+- **If `ask_jev` is unavailable** (no MCP server, no key, blocked network), say so and decide
+  as before. Never invent a Jev answer.
+- **`state` leaves the machine** for the OpenCode Zen endpoint. Send the question, its
+  entities, and short findings lines — never raw transcript text, never a credential value,
+  never privileged content.
+
 ## Coverage: a sweep is not a question
 
 The tier order above answers a question. A **sweep** — any request to enumerate what
@@ -90,7 +118,8 @@ Before touching any store, analyze the user's question:
 1. **Identify entities**: Extract key terms (projects, files, technologies, people, concepts)
 2. **Detect temporal markers**: "when did we", "what happened after", "recently", "last week".
    Recent markers => favor Pi and Claude Code transcripts. "Originally / a while back / before" => also search opencode.
-3. **Classify question type**: Factual / Temporal / Causal / Decision-tracking / Error-Solution
+3. **Classify question type**: Factual / Temporal / Causal / Decision-tracking / Error-Solution.
+   Gate the mixed case with `ask_jev` (see **Typed gates** above).
 4. **Determine scope**: Single session, single project, or global across all history
 5. **Decompose complex queries**: Break into sub-questions if needed
 6. **Map to local sources**: If the topic relates to a known project, architecture decision, policy,
@@ -206,7 +235,8 @@ question lists the tiers it ran. `unavailable` and `not searched` are valid Hits
 carry their reason.
 
 ### Verification Status
-- **Overall Confidence**: HIGH / MEDIUM / LOW
+- **Overall Confidence**: HIGH / MEDIUM / LOW — the rubric below decides; `evidence_strength`
+  from `ask_jev` is a second opinion, never an override (see **Typed gates**).
 - **Rationale**: [specific]
 - **Current State Checks**: file X EXISTS; pattern Y FOUND in N files; config Z NOT FOUND
 - **Stale/Outdated Items**: [...]

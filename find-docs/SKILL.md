@@ -10,7 +10,9 @@ description: >-
 
 # Documentation Lookup
 
-Retrieve current documentation and code examples for any library using the Context7 CLI.
+Retrieve current documentation and code examples for any library with Context7.
+
+> If this session exposes Context7 MCP tools, use them instead of the CLI. The `npx ctx7` path below is the fallback where the MCP is not available.
 
 Run commands with `npx ctx7@latest` so setup always uses the latest CLI without a global install:
 
