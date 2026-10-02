@@ -22,17 +22,21 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 2. Pull and transcribe in one go:
 
    ```bash
-   ./hidock_batch.sh <YYYY-MM-DD of watermark>
+   ./hidock_batch.sh <YYYY-MM-DD of hidock_last_run> [min-seconds] [jobs]
    ```
 
    It runs `hidock_pull.py sync` (skips files already present with the same size, already
    transcribed in `--done-dir`, shorter than 120 s, or older than the date), then
-   `transcribe.py` on each new MP3 (whisper transcription plus local speaker diarization in one
-   run), and deletes the MP3 once its JSON exists. One JSON line per
-   file from the sync (`downloaded` or `skipped` + reason), then one `=== transcribing <stem> ===`
-   per file on stderr. ~7 MB/s download; a 40-minute call downloads in a few seconds. Every
-   download is size- and magic-byte-checked. `--done-dir` is what stops re-downloads once the
-   local audio is gone: a recording is done when `<stem>.json` exists there.
+   `transcribe.py` on up to `jobs` (default 3, cap 4) new MP3s **at once** (whisper
+   transcription plus local speaker diarization in one run), and deletes each MP3 once its
+   JSON exists. One JSON line per file from the sync (`downloaded` or `skipped` + reason),
+   then one `=== transcribing <stem> ===` per file on stderr, plus a
+   `=== done|failed <stem> rc=N wall=Ns ===` line per file. A failed file keeps its MP3 and the
+   script exits 1; the next run retries it. Measured 2026-10-01 on 6 recordings: serial
+   transcribe 112 s, 3-wide pool 66 s; per-file wall grows ~1.4x under the pool, and the fixed
+   per-run model load overlaps. ~7 MB/s download; a 40-minute call downloads in a few seconds.
+   Every download is size- and magic-byte-checked. `--done-dir` is what stops re-downloads once
+   the local audio is gone: a recording is done when `<stem>.json` exists there.
 3. If you need the steps apart (one file, a re-run), the pieces are:
 
    ```bash
@@ -63,11 +67,15 @@ keeps every recording until HiNotes removes it; scribe never deletes.
    is, `Untitled call`. Then name the speaker labels before summarizing. Work out who each one is
    from the transcript text — a self-introduction ("I'm Alex"), someone being addressed ("Thanks,
    Greg."), or an exchange that settles it (a name is called and that person answers). Rewrite the
-   label to `speaker 1 (likely Alexandre Castro)` and record the quote plus its timestamp in
+   label everywhere in the JSON (`turns[].speaker` and the `speakers` list) to
+   `speaker 1 (likely Alexandre Castro)` and record the quote plus its timestamp in
    provenance. Use only a name from the attendee list or one the transcript states; when the text
    does not settle a label, leave it as `speaker N`. A one-word acknowledgement ("Yeah.",
    "Okay.") is not proof that the person was addressed — the reply must be substantive. A bare
    first name shared by several attendees ("Chris") names nobody; use the full name when the
    transcript supports it, otherwise leave the label alone. On 2026-09-24 this named 16 of 22
    recordings — most calls give no usable evidence, and an unnamed label is the normal outcome.
+   In a batch, hand the naming and the summary to one subagent per recording (the batch rule in
+   [Summary and write](../SKILL.md#summary-and-write-both-sources)); this session does the
+   calendar match, the notes, the glossary, and the state.
 6. Continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).

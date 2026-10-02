@@ -109,7 +109,7 @@ so it is derived from real work and ratified by Alex.
      otherwise append the whole block at the end of the file,
    - create `<vault>/Bard/Done Archive.md` from the archive template if it is absent,
      so the `[[Done Archive]]` board link resolves,
-   - initialise `.bard-state.json` with `{ "last_run": null, "watermark": null }`.
+   - initialise `.bard-state.json` with `{ "last_run": null, "watermark": null, "scribe_seen": [] }`.
 5. Tell Alex to apply the one-time **graph color groups** (documented in
    `references/obsidian-setup.md`) — bard never writes `.obsidian/graph.json`.
 
@@ -143,7 +143,8 @@ so it is derived from real work and ratified by Alex.
      statement about the connection, not about the search.
 
      **A zero from a comms store is a coverage failure until proven otherwise.** Teams,
-     mail and calendar are never actually silent across a working week. Verified
+     mail and calendar are never actually silent across a working day. A window with no
+     working day in it (a weekend or holiday only) is exempt. Verified
      2026-09-18: a sweep returned zero Teams items, the lane was accepted as quiet, and
      the week's biggest item — a production outage being worked in a channel — never
      reached the notes or the board. If the ledger shows 0 for Teams or mail, run
@@ -160,7 +161,13 @@ so it is derived from real work and ratified by Alex.
      summarizer's view and cannot be trusted to enumerate every session start. Scan
      these and take the union with the briefing. The scan is a filename glob: cheap,
      exact, and the only ground truth for the watermark. These carry reliable
-     session-start times:
+     session-start times. **A start time picks new sessions, not active ones:** a session
+     that started before `watermark` and kept going is missed by a start filter, and with
+     daily sweeps that is the normal case. So for Pi and Cortex, also take every session
+     file whose mtime is newer than `watermark` (these are local, append-only files, not
+     vault-synced, so mtime is safe here), then keep only the messages newer than
+     `watermark` (see the per-message pitfall below). opencode already selects by message
+     time; Claude Code's `history.jsonl` has one line per prompt, so it needs nothing extra.
      - Claude Code: `~/.claude/history.jsonl` (`.timestamp` epoch-ms; `.sessionId`, `.project`).
      - Cortex: `~/.snowflake/cortex/conversations/<uuid>.json` → `.created_at`.
      - Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
@@ -188,8 +195,15 @@ so it is derived from real work and ratified by Alex.
        after Claude Code, and the first opencode-free sweep missed all of it.
      - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
        one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
-       call recordings). Frontmatter `date` is the meeting start (UTC ISO): sweep notes
-       with `date` newer than `watermark`. They are the meeting-side twin of the coding
+       call recordings). **Select by the seen-set, not by `date`:** sweep every note whose
+       vault-relative path is not in `scribe_seen` in `.bard-state.json`. Frontmatter `date`
+       is the meeting start, and scribe often writes a note a day or more after the meeting
+       (late HiDock sync, Teams transcript not ready). By then `watermark` has moved past
+       that `date`, so a date filter skips the note forever. Do not use file mtime either:
+       vault sync can rewrite it. If `scribe_seen` is absent, seed it with the notes whose
+       `date` is more than 7 days before `watermark`, and sweep the rest; dedupe absorbs any
+       repeat. A note scribe rewrites with `--force` keeps its path and is not re-swept; ask
+       Alex if he wants it swept again. They are the meeting-side twin of the coding
        sessions: same STEP 1-5, same quote rule. Read the whole note; `## Summary`,
        `## Decisions`, `## Actions` are scribe's digest, `## Transcript` is the verbatim
        source and the only thing you may quote. Provenance is the note path
@@ -248,8 +262,9 @@ so it is derived from real work and ratified by Alex.
    authored deliverables not yet in `Evidence/`, copy them per **Evidence capture**
    below, loading its mechanics reference before copying. Update `Evidence/README.md`
    to match. This is another existing file bard edits in place.
-8. Update `.bard-state.json`: set `last_run` = now (ISO), `watermark` = the newest
-   session-start timestamp swept this run. It must be a **real session-start you
+8. Update `.bard-state.json`: set `last_run` = now (ISO), add every scribe note swept this
+   run to `scribe_seen`, and set `watermark` = the newest session-start timestamp swept this
+   run, not counting scribe notes. It must be a **real session-start you
    actually swept**, taken from the index scan or the newest timestamp the briefing
    observed — the max real value, never a rounded day boundary. A watermark
    of `...T00:00:00Z` re-sweeps that whole day on the next run (seen on 2026-09-04,
@@ -279,7 +294,7 @@ so it is derived from real work and ratified by Alex.
 
 ### `/bard full`
 
-Same as a sweep but ignores `watermark` (re-walks all history). Dedupe against
+Same as a sweep but ignores `watermark` and `scribe_seen` (re-walks all history). Dedupe against
 `existing_notes` prevents duplicates. Use sparingly.
 
 ---
@@ -420,8 +435,15 @@ must equal the canonical `title`. Sanitize illegal chars (`/`, `:`, `#`, `^`, `|
 ## State file shape
 
 ```json
-{ "last_run": "2026-06-29T14:30:00Z", "watermark": "2026-06-28T09:12:00Z" }
+{
+  "last_run": "2026-06-29T14:30:00Z",
+  "watermark": "2026-06-28T09:12:00Z",
+  "scribe_seen": ["Scribe/Meetings/Transcripts/2026-06-28 0900 Architecture Advisory Board.md"]
+}
 ```
+
+`scribe_seen` lists every scribe note bard already swept (vault-relative paths). Scribe notes
+do not move `watermark`; they have their own cursor because they arrive late.
 
 `watermark` keys off reliable **session-start** timestamps (never per-message
 assistant timestamps — ~50% are null in Cortex). Read at the start of a sweep to

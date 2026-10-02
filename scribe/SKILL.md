@@ -27,9 +27,9 @@ graph TD
   T2 -.OpenCode only: ask-claude fetch, payload recovered from its session logs.-> S[claude_session_payloads.py: payload + WEBVTT]
   S --> P1
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
-  H2 --> H3[transcribe.py: mlx-whisper + mlx-audio diarization]
+  H2 --> H3[hidock_batch.sh: transcribe pool, up to 3 at once]
   H3 --> H4[you: name the labels from the text, hedged]
-  H4 --> C[you: full transcript, summary]
+  H4 --> C[you: full transcript, summary - one subagent per meeting in a batch]
   P1 --> C
   C --> W[write_note.py: glossary, filler, note]
   W --> O[vault Scribe/Meetings/Transcripts/]
@@ -64,7 +64,8 @@ Mac both were already present on 2026-09-24.
 - **Audio and transcripts stay on this Mac.** Local whisper only. Never send audio, transcript
   text, or summaries to Exa, a web tool, or any external service: a call recording is confidential
   even when it sounds like small talk, and Attain is a regulated lender. HiNotes cloud is not a
-  source (no API, no export).
+  source (no API, no export). A summary subagent must run this session's model and gets no web
+  tools; its only write targets are the meeting's JSON and its summary file.
 - **Nothing is held and nothing is withheld.** Every work recording and every Teams transcript
   becomes a note, in full, including turns about HR, compensation, performance, personal topics,
   and HR cases about named people. No recording is skipped on HR grounds and no note carries a
@@ -89,10 +90,15 @@ Mac both were already present on 2026-09-24.
 
 ## Modes
 
-Argument decides the mode. With no argument, run both sources for the window since `last_run`.
+Argument decides the mode. With no argument, run both sources, each from its own cursor.
 
-- `/scribe` — Teams + HiDock, everything new since the state watermark (default 7 days back on
-  a first run).
+- `/scribe` — Teams + HiDock, everything new since each source's cursor (default 7 days back on
+  a first run). **Teams window** starts 48 h before `teams_last_run`: a transcript is not ready
+  until some minutes after the meeting ends, so a meeting that was running or just ended at the
+  last run must stay in the next window. Events already under `teams` are skipped, so the
+  overlap costs only a calendar page. Inside that lookback, retry events skipped as
+  `no-transcript` or `not-ready`; older skips stay skipped. **HiDock window** starts at the date
+  of `hidock_last_run`.
 - `/scribe teams [YYYY-MM-DD | YYYY-MM-DD..YYYY-MM-DD]` — Teams only, for a day or a range.
 - `/scribe hidock` — HiDock only: sync the device, skip what Teams covers, transcribe the
   rest, write notes. Run Teams first in a combined run so the coverage check sees the notes.
@@ -156,12 +162,29 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 
 ## Summary and write (both sources)
 
+Steps 1–3 are the slow part of a run: for each meeting they read a full transcript and write
+its summary. When a run cleans more than one meeting and the host has subagents, run them as
+**one subagent per meeting, all launched together**; every other step stays in this session.
+
+- Brief each subagent with: the JSON path; the title; the attendee names; steps 1–3 below,
+  copied in full; the two write targets (that same JSON for the label rewrites and
+  `provenance.speaker_hints`, and `~/.scribe/transcripts/<id>.summary.md`); and the
+  no-invention rules. Tell it: no web tools, no external services, no other files; reply with
+  the paths it wrote and any confirmed `wrong => Right` glossary lines.
+- Use a subagent that runs this session's model (Claude Code: Task; OpenCode: `general`).
+  Never hand transcript text to a cheap or remote-model agent.
+- When all are back: check that each summary file exists, and for every `likely` label check
+  its quote in `provenance.speaker_hints`. Then run steps 4–8 here, serially.
+
+One meeting, or no subagents on this host: run all eight steps serially.
+
 1. **Name the speakers, then read the normalized JSON in full.** For a HiDock recording, work out
    who each label is from the transcript text: a self-introduction ("I'm Alex"), someone being
    addressed ("Thanks, Greg."), or an exchange that settles it (a name is called and that person
-   answers). Then rewrite that label in the JSON to `speaker 1 (likely Alexandre Castro)` and
-   record the quote and its timestamp in `provenance.speaker_hints`. Use only a name from the
-   attendee list, or one the transcript states. When the text does not settle a label, leave it as
+   answers). Then rewrite that label everywhere in the JSON (`turns[].speaker` and the
+   `speakers` list) to `speaker 1 (likely Alexandre Castro)` and record the quote and its
+   timestamp in `provenance.speaker_hints`. Use only a name from the attendee list, or one the
+   transcript states. When the text does not settle a label, leave it as
    `speaker N`: an unnamed label is fine, a wrong name is not. A one-word acknowledgement
    ("Yeah.", "Okay.", "Sure.") is not proof that the person was addressed — the reply must be
    substantive and responsive. A bare first name that several attendees share ("Chris") names
@@ -212,14 +235,22 @@ transcription, including a batch run. The source mechanics end at **Summary and 
    When Alex asks to recover a previously skipped
    recording, use its existing local JSON even if it is older than the watermark. Remove its
    old `skipped` entry only after the note is successfully written. Do not backfill unrelated
-   historical skips unless requested. Set `last_run` to now (ISO) at the end.
+   historical skips unless requested. At the end, set `last_run` to now (ISO), and move a
+   source cursor only for a source that actually ran to completion: `teams_last_run` after the
+   calendar search and every fetch finished, `hidock_last_run` after the device answered `list`
+   and the batch finished. A run with the device unplugged (exit 2/3/4), a Teams-only run, or a
+   Pi run without M365 leaves the other cursor where it was. A shared cursor would let a missed
+   day fall behind `--since` and never come back. When a source cursor is absent, use
+   `last_run`.
 7. **Sync the vault**: Obsidian watches the filesystem, so new files show up on their own. Run
    only `obsidian sync:status vault=Alex` (expect `status: synced`). Do NOT run
    `obsidian reload`: on 2026-09-03 it printed `Reloading...` and never returned. Wrap the CLI in
    a 20 s timeout (macOS has no `timeout` binary; use `python3 -c` with `subprocess.run(...,
    timeout=20)`), and report "Obsidian not running" if it times out.
 8. **Report** in one table: source, meeting, date, duration, speakers, note path or skip reason.
-   Reasons you assign: `teams-covers`, `no-transcript`. Reasons the sync script prints
+   Reasons you assign: `teams-covers`, `no-transcript`, `not-ready` (the meeting was still
+   running or ended less than 30 min before the run, so a missing transcript proves nothing yet;
+   the next run retries it). Reasons the sync script prints
    (`already present`, `already transcribed`, `shorter than --min-seconds`, `older than --since`):
    quote them as printed.
    Then one line for glossary lines added and one for the vault sync status.
@@ -229,6 +260,8 @@ transcription, including a batch run. The source mechanics end at **Summary and 
 ```json
 {
   "last_run": "2026-09-03T16:40:12Z",
+  "teams_last_run": "2026-09-03T16:40:12Z",
+  "hidock_last_run": "2026-09-03T16:35:02Z",
   "teams": { "<eventId>": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1500 Architecture Advisory Board.md" },
   "hidock": { "2026Sep02-113150-Rec13.hda": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1131 EKSKubernetesBackstage Discussion.md" },
   "skipped": { "2026Sep02-150056-Rec17.hda": "teams-covers: 2026-09-02 1500 Architecture Advisory Board" }
@@ -326,5 +359,5 @@ cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
 
 Coverage: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
 Teams VTT parsing, Claude Code session recovery, cleaning, note layout, transcription grouping,
-diarization alignment and degradation, and one real-device listing that auto-skips when the P1 is
-not plugged in.
+diarization alignment and degradation, batch-pool concurrency, failure handling and the jobs
+clamp, and one real-device listing that auto-skips when the P1 is not plugged in.
