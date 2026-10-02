@@ -26,7 +26,7 @@ cannot see each other.
 | `row_qualifies` | noul | 0–1 | Inclusion: delivery not attendance, initiative scale, owner-of-record |
 | `status` | choice | the six lifecycle values | The proposed `Status` line (Alex's column — a proposal only) |
 | `decision_needed` | choice | `None` / `CTO` / `Advisory Board` / `Business Owner` / `Process Owner` | Who the pending decision belongs to |
-| `theme` | choice | the seven theme values | `Theme`, checked on every AI row |
+| `theme` | choice | the eight theme values | `Theme`; AI wins the tie, so AI rows show in the AI Program view |
 | `dedupe` | choice | the current row titles + `new` | NEW vs UPDATE, the "one row = one initiative" test |
 
 ## Gate thresholds (defaults — Alex can move them)
@@ -78,11 +78,11 @@ next run re-asks instead of re-guessing. Do not add new ledger keys.
     },
     "theme": {
       "type": "choice",
-      "instructions": "Which single theme is the current centre of gravity of this initiative?",
+      "instructions": "Which single theme is the current centre of gravity of this initiative? Exception: if the work delivers an AI agent, model, or assistant, or a control on AI use or AI spend, answer AI Program even when the domain is security, ops, or governance.",
       "criteria": {
-        "Security Hardening": "Access, hardening, privileged access, vulnerability work",
-        "Platform Foundations": "Core platform, networking, identity, tooling foundations",
-        "AI Program": "AI tooling and AI delivery initiatives",
+        "Security Hardening": "Access, hardening, privileged access, vulnerability work, when no AI agent or model is the deliverable",
+        "Platform Foundations": "Core platform, networking, identity, tooling foundations, when no AI agent or model is the deliverable",
+        "AI Program": "Delivers an AI agent, model, or assistant, AI tooling or platform, or a control on AI use or AI spend. Wins any tie with another theme",
         "Governance": "Policy, standards, review process, decision rights",
         "Observability": "Telemetry, logging, metrics, profiling, alerting",
         "Tech Recruiting": "Hiring and capability build-out for technology",

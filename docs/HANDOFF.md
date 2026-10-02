@@ -1,8 +1,36 @@
 # HANDOFF — Jev typed gates in ea-projects-curator + archeologist
 
-Updated: 2026-09-29 11:14 CDT
+Updated: 2026-10-01 CDT
 
-## Current state
+## 2026-10-01 — AI Program theme tie-break (uncommitted)
+
+- Added "AI wins the tie" to `ea-projects-curator/SKILL.md` (Field mapping › Theme; Coherence
+  check) and to the `theme` gate in `references/jev-gates.md` (also "seven" → "eight" themes).
+  Why: the AI Program view filters on `Theme` only, so an AI row tagged Security/Platform was
+  invisible there. Live Jev check: triage agent → AI Program 1.0; Privileged Access Renewal →
+  Security Hardening 0.97. Validator + pre-commit pass.
+- **Live check done 2026-10-01 (cookie refreshed):** 47 rows, 18 AI Program; no clear AI row
+  under another theme. Only open question: row 46 "Engineering Intelligence Service
+  Identities" (Governance) — AI Program if Engineering Intelligence is an AI/agent system;
+  Alex to confirm. Jev on row text alone: 0.17 (no local docs found to settle it).
+- **Blind Jev run done 2026-10-01** (Alex's call; run in OpenCode, where the Claude Code
+  classifier does not apply). All 47 rows, gates `status`/`decision_needed`/`theme`, state =
+  row text only (no person fields, no current labels): 85/141 cells agree, 12 high-confidence
+  disagreements, 77 cells < 0.80. `theme` is the confident gate on row text; most `status`
+  flips are thin evidence (closure/outcome not in `state`). Report `.scratch/jev-board/report.md`
+  (+ `results.json`, `run.py`). Read-only; every move goes through the review table. OpenCode
+  Zen vendor approval stays open for Security.
+- **Jev findings applied 2026-10-01** (Alex approved all 12 by line). 8 written and
+  GET-verified: Theme rows 1 (→Security Hardening), 27/30 (→Governance), 28/45 (→Platform
+  Foundations); Status (his column) row 4 5→4, row 33 1→4; DecisionNeeded row 37 →Process
+  Owner. 4 held: row 15 stays AI Program (repo is an ML stack; row text carries no AI
+  signal), row 22 stays None (board agreed 16 Sep; Jev graded stale text), row 26 superseded
+  row, row 43 Closed is immutable. `curated.json` written; each hold sits in `open_items`.
+- **Open decision for Alex:** whether to add more Jev questions (impact kind, outcome at close)
+  and dedupe the criteria into `jev-gates.md`; recap/intake classification kept off Jev on
+  purpose (transcript content to an external endpoint).
+
+## Current state (2026-09-29)
 
 - **Shipped this session (uncommitted):** `ask_jev` typed gates wired into two skills. Both
   edits are additive — a `## Typed gates — ask_jev` section in each `SKILL.md`, a short
