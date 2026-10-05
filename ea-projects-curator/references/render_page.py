@@ -199,6 +199,9 @@ PRINT_CSS = (
 STYLE_BLOCK = f"<style>{PRINT_CSS}</style>"
 KEEP = ' class="aw-keep"'
 HEAD = ' class="aw-head"'
+# Every link this page emits opens in a new tab (Alex, 2026-10-05). `rel` is not optional
+# decoration: target="_blank" without it hands the opened page a window.opener reference.
+NEW_TAB = 'target="_blank" rel="noopener noreferrer"'
 
 
 def die(msg):
@@ -217,11 +220,32 @@ def esc_attr(s):
     return esc(s).replace('"', "&quot;")
 
 
+def browser_open(u):
+    """Force SharePoint's browser viewer instead of a download.
+
+    Measured 2026-10-05 against this library: a bare document URL answers with the file
+    itself (`Content-Type: application/vnd.openxmlformats-officedocument...`), so the
+    browser downloads it. The same URL with `?web=1` answers `text/html`, which is the
+    viewer. On a locked-down laptop the download is worse than untidy, it lands somewhere
+    the reader has to go and find.
+
+    Only applied where it is needed and safe: no query string already present, and a
+    document extension at the end. Sharing links (`:w:`, `:f:`), SitePages, list forms,
+    folders and GitHub already open in the browser, and adding a parameter to them would
+    be noise at best.
+    """
+    if "?" in u:
+        return u
+    if re.search(r"\.(?:docx?|xlsx?|pptx?|pdf|vsdx?|csv|txt|zip)$", u, re.I):
+        return u + "?web=1"
+    return u
+
+
 def safe_url(u):
     if not isinstance(u, str):
         die(f"url must be a string, got {u!r}")
     if u.startswith("https://") or u.startswith("/sites/"):
-        return esc_attr(u)
+        return esc_attr(browser_open(u))
     die(f"url must be https:// or /sites/..., got {u!r}")
 
 
@@ -519,7 +543,7 @@ def warning(c):
     links = ""
     if w.get("links"):
         btns = "".join(
-            f'<a href="{safe_url(l["url"])}" style="display:inline-block;font-size:12px;'
+            f'<a href="{safe_url(l["url"])}" {NEW_TAB} style="display:inline-block;font-size:12px;'
             f'font-weight:600;text-decoration:none;border:1px solid {tape_c};padding:4px 9px;'
             f'color:{head_c};margin:0 8px 4px 0;">{esc(l["label"])}</a>' for l in w["links"])
         links = f'<div style="padding-top:10px;">{btns}</div>'
@@ -688,7 +712,7 @@ def artifact_list(items):
             f'<div style="flex:0 0 38px;width:38px;height:38px;background-color:{CHIP["blue"][0]};'
             f'display:flex;align-items:center;justify-content:center;">{icon}</div>'
             f'<div style="flex:1 1 auto;min-width:0;padding-left:14px;">'
-            f'<a href="{safe_url(a["url"])}" style="font-size:14px;line-height:20px;font-weight:600;'
+            f'<a href="{safe_url(a["url"])}" {NEW_TAB} style="font-size:14px;line-height:20px;font-weight:600;'
             f'color:{LINK};text-decoration:underline;">{esc(a["label"])}</a>{note}</div></div></div>')
     grid = f'<div style="display:flex;flex-wrap:wrap;">{"".join(cells)}</div>'
     return section_title("Artifacts referenced", len(items)) + grid
@@ -728,7 +752,7 @@ def shipped_panel(c):
         arrow = ('<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + LINK + '" '
                  'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;">'
                  '<path d="M7 17L17 7M8 7h9v9"></path></svg>')
-        ev = "".join(f'<a href="{safe_url(e["url"])}" style="display:inline-block;font-size:12px;font-weight:600;'
+        ev = "".join(f'<a href="{safe_url(e["url"])}" {NEW_TAB} style="display:inline-block;font-size:12px;font-weight:600;'
                      f'text-decoration:none;border:1px solid {EXEC_DIVIDER};padding:5px 10px;color:{LINK};'
                      f'margin:0 8px 6px 0;">{esc(e["label"])} {arrow}</a>' for e in it["evidence"])
         items.append(spacer(10) + f'<div class="aw-keep aw-tint" style="background-color:{ON_BAND};padding:20px 22px;">'

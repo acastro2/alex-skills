@@ -53,7 +53,12 @@ Updated: 2026-10-05 CDT
   (bursts 18.5 vs 14 words, spoken 74 vs 52, blog 90 vs 57). New skill docs/exec ~half the old length.
 - Blog calibration risk: selector flagged the 2024 Senior Engineer parts as partly AI-assisted
   (em dashes, "Hey there!"). alex-blogger.md treats them as hand-written; needs Alex's call.
-- Waiting on Alex: mark lineups, or let me fix length first (see chat). Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
+- Alex (2026-10-05): 2024 blog posts were AI-assisted but stay as the anchor (noted in alex-blogger.md);
+  plan = he marks only round 1's 30 chat items; I fix length and build a fresh round 3.
+- Length fix: SKILL.md core rule 3 is now "Say only what you were given, then cut"; checker warns on
+  chat > 40 words, comms > 60, blog paragraph > 120 (TDD, 84 tests green).
+- Round 3 workflow `wf_7113c18f-530`: fresh items (holdout, post-Oct-3 bursts, train-not-exemplar email
+  fill since no new human mail exists), returns real vs fake median words per group before handover. Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
   rerun the lineup. Likely first fix: shorter defaults in chat and email.
 - Then the blind lineup: fresh subagents loading only the skill, given prev/context + a content brief,
   30+ items per register from `holdout/`. DONE = Alex picks fakes at chance, not tests green.
