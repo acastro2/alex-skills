@@ -1,6 +1,45 @@
 # HANDOFF — Jev typed gates in ea-projects-curator + archeologist
 
-Updated: 2026-10-01 CDT
+Updated: 2026-10-05 CDT
+
+## 2026-10-02 — alex-voice rebuild v2, from a much bigger corpus (in progress)
+
+- Ask: drafts "resemble Alex but don't pass by him to himself". Done means a blind lineup
+  (real held-out Alex vs skill output, same context) where Alex picks the fakes at chance.
+- Diagnosis so far: old corpus was lopsided (200k words of prompts to AI vs ~1k chat, ~300 email);
+  core rules push "I think"/"right?" into every register, but real chat and email have ~0 "I think".
+- Private corpus (never in this repo): `~/Developer/obsidian/Alex/40 Writing/Voice/corpus/`
+  — `email-train.jsonl` (333, automated mail removed), `spoken-train.md` (24 Teams meetings, 70k words),
+  `typed.jsonl` (264k words), `holdout/` (68 emails, 8 meetings) reserved for the lineup.
+  HiDock transcripts were left out: speaker labels are only "likely Alex" and were wrong in a spot check.
+- Teams harvest (chats, then channel posts) runs from a scratchpad script that reads through the
+  `m365` CLI token (GET only). It writes `teams-chat.jsonl` and `teams-channel.jsonl` into the corpus folder.
+  If the files are missing, rerun the harvest.
+- Workflow `alex-voice-analysis` (run `wf_b5b800a9-8f8`) covers email and meetings: triage, then
+  6 lenses, then 2 skeptics per claim, then synthesis into the vault note
+  `40 Writing/Voice/Voice rebuild 2026-10 findings.md`.
+- Email/meetings run done: 161 claims, 112 survived both skeptics. Triage found 79 of 333 emails
+  AI-assisted (removed). Findings + 15 open questions in the vault note above.
+- Chat harvested: `chat-train.jsonl` (29.9k msgs, 251k words), `holdout/chat.jsonl` (3.4k). Chat run
+  `wf_f1e51bb7-0c4` writes `Voice rebuild 2026-10 findings - chat.md`. Channel harvest still running.
+- Alex decided (2026-10-04/05): own typing only; frames follow size; lol/swearing mirror the thread;
+  chat asks for recipient + last messages; checker seam = CLI; lowercase "i" blocks, short-line period
+  warns; AI-tell words block in spoken too; lineup = real vs new only; NEVER offer a call (async).
+- SKILL.md core rewritten by hand (caricature trap, marker budget, blockers vs warnings). Snapshot of the
+  old skill: `~/.agents/skill-workspace/alex-skills/alex-voice-workspace/snapshot-2026-10-04/`.
+- Rewrite workflow `wf_6908f7b5-5e9`: lanes for chat.md, comms.md, spoken.md, fingerprint, checker+tests,
+  private exemplars (stratified random, train only), evals; two skeptics + fixer per lane.
+- Rewrite landed: 78 checker tests green (call offers now BLOCK, test-first), 22 samples pass, skill
+  graph PASS. Exemplar note rebuilt from stratified random train samples. Evals: 21 in evals.json (local).
+- Lineup workflow `wf_1a7dff3b-a8b` writes `40 Writing/Voice/Voice lineup 2026-10.md` + `(key).md`:
+  chat first-message replies (holdout split per message, so bursts untested), emails, channel posts;
+  spoken left out (ASR artifacts make it unfair). DONE: 75 pairs (chat 30, email 29, posts 16); one
+  personal email removed. Pre-mark stats: fakes run longer than real (chat median 8 vs 4 words, email
+  20 vs 14), email fakes end on a period more (10 vs 4), post fakes have no "!" (real 5 of 16).
+- Waiting on Alex to mark the lineup. Next: score his picks vs the key, turn each "why" into a rule,
+  rerun the lineup. Likely first fix: shorter defaults in chat and email.
+- Then the blind lineup: fresh subagents loading only the skill, given prev/context + a content brief,
+  30+ items per register from `holdout/`. DONE = Alex picks fakes at chance, not tests green.
 
 ## 2026-10-01 — scribe runs in parallel (uncommitted)
 
