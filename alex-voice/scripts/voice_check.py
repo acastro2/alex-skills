@@ -94,9 +94,10 @@ MIN_WORDS_FOR_RATES = 100
 # per 10k words unless noted; (low, high) targets measured from Alex's own writing
 TARGETS = {
     "blog":   {"avg_sent": (14, 21), "p90_sent": (28, 42), "q": (30, 80), "bang": (15, 70), "paren": (60, 220), "the_start_pct": (0, 10), "one_line_para_pct": (0, 35), "lower_start_pct": (0, 2)},
-    "docs":   {"avg_sent": (12, 20), "p90_sent": (24, 36), "q": (5, 40), "bang": (0, 20), "paren": (20, 150), "the_start_pct": (0, 12), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 2)},
+    # docs and exec bands: provisional, fitted 2026-10-05 on the 10 drafts Alex picked as "would sign" (6 docs, 4 exec)
+    "docs":   {"avg_sent": (8, 20), "p90_sent": (14, 36), "q": (0, 90), "bang": (0, 20), "paren": (20, 150), "the_start_pct": (0, 12), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 10)},
     "comms":  {"avg_sent": (8, 18), "p90_sent": (14, 50), "bang": (0, 250), "paren": (0, 60), "the_start_pct": (0, 10), "lower_start_pct": (0, 2)},
-    "exec":   {"avg_sent": (12, 20), "p90_sent": (22, 34), "q": (0, 30), "bang": (0, 10), "paren": (0, 80), "the_start_pct": (0, 15), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 1)},
+    "exec":   {"avg_sent": (6, 20), "p90_sent": (14, 34), "q": (0, 30), "bang": (0, 10), "paren": (0, 80), "the_start_pct": (0, 15), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 1)},
     "chat":   {},  # judged by line and count checks, not rates (rates fail on real bursts)
     # 100-299 words; punctuation is speech-to-text output, so it is not scored
     "spoken": {"avg_sent": (9, 24), "p90_sent": (18, 50), "the_start_pct": (0, 12), "tag_q": (0, 150)},
@@ -210,6 +211,23 @@ def comms_warnings(text: str) -> list[str]:
     return warnings
 
 
+# Drafts ran 30% to 60% longer than Alex's real messages in the 2026-10 lineups, so length warns.
+MAX_DRAFT_WORDS = {"chat": (40, "longer than about 94% of his chat replies"),
+                   "comms": (60, "longer than 91% of his emails; fine only for a new thread, pushback, or handover")}
+MAX_BLOG_PARAGRAPH_WORDS = 120
+
+
+def length_warnings(stats: dict, register: str) -> list[str]:
+    if register in MAX_DRAFT_WORDS:
+        limit, why = MAX_DRAFT_WORDS[register]
+        if stats["words"] > limit:
+            return [f"draft is {stats['words']} words, {why}"]
+    if register == "blog":
+        long_paras = [len(p.split()) for p in re.split(r"\n\s*\n", stats["text"]) if len(p.split()) > MAX_BLOG_PARAGRAPH_WORDS]
+        return [f"paragraph is {n} words; his paragraphs run about 60" for n in long_paras]
+    return []
+
+
 def report(stats: dict, register: str) -> tuple[list[str], list[str]]:
     blockers = [f"{label} x{count}" for label, count in stats["banned"] if register not in BANNED_SKIP.get(label, ())]
     warnings = [f"{label} x{count}" for label, count in stats["phrases"].items() if register not in SKIPPED_IN[label]]
@@ -217,6 +235,7 @@ def report(stats: dict, register: str) -> tuple[list[str], list[str]]:
         warnings += chat_line_warnings(stats["lines"])
     if register == "comms":
         warnings += comms_warnings(stats["text"])
+    warnings += length_warnings(stats, register)
     if stats["words"] < MIN_WORDS_FOR_RATES:
         return blockers, warnings
     bands = SPOKEN_LONG if register == "spoken" and stats["words"] >= SPOKEN_LONG_MIN_WORDS else TARGETS[register]

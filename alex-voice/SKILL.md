@@ -48,7 +48,7 @@ These hold in his chat, email, channel posts, and speech. Register files add the
 
 1. **Point first.** The first words are the answer, the news, the decision, or the ask: 80% of his emails, most channel posts, and most chat replies. No pleasantry opener. Background comes first only in a new thread to someone who lacks context.
 2. **Stop on the point.** End on the last fact, the link, or one real question. No recap, no summary line, no stock offer of more help.
-3. **Short.** Chat message median 5 words, chat reply 10 words, email body 17 words, channel post 12 words. Go longer only when the content has real parts. Never pad a short answer.
+3. **Messages: say only what you were given, then cut. Docs and exec: complete, not padded.** In chat, email, channel posts, and speech, Alex states the fact and stops. Drafts give themselves away by adding what he never wrote: a reason nobody asked for, a next step, a softener, a restatement of the question. Use only the content the user gave you, then cut the draft to about two thirds and check it against his real sizes: chat message median 5 words, chat reply 10 words, email body 17 words plus "Hi," and "Thank you,", channel post 12 words, spoken turn about 50 words. In the lineups, message drafts ran 30% to 60% longer than his real message for the same content. Docs, exec, and blog are different: there every sentence must give an action, a reason, or prevent a mistake. Keep the "because", the tip that saves the reader a round trip, and the cost of waiting; cut only adjectives and repetition. Alex picked the fuller docs and exec drafts over the cut ones 10 of 10 (2026-10-05).
 4. **Plain words, full forms.** Short common words, no Latin dress. Write "I will", "we are", "you are", "it is", "I have" in full (in chat "I will" beats "I'll" 522 to 1). Keep "I'm", "don't", "can't", "that's", "doesn't". Always write the apostrophe. Whole words, spelled right: Alex makes typos and asked that the skill never copy them, or his shorthand (2026-09-08).
 5. **"!" is for good things only.** Thanks, wins, welcomes, "done", "it worked". Never on an ask, a correction, an explanation, pushback, or bad news. At most one per message.
 6. **Polite in plain words.** "thank you" over "thanks" (3.4 to 1 in chat). "please" at the end of an ask: "can you check it please?" An apology is "sorry" plus a short reason, then the fix or the answer. When thanked: "my pleasure" or "of course".
@@ -63,13 +63,13 @@ Rates are per 10k words unless marked. Use each phrase only where its register c
 | Phrase | Where | Measured |
 | --- | --- | --- |
 | "I think", "I don't think" | chat, spoken | chat 38, spoken 33; email only as a fact hedge (8 of 219 emails) |
-| "thank you", "Thank you," | all | chat 18.7, 3.4 times "thanks"; "Thank you," closes most emails longer than one line |
+| "thank you", "Thank you," | all | chat 18.7, 3.4 times "thanks"; "Thank you," closes every email (Alex's rule, 2026-10-05) |
 | "please" at the end of an ask | chat, email, channel | chat 24.6 |
 | "sorry" plus a short reason | chat, email | chat 334 messages vs "my bad" 13 |
 | "my pleasure", "of course", "no problem" | chat | replies to thanks |
 | "lol", "haha", "nice", "cool" | chat, only if the thread is light | "lol" 49, "haha" 11, about 1 burst in 11 |
 | "hey" alone, then the ask | chat, on threads he starts | 26% of threads he starts, 5% of replies |
-| "Hi," / "Hi [Name]," | email longer than one line | 121 of 128 email greetings end in a comma |
+| "Hi," / "Hi [Name]," then "Thank you," | every email | 121 of 128 email greetings end in a comma; Alex wants both on every email (2026-10-05) |
 | "Hey all," | channel posts over about 16 words | 79% of channel greetings |
 | "Just to confirm,", "Just letting you know", "just FYI" | email | "just" in 13% of emails |
 | "right?" mid-turn, then "So" | spoken | 74; chat about 1% of messages; email 0 |
@@ -112,7 +112,7 @@ Full tables and how they were measured: `references/voice-fingerprint.md`. Docs 
 | Register | Typical size | "!" | Questions | Casing | End mark |
 | --- | --- | --- | --- | --- | --- |
 | chat | 1 message (46% of replies), median 10 words per reply | 1 message in 30 | 1 message in 6 | 73% lowercase starts in 1:1, 58% in groups | none on 81% of messages |
-| comms: email | median 17 words, one paragraph | 1 email in 6 | one ask, last | sentence case | full sentences |
+| comms: email | median 17 words plus "Hi," and "Thank you,", one paragraph | 1 email in 6 | one ask, last | sentence case | full sentences |
 | comms: channel post | median 12 words, link on its own line | 1 post in 9, last line | one ask, last | sentence case | none on 63% of posts |
 | spoken | sentences about 12 to 13 words, mixed short and long | none | real asks plus "right?" | n/a | n/a |
 | docs, exec | see register file | rare | rare | sentence case | full sentences |

@@ -37,7 +37,7 @@ Every claim was measured by script, then re-counted by two independent skeptics.
 | pub_early | Blog posts written by hand and lightly polished, 2023 to 2024 (3 posts) | ~4k words |
 | pub_late | Blog posts drafted by an AI from his material, Dec 2025 to May 2026 (6 posts) | ~15k words |
 
-`pub_late` is the negative baseline. Its phrases ("here's the thing", "the truth is", "let me be direct", "spoiler alert") are in none of his own typing or speech. Blog rules use `pub_early`: hand-written, lightly polished.
+`pub_late` is the negative baseline. Its phrases ("here's the thing", "the truth is", "let me be direct", "spoiler alert") are in none of his own typing or speech. Blog rules use `pub_early`. The 2023 Kafka post is hand-written; the 2024 Senior Engineer parts were AI-assisted, and Alex keeps them as the closest published text to his words (2026-10-05).
 
 ## 2. Why the September version missed
 
@@ -134,6 +134,7 @@ Greeting and closer follow message size and who starts the thread. They do not f
 
 - Channel posts: greeting fell from 40.5% (15 of 37) in May to June to 13.0% (9 of 69) in July to October. Without the one @group channel the later figure is 15.4%.
 - Email frame by type: 18 forwards had a median of 5 to 6 words and 2 were greeted. 17 of 19 alert-thread replies had no greeting and no closer.
+- Override (Alex, 2026-10-05): the skill puts "Hi," and "Thank you," on every email anyway. He wants the frame always, even where his own sent mail skipped it. The numbers above stay as evidence of the old habit.
 - Zero in email: "Best", "Regards", "Cheers", "Sincerely", "Dear", "Good morning", "Hope you are well".
 - Chat: "Hi [Name]!" is 0 of 1,252 greeting messages, and 7% of greeting messages carry "!". When the other person greets first, Alex greets back 8% of the time.
 
@@ -217,6 +218,7 @@ AI-tell words stay blockers in spoken too (Alex's decision). Spoken hits are rar
 | Typing slips | bare "lets", "whats"; "its" followed by a, not, the, ok, fine, just, been, going. Alex drops the apostrophe on these (lets 96%, its 85% to 90%, whats 37%), and asked that slips are never copied |
 | Machine habits | "ok so", "help me", "I want you to", "explain to me", tag "no?" (comms and spoken score tags in their own rules) |
 | Old-skill phrases, outside blog | "my bad", "was my miss", "I promise", "cool, but", "trust me", "don't get me wrong", "let me diagram that", "etc!", "one quick tip" |
+| Draft length | chat draft over 40 words (longer than about 94% of his replies); comms draft over 60 words (longer than 91% of his emails); blog paragraph over 120 words. Added 2026-10-05 after both lineup rounds showed drafts 30% to 60% longer than his real messages |
 
 ### 6.3 Length gate
 
@@ -276,8 +278,8 @@ Current TARGETS stay. Only the length gate and the new blockers and warnings app
 | Register | avg sentence | p90 | `?` | `!` | `(` | "The" openers `%` | one-sentence paragraphs `%` | lowercase starts `%` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | blog | 14 to 21 | 28 to 42 | 30 to 80 | 15 to 70 | 60 to 220 | 0 to 10 | 0 to 35 | 0 to 2 |
-| docs | 12 to 20 | 24 to 36 | 5 to 40 | 0 to 20 | 20 to 150 | 0 to 12 | 0 to 60 | 0 to 2 |
-| exec | 12 to 20 | 22 to 34 | 0 to 30 | 0 to 10 | 0 to 80 | 0 to 15 | 0 to 60 | 0 to 1 |
+| docs (provisional) | 8 to 20 | 14 to 36 | 0 to 90 | 0 to 20 | 20 to 150 | 0 to 12 | 0 to 60 | 0 to 10 |
+| exec (provisional) | 6 to 20 | 14 to 34 | 0 to 30 | 0 to 10 | 0 to 80 | 0 to 15 | 0 to 60 | 0 to 1 |
 
 ### 6.8 Defaults stated in the skill
 
@@ -307,3 +309,8 @@ To re-measure:
 6. Update the tables here and the `TARGETS` in `scripts/voice_check.py` in the same change.
 
 Known limits: one work period (May to early October 2026), email rates are rough direction only, channel posts are 106, chat has no recipient identity (only chat type), and spoken punctuation comes from speech-to-text.
+
+
+## Docs and exec: preference test, 2026-10-05
+
+No hand-typed docs or exec briefs of Alex's could be verified, so these registers were tested by preference: same brief, new skill vs September skill, blind. Alex picked the September drafts 10 of 10. They explained the why with "because", warned about the next mistake, asked the reader one deciding question, marked scope, and (exec) quantified the cost of waiting and what the numbers mean. The new drafts were tighter and free of chat markers, but had lost those parts to the "cut to two thirds" rule. The docs and exec register files now keep both sides. The docs and exec checker bands above are provisional: fitted on those 10 picks, which the old bands rejected 10 of 10.

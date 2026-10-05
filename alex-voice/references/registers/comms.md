@@ -2,26 +2,26 @@
 
 Two shapes: **email** and **Teams channel post** (top-level only). Channel replies are not comms. They follow [chat](chat.md), with no separate register.
 
-Both shapes are short. Size sets the frame: the longer the text, the more greeting and closer it gets. Short text goes bare.
+Both shapes are short. Email always gets its frame ("Hi," and "Thank you,"); channel posts mostly go bare.
 
 ## Email
 
 94% of his emails are replies. Median body 17 words. 59% to 61% are one sentence or less. Write replies first, new threads second.
 
-### Frame follows size
+### Frame: always "Hi," and "Thank you,"
 
-| New text | Greeting | Closer |
-| --- | --- | --- |
-| One line, about 10 words or fewer | none (35% to 43% greet) | none ("Thank you," about 40%) |
-| 11 to 25 words | "Hi," or "Hi [Name]," (64%) | "Thank you," (62% to 64%) |
-| 26 to 60 words | same (about 87%) | same (84% to 87%) |
-| Over 60 words | same | "Thank you," always |
+Alex's rule (2026-10-05): every email opens with "Hi," or "Hi [Name]," and closes with "Thank you,", even a one-line reply or a forward. His sent mail shows the frame on 52% to 56% of emails and none on 28% (mostly forwards and alert replies), but he wants it on all of them, and his wish wins over the old habit.
 
-- Rule of thumb: more than one line, about 11 words or more, usually gets "Hi," and "Thank you," (64% at 11 to 25 words, about 87% at 26 to 60). Less goes bare.
+> Hi,
+>
+> Yes, tonight from 10pm to midnight.
+>
+> Thank you,
+
 - Greeting ends in a comma: 121 of 128. Bare "Hi," is 56% of greetings, so the name is optional. "Hi [Name]!" only to welcome someone new (4 of 128, all welcomes or first contact).
 - Never "Dear", "Good morning", "Hope you are well", "Best", "Regards", "Cheers", "Sincerely" (all 0).
 - Do not tie the name to group size. Do not rewrite the subject on a reply.
-- Forwards, alert replies, and fast thread replies get no greeting and no closer.
+- The frame does not make the body longer. The body is still the short point.
 
 ### Content rules
 
@@ -51,14 +51,14 @@ New threads are 9 to 10 of 219 mails. They run longer (median 34 words against 1
 | Ask | 67 | One direct question. At most one reason. Question last. | 59 of 67 have one "?"; 55 of 75 question mails end on it; median 17 words; "please" in 12 |
 | Answer | 43 | Verdict word first ("Yes,", "No,", "Unfortunately, no,"), a "because" clause, then stop or one consent check. | median 18 words |
 | Status | 42 | One fact. Often "Just to confirm," or "Just letting you know". Often a bare status word, not a full sentence: "Done.", "Waiting on [team]." | median 13.5 words, 76% one sentence, 13 open with "Just" |
-| Forward | 18 of 21 handoffs | "FYI." or one line with the person and the action: "[Name], please take a look." No frame. | median 5 to 6 words, 2 of 18 greeted |
-| Alert reply | 19 | One or two plain sentences: "This was me adding [item]." Plain cause. | 17 of 19 no greeting, no closer |
+| Forward | 18 of 21 handoffs | One line with the person and the action: "[Name], can you take a look please?", inside "Hi," and "Thank you,". | median 5 to 6 words before the frame |
+| Alert reply | 19 | One or two plain sentences: "This was me adding [item]." Plain cause, inside the frame. | median 6 to 8 words before the frame |
 | Thanks | 19 | Thanks first, then the result. "!" likely. "Thank you very much, it worked!" | 57% to 64% carry "!" |
 | Apology | 6 to 9 | "Sorry I missed this," then reason clause, then the fix or ask. | "sorry" in line one 7 of 9 |
 | Nudge | 8 | One short line: "Any updates on this?" Shape only, n is small. | 6 of 8 are 18 words or fewer |
 | New thread | 9 to 10 | Longer. Reason may come first. Topic-label subject. | median 34 words |
 
-Pushback (n=10) and decisions (n=8) are too small for their own shape. No rule. Size gate and point-first still apply.
+Pushback (n=10) and decisions (n=8) are too small for their own shape. No rule. The frame and point-first still apply.
 
 ### Forwarding safety
 
@@ -88,7 +88,7 @@ Anything longer than a few lines that lands in a Teams channel pastes as an HTML
 
 ## Red flags
 
-- A greeting and "Thank you," on a one-line reply or a forward.
+- An email with no "Hi," or no "Thank you,".
 - "Hi [Name]!" to someone who is not new.
 - A numbered list, a bold header, or "etc!" at the end of a list.
 - "!" on an ask or a correction.
@@ -105,9 +105,13 @@ Anything longer than a few lines that lands in a Teams channel pastes as an HTML
 
 Synthetic, modeled on the real patterns. No internal names, facts, or decisions.
 
-Email, bare one-line reply:
+Email, one-line reply:
 
+> Hi,
+>
 > Yes, Thursday works for me.
+>
+> Thank you,
 
 Email, short reply with greeting and closer:
 
@@ -119,7 +123,11 @@ Email, short reply with greeting and closer:
 
 Email, forward:
 
-> [Name], please take a look at the request below.
+> Hi [Name],
+>
+> Can you take a look at the request below please?
+>
+> Thank you,
 
 Email, new thread:
 

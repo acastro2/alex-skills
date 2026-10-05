@@ -254,7 +254,6 @@ class ChatHasNoRateTargets(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertNotIn(" is LOW for", result.stdout)
         self.assertNotIn(" is HIGH for", result.stdout)
-        self.assertIn("PASS", result.stdout)
 
 
 class CommsChecks(unittest.TestCase):
@@ -268,10 +267,12 @@ class CommsChecks(unittest.TestCase):
         "Send me your changes by Thursday so I can update the list before the call.\n"
     )
 
-    def test_baseline_comms_draft_has_no_warnings(self):
+    def test_baseline_comms_draft_has_no_rate_warnings(self):
+        # Long on purpose (rates are scored only at 100+ words), so only the length warning fires.
         result = run(self.BODY, "comms")
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("PASS", result.stdout)
+        self.assertNotIn(" is LOW for", result.stdout)
+        self.assertNotIn(" is HIGH for", result.stdout)
 
     def test_more_than_one_question_mark_warns(self):
         result = run(self.BODY + "Can you take the first item? Can you take the second?\n", "comms")
@@ -417,8 +418,8 @@ class CommsBands(unittest.TestCase):
 class DocsAndExecKeepTheirBands(unittest.TestCase):
     def test_docs_and_exec_score_rates_at_100_words(self):
         text = "We ship it now.\n" * 40
-        self.assertIn("avg_sent=4.0 is LOW for docs (target 12-20)", run(text, "docs").stdout)
-        self.assertIn("avg_sent=4.0 is LOW for exec (target 12-20)", run(text, "exec").stdout)
+        self.assertIn("avg_sent=4.0 is LOW for docs", run(text, "docs").stdout)
+        self.assertIn("avg_sent=4.0 is LOW for exec", run(text, "exec").stdout)
 
 
 class LengthBoundaries(unittest.TestCase):
@@ -557,6 +558,69 @@ class ChatPeriodWordCounts(unittest.TestCase):
     def test_two_word_line_with_period_is_fine_and_three_words_warn(self):
         self.assertNotIn("ends with a period", run("two words.\n", "chat").stdout)
         self.assertIn("warn: chat line ends with a period", run("three word line.\n", "chat").stdout)
+
+
+class LengthWarnings(unittest.TestCase):
+    def test_long_chat_reply_warns(self):
+        text = "\n".join(["the deploy went out this morning and the checks passed"] * 5) + "\n"
+        result = run(text, "chat")
+        self.assertIn("warn: draft is", result.stdout)
+
+    def test_short_chat_reply_has_no_length_warning(self):
+        result = run("yes, it went out this morning\n", "chat")
+        self.assertNotIn("warn: draft is", result.stdout)
+
+    def test_long_email_warns(self):
+        text = "Hi,\n\n" + " ".join(["The export is ready and the review can start on Thursday."] * 7) + "\n\nThank you,\n"
+        result = run(text, "comms")
+        self.assertIn("warn: draft is", result.stdout)
+
+    def test_short_email_has_no_length_warning(self):
+        result = run("Yes, tonight from 10pm to midnight.\n", "comms")
+        self.assertNotIn("warn: draft is", result.stdout)
+
+    def test_long_blog_paragraph_warns(self):
+        text = " ".join(["I tried a queue first, and it did not hold the retries the way I wanted, right?"] * 9) + "\n"
+        result = run(text, "blog")
+        self.assertIn("warn: paragraph is", result.stdout)
+
+    def test_length_warnings_do_not_block(self):
+        text = "\n".join(["the deploy went out this morning and the checks passed"] * 5) + "\n"
+        self.assertEqual(run(text, "chat").returncode, 0)
+
+
+class DocsAndExecBandsFromAlexsPicks(unittest.TestCase):
+    RUNBOOK = (
+        "Use this runbook when the nightly scheduler hangs and jobs stop moving. The restart is safe, because re-runs are idempotent (a job that runs twice gives the same result).\n\n"
+        "Check the queue depth before you touch anything. Is the oldest job older than 30 minutes? If not, wait and check again, because a long job can look like a hang.\n\n"
+        "1. Drain the queue. Expected result: depth reads 0.\n"
+        "2. Restart the scheduler service. Expected result: the service shows as running.\n"
+        "3. Re-run the failed jobs. Expected result: each job reaches done.\n"
+        "4. Check the dashboard again. Expected result: new heartbeats show up.\n\n"
+        "If it is still stuck after the re-run, ask the platform team in the incident channel and include the run number (so they can check the logs without a round trip). "
+        "Do not restart the database, because it is not part of the hang and a restart drops open sessions.\n"
+    )
+    BRIEF = (
+        "Decision: retire the legacy reporting server. Recommendation: approve, because it costs $90,000 a year and only 3 reports use it.\n\n"
+        "Why now: the license renews on November 30. Each month of delay costs about $7,500.\n\n"
+        "Where we stand: the replacements are built. They are tested. Nothing is left to build.\n\n"
+        "1. Approve the retirement. Owner: Data Engineering. Due: October 20.\n"
+        "2. Switch the 3 reports. Owner: Data Engineering. Due: November 15.\n"
+        "3. Shut down the server. Owner: Platform. Due: November 30.\n\n"
+        "Option 1, retire now, saves $90,000 a year and carries low risk because the replacements are tested. "
+        "Option 2, keep the server one more year, costs $90,000 and leaves the old reports running on an unsupported system.\n\n"
+        "Source for all figures: the finance workbook. The renewal date is verified. The delay cost is an estimate.\n"
+    )
+
+    def test_structured_runbook_with_one_reader_question_gets_no_band_warnings(self):
+        result = run(self.RUNBOOK, "docs")
+        self.assertNotIn(" is LOW for", result.stdout)
+        self.assertNotIn(" is HIGH for", result.stdout)
+
+    def test_short_sentence_exec_brief_gets_no_band_warnings(self):
+        result = run(self.BRIEF, "exec")
+        self.assertNotIn(" is LOW for", result.stdout)
+        self.assertNotIn(" is HIGH for", result.stdout)
 
 
 if __name__ == "__main__":

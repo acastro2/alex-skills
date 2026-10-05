@@ -57,6 +57,24 @@ Updated: 2026-10-05 CDT
   plan = he marks only round 1's 30 chat items; I fix length and build a fresh round 3.
 - Length fix: SKILL.md core rule 3 is now "Say only what you were given, then cut"; checker warns on
   chat > 40 words, comms > 60, blog paragraph > 120 (TDD, 84 tests green).
+- Alex marked (2026-10-05, export pasted in chat): email 9/20 caught (45%, at chance), posts 4/6,
+  blog 3/6, spoken 1/1; chat (35) and spoken (9) NOT marked yet. Docs/exec preference: he picked the
+  SEPTEMBER drafts 10/10 ("would sign"). Merged, not reverted: docs.md/exec.md now keep the old why,
+  next-mistake tips, reader question, scope sections, cost of waiting, number meaning, source line,
+  plus the new tightness and no chat markers. Core rule 3 now cuts messages only. Docs/exec checker
+  bands provisional, fitted on his 10 picks (86 tests green). Email: "Hi," + "Thank you," on EVERY
+  email (his rule, overrides the size-gated data); comms.md, SKILL.md, fingerprint, evals 2/8/14/15/20 updated.
+- Short lineup (`Voice lineup 2026-10 short.html`, 10 chat + 5 spoken, marks in ~/Downloads): chat 6/10
+  caught, spoken 4/5. All identity marks so far: 27/48 = 56% (one-sided p=0.24 vs chance) -> passes
+  overall. Weak spot: spoken 5/6 caught (p=0.11, n small); real turns carry more fillers ("you know",
+  "so", "yeah") than fakes, which the spoken register avoids on purpose for scripts. Open: Alex's call.
+- FINAL STATE 2026-10-05 (usage limit hit): defaults taken for Alex (spoken stays clean, docs/exec merge
+  stands as provisional, corpus kept). Exemplar note has frame + spoken notes. Tools persisted in
+  `~/.agents/skill-workspace/alex-skills/alex-voice-workspace/tools/`. Eval iteration-4: 212/230 (92%).
+  NOT DONE, fix next: eval 13 (reply to thanks: no "my pleasure", too long), eval 21 (long status should
+  switch to comms form), eval 16 (opening + invented fact + mermaid), eval 14 expectation "12 words or
+  fewer" is stale vs always-frame rule (fix the eval), eval 3 "no sign-off" likely trips on the source
+  line (check grading.json), eval 7 spoken because/for-example. Then re-run it4, then commit (pre-commit).
 - Round 3 workflow `wf_7113c18f-530`: fresh items (holdout, post-Oct-3 bursts, train-not-exemplar email
   fill since no new human mail exists), returns real vs fake median words per group before handover. Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
   rerun the lineup. Likely first fix: shorter defaults in chat and email.

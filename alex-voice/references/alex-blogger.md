@@ -7,6 +7,8 @@
 
 The target is the voice of the posts Alex wrote by hand and lightly polished in 2023 and 2024 (the Kafka retries post and the first two Senior Engineer parts). Not the 2025 to 2026 posts, which were AI-drafted and carry 44 to 141 em dashes per 10k words, "Here's the thing" openers, and one-line drama paragraphs.
 
+Note (Alex, 2026-10-05): the 2024 Senior Engineer posts were AI-assisted, but they are the closest published text to his own words, so they stay as the blog anchor. The 2023 Kafka post and his 2023 hand notes are the purest samples; when the two disagree, follow the 2023 text.
+
 What the 2023 to 2024 posts measure, and the blog targets that follow:
 
 | Metric (per 10k words) | 2023 to 2024 posts | 2025 to 2026 AI drafts | Target |
