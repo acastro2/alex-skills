@@ -36,7 +36,13 @@ Updated: 2026-10-05 CDT
   spoken left out (ASR artifacts make it unfair). DONE: 75 pairs (chat 30, email 29, posts 16); one
   personal email removed. Pre-mark stats: fakes run longer than real (chat median 8 vs 4 words, email
   20 vs 14), email fakes end on a period more (10 vs 4), post fakes have no "!" (real 5 of 16).
-- Waiting on Alex to mark the lineup. Next: score his picks vs the key, turn each "why" into a rule,
+- skill-creator review done 2026-10-05: quick_validate PASS; eval iteration-3 (21 evals, new vs Sept
+  snapshot, baseline used a partial reconstruction of the Sept exemplars because the lane overwrote the
+  original note): 94.3% vs 58.6% mean pass rate. Eval 10 (ask for missing chat context) failed, rule
+  reworded in SKILL.md + chat.md, re-run 3/3 pass (`iteration-3b/`). Review page: `iteration-3/review.html`.
+  Evals were written from the same findings, so they confirm rule-following, not voice; the lineup does.
+- Alex reviewed `iteration-3/review.html` on 2026-10-05: "its fine", no feedback to apply.
+- Waiting on Alex to mark the lineup. Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
   rerun the lineup. Likely first fix: shorter defaults in chat and email.
 - Then the blind lineup: fresh subagents loading only the skill, given prev/context + a content brief,
   30+ items per register from `holdout/`. DONE = Alex picks fakes at chance, not tests green.

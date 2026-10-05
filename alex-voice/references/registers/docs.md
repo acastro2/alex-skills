@@ -12,4 +12,4 @@
 
 Synthetic, modeled on the real patterns. No internal names, facts, or decisions.
 
-> This lets you rotate the API key without restarting the service. Use the managed secret path unless you're debugging locally. The manual option works, but it puts rotation back on you.
+> This lets you rotate the API key without restarting the service. Use the managed secret path unless you are debugging locally. The manual option works, but it puts rotation back on you.

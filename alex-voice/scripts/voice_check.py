@@ -2,7 +2,8 @@
 """Score a draft against Alex's measured voice fingerprint.
 
 usage: voice_check.py FILE --register {blog,docs,comms,exec,chat,spoken}
-Exit 1 when a blocker is found (em dash or a banned phrase), else 0.
+Exit 1 only when a blocker is found (em dash, banned phrase, stock closer,
+shorthand, lowercase standalone i). Everything else is a warning.
 """
 from __future__ import annotations
 
@@ -11,16 +12,22 @@ import re
 import sys
 from pathlib import Path
 
+# Alex works async and never offers a call or meeting. "I was on a call" is fine.
+CALL_OFFER = (
+    r"\b(jump|hop|get) on a (quick )?call\b|\b(book|schedule|set up|grab) (a|some|those) (quick )?(calls?|meetings?)\b"
+    r"|\bschedule some time\b|\blet['’]?s sync\b|\b(talk|chat|speak|discuss)( about)?( it| this| that)? (on|over) a (quick )?call\b"
+)
+
 BANNED = [
     (r"—", "em dash"),
-    (r"here'?s the (thing|deal)", "here's the thing/deal"),
-    (r"\bbut here'?s\b", "but here's..."),
+    (r"here['’]?s the (thing|deal)", "here's the thing/deal"),
+    (r"\bbut here['’]?s\b", "but here's..."),
     (r"\bthe truth is\b", "the truth is"),
     (r"\blet me be direct\b", "let me be direct"),
     (r"\bfull disclosure\b", "full disclosure"),
-    (r"\bi'?ll be honest\b", "I'll be honest"),
+    (r"\bi['’]?ll be honest\b", "I'll be honest"),
     (r"\bspoiler alert\b", "spoiler alert"),
-    (r"\blet'?s (dive|unpack|explore)\b", "let's dive/unpack/explore"),
+    (r"\blet['’]?s (dive|unpack|explore)\b", "let's dive/unpack/explore"),
     (r"\bdive deep\b", "dive deep"),
     (r"\bdelv(e|ing)\b", "delve"),
     (r"\bleverag(e|es|ing)\b", "leverage"),
@@ -32,24 +39,71 @@ BANNED = [
     (r"\bgame.?changer\b", "game-changer"),
     (r"\bparadigm\b", "paradigm"),
     (r"\bnavigat(e|ing) the\b", "navigate the..."),
-    (r"\bit'?s (important|worth) (to note|noting)\b", "it's important to note"),
-    (r"\bin today'?s\b", "in today's..."),
+    (r"\bit['’]?s (important|worth) (to note|noting)\b", "it's important to note"),
+    (r"\bin today['’]?s\b", "in today's..."),
     (r"\bever.evolving\b", "ever-evolving"),
     (r"\b(elevate|empower|foster)(s|ed|ing)?\b", "elevate/empower/foster"),
     (r"\blitmus\b", "litmus"),
+    (r"\bcutting.edge\b", "cutting-edge"),
+    (r"\bhere['’]?s what\b", "here's what..."),
     (r"\bthis is where\b", "this is where..."),
-    (r"\bquick q\b|\bwtv\b|\bplx\b|\bimho\b|\bgimme\b|\btho\b", "abbreviated word (quick q, wtv, plx, imho, gimme, tho)"),
+    (r"\banything else\b", "stock closer: anything else"),
+    (r"\bhappy to help\b", "stock closer: happy to help"),
+    (r"\bhope this helps\b", "stock closer: hope this helps"),
+    (r"\bfeel free to reach out\b", "stock closer: feel free to reach out"),
+    (CALL_OFFER, "call offer (Alex works async, never offer a call or meeting)"),
+    (r"(?<![\w-])(quick q|wtv|plx|imho|imo|gimme|tho|ty|np|idk)(?![\w-])", "abbreviated word (quick q, wtv, plx, imho, imo, gimme, tho, ty, np, idk)"),
 ]
+
+
+# Warnings: (pattern, label, registers where it does not apply)
+WARN_PHRASES = [
+    (r"\b(i|we)['’]ll\b|\b(you|we)['’]re\b|\bi['’]ve\b", "contraction Alex rarely types (I'll, we'll, you're, we're, I've)", ()),
+    (r"\blets\b(?! (you|me|us|him|her|them|it|the|a|users|people|teams)\b)|\bwhats\b|\bits (a|not|the|ok|fine|just|been|going)\b", "typing slip (lets, whats, its for it is): Alex does not imitate typos", ()),
+    (r"\bok so\b", "machine habit: 'ok so'", ()),
+    (r"\bhelp me\b", "machine habit: 'help me'", ()),
+    (r"\bi want you to\b", "machine habit: 'I want you to'", ()),
+    (r"\bexplain to me\b", "machine habit: 'explain to me'", ()),
+    # comms has its own tag-question rule; spoken scores tag questions as a rate
+    (r"(?<!\bor )\bno\?", "machine habit: tag question 'no?'", ("comms", "spoken")),
+]
+# Habits from the old skill. Fine in a blog, wrong everywhere else.
+OLD_SKILL_PHRASES = {
+    "my bad": r"\bmy bad\b",
+    "was my miss": r"\bwas my miss\b",
+    "I promise": r"\bi promise\b",
+    "cool, but": r"\bcool, but\b",
+    "trust me": r"\btrust me\b",
+    "don't get me wrong": r"\bdon['’]t get me wrong\b",
+    "let me diagram that": r"\blet me diagram that\b",
+    "etc!": r"\betc!",
+    "one quick tip": r"\bone quick tip\b",
+}
+WARN_PHRASES += [(pat, f"old-skill phrase: '{name}'", ("blog",)) for name, pat in OLD_SKILL_PHRASES.items()]
+
+# Case matters here: a lowercase "i" is a blocker, "I" is fine. Skips i.e., i-th, and words with i inside.
+# A lone quoted 'i' (a character, not the pronoun) is ignored; 'i will go' and i'm are caught.
+BANNED_CASE_SENSITIVE = [(r"(?<![\w./-])i(?!\w|\.\w|-\w|/\w|['’](?!\w))", "lowercase standalone i")]
+
+# Banned patterns that do not apply in some registers (label: registers). "Anything else?"
+# closes 9 of 24 of Alex's meetings, so it is a real spoken habit and a written AI tell.
+BANNED_SKIP = {"stock closer: anything else": ("spoken",)}
+
+MIN_WORDS_FOR_RATES = 100
 
 # per 10k words unless noted; (low, high) targets measured from Alex's own writing
 TARGETS = {
     "blog":   {"avg_sent": (14, 21), "p90_sent": (28, 42), "q": (30, 80), "bang": (15, 70), "paren": (60, 220), "the_start_pct": (0, 10), "one_line_para_pct": (0, 35), "lower_start_pct": (0, 2)},
     "docs":   {"avg_sent": (12, 20), "p90_sent": (24, 36), "q": (5, 40), "bang": (0, 20), "paren": (20, 150), "the_start_pct": (0, 12), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 2)},
-    "comms":  {"avg_sent": (12, 24), "p90_sent": (22, 46), "q": (10, 80), "bang": (40, 200), "paren": (0, 120), "the_start_pct": (0, 10), "one_line_para_pct": (0, 80), "lower_start_pct": (0, 2)},
+    "comms":  {"avg_sent": (8, 18), "p90_sent": (14, 50), "bang": (0, 250), "paren": (0, 60), "the_start_pct": (0, 10), "lower_start_pct": (0, 2)},
     "exec":   {"avg_sent": (12, 20), "p90_sent": (22, 34), "q": (0, 30), "bang": (0, 10), "paren": (0, 80), "the_start_pct": (0, 15), "one_line_para_pct": (0, 60), "lower_start_pct": (0, 1)},
-    "chat":   {"avg_sent": (4, 30), "p90_sent": (8, 55), "q": (80, 260), "bang": (60, 350), "paren": (0, 60), "the_start_pct": (0, 5), "one_line_para_pct": (40, 100), "lower_start_pct": (30, 100)},
-    "spoken": {"avg_sent": (10, 20), "p90_sent": (20, 34), "q": (80, 220), "bang": (0, 40), "paren": (0, 20), "the_start_pct": (0, 5), "one_line_para_pct": (0, 100), "lower_start_pct": (0, 5)},
+    "chat":   {},  # judged by line and count checks, not rates (rates fail on real bursts)
+    # 100-299 words; punctuation is speech-to-text output, so it is not scored
+    "spoken": {"avg_sent": (9, 24), "p90_sent": (18, 50), "the_start_pct": (0, 12), "tag_q": (0, 150)},
 }
+
+SPOKEN_LONG = {"avg_sent": (10, 18), "p90_sent": (18, 40), "the_start_pct": (0, 8), "tag_q": (15, 115), "opinion": (10, 80)}
+SPOKEN_LONG_MIN_WORDS = 300
 
 
 def strip_markup(text: str) -> str:
@@ -70,6 +124,14 @@ def sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if len(p.strip().split()) >= 2]
 
 
+SKIPPED_IN = {label: skip for _, label, skip in WARN_PHRASES}
+
+
+def hits(patterns: list[tuple[str, str]], text: str, flags: int) -> list[tuple[str, int]]:
+    found = [(label, len(re.findall(pat, text, flags=flags))) for pat, label in patterns]
+    return [(label, count) for label, count in found if count]
+
+
 def analyze(raw: str) -> dict:
     text = strip_markup(raw)
     words = re.findall(r"[A-Za-z'’]+", text)
@@ -88,19 +150,77 @@ def analyze(raw: str) -> dict:
         "bang": per10k(r"!"),
         "paren": per10k(r"\("),
         "emdash": per10k(r"—"),
-        "tag_q": per10k(r"\b(right|no|correct)\?|make(s)? sense\?"),
+        "tag_q": per10k(r"\b(right|(?<!\bor )no|correct)\?|make(s)? sense\?"),
         "opinion": per10k(r"\b(i think|to me,|in my (honest |personal )?opinion|i do think)\b"),
         "the_start_pct": round(100 * sum(1 for s in sents if s.split()[0].lower() == "the") / max(len(sents), 1), 1),
         "lower_start_pct": round(100 * sum(1 for s in sents if s[0].islower()) / max(len(sents), 1), 1),
         "one_line_para_pct": round(100 * one_line / max(len(paras), 1), 1),
-        "banned": [(label, len(re.findall(pat, text, flags=re.I))) for pat, label in BANNED if re.search(pat, text, flags=re.I)],
+        "text": text,
+        "lines": [line.strip() for line in text.splitlines() if line.strip()],
+        "phrases": dict(hits([(pat, label) for pat, label, _ in WARN_PHRASES], text, re.I)),
+        "banned": hits(BANNED, text, re.I) + hits(BANNED_CASE_SENSITIVE, text, 0),
     }
 
 
-def report(stats: dict, register: str) -> tuple[list[str], list[str]]:
-    blockers = [f"{label} x{count}" for label, count in stats["banned"]]
+# Max count per draft; chat is judged by counts, not rates.
+CHAT_CAPS = {"?": 3, "!": 2, "(": 2}
+
+
+# Chat habits that are real but should not stack in one draft.
+CHAT_MARKERS = [
+    r"\b(right|(?<!\bor )no|correct)\?|\bmake(s)? sense\?",
+    r"\bok so\b",
+    r"\bsweet\b",
+    r"\bamazing\b",
+    r"\bwohoo\b",
+    r"\b[a-z]*([a-z])\1{2,}[a-z]*\b",
+    r"\b(shit|damn|wtf|sucks|crap)\b",
+]
+
+
+def chat_line_warnings(lines: list[str]) -> list[str]:
     warnings = []
-    for key, (low, high) in TARGETS[register].items():
+    joined = "\n".join(lines)
+    for mark, cap in CHAT_CAPS.items():
+        if joined.count(mark) > cap:
+            warnings.append(f"chat has {joined.count(mark)} '{mark}' (cap {cap})")
+    markers = sum(len(re.findall(pat, joined, flags=re.I)) for pat in CHAT_MARKERS)
+    if markers >= 2:
+        warnings.append(f"chat has {markers} signature markers (budget 1)")
+    for line in lines:
+        count = len(line.split())
+        if count > 30:
+            warnings.append(f"chat line has {count} words: this is a channel post, use comms")
+        elif count >= 3 and line.endswith(".") and not line.endswith(".."):
+            warnings.append(f"chat line ends with a period: {line[:40]!r}")
+    return warnings
+
+
+def comms_warnings(text: str) -> list[str]:
+    warnings = []
+    questions = text.count("?")
+    if questions > 1:
+        warnings.append(f"comms has {questions} '?' (keep one at most)")
+    tags = len(re.findall(r"\b(right|(?<!\bor )no)\?|\bmakes? sense\?", text, flags=re.I))
+    if tags:
+        warnings.append(f"tag question x{tags} (right? / make sense? / no?): state it instead")
+    thinks = len(re.findall(r"\bi think\b", text, flags=re.I))
+    if thinks >= 2:
+        warnings.append(f"'I think' x{thinks}: say it plainly")
+    return warnings
+
+
+def report(stats: dict, register: str) -> tuple[list[str], list[str]]:
+    blockers = [f"{label} x{count}" for label, count in stats["banned"] if register not in BANNED_SKIP.get(label, ())]
+    warnings = [f"{label} x{count}" for label, count in stats["phrases"].items() if register not in SKIPPED_IN[label]]
+    if register == "chat":
+        warnings += chat_line_warnings(stats["lines"])
+    if register == "comms":
+        warnings += comms_warnings(stats["text"])
+    if stats["words"] < MIN_WORDS_FOR_RATES:
+        return blockers, warnings
+    bands = SPOKEN_LONG if register == "spoken" and stats["words"] >= SPOKEN_LONG_MIN_WORDS else TARGETS[register]
+    for key, (low, high) in bands.items():
         value = stats[key]
         if value < low:
             warnings.append(f"{key}={value} is LOW for {register} (target {low}-{high})")
@@ -121,8 +241,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"voice_check {args.file.name} [{args.register}] words={stats['words']} sentences={stats['sentences']}")
     print(f"  avg_sent={stats['avg_sent']} p90_sent={stats['p90_sent']} ?/10k={stats['q']} !/10k={stats['bang']} (/10k={stats['paren']} emdash/10k={stats['emdash']}")
     print(f"  tag_q/10k={stats['tag_q']} opinion/10k={stats['opinion']} the_start%={stats['the_start_pct']} lower_start%={stats['lower_start_pct']} one_line_para%={stats['one_line_para_pct']}")
-    if stats["words"] < 300:
-        print("  note: under 300 words, rate warnings are unreliable; blockers still count")
+    if stats["words"] < MIN_WORDS_FOR_RATES:
+        print("  short-form: rates not scored")
+    if args.register == "spoken":
+        print("  punctuation from speech-to-text, not calibrated")
     for item in blockers:
         print(f"  BLOCKER: {item}")
     for item in warnings:
