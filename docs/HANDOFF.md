@@ -42,7 +42,18 @@ Updated: 2026-10-05 CDT
   reworded in SKILL.md + chat.md, re-run 3/3 pass (`iteration-3b/`). Review page: `iteration-3/review.html`.
   Evals were written from the same findings, so they confirm rule-following, not voice; the lineup does.
 - Alex reviewed `iteration-3/review.html` on 2026-10-05: "its fine", no feedback to apply.
-- Waiting on Alex to mark the lineup. Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
+- Round 2 (Alex asked to cover the untested registers): chat re-harvested with full chat keys into
+  `corpus/chat-full-2026-10-05.jsonl` (38k msgs, 406 chats). Workflow `wf_9666a978-316` builds
+  `Voice lineup 2026-10 round 2.md` + key: 30 chat bursts (only post-Oct-3 or holdout messages),
+  15 spoken turns (clean verbatim, Alex's call), 10 blog paragraphs (no 6-gram overlap with skill files),
+  and a docs/exec PREFERENCE test (new vs old skill; Alex's call, no provable hand-typed docs exist).
+- Round 2 built: 61 items (30 bursts, 15 spoken, 6 blog after dropping 4 AI-looking 2024 paragraphs,
+  6 docs + 4 exec preference). New harvest had 12% duplicate rows (chat list reordered mid-paging);
+  first harvest had 0, so findings stand. Pre-mark stats, both rounds: fakes ~30-60% longer than real
+  (bursts 18.5 vs 14 words, spoken 74 vs 52, blog 90 vs 57). New skill docs/exec ~half the old length.
+- Blog calibration risk: selector flagged the 2024 Senior Engineer parts as partly AI-assisted
+  (em dashes, "Hey there!"). alex-blogger.md treats them as hand-written; needs Alex's call.
+- Waiting on Alex: mark lineups, or let me fix length first (see chat). Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
   rerun the lineup. Likely first fix: shorter defaults in chat and email.
 - Then the blind lineup: fresh subagents loading only the skill, given prev/context + a content brief,
   30+ items per register from `holdout/`. DONE = Alex picks fakes at chance, not tests green.

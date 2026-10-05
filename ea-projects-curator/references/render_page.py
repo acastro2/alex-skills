@@ -63,6 +63,13 @@ CONTENT SCHEMA (required unless marked optional)
   "objective": "Text.",
   "outcome":   {"tag": "Achieved", "text": "Text."},   # Achieved | Partially achieved | Not achieved
   "tldr":      "Text.",
+  "warning":   {"headline": "Text.", "text": "Text.", "label": "IMPORTANT",
+                "tone": "warn", "links": [{"label": "Doc", "url": "https://..."}]},
+                                               # optional; renders at the end of the Forum
+                                               # recap, before "Decisions made". tone is
+                                               # "warn" (amber) or "stop" (red). label,
+                                               # links optional. headline <= 90 chars,
+                                               # text <= 400.
   "decisions": [{"lead": "Bold first sentence.", "text": "Rest.", "rationale": "Text.",
                  "owner": "Name, Name", "chip": "Topic label"}],        # lead, chip optional
   "actions":   [{"action": "Text.", "owner": "Name | Unassigned (who asked)",
@@ -112,6 +119,28 @@ CHIP = {"green": ("#E3F1E8", "#1D5E36"), "amber": ("#FBEFD9", "#7A4108"),
         "gray": ("#EEF0F3", "#4A5563"), "blue": ("#E6EEF6", "#17375E")}
 CHIP_DOT = {"green": "#2E8B57", "amber": "#C9812F"}
 
+# Warning band (design supplied by Alex, 2026-10-05). Hazard-tape rules top and bottom,
+# cream field, dark label chip. Kept as named constants because every colour this page
+# emits is named; a bare hex in a builder is drift.
+WARN_TAPE = "#C07735"
+WARN_TAPE_LIGHT = "#F3D7AE"
+WARN_FIELD = "#FAECD5"
+WARN_LABEL_BG = "#6D3A15"
+WARN_LABEL_FG = "#FAECD5"
+WARN_TEXT = "#1B2A3A"
+
+# Red "stop" tone of the same band (design supplied by Alex, 2026-10-05). Same geometry,
+# different palette, plus a STOP chip and a BLOCKED caption. Alex has not used it yet.
+STOP_TAPE = "#B8433B"
+STOP_FIELD = "#FBE4E1"
+STOP_HEAD = "#7A1F1A"
+
+# tone -> (field, tape, tape_alt, headline, chip_bg, chip_fg)
+WARN_TONES = {
+    "warn": (WARN_FIELD, WARN_TAPE, WARN_TAPE_LIGHT, WARN_LABEL_BG, WARN_LABEL_BG, WARN_LABEL_FG),
+    "stop": (STOP_FIELD, STOP_TAPE, WHITE, STOP_HEAD, STOP_TAPE, WHITE),
+}
+
 TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}   # valid tags
 OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
 OUTCOME_GREEN = {"Achieved"}
@@ -157,6 +186,15 @@ PRINT_CSS = (
     f".aw-recap .aw-avatar{{background-color:{WHITE} !important;color:{NAVY} !important;border:1px solid {NAVY} !important;}}"
     f".aw-recap .aw-tint{{border:1px solid {BORDER} !important;}}"
     f".aw-recap .aw-rule{{background-color:{WHITE} !important;border-bottom:2px solid {NAVY} !important;}}"
+    # The warning label chip is light-on-dark (cream on dark brown), so it needs a print
+    # theme class or it prints cream on nothing when "Background graphics" is off.
+    f".aw-recap .aw-warnlabel{{background-color:{WHITE} !important;color:{WARN_LABEL_BG} !important;"
+    f"border:1px solid {WARN_LABEL_BG} !important;}}"
+    # The red tone's STOP chip is white-on-red inside a red ring, which prints as white on
+    # white without a theme, so both the ring and the chip get one.
+    f".aw-recap .aw-stopring{{background-color:{WHITE} !important;border:1px solid {STOP_TAPE} !important;}}"
+    f".aw-recap .aw-stoplabel{{background-color:{WHITE} !important;color:{STOP_TAPE} !important;"
+    f"border:2px solid {STOP_TAPE} !important;}}"
     "}")
 STYLE_BLOCK = f"<style>{PRINT_CSS}</style>"
 KEEP = ' class="aw-keep"'
@@ -233,6 +271,31 @@ def check_content(c):
         need(pt, "text", f"exec_summary.points[{i}]")
         if "lead" in pt:
             need(pt, "lead", f"exec_summary.points[{i}]", allow_empty=True)
+
+    # Optional warning band. Refuses rather than warns, like everything else here: a
+    # warning is the most-read block on the page, so a long one is a content fix, not a
+    # layout argument. Bounds follow Alex's own template ("[Headline]" plus one or two
+    # short sentences).
+    if "warning" in c:
+        w = need(c, "warning", "content", kind=dict)
+        need(w, "headline", "warning")
+        need(w, "text", "warning")
+        optional_str(w, ("label",), "warning")
+        tone = w.get("tone", "warn")
+        if tone not in WARN_TONES:
+            die(f"warning.tone must be one of {sorted(WARN_TONES)}, got {tone!r}. "
+                f"'warn' is the amber IMPORTANT band, 'stop' is the red STOP band.")
+        if len(w["headline"]) > 90:
+            die(f"warning.headline is {len(w['headline'])} chars; keep it under 90. It is "
+                f"a headline, not a paragraph.")
+        if len(w["text"]) > 400:
+            die(f"warning.text is {len(w['text'])} chars; keep it under 400. One or two "
+                f"short sentences, per the design.")
+        # Optional sources, rendered as bordered link buttons under the text.
+        for i, l in enumerate(w.get("links") or []):
+            where = f"warning.links[{i}]"
+            need(l, "label", where)
+            safe_url(need(l, "url", where))
 
     o = need(c, "outcome", "content", kind=dict)
     need(o, "text", "outcome")
@@ -398,6 +461,72 @@ def header(c):
             f'font-weight:400;">{esc(c["title"])}</h1>'
             f'<div class="aw-inv" style="font-size:13px;line-height:19px;color:{DATE_ON_NAVY};padding-top:8px;">'
             f'{esc(c["subtitle"])}</div></div>')
+
+
+def warning(c):
+    """Hazard-tape warning band (design supplied by Alex, 2026-10-05).
+
+    Three deliberate departures from the markup he supplied, each forced by a measured
+    SharePoint behaviour rather than a preference:
+
+    * his headline carried `margin:14px 0 6px 0` on a <div>, and SharePoint's page CSS
+      overrides margin on a <div> at render time (stored, not applied), so the space above
+      is a spacer() and the space below is padding;
+    * the dark IMPORTANT chip is light-on-dark, so it carries the `aw-warnlabel` print
+      theme class, or it prints cream-on-nothing with "Background graphics" off;
+    * the tape cells keep a solid `background-color` next to the gradient, so a stripped
+      gradient degrades to a solid bar instead of a gap.
+
+    Placement is the end of the Forum recap, before "Decisions made" (Alex, 2026-10-05,
+    after rejecting both the top of the page and the slot under the Executive Summary).
+    The band is the leadership gate, the recap is the forum's own record, and the warning
+    closes the record before the decisions were extracted from it.
+
+    Two tones share one geometry: `warn` (amber, IMPORTANT) and `stop` (red, STOP plus a
+    BLOCKED caption). An optional `links` list adds source buttons under the text.
+    """
+    if "warning" not in c:
+        return ""
+    w = c["warning"]
+    tone = w.get("tone", "warn")
+    field, tape_c, tape_alt, head_c, chip_bg, chip_fg = WARN_TONES[tone]
+    tape = (f'<div style="height:8px;font-size:0;line-height:0;background-color:{tape_c};'
+            f'background-image:repeating-linear-gradient(-45deg,{tape_c} 0px,{tape_c} 8px,'
+            f'{tape_alt} 8px,{tape_alt} 16px);">&nbsp;</div>')
+    if tone == "stop":
+        # Red tone: a STOP chip inside a red ring, then the caption. Two spans, not two
+        # nested tables, because SharePoint forces dark gridlines onto real table cells.
+        label = (f'<div style="display:flex;align-items:center;">'
+                 f'<span class="aw-stopring" style="display:inline-block;padding:2px;'
+                 f'background-color:{chip_bg};border-radius:4px;">'
+                 f'<span class="aw-stoplabel" style="display:inline-block;padding:1px 6px;'
+                 f'background-color:{chip_bg};border:2px solid {chip_fg};border-radius:3px;'
+                 f'color:{chip_fg};font-size:10px;font-weight:800;letter-spacing:1.5px;">STOP</span>'
+                 f'</span>'
+                 f'<span style="padding-left:10px;color:{head_c};font-size:10px;font-weight:700;'
+                 f'letter-spacing:2px;">{esc(w.get("label", "BLOCKED"))}</span></div>')
+    else:
+        label = (f'<span class="aw-warnlabel" style="display:inline-block;padding:3px 8px;'
+                 f'background-color:{chip_bg};color:{chip_fg};font-size:10px;'
+                 f'font-weight:700;letter-spacing:2px;">&#9888; {esc(w.get("label", "IMPORTANT"))}</span>')
+    head = (f'<div style="padding:10px 0 3px 0;">'
+            f'<span style="font-size:14px;font-weight:700;color:{head_c};line-height:20px;">'
+            f'{esc(w["headline"])}</span></div>')
+    body = (f'<div><span style="font-size:13px;color:{WARN_TEXT};line-height:20px;">'
+            f'{esc(w["text"])}</span></div>')
+    # Optional sources. The policy and the standard are the authority behind the claim, so
+    # the band carries them rather than making a reader go and find them.
+    links = ""
+    if w.get("links"):
+        btns = "".join(
+            f'<a href="{safe_url(l["url"])}" style="display:inline-block;font-size:12px;'
+            f'font-weight:600;text-decoration:none;border:1px solid {tape_c};padding:4px 9px;'
+            f'color:{head_c};margin:0 8px 4px 0;">{esc(l["label"])}</a>' for l in w["links"])
+        links = f'<div style="padding-top:10px;">{btns}</div>'
+    return (spacer(20) + f'<div class="aw-keep" style="background-color:{field};'
+            f'border-left:1px solid {tape_c};border-right:1px solid {tape_c};">'
+            f'{tape}<div style="padding:12px 18px 14px 18px;">{label}{head}{body}{links}</div>'
+            f'{tape}</div>')
 
 
 def exec_summary(c):
@@ -612,7 +741,7 @@ def shipped_panel(c):
 
 def build(c):
     # One root with the print block first: the print CSS finds the page through it.
-    return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join([header(c), exec_summary(c), forum_recap(c), decision_cards(c),
+    return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join([header(c), exec_summary(c), forum_recap(c), warning(c), decision_cards(c),
                     action_table(c), topic_list(c), open_questions(c),
                     artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)]) + '</div>'
 
