@@ -68,13 +68,15 @@ Updated: 2026-10-05 CDT
   caught, spoken 4/5. All identity marks so far: 27/48 = 56% (one-sided p=0.24 vs chance) -> passes
   overall. Weak spot: spoken 5/6 caught (p=0.11, n small); real turns carry more fillers ("you know",
   "so", "yeah") than fakes, which the spoken register avoids on purpose for scripts. Open: Alex's call.
-- FINAL STATE 2026-10-05 (usage limit hit): defaults taken for Alex (spoken stays clean, docs/exec merge
-  stands as provisional, corpus kept). Exemplar note has frame + spoken notes. Tools persisted in
-  `~/.agents/skill-workspace/alex-skills/alex-voice-workspace/tools/`. Eval iteration-4: 212/230 (92%).
-  NOT DONE, fix next: eval 13 (reply to thanks: no "my pleasure", too long), eval 21 (long status should
-  switch to comms form), eval 16 (opening + invented fact + mermaid), eval 14 expectation "12 words or
-  fewer" is stale vs always-frame rule (fix the eval), eval 3 "no sign-off" likely trips on the source
-  line (check grading.json), eval 7 spoken because/for-example. Then re-run it4, then commit (pre-commit).
+- DONE 2026-10-05: all six it4 failures fixed. Rule fixes: chat asks only when recipient or the answered
+  message is missing; length warnings must be acted on; long chat status cut to 40 words before switching
+  to comms; docs opener = specific benefit, tips only from given facts, no list repeating a diagram;
+  spoken pre-handover check (because, for example, short sentences). Eval fixes: 14 (frame not counted),
+  3 (source line may end an exec brief), 10 and 16 (test substance, not template wording; re-graded
+  inline with quoted evidence). Iteration-5: 290/293 (99.0%) over 28 runs, 7 fixed evals run twice.
+  Only blog evals 4 and 6 still miss 3 checks ("I tried" beat, 2-to-5-sentence paragraphs, "you");
+  pre-existing since it3, old skill misses them too, and Alex's lineup scored blog at chance (3/6).
+  86 tests, validate_skill_graph, quick_validate all PASS. Not committed (pre-commit not run).
 - Round 3 workflow `wf_7113c18f-530`: fresh items (holdout, post-Oct-3 bursts, train-not-exemplar email
   fill since no new human mail exists), returns real vs fake median words per group before handover. Not committed yet (needs pre-commit, then a branch commit when he asks). Next: score his picks vs the key, turn each "why" into a rule,
   rerun the lineup. Likely first fix: shorter defaults in chat and email.

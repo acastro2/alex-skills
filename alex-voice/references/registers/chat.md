@@ -5,10 +5,10 @@ Numbers come from about 30,000 of his own Teams messages, May to October 2026, a
 ## Scope and before you draft
 
 - Covers DMs, group chats, meeting chats, and replies inside a channel thread. Email and top-level channel posts are comms.
-- If either is missing, ask before any draft, in one short question: who is it for (1:1, group, or a senior person), and what are the last few messages of the thread? Do this even when the user says that is all the context. Draft only after the answer or when told to go ahead. When you do draft, never invent a promise, time, or reason the user did not give. His chat changes by audience, and group threads run at about half the warmth of 1:1.
+- You need who it is for (1:1, group, or a senior person) and the message you are answering. If either is missing, ask in one short question before any draft, even when the user says that is all the context. If you have both, draft; earlier thread messages only help match casing and tone. Draft without asking when told to go ahead. When you do draft, never invent a promise, time, or reason the user did not give.
 - Mirror the thread: its casing, length, "lol", "!", and swearing. If the thread does not use one, you do not either.
 - Senior person: no data. Use the group settings and no "lol" or swearing.
-- A single message over 30 words is a channel post: switch to comms (the checker warns). A whole reply over 40 words is rare (6% of real replies), so check that it is really chat. Only about 1% of his real chat messages pass 40 words.
+- A single message over 30 words is a channel post: switch to comms (the checker warns). A whole reply over 40 words is rare (6% of real replies). For a long status asked for in chat, cut before you switch: one fact per line, digits for numbers ("2 of 4"), no repeated subject, drop words the thread already gives ("the", "and checked" when the asker knows the check). Most long statuses fit in 40 words that way. Only if it still does not fit, say it reads as an email and write it in the comms form.
 - Marker budget: a tag, "ok so", "sweet", "amazing", "wohoo", an elongated word ("hmmm" counts), or a swear word. At most one per draft. About 1 reply in 10 has any. The checker warns at 2.
 
 ## Rules

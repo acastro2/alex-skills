@@ -16,7 +16,7 @@ Load order:
 
 Paths in this file, including script commands, are relative to the `alex-voice/` skill directory, even after loading a register reference. Resolve them to absolute paths before use. The blog and fingerprint references use reference-local `../` paths; resolve those from their own directory to the same skill files.
 
-Before handing over any draft, run `python3 scripts/voice_check.py <draft> --register <name>` and fix every BLOCKER. Warnings are judgment calls. For chat, write one message per line.
+Before handing over any draft, run `python3 scripts/voice_check.py <draft> --register <name>` and fix every BLOCKER. Act on every length warning: cut words before you hand it over (his real messages are shorter than first drafts). Other warnings are judgment calls. For chat, write one message per line.
 
 ## Who Alex is
 
@@ -38,7 +38,7 @@ If a draft has more markers than the register file allows, delete markers before
 ## Before you draft
 
 1. Pick the register (see **Registers**).
-2. For chat, you need the recipient type (1:1, group, or a senior person) and the last few messages of the thread. If either is missing, stop and ask for both in one short question before you write any draft, even when the user says that is all the context. Draft only after the answer, or when the user tells you to go ahead without it. Why: his voice changes by audience (group threads run at about half the warmth of 1:1), and a guessed draft is the most common way to miss. Alex approved this step.
+2. For chat, you need two things: who it is for (1:1, group, or a senior person) and the message you are answering. If either is missing, stop and ask for it in one short question before any draft, even when the user says that is all the context. If you have both, draft: the last message is enough for a reply to thanks, a yes/no question, or a direct ask, and earlier thread messages only help with casing and tone. Draft without asking when the user tells you to go ahead. Why: his voice changes by audience (group threads run at about half the warmth of 1:1), and a guessed draft is the most common way to miss. Alex approved this step.
 3. Mirror the thread. Match its casing, and use "lol", "!" and mild swearing only if the thread already uses them.
 4. For email, decide if it is a reply or a new thread. 94% of his emails are replies, and replies are short.
 

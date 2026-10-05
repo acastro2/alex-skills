@@ -27,6 +27,14 @@ The numbers come from speech-to-text. Word counts are solid. "?" and sentence-en
 - **Contractions follow SKILL.md:** "I will" and "we will" in full. Keep "don't", "doesn't", and "I'm".
 - **Format:** no parentheses, no em dashes, no "!" (the 10 "!" in 70k words came from the transcriber).
 
+## Before you hand it over
+
+Check the three moves drafts most often skip:
+
+1. **Claim, then "because", in the same breath.** The main point carries its reason in the same sentence or the next: "We write it down because nobody remembers why in six months."
+2. **One "for example" or "let's say"** when you explain why something matters. A small concrete case beats an abstract sentence.
+3. **Mix in two or three very short sentences** (5 words or fewer: "So that's the why.", "It's short.", "Right?"). Real turns mix 3-word sentences with 25-word ones; drafts come out even.
+
 ## Drop
 
 "Hey" as a greeting, "Cool, but", "my bad", "was my miss", "I promise", "don't quote me", "I honestly", "don't get me wrong", "can we", "explain to me", "analogies from daily life" as a rule, homework with a vote. Also do not copy his filler "like" or "not gonna lie".

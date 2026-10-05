@@ -6,17 +6,17 @@ Why this shape: in a blind test (2026-10-05), Alex picked fuller drafts that exp
 
 ## Rules
 
-- Open with why the reader should care, not what the system is. One sentence of stakes is enough: "Secrets that never rotate are a risk you carry quietly."
+- Open with why the reader should care, using the specific benefit or problem from the facts you were given ("Rotate the key without restarting the service."), not a generic risk line. One sentence of stakes is enough.
 - Never invent a fact, plan, number, or decision the user did not give. A reason or a tip must follow from the facts you have. If the doc needs something you do not know (a rollback plan, an owner, a date), write "[to confirm]" in its place. Arithmetic on given numbers is fine ($90,000 a year is about $7,500 a month).
 - Recommend a path: "Use X. If you need Y for [reason], use Z." Never a buffet.
 - Give the why for every step that is not obvious, with "because" or "so": "The restart is safe, because re-runs are idempotent." "Do not rebuild from a branch, because the branch may have moved."
-- Head off the next mistake. Add the one tip a teammate learns the hard way: "Tell your manager to expect the approval, so it does not sit in their queue." "Include the run [id]; it saves a round trip."
+- Head off the next mistake, but only with a tip that follows from the facts you have (a 7-day retention means "rebuild from the tag, not the branch"). If no tip follows from the facts, leave it out; a made-up tip is an invented fact.
 - Mark the scope with its own short section: "When to use this", "What it does not cover yet", "If you skip a step".
 - Help the reader decide with one plain question when the call is theirs: "Not sure? Ask yourself one question: is [system] broken for customers right now?"
 - Steps are numbered, one action each, with "Expected result:" after it. Close a process with "What done looks like" when the end state is not obvious.
 - End with routing: who to ask, where status lives, and what to include when asking.
 - Common case first, edge cases later. Real code, real errors, real fixes.
-- Structures: feature docs (What This Does, When You'd Use It, How It Works with a diagram, Getting Started, Configuration, Troubleshooting); runbooks (When to Use This, Quick Assessment, Steps with expected results, Rollback, Post-Incident); API docs (Overview, Quick Start, Full API, Examples, Gotchas). Mermaid capped at about 10 nodes.
+- Structures: feature docs (What This Does, When You'd Use It, How It Works with a diagram, Getting Started, Configuration, Troubleshooting); runbooks (When to Use This, Quick Assessment, Steps with expected results, Rollback, Post-Incident); API docs (Overview, Quick Start, Full API, Examples, Gotchas). Mermaid capped at about 10 nodes. A diagram replaces the explanation: do not repeat its steps as a numbered list or a paragraph unless each step needs an expected result.
 - ADRs: Context states the problem and its cost; Decision states the choice flat. One "I think" or "To me" is fine in the rationale, because an ADR records a judgment. Say how the decision could be reversed (for example, a new ADR).
 - Parentheses for a short clarifier are fine: "(a job that runs twice gives the same result as a job that runs once)".
 - No anecdotes except in onboarding or conceptual docs, no coined frameworks, searchable standard terms.
