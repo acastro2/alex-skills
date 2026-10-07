@@ -90,6 +90,20 @@ Then Blockers, Should-fix, Nice-to-have, in that order, skipping empty sections.
 | Short doc (under about 300 words) | About twice the input. |
 | Longer doc, diff, or design | As long as the findings need, and no longer than the input. |
 
+**Message (chat, email, post): use this shape, nothing else.** Each part is one line, except the rewrite:
+
+```
+**<Verdict>.** <the single biggest reason>
+- <finding 1: what is wrong and the fix, one sentence>
+- <finding 2, only if it changes the rewrite>
+**Rewrite:**
+> <the rewritten message>
+❓ <one question, only if the rewrite needs a fact only the author has>
+Not verified: <what you could not check, or "nothing">
+```
+
+No sections, no confidence tags, no "What works". Why: a message review that runs longer than the message gets skimmed, and the rewrite is what the author uses.
+
 **Plan, idea, or "grill me".** Do not write a full review first. Put grill round 1 right after the verdict line. Fold each premise finding into the question it raises, as one sentence of context, instead of listing findings before the questions. Count it: the first question starts within the first 150 words.
 
 **Not verified.** End every review with one line that lists what you could not check (a path, a host, a number, a claim) and how to check it. Write "Not verified: nothing" when you checked everything.

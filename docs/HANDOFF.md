@@ -2,6 +2,18 @@
 
 Updated: 2026-10-07 CDT
 
+## 2026-10-07 (end) — skills folder restructure + instruction files updated
+
+- `~/.claude/skills` is now a real folder with one symlink per skill (was one symlink to this repo). Why: the claude.ai
+  personal-skill sync wrote `synced/` (stale alex-voice, skill-creator) into this repo, where OpenCode/Pi could find it.
+  `synced/` moved to `~/.claude/skills/synced/`. After adding or removing a skill run `scripts/link_claude_skills.sh`.
+- Instruction-file scripts ran: Jev rule in Claude + Pi, `# Skills` removed from Claude + OpenCode, old exa/typesafe
+  names gone, `~/.claude/rules/context7.md` is a pointer to `search`.
+- Uncommitted (commit was denied in-session): `implement/SKILL.md` (review step -> `reviewer`), `scripts/link_claude_skills.sh`.
+- Alex-only: delete old `alex-voice` + `skill-creator` from claude.ai personal skills; roll out managed
+  `syncClaudeAiPlugins: false`; then re-test triggering in an interactive session (466 skills listed as of 11:55).
+- reviewer iteration-4 + jev grading re-check running in background (results under skill-workspace).
+
 ## 2026-10-07 (final checks) — eval results and fixes (uncommitted)
 
 - Final-check runs (all safe flags, no live processes): reviewer iteration-3 21/25 (`.../reviewer/iteration-3/`),

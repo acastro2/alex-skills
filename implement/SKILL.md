@@ -10,12 +10,12 @@ Build the work described by the spec or tickets in front of you.
 
 ## Steps
 
-1. **Read the input.** A spec, a set of tickets, or both. If the work is more than a small change and there is no spec, say so and offer to write one first (`/skill:to-spec`). A spec is the only place the "why" survives the session.
+1. **Read the input.** A spec, a set of tickets, or both. If the work is more than a small change and there is no spec, say so and offer to write a short spec first. A spec is the only place the "why" survives the session.
 2. **Explore the repo.** Read `CONTEXT.md` if it exists, and any ADRs in the area you are touching. Read the repo's own `AGENTS.md` or `CLAUDE.md` if it has one.
 3. **Agree the seams with the user before writing a test.** State the seams under test and get them confirmed. Rules: the `code-rules` skill, section "Write the test first, at a seam you agreed".
 4. **Work one vertical slice at a time, test-first.** One seam, one failing test, the minimum code to pass it, repeat.
 5. **Run the checks as you go.** Typecheck often, run the single relevant test file often, and the full suite once at the end.
-6. **Ask for the review before you close.** `pr-reviewer` checks the diff on three axes: the spec it answers to, the repo standards, and production risk. It is user-invoked, so you cannot start it. Tell the user to run it (`/skill:pr-reviewer`) over the diff. If the project has no reviewer skill, do a review pass yourself against the repo's standards.
+6. **Review before you close.** Load the `reviewer` skill and review your own diff with its code layer: the spec it answers to, the repo standards, and production risk, as three separate axes. Fix every Blocker and Should-fix you can fix yourself, and bring the rest to the user as decisions. Tell the user the review ran and what it found.
 7. **Leave the commit to the user.** Stage nothing and commit nothing. Report what changed, what passed, and what is left to commit.
 
 ## Rules

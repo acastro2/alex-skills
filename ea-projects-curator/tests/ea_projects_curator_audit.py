@@ -9,9 +9,9 @@ references, which are the loop's scope) plus its one script (references/render_p
 read-only). It prints a single integer: the number of violations found. Zero is the
 target.
 
-    python3 scripts/ea_projects_curator_audit.py                  # prints the count
-    python3 scripts/ea_projects_curator_audit.py --report OUT.md  # count + details
-    python3 scripts/ea_projects_curator_audit.py --list           # case ids
+    python3 ea-projects-curator/tests/ea_projects_curator_audit.py                  # prints the count
+    python3 ea-projects-curator/tests/ea_projects_curator_audit.py --report OUT.md  # count + details
+    python3 ea-projects-curator/tests/ea_projects_curator_audit.py --list           # case ids
 
 DESIGN RULES (keep the metric honest)
 -------------------------------------
@@ -32,7 +32,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parents[2]  # ea-projects-curator/tests/ -> repo root
 SKILL_DIR = REPO / "ea-projects-curator"
 PROSE_FILES = {
     "SKILL.md": SKILL_DIR / "SKILL.md",
