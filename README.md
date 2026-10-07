@@ -1,67 +1,64 @@
 # alex-skills
 
-A collection of skills for Claude Code and opencode — modular instruction packs that give AI agents domain-specific expertise, voice guidelines, and tooling.
+Skills for Claude Code, OpenCode, and Pi: instruction packs that teach an agent what it cannot know on its own.
+
+## What belongs here
+
+A skill stays in this repo only if it holds facts the model cannot know:
+
+- **How to use a tool**: a CLI, an API, its flags and limits.
+- **Alex's systems**: his boards, vault, devices, and workflows.
+- **Alex's taste**: his voice, his coding rules, how he reviews.
+
+Generic method (how to do TDD, how to debug, how to grill a plan) does not belong here. Current models do that well without a skill, and every extra skill competes for the agent's attention.
+
+## Skills
+
+| Kind | Skills |
+| --- | --- |
+| Tools | `search` (Context7 and Exa), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
+| Alex's systems | `scribe`, `bard`, `archeologist`, `ea-projects-curator`, `ado-ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator` |
+| Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture` |
+
+Each skill's `SKILL.md` frontmatter says what it does and when it loads. `agent-creator` and `improve-codebase-architecture` are manual-only: you type them.
 
 ## Install
 
 ```bash
 git clone https://github.com/acastro2/alex-skills.git ~/.agents/skills
+~/.agents/skills/scripts/link_claude_skills.sh
 ```
 
-This puts each skill at `~/.agents/skills/<name>/SKILL.md`, which opencode discovers automatically.
+OpenCode and Pi read `~/.agents/skills` directly. Claude Code reads `~/.claude/skills`, so the script links each skill there, one symlink per skill. Run it again after you add or remove a skill.
 
-Skills are also discoverable from `~/.config/opencode/skills/` and `~/.claude/skills/` — see [opencode skills docs](https://opencode.ai/v2/docs/skills/).
-
-### Voice skill
-
-- `alex-voice/SKILL.md` — Discoverable voice skill for docs, comms, exec, chat, and general prose
-- `alex-voice/references/alex-blogger.md` — Blog-specific guidance loaded by the voice skill
-- `alex-voice/references/voice-fingerprint.md` — Measured rhythm and vocabulary per register, from Alex's own words
-- `alex-voice/scripts/voice_check.py` — Scores a draft against the fingerprint; em dashes and banned phrases are blockers
-
-## Skill creator
-
-`skill-creator/SKILL.md` routes structure work to OpenAI's creator and evaluation work to Anthropic's creator. Both creators are vendored into `skill-creator/vendor/` as pinned copies. There are no Git submodules.
-
-```mermaid
-flowchart LR
-    A[skill-creator/SKILL.md] --> B[vendor/codex: structure]
-    A --> C[vendor/claude: evaluation]
-```
-
-The vendored entry file is `CREATOR.md` because OpenCode discovers nested `SKILL.md` files as separate skills. Keep only the wrapper named `SKILL.md` so the copies stay out of the skill list.
-
-`skill-creator/vendor/PROVENANCE.md` records the source repositories, pinned commits, dates, and licenses. To move to a newer upstream commit, re-copy both directories, rename the new `SKILL.md` to `CREATOR.md`, drop any `__pycache__`, update that table, then rerun validation and a representative skill task. Do not edit files inside `vendor/`. Upstream licenses stay in each vendored directory. Both creators are bundled inside `skill-creator/`; prose work also requires the sibling `alex-voice/` skill.
+Do not point `~/.claude/skills` at this repo with one symlink. Claude Code syncs personal claude.ai skills into `~/.claude/skills/synced/`, and with a whole-folder link those copies land inside the repo, where OpenCode and Pi load them as skills.
 
 ## Skill anatomy
 
 ```
 skill-name/
-├── SKILL.md        # Entry point (YAML frontmatter + instructions)
-├── scripts/        # Executable helpers
-├── references/    # Docs loaded into context as needed
+├── SKILL.md        # Entry point: YAML frontmatter (name, description) + instructions
+├── scripts/        # Code the agent runs while doing the skill's job
+├── references/     # Docs loaded into context only when needed
 ├── assets/         # Templates, icons, fonts
-├── agents/         # Subagent instructions
-├── evals/          # Test prompts and assertions
-└── LICENSE.txt     # Per-skill license
+├── agents/         # Host metadata or subagent instructions
+├── tests/          # Tests and development tooling, such as audit metrics
+└── evals/          # Eval prompts, expectations, and a safe-run README
 ```
+
+## Skill creator
+
+`skill-creator/SKILL.md` routes structure work to OpenAI's creator and evaluation work to Anthropic's creator. Both are vendored as pinned copies in `skill-creator/vendor/`, with sources, commits, and licenses in `skill-creator/vendor/PROVENANCE.md`. Their entry files are named `CREATOR.md`, because OpenCode would otherwise register them as separate skills. Do not edit files inside `vendor/`. To update them, follow the Refresh section of `PROVENANCE.md`.
 
 ## Development and validation
 
-Install the pre-commit hooks:
-
 ```bash
-pre-commit install
+pre-commit install            # once
+pre-commit run --all-files    # before every commit
 ```
 
-Run all hooks on all files:
-
-```bash
-pre-commit run --all-files
-```
-
-The local validator checks top-level skill frontmatter, directory and name agreement, and sibling relative references.
+The pre-commit hooks run `scripts/validate_skill_graph.py`, which checks each skill's frontmatter, that the folder name matches `name`, and that relative links between skills resolve.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).

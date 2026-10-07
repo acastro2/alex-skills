@@ -1,40 +1,47 @@
-# AGENTS.md — alex-skills
+# AGENTS.md: alex-skills
 
 ## What this repo is
 
-A collection of self-contained OpenCode/Claude skills. Each top-level directory is one skill with a `SKILL.md` entry point. Skills are discovered from `~/.agents/skills/`, `~/.config/opencode/skills/`, or `~/.claude/skills/`.
+Self-contained skills for Claude Code, OpenCode, and Pi. Each top-level folder with a `SKILL.md` is one skill. The repo lives at `~/.agents/skills/`. OpenCode and Pi read it there; Claude Code reads per-skill symlinks in `~/.claude/skills/` (see `README.md`, Install).
 
-This repo should be cloned to `~/.agents/skills/`.
+## What belongs here
+
+Keep a skill only if it holds facts the model cannot know: how to use a tool, Alex's systems, or Alex's taste. Do not add generic method skills (TDD, debugging, grilling); the model does those well, and each extra description competes in the skill list. Before you add a skill, say which of the three it is.
 
 ## Skill anatomy
 
 ```
 skill-name/
-  SKILL.md          # Required. YAML frontmatter (name, description, optional: allowed-tools, license) + instructions
-  scripts/           # Python or shell helpers the skill invokes
-  references/        # Supplementary markdown the skill references
-  assets/             # Static files (templates, images)
-  agents/             # Optional host metadata or subagent instructions
-  evals/
-    evals.json       # Test cases for skill evaluation
+  SKILL.md       # Required. Frontmatter: name, description; optional allowed-tools, license, disable-model-invocation
+  scripts/       # Code the agent runs while doing the skill's job
+  references/    # Markdown loaded only when the skill points to it
+  assets/        # Static files (templates, images)
+  agents/        # Host metadata or subagent instructions
+  tests/         # Tests for the skill's scripts, plus development tooling such as audit metrics
+  evals/         # evals.json, trigger-evals.json, files/, README.md (safe-run rules)
   LICENSE.txt
 ```
 
+Repo-wide tooling stays in the top-level `scripts/`: `validate_skill_graph.py` (pre-commit hook) and `link_claude_skills.sh`. Tooling for one skill goes in that skill's `tests/`.
+
 ## Key patterns
 
-- **SKILL.md frontmatter** always has `name` and `description`. Some skills add `allowed-tools` to restrict what the skill may call, and `disable-model-invocation: true` to make a skill manual-only.
-- **alex-voice/** is the one discoverable voice skill. Its `SKILL.md` defines Alex's voice for chat, comms, exec, docs, spoken, and general prose; `references/alex-blogger.md` adds the blog layer; `references/voice-fingerprint.md` holds the measured markers; `scripts/voice_check.py` scores drafts. Real excerpts live in Alex's private vault, never in this repo.
-- **skill-creator/** is a router to the pinned OpenAI and Anthropic creators vendored at `skill-creator/vendor/`. Its `SKILL.md` selects the source and names the current validation and evaluation paths. Keep the vendored files read-only; do not copy their infrastructure into the wrapper. Their entry file is `CREATOR.md` so OpenCode's `**/SKILL.md` discovery does not register them.
+- **alex-voice/** is the one voice skill. `SKILL.md` covers chat, comms, exec, docs, and spoken; `references/alex-blogger.md` adds blog; `scripts/voice_check.py` scores a draft. Real excerpts live in Alex's private vault, never in this repo.
+- **skill-creator/** routes to the pinned OpenAI and Anthropic creators in `skill-creator/vendor/`. The vendored files are read-only, and their entry file is `CREATOR.md` so OpenCode does not register them as skills.
+- **reviewer/**, **search/**, and **jev/** serve other skills too: `implement` reviews its diff with `reviewer`, any skill that looks something up uses `search`, and eval grading uses `jev/references/eval-grading.md`.
 
 ## Working with skills
 
-- No root-level build system, package manager, or CI. Each skill is independent.
-- Run `python3 scripts/validate_skill_graph.py` for local skill frontmatter and sibling-reference checks. For skill-specific validation, follow `skill-creator/SKILL.md`.
-- Put evaluation workspaces and snapshots under `~/.agents/skill-workspace/alex-skills/`, outside this repository. OpenCode scans nested `SKILL.md` files even inside ignored dot-directories, so an in-repo snapshot can replace a live skill.
+- When you create or edit a skill, follow `skill-creator/SKILL.md`. Write eval JSON in the format of `skill-creator/vendor/claude/references/schemas.md`.
+- Skills that produce prose reference `../alex-voice/SKILL.md`; blog skills also reference `../alex-voice/references/alex-blogger.md`.
+- In a `SKILL.md`, never write a dollar sign followed by a digit: Claude Code replaces it with the skill's arguments. Write `USD 0.10`.
+- Run `python3 scripts/validate_skill_graph.py` after any edit, and `pre-commit run --all-files` before you commit.
+- After you add or remove a skill, run `scripts/link_claude_skills.sh` and update the skills table in `README.md`.
 
-## Conventions
+## Evals
 
-- Skills that produce prose should reference `../alex-voice/SKILL.md`; blog skills should also reference `../alex-voice/references/alex-blogger.md`.
-- When creating or editing a skill, follow `skill-creator/SKILL.md`. When writing evaluation JSON, use `skill-creator/vendor/claude/references/schemas.md`.
-- Run `pre-commit run --all-files` before you commit.
-- When a skill has `evals/evals.json`, run its evals.
+- When a skill has `evals/evals.json`, run its evals after a behavior change. Read the skill's `evals/README.md` first.
+- Run every `claude -p` eval with `--strict-mcp-config --tools "Skill,Read"`, each in its own process group, and check that nothing is left running. Why: near-miss prompts name real systems ("query snowflake…"), and with normal tools the model runs them.
+- Count words, items, and exact strings in code. Grade yes-or-no expectations with Jev (`jev/references/eval-grading.md`), and send only the unsure ones to an LLM grader.
+- Put eval workspaces under `~/.agents/skill-workspace/alex-skills/`, never in this repo: OpenCode scans nested `SKILL.md` files even in ignored folders, so an in-repo snapshot can replace a live skill.
+- `evals/` is in `.gitignore`. Commit eval files with `git add -f`.
