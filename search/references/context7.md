@@ -1,24 +1,12 @@
----
-name: find-docs
-description: >-
-  Look up current library, framework, SDK, CLI, and cloud-service documentation
-  with Context7. Use for API syntax, configuration, version migrations, setup,
-  tool usage, and library-specific debugging. Verify API details against docs
-  rather than answer from memory. Prefer this over general web search for
-  library documentation and code examples.
----
-
-# Documentation Lookup
+# Context7: library docs
 
 Retrieve current documentation and code examples for any library with Context7.
 
-> If this session exposes Context7 MCP tools, use them instead of the CLI. The `npx ctx7` path below is the fallback where the MCP is not available.
-
-Run commands with `npx ctx7@latest` so setup always uses the latest CLI without a global install:
+Run commands with `npx --yes ctx7@latest` so setup always uses the latest CLI without a global install. Keep `--yes`: when a new version is out, npx stops to ask "Ok to proceed?" before it installs it, an agent shell cannot answer, and the command hangs. Installing the new version is expected and fine:
 
 ```bash
-npx ctx7@latest library <name> "<query>"
-npx ctx7@latest docs <libraryId> "<query>"
+npx --yes ctx7@latest library <name> "<query>"
+npx --yes ctx7@latest docs <libraryId> "<query>"
 ```
 
 Optionally install globally if you prefer a bare `ctx7` command:
@@ -33,24 +21,24 @@ Two-step process: resolve the library name to an ID, then query docs with that I
 
 ```bash
 # Step 1: Resolve library ID
-npx ctx7@latest library <name> "<query>"
+npx --yes ctx7@latest library <name> "<query>"
 
 # Step 2: Query documentation
-npx ctx7@latest docs <libraryId> "<query>"
+npx --yes ctx7@latest docs <libraryId> "<query>"
 ```
 
-You MUST call `library` first to obtain a valid library ID UNLESS the user explicitly provides a library ID in the format `/org/project` or `/org/project/version`.
+Call `library` first to get a valid library ID. Skip it only when the user gives an ID in the format `/org/project` or `/org/project/version`, because `docs` fails without a real ID.
 
-IMPORTANT: Do not run these commands more than 3 times per question. If you cannot find what you need after 3 attempts, use the best result you have.
+Run these commands at most 3 times per question. After 3 attempts, use the best result you have, or go to Exa Search if Context7 has no entry: more attempts rarely find what the first three missed, and each one costs time.
 
 ## Step 1: Resolve a Library
 
 Resolves a package/product name to a Context7-compatible library ID and returns matching libraries.
 
 ```bash
-npx ctx7@latest library React "How to clean up useEffect with async operations"
-npx ctx7@latest library "Next.js" "How to set up app router with middleware"
-npx ctx7@latest library Prisma "How to define one-to-many relations with cascade delete"
+npx --yes ctx7@latest library React "How to clean up useEffect with async operations"
+npx --yes ctx7@latest library "Next.js" "How to set up app router with middleware"
+npx --yes ctx7@latest library Prisma "How to define one-to-many relations with cascade delete"
 ```
 
 Use the official library name with proper punctuation (e.g., "Next.js" not "nextjs", "Customer.io" not "customerio", "Three.js" not "threejs"). If results look wrong, try alternate spellings such as `next.js` before changing the query.
@@ -88,10 +76,10 @@ If the user mentions a specific version, use a version-specific library ID:
 
 ```bash
 # General (latest indexed)
-npx ctx7@latest docs /vercel/next.js "How to set up app router"
+npx --yes ctx7@latest docs /vercel/next.js "How to set up app router"
 
 # Version-specific
-npx ctx7@latest docs /vercel/next.js/v14.3.0-canary.87 "How to set up app router"
+npx --yes ctx7@latest docs /vercel/next.js/v14.3.0-canary.87 "How to set up app router"
 ```
 
 The available versions are listed in the `library` command output. Use the closest match to what the user specified.
@@ -101,9 +89,9 @@ The available versions are listed in the `library` command output. Use the close
 Retrieves up-to-date documentation and code examples for the resolved library.
 
 ```bash
-npx ctx7@latest docs /facebook/react "How to clean up useEffect with async operations"
-npx ctx7@latest docs /vercel/next.js "How to add authentication middleware to app router"
-npx ctx7@latest docs /prisma/prisma "How to define one-to-many relations with cascade delete"
+npx --yes ctx7@latest docs /facebook/react "How to clean up useEffect with async operations"
+npx --yes ctx7@latest docs /vercel/next.js "How to add authentication middleware to app router"
+npx --yes ctx7@latest docs /prisma/prisma "How to define one-to-many relations with cascade delete"
 ```
 
 ### Writing good queries
@@ -131,14 +119,14 @@ Works without authentication. For higher rate limits:
 export CONTEXT7_API_KEY=your_key
 
 # Option B: OAuth login
-npx ctx7@latest login
+npx --yes ctx7@latest login
 ```
 
 ## Error Handling
 
 If a command fails with a quota error ("Monthly quota reached" or "quota exceeded"):
 1. Inform the user their Context7 quota is exhausted
-2. Suggest they authenticate for higher limits: `npx ctx7@latest login`
+2. Suggest they authenticate for higher limits: `npx --yes ctx7@latest login`
 3. If they cannot or choose not to authenticate, answer from training knowledge and clearly note it may be outdated
 
 Do not silently fall back to training data. Always tell the user why Context7 was not used.
@@ -146,7 +134,7 @@ Do not silently fall back to training data. Always tell the user why Context7 wa
 ## Common Mistakes
 
 - Library IDs require a `/` prefix: `/facebook/react` not `facebook/react`
-- Always run `npx ctx7@latest library` first. `npx ctx7@latest docs react "hooks"` will fail without a valid ID
+- Always run `npx --yes ctx7@latest library` first. `npx --yes ctx7@latest docs react "hooks"` will fail without a valid ID
 - Use descriptive queries, not single words: `"React useEffect cleanup function"` not `"hooks"`
 - One topic per query. Split `"routing and auth and caching"` into a separate `docs` command per concept, unless the question is about how they interact
 - Do not include sensitive information (API keys, passwords, credentials) in queries

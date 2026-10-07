@@ -1,32 +1,6 @@
----
-name: exa-contents
-description: "Call Exa Contents directly with cURL or raw HTTP. Use when an agent already has URLs and needs POST /contents without an SDK for extracted text, highlights, summaries, links, image links, subpages, freshness-controlled crawling, or per-URL status handling."
----
-
 # Exa Contents
 
-> Requires API key: Get one at https://dashboard.exa.ai/api-keys
->
-> Header: `x-api-key: $EXA_API_KEY`
->
-> If this session exposes Exa MCP tools, use them instead of cURL. The cURL path below is the fallback where the MCP is not available.
-
-## Set up authentication
-
-Use `EXA_API_KEY` first, then `~/.config/exa/key`. Never print the key or use `set -x`.
-
-```bash
-set -euo pipefail
-
-if [[ -z "${EXA_API_KEY:-}" && -r "$HOME/.config/exa/key" ]]; then
-  IFS= read -r EXA_API_KEY < "$HOME/.config/exa/key" || [[ -n "$EXA_API_KEY" ]]
-fi
-
-if [[ -z "${EXA_API_KEY:-}" ]]; then
-  printf '%s\n' 'Exa API key not found. Set EXA_API_KEY or create ~/.config/exa/key.' >&2
-  exit 1
-fi
-```
+Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
 
 Use `POST https://api.exa.ai/contents` when the agent already knows the URLs and needs clean, LLM-ready extraction without running a new search. Start with one content mode: `highlights` for compact agent context, `text` for broad page context, or `summary` for Exa-side compression.
 

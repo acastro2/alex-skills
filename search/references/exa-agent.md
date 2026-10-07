@@ -1,36 +1,10 @@
----
-name: exa-agent
-description: "Run Exa Agent (POST /agent/runs) from the CLI with curl and jq for research that needs more than one search. Use when an agent must build a list from open-ended criteria (companies, people, papers, products), enrich rows it already has with new fields, run multi-hop or deep research across many pages, return schema-validated JSON with per-field citations, continue a previous run with a follow-up like find ten more, or pull premium data through Exa Connect providers. Reach for this whenever the user wants a researched list, a table filled in, or a sourced answer that no single search can produce, even when they never say the word research. Use exa-search for one-call retrieval and exa-contents when the URLs are already known."
----
-
 # Exa Agent
 
-> Requires API key: Get one at https://dashboard.exa.ai/api-keys
->
-> Header: `x-api-key: $EXA_API_KEY`
->
-> If this session exposes Exa MCP tools, use them instead of cURL. The cURL path below is the fallback where the MCP is not available.
-
-## Set up authentication
-
-Use `EXA_API_KEY` first, then `~/.config/exa/key`. Never print the key or use `set -x` — it expands the `curl` header.
-
-```bash
-set -euo pipefail
-
-if [[ -z "${EXA_API_KEY:-}" && -r "$HOME/.config/exa/key" ]]; then
-  IFS= read -r EXA_API_KEY < "$HOME/.config/exa/key" || [[ -n "$EXA_API_KEY" ]]
-fi
-
-if [[ -z "${EXA_API_KEY:-}" ]]; then
-  printf '%s\n' 'Exa API key not found. Set EXA_API_KEY or create ~/.config/exa/key.' >&2
-  exit 1
-fi
-```
+Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
 
 Use `POST https://api.exa.ai/agent/runs` when one search is not enough: multi-hop research, list building, and row enrichment. A run is asynchronous. Create it, then poll or stream until it reaches a terminal status.
 
-Use `exa-search` for one-call retrieval. Use `exa-contents` when the URLs are already known. This skill is the primary path for Agent work; the Exa MCP `agent_run` tool is the fallback for when the raw API is unreachable.
+Use [Exa Search](exa-search.md) for one-call retrieval. Use [Exa Contents](exa-contents.md) when the URLs are already known.
 
 **Every block below is self-contained.** Shell variables do not survive between tool calls, so each block sets what it needs at the top and reads the key straight from `$EXA_API_KEY`. Run a whole block in one call.
 
@@ -140,7 +114,7 @@ The beta token is dated and Exa can change it. If a `max` run returns `INVALID_R
 
 ## Poll a run
 
-This block creates a run and waits for it. Change `QUERY` and `EFFORT`, or replace the create step with a known `RUN_ID`.
+This block creates a run and waits for it. Change `QUERY` and `EFFORT`, or replace the create step with a known `RUN_ID`. The result is saved to `$OUT_DIR/<run id>.json`; set `OUT_DIR` to the session scratchpad when the host gives one, because `/tmp` is shared and kept after the session.
 
 ```bash
 QUERY="Research the main causes of sodium-ion battery degradation."
@@ -166,7 +140,7 @@ while (( SECONDS < DEADLINE )); do
 
   case "$STATUS" in
     completed)
-      jq '{stopReason, output, usage, costDollars}' <<<"$RUN_JSON" > "/tmp/$RUN_ID.json"
+      jq '{stopReason, output, usage, costDollars}' <<<"$RUN_JSON" > "${OUT_DIR:-${TMPDIR:-/tmp}}/$RUN_ID.json"
       jq '{stopReason, costDollars: .costDollars.total}' <<<"$RUN_JSON"
       break
       ;;

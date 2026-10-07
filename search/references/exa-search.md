@@ -1,34 +1,8 @@
----
-name: exa-search
-description: "Call Exa Search directly with cURL or raw HTTP. Use when an agent needs Exa semantic web retrieval from POST /search without an SDK, including ranked results, domain or category filters, freshness-aware result content, highlights or text extraction, structured output, or streaming search responses."
----
-
 # Exa Search
 
-> Requires API key: Get one at https://dashboard.exa.ai/api-keys
->
-> Header: `x-api-key: $EXA_API_KEY`
->
-> If this session exposes Exa MCP tools, use them instead of cURL. The cURL path below is the fallback where the MCP is not available.
+Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
 
-## Set up authentication
-
-Use `EXA_API_KEY` first, then `~/.config/exa/key`. Never print the key or use `set -x`.
-
-```bash
-set -euo pipefail
-
-if [[ -z "${EXA_API_KEY:-}" && -r "$HOME/.config/exa/key" ]]; then
-  IFS= read -r EXA_API_KEY < "$HOME/.config/exa/key" || [[ -n "$EXA_API_KEY" ]]
-fi
-
-if [[ -z "${EXA_API_KEY:-}" ]]; then
-  printf '%s\n' 'Exa API key not found. Set EXA_API_KEY or create ~/.config/exa/key.' >&2
-  exit 1
-fi
-```
-
-Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. This CLI skill replaces both basic and advanced MCP search. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to `exa-agent`. Route known-URL extraction to `exa-contents`.
+Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to [Exa Agent](exa-agent.md). Route known-URL extraction to [Exa Contents](exa-contents.md).
 
 ## Quick Start (cURL)
 

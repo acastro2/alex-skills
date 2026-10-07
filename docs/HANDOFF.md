@@ -2,6 +2,20 @@
 
 Updated: 2026-10-07 CDT
 
+## 2026-10-07 — `search` skill replaces find-docs + exa-search/contents/agent (uncommitted)
+
+- `search/SKILL.md` = decision tree (Context7 / Exa Contents / Exa Agent / Exa Search, escalate to Agent on the
+  third search) + one Exa auth block + CLI-first rule. Tool content moved near-verbatim into `search/references/`.
+- Why the tree: Agent was underused; old text called it "slower and costs more", but a `medium` run is a flat $0.10.
+- Open: instruction files still name the old skills. Script ready (classifier blocks Claude from editing them):
+  scratchpad `point_to_search.py` from session 7fb5ee03. OpenCode said "Exa MCP first", Claude/Pi say "CLI first";
+  the skill now says CLI first everywhere. Confirm with Alex.
+- Static review + advisor fixes applied: public-data gate at the top of the tree, Context7-miss edge to Exa Search,
+  honest Agent cost (fixed efforts vs `auto` metered $5 cap, check stopReason and nulls), ZDR-safe follow-up,
+  negative trigger clause, OUT_DIR for agent output. Evals written, NOT run: `search/evals/evals.json` (6 routing
+  cases incl. internal-URL leak and third-search escalation) + `trigger-evals.json` (20). evals/ is gitignored.
+- Script now also shrinks ~/.claude/rules/context7.md to a pointer at `search` (dry run OK, 5 files).
+
 ## 2026-10-07 — skill cull + new `reviewer` skill (uncommitted except 630da87)
 
 - Rule agreed with Alex: keep a skill only if it holds facts the model cannot know
