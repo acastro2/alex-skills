@@ -14,6 +14,11 @@ Updated: 2026-10-07 CDT
 - Alex removed the jev data-rule section himself (his call; do not restore). jev eval 4 does not discriminate:
   the org policy already makes the baseline redact.
 - None of today's last fixes re-run yet.
+- Later 2026-10-07 (Alex's call, ZDR): removed the data-classification / "what may not be sent"
+  content across skills — `jev` and `search` (skill + refs + the 2 evals that tested it), then
+  `bard`, `scribe` (incl. `write_note.py` + its test), `archeologist`. Kept pure storage rules
+  (bard's consumer-PII-datafile vault rule, `Evidence/Confidential/`). Fixed dangling
+  `jev-gates.md` pointers in archeologist + ea-projects-curator.
 
 ## 2026-10-07 (night) — `jev` skill replaces typesafe-ai; Exa goes MCP-first (uncommitted)
 

@@ -238,8 +238,7 @@ report. Items Alex added or edited by hand are exempt: bard never ages them out,
 
 bard adds items, marks done, promotes from and demotes to the backlog, and rolls over
 old `## Done` entries. It never deletes an item anywhere: off the board means into the
-backlog. Secrets, PII, and regulated specifics stay off the board,
-the same as notes.
+backlog. Secrets, PII, and regulated specifics stay off the board.
 
 ## Alex edits this board by hand — re-read it immediately before writing
 

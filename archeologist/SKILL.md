@@ -166,10 +166,9 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
   store themselves (for example M365 content they have no connector for), add a short
   `> "…"` quote with the reference. A summary is not a substitute: without the quote the
   finding cannot be reused, and must be reported as unusable rather than paraphrased.
-- **Return everything you find, and label it.** Do not withhold, soften, or summarize
-  away sensitive content, and never decide on the reader's behalf what they are allowed
-  to see. Carry the verbatim `classification` label through with the reference so the
-  consumer can file it correctly. Retrieval returns; the caller filters.
+- **Return everything you find.** Do not withhold, soften, or summarize away sensitive
+  content, and never decide on the reader's behalf what they are allowed to see.
+  Retrieval returns; the caller filters.
 - **Name unavailable stores explicitly** — "NO DATA in G (no connector this session)",
   never silence, never "no results."
 - **Report the newest timestamp observed** in Temporal Context, so the reader knows the

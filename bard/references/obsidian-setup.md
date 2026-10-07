@@ -21,8 +21,8 @@ rewrite these setup assets.
 ## 1. `Bard.base`
 
 Write to `<vault>/Bard/Bard.base`. Bases is a core plugin; any teammate opens it
-with zero setup. Three views: the dashboard, a confidential audit, and the health
-view that auto-detects orphans / unreviewed notes.
+with zero setup. Two views: the dashboard, and the health view that auto-detects
+orphans / unreviewed notes.
 
 ```yaml
 filters:
@@ -41,15 +41,6 @@ views:
       - file.name
       - type
       - up
-      - timestamp
-  - type: table
-    name: Confidential
-    filters:
-      and:
-        - 'confidential == true'
-    order:
-      - file.name
-      - classification
       - timestamp
   - type: table
     name: Health (unreviewed / orphans)

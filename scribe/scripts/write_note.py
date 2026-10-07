@@ -86,8 +86,6 @@ def build_frontmatter(
     all_tags = ["scribe", "meeting", f"source/{transcript['source']}"] + tags
     lines.append(f"tags: {common.yaml_flow_list(all_tags)}")
 
-    lines.append("confidential: true")
-
     provenance = transcript.get("provenance") or {}
     if provenance:
         lines.append("provenance:")

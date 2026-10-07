@@ -67,13 +67,10 @@ Three frames govern it:
   verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the `ado` agent
   for a real work item, Exa for a public doc) and cite it. If retrieval finds
   nothing → "not available". Retrieve, never fabricate.
-- Confidentiality boundary: NEVER send confidential / company-internal content to
-  Exa or any public web tool. Exa is only for PUBLIC concepts (library docs, general
-  techniques). `gh` and `ado` are authenticated/internal — fine for company work.
 - Never emit a link to a note that does not already exist (a dead `[[link]]`
   silently creates a stray note). Link only to resolvable targets.
-- Confidential material keeps its verbatim label. The CURO/Attain matter is **"an
-  incident," never "a breach"** — never reframe, never widen audience.
+- The CURO/Attain matter is **"an incident," never "a breach"** — never reframe, never
+  widen audience.
 
 ---
 
@@ -130,8 +127,8 @@ so it is derived from real work and ratified by Alex.
      (read-only) with the window `watermark` → now. It sweeps every store by its own
      **Coverage** rule and answers with summary and references first (its **Phase 5**
      contract). Treat its **summary as a lead, never as quotable text**; its
-     **references are the payload** the next step reads: store, locator, session-start,
-     and the verbatim label on anything confidential. This is the lane that reaches
+     **references are the payload** the next step reads: store, locator, session-start.
+     This is the lane that reaches
      mail, Teams, calendar, tenant SharePoint, and GitHub activity — stores the local
      indexes below cannot see. An unavailable store in the briefing is missing data, not
      empty data: name it in the sweep report, never let it pass silently.
@@ -338,8 +335,7 @@ with no context. Body sections — write only those with real content, drop the 
 ### STEP 2b — ENRICH (optional; real, verified provenance only)
 
 When a candidate references something checkable, you MAY enrich the note with real
-external context — but only retrieve, never fabricate, and respect the
-confidentiality boundary.
+external context — but only retrieve, never fabricate.
 - **GitHub** — if the session names a repo/PR/commit/issue, resolve it with `gh`
   (`gh pr view`, `gh pr list`, `gh search prs`, `gh issue view`). Cite the real URL
   in `resource` + body. If `gh` can't confirm it exists, write "not available" —
@@ -347,9 +343,7 @@ confidentiality boundary.
 - **ADO** — if the work ties to an Azure DevOps work item, spawn the `ado` agent
   to fetch the real item; cite its id/URL. Don't invent ticket numbers.
 - **Exa** (`web_search_advanced_exa`) — for a PUBLIC concept/library/technique, you
-  may research for accurate context and cite the source URL. **Never send
-  confidential or company-internal content to Exa.** Use it for the general idea,
-  not the private specifics.
+  may research for accurate context and cite the source URL.
 
 Enrichment is optional and additive — skip it when nothing checkable is referenced.
 It must never slow a sweep into a research project; a few targeted lookups per note
@@ -366,8 +360,6 @@ description: <one-line summary>
 up: "[[Topic Hub]]"       # quoted wikilink, one value, chosen from `hubs`. Orphan backbone.
 tags: [topic/x, bard/new] # coined freely BUT reuse-before-coin + convention. ~3-5 max.
 timestamp: <ISO 8601>     # session-START time (reliable). NEVER a null assistant-turn time.
-confidential: false       # Checkbox boolean — clean filtering.
-classification: ""        # Text. The VERBATIM label, only when confidential: true.
 source: <session_id>      # optional breadcrumb.
 repo: <repo>              # when known.
 resource: ""              # OKF. A REAL verified URL from STEP 2b (PR/issue/ADO/doc). Omit if none.
@@ -415,9 +407,6 @@ this session cannot reach — from the briefing's verbatim excerpt. **A summary 
 quotable.** Provenance
 not in the session and not confirmable via STEP 2b (`gh`/`ado`/Exa) → "not
 available," never invented. A `resource` URL must be one STEP 2b actually verified.
-Confidential material → `confidential: true` + verbatim label in `classification`
-and body, and NEVER sent to Exa/public web; the CURO/Attain matter is "an
-incident," never "a breach."
 
 ### OUTPUT
 
@@ -488,7 +477,6 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
   incident summaries, PII access reviews, legal hold notices, exec-only updates) go into
   `Evidence/Confidential/` and get flagged in `Evidence/README.md`. The CURO/Attain
   matter is **"an incident," never "a breach"** — never reframe, never widen audience.
-- Nothing confidential ever goes to Exa or any public web tool (same boundary as notes).
 
 Before copying a qualifying file, read
 [Evidence capture mechanics](references/evidence-capture.md) for the folder layout

@@ -70,8 +70,8 @@ trimmed, not Graph pass-throughs; use `m365 request GET <path>` for a field a ve
 
 - Results may contain other people's messages/mail: quote the minimum needed as evidence, never
   dump whole threads into the briefing.
-- Sensitive content is returned like any other: include the verbatim `classification` label with
-  the reference and leave the decision to the caller. Do not withhold or soften it here.
+- Sensitive content is returned like any other: leave the decision to the caller. Do not
+  withhold or soften it here.
 - **Meeting transcripts are not reachable on the CLI path.** They need a scope the tenant has
   not consented to this tool. If a question turns on what was *said* in a meeting rather than
   what was written in chat, say the transcript is unavailable here instead of substituting chat.

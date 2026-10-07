@@ -39,7 +39,6 @@ def test_builds_expected_path_and_frontmatter(run_script, fixtures_dir, tmp_path
     assert 'speakers: ["Ana Silva", "Bruno Costa"]' in content
     assert 'attendees: ["Ana Silva", "Bruno Costa", "Carla Reyes"]' in content
     assert 'tags: ["scribe", "meeting", "source/teams", "project/aab", "quarterly"]' in content
-    assert 'confidential: true' in content
     assert 'provenance:' in content
     assert '  teams_event_id: "AAMkAGI1AAA="' in content
     assert '  cue_count: 8' in content

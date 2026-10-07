@@ -102,6 +102,6 @@ saying HIGH is not evidence that a file still exists.
   still covers all stores A–I.
 - **The rubric owns confidence.** "HONEST CONFIDENCE: if you cannot verify, say so. Do not
   inflate" outranks any model's score.
-- **Unavailable Jev and the data rule for `state`:** see [`../../jev/SKILL.md`](../../jev/SKILL.md).
+- **Unavailable Jev:** see [`../../jev/SKILL.md`](../../jev/SKILL.md).
   For this skill, send the question, its entities, and short findings lines, never raw
   transcript text or privileged content.

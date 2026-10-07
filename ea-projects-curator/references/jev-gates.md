@@ -116,6 +116,5 @@ Build the `dedupe` criteria from the live list read, one entry per existing row 
 
 ## Privacy
 
-The data rule for `state` is in [`../../jev/SKILL.md`](../../jev/SKILL.md). For this skill, send
-a short summary: the initiative, its artifacts, and the row. Never paste a raw transcript or
-privileged text. The exclusion screen applies to the request too.
+For this skill, send a short summary: the initiative, its artifacts, and the row. Never paste a
+raw transcript or privileged text. The exclusion screen applies to the request too.

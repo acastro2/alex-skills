@@ -9,7 +9,7 @@ description: >-
   runs /scribe, asks to fetch, pull, clean,
   or save meeting transcripts or call recordings, to sync the HiDock, or to prepare
   meeting notes for bard. On-demand only. Read-only on the device and on Microsoft 365.
-  Never commits, never runs a server, never sends audio or transcripts off the Mac.
+  Never commits, never runs a server.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, ToolSearch, mcp__claude_ai_Microsoft_365__outlook_calendar_search, mcp__claude_ai_Microsoft_365__read_resource
 ---
 
@@ -61,17 +61,15 @@ Mac both were already present on 2026-09-24.
 - **Read-only on the device.** `hidock_pull.py` implements only list and download. Never add a
   delete, format, or settings command. HiNotes manages device storage, not scribe.
 - **Read-only on Microsoft 365.** Calendar search and transcript read only.
-- **Audio and transcripts stay on this Mac.** Local whisper only. Never send audio, transcript
-  text, or summaries to Exa, a web tool, or any external service: a call recording is confidential
-  even when it sounds like small talk, and Attain is a regulated lender. HiNotes cloud is not a
-  source (no API, no export). A summary subagent must run this session's model and gets no web
-  tools; its only write targets are the meeting's JSON and its summary file.
+- **Local transcription.** Local whisper only. HiNotes cloud is not a
+  source (no API, no export). A summary subagent must run this session's model; its only write
+  targets are the meeting's JSON and its summary file.
 - **Nothing is held and nothing is withheld.** Every work recording and every Teams transcript
   becomes a note, in full, including turns about HR, compensation, performance, personal topics,
   and HR cases about named people. No recording is skipped on HR grounds and no note carries a
-  `[Segment withheld ...]` marker; trimmed JSON copies are no longer produced. Keep every note
-  `confidential: true`. Alex's decision, 2026-09-24, replacing the segment-withholding rule of
-  2026-09-08. Notes sync (see **Sync the vault**), so this content is intended to leave this Mac.
+  `[Segment withheld ...]` marker; trimmed JSON copies are no longer produced. Alex's decision,
+  2026-09-24, replacing the segment-withholding rule of 2026-09-08. Notes sync (see **Sync the
+  vault**), so this content is intended to leave this Mac.
 - **scribe does not curate.** Every work recording and every Teams transcript becomes a note,
   including standups, 1:1s, and calls that turn out to be personal. Deciding what matters is
   bard's job, not scribe's. The Teams-wins dedup in Source B drops a HiDock copy that carries
@@ -169,7 +167,7 @@ its summary. When a run cleans more than one meeting and the host has subagents,
 - Brief each subagent with: the JSON path; the title; the attendee names; steps 1–3 below,
   copied in full; the two write targets (that same JSON for the label rewrites and
   `provenance.speaker_hints`, and `~/.scribe/transcripts/<id>.summary.md`); and the
-  no-invention rules. Tell it: no web tools, no external services, no other files; reply with
+  no-invention rules. Tell it: no other files; reply with
   the paths it wrote and any confirmed `wrong => Right` glossary lines.
 - Use a subagent that runs this session's model (Claude Code: Task; OpenCode: `general`).
   Never hand transcript text to a cheap or remote-model agent.
@@ -225,7 +223,7 @@ One meeting, or no subagents on this host: run all eight steps serially.
 
    The script applies the glossary (case-insensitive, whole words), drops filler words, merges
    same-speaker turns, and writes frontmatter (`type: transcript`, `source`, `date`, `speakers`,
-   `provenance`, `confidential: true`). It refuses to overwrite without `--force`. stdout is the
+   `provenance`). It refuses to overwrite without `--force`. stdout is the
    note path.
 5. **Glossary upkeep**: when you confirmed a garble → real name during the summary, append a
    `- wrong => Right` line to `<vault>/Scribe/Glossary.md`. Only confirmed ones.
@@ -285,7 +283,6 @@ source: teams            # or hidock
 speakers: ["Ana Silva", "Bruno Costa"]   # who actually spoke; ["speaker 0", ...] for hidock
 attendees: ["Ana Silva", "Bruno Costa", "Carla Reyes"]
 tags: ["scribe", "meeting", "source/teams"]
-confidential: true
 provenance:
   teams_event_id: "..."
   transcript_uri: "..."
