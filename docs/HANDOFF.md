@@ -1,6 +1,32 @@
 # HANDOFF — Jev typed gates in ea-projects-curator + archeologist
 
-Updated: 2026-10-05 CDT
+Updated: 2026-10-07 CDT
+
+## 2026-10-07 — skill cull + new `reviewer` skill (uncommitted except 630da87)
+
+- Rule agreed with Alex: keep a skill only if it holds facts the model cannot know
+  (tool use, his systems, his taste). Generic method skills go.
+- Cut: tdd, diagnosing-bugs, resolving-merge-conflicts, writing-for-agents, codebase-design,
+  grilling, domain-modeling (commit 630da87), then incident-remediation-reviewer and blog-reviewer
+  (staged). herdr, to-spec, to-tickets were deleted by Alex in another session (staged).
+- New `reviewer/`: core lens from Alex's CLAUDE.md rules, type layers (`references/code.md`
+  rebuilt from his own pre-Attain pr-reviewer in git history at 0eda409^, `references/blog.md`
+  replaces blog-reviewer), Blocker/Should-fix/Nice-to-have + Confirmed/Likely/Worth checking,
+  grill rounds from the old grilling skill. Evals: `reviewer/evals/evals.json`; runs in
+  `~/.agents/skill-workspace/alex-skills/reviewer/`.
+- 2026-10-07 static review (skill-creator) fixes applied: proportionality, code layer owns output order,
+  check 7 gated to data/money/prod, ADO path for Spec, EA doc framework hook, scoped self-review trigger.
+  Evals: 4 cases (eval 4 = PR with planted bugs + a null-check false-positive trap) and
+  `reviewer/evals/trigger-evals.json` (20 queries) for the Claude description loop. Iteration 2 NOT run:
+  Alex runs the full eval himself.
+- Later 2026-10-07: added `reviewer/references/docs.md` + eval 5 (ADR that is really an RFC). Second static pass
+  + advisor review: fixed eval blockers in code.md (diff file is a valid target; unknowns become Worth checking
+  instead of stopping). Then applied the 7 wording fixes (empty axis = one line, self-review raises decisions as grill,
+  smells only in Standards, EA framework wins on doc types, eval 1 cap = 2x input, docs.md loads alex-voice/SKILL.md
+  first). reviewer/ needs re-staging (AM) before commit; evals/ is gitignored, use `git add -f`.
+- Do NOT copy the Attain plugin's pr-reviewer into this repo: origin is personal GitHub.
+- Blocked: removing the `# Skills` section from ~/.claude/CLAUDE.md and
+  ~/.config/opencode/AGENTS.md was refused by the auto-mode classifier; Alex runs it himself.
 
 ## 2026-10-02 — alex-voice rebuild v2, from a much bigger corpus (in progress)
 
