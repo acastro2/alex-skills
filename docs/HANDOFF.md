@@ -2,6 +2,45 @@
 
 Updated: 2026-10-07 CDT
 
+## 2026-10-07 (final checks) — eval results and fixes (uncommitted)
+
+- Final-check runs (all safe flags, no live processes): reviewer iteration-3 21/25 (`.../reviewer/iteration-3/`),
+  search iteration-2 25/26 dry-run (`.../search/iteration-2/`), jev iteration-1 deep: with skill 23/24 vs baseline
+  11/24, and Jev grading agreed with reference grades on 61/62 firm verdicts (`.../jev/iteration-1/`).
+- Fixed after them: reviewer (grill Q1 right after the verdict, message cap counts everything but the rewrite,
+  Blocker needs Confirmed/Likely, one code element = one finding, authz on every new route); search (stale eval 7,
+  cost-cap contradiction in exa-agent.md); jev (size comparisons and exact words go to code, negated expectations
+  ask the positive and invert, severity options by meaning, transcript-only expectations, name the band).
+- Alex removed the jev data-rule section himself (his call; do not restore). jev eval 4 does not discriminate:
+  the org policy already makes the baseline redact.
+- None of today's last fixes re-run yet.
+
+## 2026-10-07 (night) — `jev` skill replaces typesafe-ai; Exa goes MCP-first (uncommitted)
+
+- `jev/SKILL.md`: when to send a judgment to Jev, question rules (from TypeSafe's jev-1.13 limits page), answer
+  reading + default bands (0.80/0.20), hard rules, MCP vs `jev` CLI, data rule (Attain policy: no personal data or
+  direct identifiers to the external endpoint; Alex asked "allow anything", policy blocks that part).
+  `references/eval-grading.md`: Noul per expectation, code for counts, LLM grader only for 0.20-0.80. Live check:
+  6 expectations in 1 call matched the human grading. Evals: `jev/evals/` (4 cases), not run.
+- Deduped: archeologist + ea-projects-curator keep their question sets and thresholds, point to `../jev` for the rest.
+  skill-creator step 5 points eval grading at Jev. `typesafe-ai` deleted (vendored builder skill, Alex: cut).
+- search: Exa always via MCP in Claude Code/OpenCode (Alex's call; sandbox blocks api.exa.ai); curl only for Pi.
+- Script renamed: scratchpad `update_instruction_files.py` (session 7fb5ee03) now also fixes OpenCode's dead
+  typesafe-ai pointer and adds a "Send typed judgments to Jev" rule to Claude and Pi. Dry run OK. Alex runs it.
+
+## 2026-10-07 (late) — eval fixes applied for reviewer + search (uncommitted)
+
+- Eval reports: `~/.agents/skill-workspace/alex-skills/reviewer/iteration-2/GRADING.md` (34/36 vs 25/36, but 0/24
+  auto-triggers) and `.../search/iteration-1/RESULTS.md` (routing 14/14; trigger run cut off).
+- Applied: reviewer word limits + grill-first + Blocker discipline + "Not verified" line + no unrun-check claims +
+  one-axis findings + new-file line citations; diff fixture hunk headers fixed (`git apply --check` OK). search:
+  USD prices (Claude Code eats `$<digit>` as skill args; also fixed ea-projects-curator:99), sandbox-vs-Cisco line,
+  CLI-to-MCP table, Agent Ultra (Exa changelog 2026-09-24). Evals extended; `evals/README.md` safe-run flags
+  verified (`--strict-mcp-config --tools "Skill,Read"`).
+- Alex-only, open: trigger budget (`SLASH_COMMAND_TOOL_CHAR_BUDGET` or fewer plugins) — without it nothing of his
+  auto-triggers; `api.exa.ai` sandbox allowlist; check Snowflake query history for the cut-off trigger run;
+  run the two instruction-file scripts; jev skill decisions.
+
 ## 2026-10-07 — `search` skill replaces find-docs + exa-search/contents/agent (uncommitted)
 
 - `search/SKILL.md` = decision tree (Context7 / Exa Contents / Exa Agent / Exa Search, escalate to Agent on the

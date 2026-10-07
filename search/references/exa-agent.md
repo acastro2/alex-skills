@@ -1,12 +1,29 @@
 # Exa Agent
 
-Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
+**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/agent/runs` when one search is not enough: multi-hop research, list building, and row enrichment. A run is asynchronous. Create it, then poll or stream until it reaches a terminal status.
 
 Use [Exa Search](exa-search.md) for one-call retrieval. Use [Exa Contents](exa-contents.md) when the URLs are already known.
 
-**Every block below is self-contained.** Shell variables do not survive between tool calls, so each block sets what it needs at the top and reads the key straight from `$EXA_API_KEY`. Run a whole block in one call.
+**Every `curl` block below is self-contained.** Shell variables do not survive between tool calls, so each block sets what it needs at the top and reads the key straight from `$EXA_API_KEY`. Run a whole block in one call.
+
+## In Claude Code and OpenCode: use the MCP
+
+Call the Exa MCP tool `agent_run` (the name prefix varies by host). Do not run `curl` there: the Claude Code sandbox blocks `api.exa.ai`. Its parameters match the API fields described below:
+
+| MCP parameter | Use |
+| --- | --- |
+| `query` | The research objective. Send either `query` or `runId`, not both |
+| `effort` | **Always set it.** The MCP defaults to `low`; the API defaults to `auto`. Pick with the effort table below |
+| `outputSchema` | JSON Schema for the result. Put `maxItems` on arrays |
+| `input.data`, `input.exclusion` | Rows to enrich, and entities to keep out |
+| `budget.maxCostDollars`, `budget.maxDurationSeconds` | Caps for `auto` and `ultra` only (duration: `ultra` only) |
+| `previousRunId` | Continue a completed run with its context |
+| `runId` | Check or keep waiting on a run that is still running. Never start a duplicate run |
+| `dataSources`, `systemPrompt` | Exa Connect providers, and extra guidance for the agent |
+
+The MCP tool waits for the run and returns its output. A long run comes back still running: call `agent_run` again with its `runId`. The MCP has no stop call; to stop an `ultra` run early, set `budget.maxDurationSeconds` up front. The checks in **`completed` does not mean correct** below apply to MCP results too.
 
 ## Create a run
 
@@ -80,9 +97,9 @@ curl -sS --fail-with-body -X POST "https://api.exa.ai/agent/runs" \
 - `outputSchema`: Validated JSON in `output.structured`. Use a top-level object. Supports JSON Schema draft-07, 2019-09, and 2020-12 through `$schema`, plus the `phone` format. Put `maxItems` on arrays so the worst-case cost is predictable.
 - `input.data` / `input.exclusion`: Rows to process, and entities to keep out.
 - `effort`: `minimal`, `low`, `medium`, `high`, `xhigh`, `auto`, or `max`. The default is `auto`. Set it on purpose — see the table below.
-- `budget.maxCostDollars`: Per-run ceiling, `$1` to `$100`. It applies only to `auto` and `max`, which are metered. Sending it with a fixed effort does nothing. Defaults are `$5` for `auto` and `$20` for `max`, so only set it when you want a different cap.
+- `budget.maxCostDollars`: Per-run ceiling, `$1` to `$100`. It applies only to the metered efforts: `auto`, `ultra`, and `max`. Sending it with a fixed effort does nothing. Defaults are `$5` for `auto` and `$20` for `max`, so only set it when you want a different cap.
 - `dataSources`: Up to five Exa Connect providers. Self-serve IDs are `fiber`, `financial_datasets`, `similarweb`, `baselayer`, `affiliate`, `particle`, and `jinko`. Name the provider in the query *and* in the schema field description (`"description": "from Similarweb"`) or the agent will not call it.
-- `metadata`: String key-value pairs for your own tracking. Never put secrets here.
+- `metadata`: String key-value pairs for your own tracking.
 
 ### Choosing effort
 
@@ -99,6 +116,19 @@ Fixed efforts cost a flat price per request. `auto` and `max` are metered agains
 | `max` | metered, $20 cap | beta — biggest list builds and deepest multi-source research |
 
 Search calls add `$0.005` each, contact enrichment adds `$0.02` per email and `$0.07` per phone number, and Connect providers bill per call. Read the real number from `costDollars` after the run.
+
+### Ultra
+
+`ultra` (released 2026-09-24, Exa changelog) is the highest effort, for large list building, deep multi-source research, and criteria that are hard to verify. It is metered at standard Agent rates up to a default cap of USD 20 per run (`budget.maxCostDollars` changes it). Set `budget.maxDurationSeconds`, from 300 to 10800 (5 minutes to 3 hours), and the run wraps up with what it found by then. To end a run early and keep its results so far, call `POST https://api.exa.ai/agent/runs/{id}/stop`. Use `ultra` only when the user asks for maximum completeness, because a run can take hours.
+
+```bash
+curl -sS --fail-with-body -X POST "https://api.exa.ai/agent/runs" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $EXA_API_KEY" \
+  --data "$(jq -n '{query: "...", effort: "ultra", budget: {maxCostDollars: 20, maxDurationSeconds: 3600}}')" | jq -r '.id'
+```
+
+The `max` effort below predates `ultra`. Exa's API reference still documents it, but the MCP `agent_run` tool lists only `ultra`, so prefer `ultra`.
 
 `max` is public beta and needs an extra header, so it fails as a plain `effort` value:
 

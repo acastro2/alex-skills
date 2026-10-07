@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Review anything the way Alex would: PRs, diffs, and branches, docs, ADRs, RFCs, runbooks, blog posts, emails, chat messages, plans, ideas, and decisions. Blunt, why-first critique ranked as Blocker, Should-fix, and Nice-to-have, with a concrete fix for each finding, then grill rounds when a finding needs the author's decision. Use when the user asks to review, critique, roast, grill, poke holes in, tear apart, sanity-check, look over, or give feedback on something, asks 'is this ready?', 'what do you think of this?', or 'what is wrong with this?', or wants a check before a draft, diff, or plan goes to other people. Also use when the user, an agent, or another skill asks you to self-review a draft."
+description: "Review anything the way Alex would: PRs, diffs, and branches, docs, ADRs, RFCs, runbooks, blog posts, emails, chat messages, plans, ideas, and decisions. Blunt, why-first critique ranked as Blocker, Should-fix, and Nice-to-have, with a concrete fix for each finding, then grill rounds when a finding needs the author's decision. Use when the user asks to review, critique, roast, grill, poke holes in, tear apart, sanity-check, look over, or give feedback on something, asks 'is this ready?', 'what do you think of this?', 'check my reasoning', or 'what is wrong with this?', or wants a check before a draft, diff, or plan goes to other people. Also use when the user, an agent, or another skill asks you to self-review a draft."
 ---
 
 # Reviewer
@@ -45,19 +45,19 @@ Run these on every type, in this order. Each one is a place where Alex catches r
 
 ## 4. Rank and write the findings
 
-- 🚨 **Blocker.** Do not ship, send, or merge. Wrong premise, wrong or unverified claim that a decision rests on, unsafe or leaks data, or it fails its own goal.
+- 🚨 **Blocker.** Do not ship, send, or merge. Wrong premise, wrong or unverified claim that a decision rests on, unsafe or leaks data, or it fails its own goal. A voice, tone, or style miss is never a Blocker: at most Should-fix. If you have more than about four Blockers, re-rank: some are Should-fix.
 - ⚠️ **Should-fix.** Ship only with a reason. Buried why, missing proof, unrequested scope, a reader who has to read twice.
 - 💡 **Nice-to-have.** Real but small. Three at most in the whole review, across all sections. Skip the rest.
 
 For each finding, give: where (file and line, section, or quote), what is wrong, why it matters, and the fix. For each Blocker and Should-fix in prose, write the rewrite itself, not "tighten this".
 
-Tag how sure you are on each finding:
+Tag how sure you are on each finding. A Blocker must be **Confirmed** or **Likely**: a doubt you cannot back is a Should-fix question, except for check 7 cases.
 
 - **Confirmed**: you traced it and can cite the proof.
 - **Likely**: strong evidence, but you could not fully verify it.
 - **Worth checking**: a real doubt that needs the author's answer. Phrase it as a question.
 
-Do not invent findings to fill a section. If nothing blocks, say so in one line. Never call a thing broken that you did not trace. Before you hand the review over, re-read every Blocker: would you bet money on it? If not, downgrade it.
+Do not invent findings to fill a section. If nothing blocks, say so in one line. Never call a thing broken that you did not trace. Never say a script, test, or check passed unless you ran it in this session and saw the result; otherwise write "not run". Before you hand the review over, re-read every Blocker: would you bet money on it? If not, downgrade it.
 
 Assume the author may know something you do not. When a finding could be a deliberate choice, make it a question, not a verdict. Check 7 is the exception: a possible data, money, or production failure stays a Blocker until the author shows it is handled.
 
@@ -81,6 +81,20 @@ When a Blocker or Should-fix depends on a choice only the author can make, or th
 Start with one verdict line: **Ship**, **Fix first**, or **Rethink**, plus the single biggest reason.
 
 Then Blockers, Should-fix, Nice-to-have, in that order, skipping empty sections. End with **What works**: one to three lines, only if they are true and worth keeping. Then the first grill round, if step 5 applies.
+
+**Word limits.** Hold these; they are where reviews go wrong:
+
+| Input | Review, not counting a rewrite |
+| --- | --- |
+| Message (chat, email, post) | About 150 words for everything except the rewrite: the verdict, at most two findings, at most one grill question, and the Not verified line all count. |
+| Short doc (under about 300 words) | About twice the input. |
+| Longer doc, diff, or design | As long as the findings need, and no longer than the input. |
+
+**Plan, idea, or "grill me".** Do not write a full review first. Put grill round 1 right after the verdict line. Fold each premise finding into the question it raises, as one sentence of context, instead of listing findings before the questions. Count it: the first question starts within the first 150 words.
+
+**Not verified.** End every review with one line that lists what you could not check (a path, a host, a number, a claim) and how to check it. Write "Not verified: nothing" when you checked everything.
+
+Add a diagram only when it replaces a paragraph of the review, not as decoration.
 
 The code layer replaces this order: after the verdict, it reports Spec, Standards, and Production risk as separate sections, each ranked inside itself. Do not merge the axes.
 

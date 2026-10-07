@@ -1,10 +1,24 @@
 # Exa Search
 
-Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
+**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to [Exa Agent](exa-agent.md). Route known-URL extraction to [Exa Contents](exa-contents.md).
 
-## Quick Start (cURL)
+## In Claude Code and OpenCode: use the MCP
+
+Call the Exa MCP tools (the name prefix varies by host). Do not run `curl` there: the Claude Code sandbox blocks `api.exa.ai`.
+
+| Need | MCP tool and parameters |
+| --- | --- |
+| A plain search | `web_search_exa`: `query` (describe the ideal page), `objective` (which pages should rank first and which facts to pull), `numResults` |
+| Filters | `web_search_advanced_exa`: `category` (`company`, `people`, `news`, `publication`, `financial report`, `personal site`), `includeDomains`, `excludeDomains`, `startPublishedDate`, `endPublishedDate`, `includeText`, `excludeText`, `additionalQueries`, `numResults` |
+| Content in the results | `web_search_advanced_exa`: `enableHighlights` with `highlightsMaxCharacters` and `highlightsQuery`, `textMaxCharacters`, `enableSummary` with `summaryQuery`, `subpages` |
+| Freshness | `web_search_advanced_exa`: `maxAgeHours` (`0` always fetches fresh content) |
+| Speed | `type`: `auto` (default), `fast`, or `instant` |
+
+The MCP has no `deep` search type and no `outputSchema`. For one answer built from several sources, or for structured output, use [Exa Agent](exa-agent.md) at `low` effort.
+
+## Quick Start (cURL, for Pi)
 
 ### Basic search
 

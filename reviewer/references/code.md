@@ -12,18 +12,20 @@ git diff <fixed-point>...HEAD
 git log <fixed-point>..HEAD --oneline
 ```
 
+Cite `path:line` with the line number in the changed file: count from the `+` side of the hunk header (`@@ -a,b +c,d @@` starts the new file at line `c`). Never cite the line number of the diff file itself.
+
 If there is a PR, also read its description and existing comments (`gh pr view --comments`), and check that earlier comments were addressed.
 
 Look for: the intent and user impact, the risk areas (auth, money, data writes, migrations, external APIs), the rollout and rollback plan, and what tests were run. Do not stop to ask for them. Note each one you cannot find as **Worth checking** under the axis it affects. Stop and ask only when the goal of the change itself is unknown.
 
 ## Three axes, kept separate
 
-Review the same diff three times and report each axis under its own heading. Do not merge them or rank across them: code can follow every standard and still build the wrong thing, or do exactly what the ticket said and still be unsafe to ship.
+Review the same diff three times and report each axis under its own heading. Each finding lives in one axis only: put it where it is worst (a missing authorization check is Production risk), and from the other axis write one line that points to it. The same code element is one finding even when it breaks two axes: an unrequested factory is one finding (Spec, unrequested scope) with the smell named inside it, not a second finding in Standards. Do not merge them or rank across them: code can follow every standard and still build the wrong thing, or do exactly what the ticket said and still be unsafe to ship.
 
 1. **Spec.** Find the work item: references in commit messages (`AB#1234`, `#45`), a path or URL the user gave, or a spec under `docs/` or `specs/`. At Attain, work items live in Azure DevOps: fetch the item with the Azure DevOps connector if this session has it, or the `ado` agent, and read the description, the acceptance criteria, and the comments. If neither is available, ask the user to paste the item. Report what was asked but is missing or partial, what was built but not asked for, and what looks implemented but wrong. Quote the work item line for each. If there is no spec, say so and skip the axis.
 2. **Standards.** Every place the diff breaks a documented repo standard (cite the rule), plus any smell from the baseline below. Documented breaches can be hard violations. Smells are always judgment calls.
 3. **Production risk.** What breaks in production. Blockers first:
-   - 🚨 Security and privacy: authz bypass, injection, secrets, personal data in logs or responses.
+   - 🚨 Security and privacy: authz bypass, injection, secrets, personal data in logs or responses. Check authorization on **every** new route, handler, or export path on its own, including the ones nobody asked for: an unrequested endpoint with no authorization check is a Blocker, not just "more surface".
    - 🚨 Data loss or corruption: multi-step writes with no transaction, unsafe deletes, broken migrations.
    - 🚨 Breaking contract changes with no versioning or migration path. Wrong logic, missing validation.
    - ⚠️ Silent failures, no timeouts, retries with no backoff, no idempotency.

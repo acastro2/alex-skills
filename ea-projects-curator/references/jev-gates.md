@@ -1,8 +1,8 @@
 # Typed gates — the `ask_jev` question sets
 
 Reference for the **Typed gates** section of `SKILL.md`. Everything here is a copy-paste
-request body for the `ask_jev` tool (MCP server `jev`, `~/.local/bin/jev-mcp`, backed by
-`~/.local/bin/jev`).
+request body for the `ask_jev` tool. How to call Jev and read its answers, for every host:
+[`../../jev/SKILL.md`](../../jev/SKILL.md).
 
 ## Why these are typed, not prose
 
@@ -116,6 +116,6 @@ Build the `dedupe` criteria from the live list read, one entry per existing row 
 
 ## Privacy
 
-`state` leaves the machine for the OpenCode Zen endpoint. Send a short summary: the
-initiative, its artifacts, and the row. Never paste a raw transcript, a credential, or
+The data rule for `state` is in [`../../jev/SKILL.md`](../../jev/SKILL.md). For this skill, send
+a short summary: the initiative, its artifacts, and the row. Never paste a raw transcript or
 privileged text. The exclusion screen applies to the request too.

@@ -1,21 +1,17 @@
 ---
 name: search
-description: "Look things up instead of answering from memory: current library, framework, SDK, CLI, and cloud-service docs through Context7, and the web through Exa (search, page extraction, and multi-step research agents). Use for API syntax, configuration, version migrations, setup and library-specific debugging; for finding pages, news, companies, people, papers, or products; for reading and extracting known URLs; and for research that needs more than one search, such as building a list from open-ended criteria, enriching rows with new fields, or a sourced answer with citations. Use it whenever a public fact may have changed since training or the user needs a public source, even when they never say search or research. Not for internal or company data: past decisions, meetings, mail, tickets, or internal documents belong to archeologist, m365, or the Azure DevOps and GitHub tools."
+description: "Look things up instead of answering from memory: current library, framework, SDK, CLI, and cloud-service docs through Context7, and the web through Exa (search, page extraction, and multi-step research agents). Use for API syntax, configuration, version migrations, setup and library-specific debugging; for finding pages, news, companies, people, papers, or products; for reading and extracting known URLs; and for research that needs more than one search, such as building a list from open-ended criteria, enriching rows with new fields, or a sourced answer with citations. Use it whenever a public fact may have changed since training or the user needs a public source, even when they never say search or research."
 ---
 
 # Search
 
 One skill for looking things up on the public web. Walk the tree below to pick the tool, then load only that tool's reference.
 
-**Public data only.** Everything you send to Context7 or Exa (a query, a URL, a row, a schema) leaves the company. Do not send internal URLs (SharePoint, Azure DevOps, private GitHub, internal hosts), names or details of customers or employees, account or loan numbers, secrets, or anything you read from an Attain system. Internal questions go to `archeologist`, `m365`, the Azure DevOps tools, or `gh` instead. If the request mixes the two, search only the public part, and say what you kept back. Why: Attain is a regulated lender, and an internal URL often carries IDs even when the page itself cannot be reached.
-
 ## Pick the tool
 
 ```mermaid
 graph TD
-  Q[What do you need?] --> P{Internal data?}
-  P -->|yes| I[Other tools: archeologist, m365, ADO, gh]
-  P -->|no| D{Library or API docs?}
+  Q[What do you need?] --> D{Library or API docs?}
   D -->|yes| C7[Context7]
   C7 -->|no entry| S
   D -->|no| U{Have the URLs?}
@@ -38,7 +34,7 @@ Walk it in order. The first match wins.
    - Each fact needs **its own citation**, or the output must match a schema.
    - It is a **follow-up** on earlier research: "find ten more", "now add their pricing". Continue the earlier run with `previousRunId`. If that is rejected (teams with Zero Data Retention cannot use it), start a new run and pass the earlier results in `input.exclusion` or `input.data`.
    - You would need to **open more than about three pages** to answer well.
-4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. Use `type: "deep"` when that one answer needs several sources. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
+4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at `low` effort (the MCP search has no `deep` type); in Pi, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
 5. **Escalate.** If you are about to run a third Exa Search for the same question, stop and start an Agent run with what you learned. A third search means the job has more than one step.
 
 ### Why Agent is the default for research, not the last resort
@@ -47,22 +43,34 @@ A manual loop of searches and page reads spends far more model tokens and time t
 
 What it costs (from [exa-agent.md](references/exa-agent.md), last updated 2026-10-01; read `costDollars` after each run for the real number):
 
-- Research on one entity uses a fixed effort at a flat price: `low` $0.025, `medium` $0.10, up to `xhigh` $1.00.
-- Lists and any task whose size you cannot predict use `auto`, which is metered with a default cap of $5. Set `budget.maxCostDollars` on purpose, and put `maxItems` on arrays in the schema.
+- Research on one entity uses a fixed effort at a flat price: `low` USD 0.025, `medium` USD 0.10, up to `xhigh` USD 1.00.
+- Lists and any task whose size you cannot predict use `auto`, which is metered with a default cap of USD 5. Set `budget.maxCostDollars` on purpose, and put `maxItems` on arrays in the schema.
+- `ultra` is the highest effort, for large list builds and deep research: metered up to USD 20 by default, and it can run for hours. Use it only when the user asks for maximum completeness, and set `budget.maxDurationSeconds` (300 to 10800).
+
+(Prices are written as USD because Claude Code replaces a dollar sign followed by a digit in this file with the skill's arguments.)
 
 `completed` does not mean correct. Check `stopReason` (`budget_reached` also ends as `completed`) and drop records with null fields before you use the output. Use Exa Search for one call, not for a loop.
 
 Do not use Agent for a single fact, one known page, library docs, or a call where the answer is needed in seconds. A run is asynchronous and takes longer than one search.
 
-## CLI first, MCP as the fallback
+## Which path: Exa MCP, Context7 CLI
 
-Use the CLI path in each reference first: `npx --yes ctx7@latest` for Context7, `curl` for Exa. Fall back to the Context7 or Exa MCP tools only when the CLI fails or the API cannot be reached. Pi has no MCP tools, so there the fallback is its `web_search`. Do not use the built-in web search or fetch tools next to Exa by default; use them last.
+- **Exa: always the Exa MCP tools** in Claude Code and OpenCode. Alex has the Exa MCP installed in both. The `curl` blocks in the Exa references are for Pi, which has no MCP, and for reading what each API field means.
+- **Context7: the CLI first** (`npx --yes ctx7@latest`), the Context7 MCP tools only when the CLI fails.
+- Do not use the built-in web search or fetch tools next to Exa by default; use them last.
 
-Why: Alex finds the Exa API more reliable, with better search and research features, and the CLI path is the same in Claude Code, OpenCode, and Pi. The MCP tools stay as the fallback because the corporate network stack (Cisco Umbrella, Secure Access) can block raw `curl`. If a call fails with a certificate, proxy, or blocked-site error, suspect that stack before you debug the request.
+Why: in Claude Code the Bash sandbox blocks `api.exa.ai` (`curl` fails with "Could not resolve host"), while the MCP tools reach Exa. Do not try to bypass the sandbox. If an MCP call fails with a certificate, proxy, or blocked-site error, suspect the corporate network stack (Cisco Umbrella, Secure Access) before you debug the request.
 
-## Exa authentication
+| Job | Claude Code and OpenCode | Pi (no MCP) | Watch out |
+| --- | --- | --- | --- |
+| Library docs | `npx --yes ctx7@latest library`, then `docs`; MCP `resolve-library-id` and `query-docs` as fallback | same CLI | |
+| Web search | Exa `web_search_exa`, or `web_search_advanced_exa` for filters | `curl` `POST /search` | The MCP offers only `auto`, `fast`, and `instant` search types: no `deep`. When you need `deep`, use Exa Agent at `low` effort instead |
+| Read known URLs | Exa `web_fetch_exa` | `curl` `POST /contents` | |
+| Agent run | Exa `agent_run` | `curl` `POST /agent/runs` | The MCP defaults to `effort: low`, the API to `auto`: always set `effort`. Resume with `runId`; do not start a duplicate run |
 
-Every Exa call needs the header `x-api-key: $EXA_API_KEY`. Use `EXA_API_KEY` from the environment first, then `~/.config/exa/key`. Get a key at https://dashboard.exa.ai/api-keys.
+## Exa authentication (Pi and raw API only)
+
+The MCP tools carry their own key. For `curl`, every Exa call needs the header `x-api-key: $EXA_API_KEY`. Use `EXA_API_KEY` from the environment first, then `~/.config/exa/key`. Get a key at https://dashboard.exa.ai/api-keys.
 
 Shell variables do not survive between tool calls. When the key comes from the file, put this at the top of the same call as the request:
 
@@ -86,4 +94,3 @@ Never print the key, and never use `set -x`: it expands the `curl` header into t
 - Answer from the source, not from memory. Cite the URL or the Context7 library ID for each fact that matters.
 - When the sources disagree or are old, say so and give the date.
 - If a lookup fails (quota, blocked network, no result), tell the user which tool failed and why. If you then answer from training data, say that it may be out of date.
-- Do not put secrets, credentials, or internal data in a query. Queries leave the company.

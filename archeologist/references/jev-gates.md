@@ -1,8 +1,8 @@
 # Typed gates — the `ask_jev` question sets
 
 Reference for the **Typed gates** section of `SKILL.md`. Every block here is a copy-paste
-request body for the `ask_jev` tool (MCP server `jev`, `~/.local/bin/jev-mcp`, backed by
-`~/.local/bin/jev`).
+request body for the `ask_jev` tool. How to call Jev and read its answers, for every host:
+[`../../jev/SKILL.md`](../../jev/SKILL.md).
 
 ## Why these are typed, not prose
 
@@ -102,8 +102,6 @@ saying HIGH is not evidence that a file still exists.
   still covers all stores A–I.
 - **The rubric owns confidence.** "HONEST CONFIDENCE: if you cannot verify, say so. Do not
   inflate" outranks any model's score.
-- **A missing MCP server, key, or blocked network is reported, not hidden.** Decide as before
-  and say so. Never invent a Jev answer.
-- **`state` leaves the machine** for the OpenCode Zen endpoint. Send the question, its
-  entities, and short findings lines — never raw transcript text, never a credential value,
-  never privileged content. The privacy guardrail applies to the request too.
+- **Unavailable Jev and the data rule for `state`:** see [`../../jev/SKILL.md`](../../jev/SKILL.md).
+  For this skill, send the question, its entities, and short findings lines, never raw
+  transcript text or privileged content.

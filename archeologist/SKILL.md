@@ -66,11 +66,9 @@ Question sets and copy-paste request bodies: [references/jev-gates.md](reference
 - **`ask_jev` is not a source.** It never returns evidence, never turns a 0-hit store into a
   hit, and never appears in the coverage ledger as a store that was searched.
 - **A sweep still covers all stores A–I**, whatever the gates suggest.
-- **If `ask_jev` is unavailable** (no MCP server, no key, blocked network), say so and decide
-  as before. Never invent a Jev answer.
-- **`state` leaves the machine** for the OpenCode Zen endpoint. Send the question, its
-  entities, and short findings lines — never raw transcript text, never a credential value,
-  never privileged content.
+- **How to call Jev, read its answers, what may go in `state`, and what to do when it is
+  unavailable:** follow [`../jev/SKILL.md`](../jev/SKILL.md). Here, `state` carries the question,
+  its entities, and short findings lines, never raw transcript text or privileged content.
 
 ## Coverage: a sweep is not a question
 

@@ -1,10 +1,16 @@
 # Exa Contents
 
-Set up the key first: see **Exa authentication** in `../SKILL.md`. Every block reads it from `$EXA_API_KEY`.
+**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/contents` when the agent already knows the URLs and needs clean, LLM-ready extraction without running a new search. Start with one content mode: `highlights` for compact agent context, `text` for broad page context, or `summary` for Exa-side compression.
 
-## Quick Start (cURL)
+## In Claude Code and OpenCode: use the MCP
+
+Call the Exa MCP tool `web_fetch_exa` (the name prefix varies by host) with `urls` (batch several in one call) and `maxCharacters` per page (default 3000; raise it for long pages). It returns each page as clean markdown. Do not run `curl` there: the Claude Code sandbox blocks `api.exa.ai`.
+
+The MCP tool returns full text only. It has no highlights, summary, subpage, or per-URL status options. When you need highlights or a summary for known pages, use `web_search_advanced_exa` with `includeDomains` set to their site and a `highlightsQuery`, or read the full text and pick out what you need.
+
+## Quick Start (cURL, for Pi)
 
 ### Basic text extraction
 
