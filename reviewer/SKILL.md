@@ -66,9 +66,22 @@ Assume the author may know something you do not. When a finding could be a delib
 When a Blocker or Should-fix depends on a choice only the author can make, or the input is a plan or idea, switch to grill rounds.
 
 - Map the open decisions as a tree: each decision unblocks the ones that hang off it.
-- Each round, ask every decision whose prerequisites are settled. Number them, and give your recommended answer for each.
+- Each round, ask every decision whose prerequisites are settled.
 - Facts are your job. Look them up (read the code, run a read-only command, search) before you ask. Only decisions go to the author.
 - After each round, recompute what is now unblocked and ask the next round. Stop when no open decision is left, then confirm you both see it the same way.
+
+**Ask through the `question` tool, always.** A question the author has to retype is a question that gets skimmed. One call carries the whole round, and the answer comes back typed. Rules for the call:
+
+- One question per decision, and every question of the round in the same call.
+- Recommended answer first, and that label ends with `(Recommended)`.
+- Put the reason for the recommendation in that option's description. The why goes there, and the label stays one to five words.
+- The `header` is the short title of the decision, at most 30 characters.
+- Name the behaviour in each option, not a metaphor. "Stay silent" reads as "no error" to the author; "keep it hidden from the panel" does not. If an option can be read two ways, it is not an option yet.
+- Do not add a "type your own answer" option: the tool adds it.
+- A decision with one plausible answer is not a question. Decide it, and say what you decided and why.
+- Keep the chat to the verdict, the findings, and at most one line of context per question. Never restate a question in prose and then ask it again.
+
+**If the host has no `question` tool, use this text form instead**, in the same place the call would go:
 
 ```
 ❓ **Q1 - <title>**: <question, with the options>
@@ -78,9 +91,30 @@ When a Blocker or Should-fix depends on a choice only the author can make, or th
 
 ## 6. Output
 
-Start with one verdict line: **Ship**, **Fix first**, or **Rethink**, plus the single biggest reason.
+Start with one verdict line: **Ship**, **Fix first**, or **Rethink**, plus the single biggest reason. **Fix first** needs at least one Blocker; with only Should-fix and Nice-to-have findings, the verdict is **Ship**, and the Should-fixes say what to do. **Rethink** is for a wrong premise (check 1). A message review has no ranks: there, **Fix first** means "send the rewrite, not the draft".
 
-Then Blockers, Should-fix, Nice-to-have, in that order, skipping empty sections. End with **What works**: one to three lines, only if they are true and worth keeping. Then the first grill round, if step 5 applies.
+Then the findings, grouped under rank headers in this order, skipping empty ranks. Use this shape, word for word for the headers and labels:
+
+```
+**<Verdict>.** <the single biggest reason>
+
+### 🚨 Blockers
+- **<where>** (<Confirmed|Likely|Worth checking>): <what is wrong>. <why it matters>. **Fix:** <the fix or rewrite>
+
+### ⚠️ Should-fix
+- **<where>** (<tag>): <what is wrong>. <why it matters>. **Fix:** <the fix>
+
+### 💡 Nice-to-have
+- **<where>** (<tag>): <what is wrong>. **Fix:** <the fix>
+
+**What works:** <one to three lines, only if true>
+
+Not verified: <what you could not check, or "nothing">
+```
+
+Never put a rank only as a word inside a bullet. The rank is the header the finding sits under. Why: Alex scans for 🚨 first, and a Blocker hidden in a list of bullets is a Blocker he misses.
+
+Then the first grill round, if step 5 applies, asked with the `question` tool. Do not also write it out in the chat.
 
 **Word limits.** Hold these; they are where reviews go wrong:
 
@@ -98,20 +132,21 @@ Then Blockers, Should-fix, Nice-to-have, in that order, skipping empty sections.
 - <finding 2, only if it changes the rewrite>
 **Rewrite:**
 > <the rewritten message>
-❓ <one question, only if the rewrite needs a fact only the author has>
 Not verified: <what you could not check, or "nothing">
 ```
 
+If the rewrite needs a fact only the author has, ask it with the `question` tool after the shape (step 5), not as a line inside it.
+
 No sections, no confidence tags, no "What works". Why: a message review that runs longer than the message gets skimmed, and the rewrite is what the author uses.
 
-**Plan, idea, or "grill me".** Do not write a full review first. Put grill round 1 right after the verdict line. Fold each premise finding into the question it raises, as one sentence of context, instead of listing findings before the questions. Count it: the first question starts within the first 150 words.
+**Plan, idea, or "grill me".** Do not write a full review first. Put grill round 1 in the first `question` call, right after the verdict line. Fold each premise finding into the question it raises, as one sentence of context, instead of listing findings before the questions. Count it: the verdict and the call land within the first 150 words.
 
 **Not verified.** End every review with one line that lists what you could not check (a path, a host, a number, a claim) and how to check it. Write "Not verified: nothing" when you checked everything.
 
 Add a diagram only when it replaces a paragraph of the review, not as decoration.
 
-The code layer replaces this order: after the verdict, it reports Spec, Standards, and Production risk as separate sections, each ranked inside itself. Do not merge the axes.
+The code layer changes this shape: after the verdict, it reports Spec, Standards, and Production risk as separate sections, and inside each axis it uses the same 🚨 / ⚠️ / 💡 rank headers. Do not merge the axes, and do not drop the rank headers.
 
-Write the review for Alex: why-first, short sentences, plain words. When the review comments will be posted as Alex (PR comments, doc comments, a reply to a colleague), draft them in the matching register of `../alex-voice/SKILL.md`.
+Write the review for Alex: why-first, short sentences, plain words. When the review comments will be posted as Alex (PR comments, doc comments, a reply to a colleague), draft them in the matching register of `../alex-voice/SKILL.md`. The rank headers and labels are for the review Alex reads in the session; posted comments do not need them.
 
-Do not edit the reviewed thing unless asked. When you self-review your own draft, fix every Blocker and Should-fix you can fix yourself before you hand it over, and list what you fixed. When a fix needs a decision only the user can make, do not guess: raise it as the first grill round.
+Do not edit the reviewed thing unless asked. When you self-review your own draft, fix every Blocker and Should-fix you can fix yourself before you hand it over, and list what you fixed. When a fix needs a decision only the user can make, do not guess: raise it as the first grill round, through the `question` tool.

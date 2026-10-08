@@ -67,4 +67,16 @@ Fowler's code smells, as judgment calls. Suppress any the repo endorses or tooli
 
 ## Output additions
 
-Under the verdict line, add the fixed point used. Then report **Spec**, **Standards**, and **Production risk** as their own sections, each with its own Blocker, Should-fix, and Nice-to-have findings. An axis with no findings is one line ("Standards: nothing found"), not a section, so a small diff gets a small review. For each risk finding give: the risk, a concrete failing scenario, and the fix. End with one line: finding count per axis and the worst issue in each.
+Under the verdict line, add the fixed point used. Then report **Spec**, **Standards**, and **Production risk** as their own sections. Inside each axis, group the findings under the rank headers from SKILL.md step 6, skipping empty ranks:
+
+```
+### Production risk
+#### 🚨 Blockers
+- **<file:line>** (<tag>): <risk>. <failing scenario>. **Fix:** <fix>
+#### ⚠️ Should-fix
+- ...
+#### 💡 Nice-to-have
+- ...
+```
+
+An axis with no findings is one line ("Standards: nothing found"), not a section, so a small diff gets a small review. For each risk finding give: the risk, a concrete failing scenario, and the fix. End with one line: finding count per axis and the worst issue in each. Then the first grill round, if step 5 of SKILL.md applies, asked with the `question` tool.

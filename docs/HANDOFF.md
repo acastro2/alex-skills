@@ -1,6 +1,6 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-10-07 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
+Updated: 2026-10-08 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
 
 ## Current state
 
@@ -9,6 +9,8 @@ Updated: 2026-10-07 CDT. Full session history lives in the git history of this f
 - `reviewer`: Alex's review lens (core checks from his CLAUDE.md), type layers in `references/` (code, docs, blog), grill rounds, a fixed shape for short messages. Code layer rebuilt from his own pre-Attain pr-reviewer (`git show 0eda409^:pr-reviewer/SKILL.md`). Do not copy the Attain plugin's pr-reviewer here: this repo pushes to personal GitHub.
 - `search`: replaces find-docs and the three exa-* skills. Decision tree; Exa always through the MCP in Claude Code and OpenCode (the Claude Code sandbox blocks `api.exa.ai`); `curl` only in Pi, which has no MCP; Context7 CLI first.
 - `jev`: the harness sends its own judgment calls to `ask_jev`. `references/eval-grading.md` grades eval expectations with Jev (61 of 62 firm verdicts matched reference grades). Alex removed the data-rule sections from `jev`, `search`, `bard`, `scribe`, and `archeologist` on 2026-10-07: his call, do not restore.
+
+**reviewer rank format (2026-10-08, uncommitted).** Alex's OpenCode PR review (deepseek-v4.1-flash, `ses_ee32e047bffe0IYpV2WC37D8eK`) put the ranks as words inside bullets under the code axes. Fix: a literal 🚨/⚠️/💡 header template in `SKILL.md` step 6 and in `references/code.md`, plus "Fix first needs a Blocker" (not for messages). Posted PR comments carry no labels (Alex's call). Iteration-6 (old vs new, Opus, evals 1/3/4): eval 4 old had 0 rank headers, new has them; email shape unchanged. Not yet run on deepseek-flash in OpenCode.
 
 **Eval state.** Last runs, all with the safe flags in each `evals/README.md`: reviewer iteration-4 24/25 plus a one-run check of the message shape (163 words without the rewrite); search iteration-2 25/26 (dry run); jev iteration-1 with skill 23/24 vs baseline 11/24. Results: `~/.agents/skill-workspace/alex-skills/<skill>/iteration-N/`.
 
