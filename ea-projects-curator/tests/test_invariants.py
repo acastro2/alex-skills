@@ -31,6 +31,7 @@ PROSE = {
     "references/recap.md": SKILL_DIR / "references" / "recap.md",
     "references/brought-docs.md": SKILL_DIR / "references" / "brought-docs.md",
     "references/write-shapes.md": SKILL_DIR / "references" / "write-shapes.md",
+    "references/ado-ea-portfolio-schema.md": SKILL_DIR / "references" / "ado-ea-portfolio-schema.md",
 }
 RENDERER = SKILL_DIR / "references" / "render_page.py"
 EXAMPLE = SKILL_DIR / "references" / "example-content.json"
@@ -73,6 +74,16 @@ INVARIANTS = [
     ("SKILL.md", "A1, A2, ..."),
     ("SKILL.md", "D1, D2, ..."),
     ("SKILL.md", "E1, E2, ..."),
+    ("SKILL.md", "W1, W2, ..."),
+    # where EA work lives and the ADO control (decided 2026-10-09)
+    ("SKILL.md", "Every epic in an EA area rolls up to exactly one EA Projects row"),
+    ("SKILL.md", "Weekly epic update, on every active epic, every week"),
+    ("SKILL.md", "Never move `System.State` on an item assigned to someone else"),
+    ("SKILL.md", "ADO WEEKLY CONTROL"),
+    ("references/ado-ea-portfolio-schema.md", "is **never** derived from ADO"),
+    ("references/ado-ea-portfolio-schema.md", "reporting change is official"),
+    ("references/write-shapes.md", "validateOnly=true"),
+    ("references/write-shapes.md", "No @-mentions"),
     # AAB control
     ("SKILL.md", "Never create an AAB Intake item"),
     ("SKILL.md", "Never infer a date from cadence"),

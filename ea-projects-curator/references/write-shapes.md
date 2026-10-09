@@ -176,3 +176,102 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
 }
 ```
 Send only fields Alex approved — never invent `Outcomenotes` or a `Scheduledfor` date. For `Scheduledfor`, use noon UTC to avoid a timezone rollback. A successful MERGE returns `204 No Content`; **verify with a follow-up GET** before reporting the write as done.
+
+---
+
+# ADO — REST read/write shapes (EA areas)
+
+Payloads for the [Weekly ADO control](../SKILL.md#weekly-ado-control--what-ea-does). Every write is an approved `W#` line. Never change permissions, areas, iterations, or process rules, and never delete a work item.
+
+- Org: `https://dev.azure.com/CuroFinTech`. Project: `Information Technology`.
+- Auth: Basic with an empty user and the `AZURE_DEVOPS_PAT` environment variable. Never print the token.
+- Writes use `PATCH` / `POST` with `Content-Type: application/json-patch+json`, except comments (plain `application/json`).
+- **Dry-run first.** Add `validateOnly=true` to any work item PATCH or create: ADO runs every process rule and saves nothing. Verified 2026-10-09 (the epic's links and Current Status were unchanged after the calls, and no probe item was created). Use it to catch a rule refusal before you put the line in front of Alex.
+
+## Process rules the dry-run will enforce (verified 2026-10-09)
+
+| Move | Required, or the write is refused |
+|---|---|
+| Epic `New` → `Active` | `Curo.ArchitectureReviewApprovedDate` and `Curo.ArchitectureReviewApprovedBy` (a person from the field's allowed list). This is the AAB gate in ADO. Take both values from a `Decided` AAB Intake item or Alex's own words, never from a guess |
+| Epic `New` → `Closed` | Refused. States move one step at a time: `New` → `Active` → `Resolved` → `Closed` |
+| Story to `In Progress` | `System.AssignedTo`, `System.Description`, `Microsoft.VSTS.Scheduling.StoryPoints` |
+| Story to `Closed` | `Curo.IT.ValidationNotes` (the evidence, for example the merged PR) and `Curo.IT.ValidatedBy` (a person from the field's allowed list) |
+| Story created in `New` | Title and area are enough |
+
+A missing-item story that is already done needs validation evidence and a validator on its `W#` line. If the evidence or the person is missing, propose it in `New` and put the gap on `open_items`.
+
+## Read an item with its links
+
+```
+GET /_apis/wit/workitems/<id>?$expand=relations&api-version=7.1
+```
+A row link shows as `relations[]` with `rel: "Hyperlink"` (verified on work item 256368). The parent is `rel: "System.LinkTypes.Hierarchy-Reverse"`; `System.Parent` also carries the parent id.
+
+## Link an epic to its EA Projects row
+
+```
+PATCH /_apis/wit/workitems/<epicId>?api-version=7.1
+```
+```json
+[{"op": "add", "path": "/relations/-",
+  "value": {"rel": "Hyperlink",
+            "url": "https://attainfinance.sharepoint.com/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx?ID=<rowId>",
+            "attributes": {"comment": "EA Projects row"}}}]
+```
+Read the relations first: an epic that already has a row link (a Hyperlink whose URL contains `/Lists/EA%20Portfolio/DispForm.aspx`) gets no second one. Other hyperlinks do not count.
+
+## Set a parent epic
+
+```json
+[{"op": "add", "path": "/relations/-",
+  "value": {"rel": "System.LinkTypes.Hierarchy-Reverse",
+            "url": "https://dev.azure.com/CuroFinTech/_apis/wit/workItems/<epicId>"}}]
+```
+An item can have only one parent; the write fails if it already has one.
+
+## Set Current Status or State
+
+```json
+[{"op": "add", "path": "/fields/Curo.CurrentStatus", "value": "On Track"}]
+```
+`System.State` uses the same shape, one step at a time, and only on items assigned to Alex.
+
+## Create a missing item
+
+```
+POST /Information%20Technology/_apis/wit/workitems/$User%20Story?api-version=7.1
+```
+```json
+[{"op": "add", "path": "/fields/System.Title", "value": "<outcome-first title>"},
+ {"op": "add", "path": "/fields/System.AreaPath", "value": "Information Technology\\Enterprise Architecture"},
+ {"op": "add", "path": "/fields/System.AssignedTo", "value": "<who did the work>"},
+ {"op": "add", "path": "/relations/-",
+  "value": {"rel": "System.LinkTypes.Hierarchy-Reverse",
+            "url": "https://dev.azure.com/CuroFinTech/_apis/wit/workItems/<epicId>"}}]
+```
+Use `$Spike` or `$Request` for those types. Create in `New`, then walk the states with the required fields above. Record the new id in the ledger `ado` key with `created_by_curator: true` and its evidence.
+
+## Weekly epic update comment
+
+**Read first** (idempotency, and replies other people left):
+
+```
+GET /Information%20Technology/_apis/wit/workItems/<epicId>/comments?api-version=7.1-preview.4&$top=10&order=desc
+```
+
+**Post** (the same call the ado-restructuring repo's incident-response seed script uses):
+
+```
+POST /Information%20Technology/_apis/wit/workItems/<epicId>/comments?api-version=7.1-preview.4
+Content-Type: application/json
+```
+```json
+{"text": "<div><b>Done this week:</b> ...</div><div><b>Next:</b> ...</div>"}
+```
+
+Gotchas:
+- The text renders as **HTML**: one `<div>` per line, `<b>` for the labels, and escape `&`, `<` and `>` in the content. A bare newline collapses.
+- **No @-mentions**: a mention notifies the person, and that is a human's call.
+- **Append-only**: never edit or delete a comment; a correction is a new comment.
+- Comments are readable by the whole org: the full exclusion screen applies.
+- The response returns the created comment; read it back, then record its date and text in the ledger `ado.<id>.updates`.

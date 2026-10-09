@@ -1,8 +1,10 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-10-08 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
+Updated: 2026-10-09 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
 
 ## Current state
+
+**ea-projects-curator now runs ADO too (2026-10-09, uncommitted).** Alex's rule: the EA Projects board holds what EA impacts or influences; ADO holds what EA does. New in `SKILL.md`: "Where EA work lives", the Weekly ADO control (`W#` table before `E#`, weekly update comment + Current Status on every active epic, epic-to-row Hyperlink, parent links, state truth-ups only on Alex's items, filing missing work), influence rows in the inclusion gate. `references/ado-ea-portfolio-schema.md` rewritten (EA areas list, Hyperlink join); `references/write-shapes.md` has ADO shapes dry-run with `validateOnly=true` and the process rules ADO enforces (epic to Active needs the AAB approval fields). Checks: 68 invariant tests, audit 0 (HEAD had 4), quick_validate OK. Eval iteration-1 (3 evals, offline fixtures, vs HEAD snapshot): new 22/22, old 15/22; new is slower (mean 426 s vs 290 s). Artifacts: `~/.agents/skill-workspace/alex-skills/ea-projects-curator/`. Next: first live run needs a SharePoint cookie refresh; SKILL.md is 697 lines (over the ~500 guide), and the newsletter rendering detail is the best candidate to move to a reference.
 
 **Skill set (2026-10-07).** The repo keeps a skill only if it holds facts the model cannot know: how to use a tool, Alex's systems, or Alex's taste. Generic method skills were cut (tdd, grilling, codebase-design, domain-modeling, diagnosing-bugs, resolving-merge-conflicts, writing-for-agents, incident-remediation-reviewer, blog-reviewer, to-spec, to-tickets, herdr, typesafe-ai). New since then:
 

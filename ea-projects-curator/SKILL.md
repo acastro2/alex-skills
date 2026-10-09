@@ -1,8 +1,10 @@
 ---
 name: ea-projects-curator
 description: >
-  Curate Alex's EA Projects SharePoint board (EA Portfolio) and AAB surfaces on /sites/Architecture.
-  Use for board population, updates and row comments; weekly maintenance; full audits; AAB Intake
+  Curate Alex's EA Projects SharePoint board (EA Portfolio), the EA areas in Azure DevOps, and AAB
+  surfaces on /sites/Architecture. Use for board population, updates and row comments; ADO epic and
+  story upkeep (epic-to-row links, parent links, weekly epic update comments, Current Status, state
+  truth-ups, filing missing work); weekly maintenance; full audits; AAB Intake
   close-outs and forum checks; writing forum advice back into the RFCs and ADRs people bring
   (copying off-site pre-reads into the Architecture library); or Architecture Weekly, Architecture Review Forum and AAB meeting
   recaps. Org-visible list writes require a numbered user-review table; recap pages are staged
@@ -15,15 +17,16 @@ Turn the scattered evidence of what Enterprise Architecture actually did — pri
 
 ```
 scribe note + meeting chat ─→ recap (deep topics) ─→ verify vs note ─→ docs-reviewer ─→ fix ─→ alex-voice pass ─→ RENDER ─→ STAGE ─→ hand back link
-archeologist     ─┐
-ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLE ─→ write ─→ report
-                       (board rows, intake, comments)     (approve by line)
+archeologist     ─┐                                                                               ▲
+ADO + GitHub     ─┴─→ curate: cluster · screen · shape ─→ REVIEW TABLES ─→ write ─→ report ──────┘
+                       (ADO items, epic updates,          (approve by line)   (what moved rolls up
+                        board rows, intake, comments)                          into the recap)
 ```
 The page body is rendered from content by `references/render_page.py`, and the **Executive Summary
-band is a reviewed line** because the ELT reads it. Board/intake/comment writes wait on the numbered
-table; the recap's other sections do not. Never paste the recap into the terminal.
+band is a reviewed line** because the ELT reads it. ADO, board, intake, and comment writes wait on the
+numbered tables; the recap's other sections do not. Never paste the recap into the terminal.
 
-**Every weekly run owes THREE components, and the board is the SECOND deliverable.** The first is that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility). The page carries the **Executive Summary** band (the ELT reader's gate), the **Forum recap**, and the evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM and the page title area hidden. Hand Alex the link; he publishes org-visible comms himself. The page body is rendered by [references/render_page.py](references/render_page.py) from a content JSON — never written by hand. Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+**Every weekly run updates three surfaces and rolls them up into one page.** It updates **ADO** (what EA does: epics, stories, and a weekly update comment on every active epic), the **EA Projects** board (what EA impacts or influences), and **AAB Intake** (the forum queue). See [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09). Everything that moved on those three surfaces rolls up into that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility). The page carries the **Executive Summary** band (the ELT reader's gate), the **Forum recap**, and the evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM and the page title area hidden. Hand Alex the link; he publishes org-visible comms himself. The page body is rendered by [references/render_page.py](references/render_page.py) from a content JSON — never written by hand. Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
 
 **The Forum recap component is GENERATED from the scribe transcript note by default** — you read the note the `scribe` skill already wrote, you do not fetch or parse the Teams transcript yourself, and you do not wait for Alex to paste notes. See **Forum recap — generate it from the scribe transcript note** below for shared note lookup; read [references/recap.md](references/recap.md) when drafting or reviewing the recap for the exact prompt and all recap checks. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no scribe note exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
@@ -32,8 +35,28 @@ For prose, follow [Alex's voice](../alex-voice/SKILL.md).
 Three invariants that override everything below:
 
 1. **Never invent.** No initiative the evidence doesn't support; no impact claim that isn't documented. An empty cell is better than a soft one.
-2. **Never write unconfirmed.** The list is readable by the entire Technology org. The review gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
+2. **Never write unconfirmed.** The list is readable by the entire Technology org, and so is every ADO board (all licensed people can read Information Technology). The review gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
 3. **`Status` is Alex's column.** He curates lifecycle position himself. Never bundle a Status move into other edits; a proposed Status change is always its own line in the review table, flagged as needing his explicit yes. Applying his dictated updates → touch only the fields he named.
+
+## Where EA work lives — ADO, EA Projects, AAB (decided 2026-10-09)
+
+Alex's rule: **the EA Projects board holds what Enterprise Architecture impacts or influences. ADO holds what EA does**, meaning hands-on work. Use it to place every item before you write it anywhere.
+
+| Surface | Holds | Row or item |
+|---|---|---|
+| **ADO**, EA areas | Hands-on work by EA and the teams that report to EA | Epic, User Story, Spike, Request, Operational Work |
+| **EA Projects** | What EA impacts or influences | One row per initiative. A **delivery row** rolls up EA's own epics. An **influence row** (AAB review, standard, advice) has no EA epic and links to the owning team's epic or document |
+| **AAB Intake** | The forum queue people submit to | One item per topic (unchanged, see the AAB control) |
+| **Architecture Weekly** | The roll-up of all three for the org | One page per week |
+
+**Roll-up rules:**
+
+1. **Every epic in an EA area rolls up to exactly one EA Projects row.** The link is a **Hyperlink on the epic in ADO** that points to the row's `DispForm.aspx?ID=<n>` URL. One row can hold many epics. There is no new field and no process change (Alex, 2026-10-09: "just use links in ADO").
+2. **Run work rolls up too.** Each team that reports to EA has one operations row for its keep-the-lights-on epics. So everything EA does shows in the portfolio, without one row per epic.
+3. **Each fact is typed once.** Why, sponsor, impact, decision needed, theme and Status live on the row. Who does the work, state, dates and progress live in ADO. The weekly epic comment is the progress narrative.
+4. **The EA areas list is in [ado-ea-portfolio-schema.md](references/ado-ea-portfolio-schema.md).** Today it is `Information Technology\Enterprise Architecture` only. A team's area joins the list only when Alex says the reporting change is official. Never name a team as EA's in org-visible text before that.
+
+The weekly ADO work is the [Weekly ADO control](#weekly-ado-control--what-ea-does) below. Field map, join rules and the state-to-Status check are in the schema reference.
 
 ## The board you write to
 
@@ -75,9 +98,9 @@ Columns (internal name → type → allowed values). Use internal names for any 
 
 ## Inclusion — a candidate must pass all four
 
-1. **Delivery, not attendance.** The verb must be authored / executed / shipped / decided / established / migrated / secured / consolidated; attended / reviewed / joined / participated is excluded unless folded into a delivery initiative.
-2. **Initiative-scale.** Has a decision path or a milestone, not a one-off favor or a single meeting outcome.
-3. **Owner-of-record.** You drove it or own the decision; a contribution qualifies only if it is itself an artifact (e.g. a section of a hardening report).
+1. **Delivery or influence, not attendance.** For a delivery row, the verb must be authored / executed / shipped / decided / established / migrated / secured / consolidated. For an influence row (see [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09)), EA advised or reviewed **with a recorded outcome**: a `Decided` AAB item, an adopted standard, or written advice the owning team acted on. Attended / joined / participated is excluded unless folded into an initiative.
+2. **Initiative-scale.** Has a decision path or a milestone, not a one-off favor or a single meeting outcome. This applies to influence rows too: one AAB review is usually a row comment on an existing initiative, not a new row.
+3. **Owner-of-record.** You drove it or own the decision; a contribution qualifies only if it is itself an artifact (e.g. a section of a hardening report). For an influence row, EA owns the advice on record, not the delivery; the owning team's epic is the Execution Link.
 4. **Org-shareable.** Passes the exclusion screen below.
 
 ## Exclusion screen — hard gates, run on EVERY candidate (and on every user-edited title)
@@ -98,7 +121,7 @@ Columns (internal name → type → allowed values). Use internal names for any 
 - **Decision Needed** — `CTO` only when the decision is genuinely his; when unsure, `None`, because inflating this column burns credibility. `Business Owner` = the P&L/budget holder; `Process Owner` = whoever owns the process being changed (not always the budget holder). **Convention: `3. Decision-Ready` + `None` = EA decides.** Never add an "EA" value — waiting on yourself reads as stalling and splits one meaning across two encodings.
 - **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the metric or the money** ("Unblocks the upgrade to the latest .NET" beats "699 USD per dev license avoided"). Pattern: *outcome first, evidence metric in parens* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). **Documented impact** (no prefix) traces to an ADR, costed analysis, invoice delta, or stated metric — no estimates, no "up to". **Target impact** (`Target:` prefix) is the forward-looking claim a pre-Closed initiative is funded for, traceable to a BRIEF, RFC, or costed options analysis. A target loses its prefix only when evidence exists, rewritten then as documented impact. Never mix the two in one cell; never write a target without a `TargetDate`. If the outcome isn't obvious, ASK "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission) or commercial posture ("ends vendor lock-in" telegraphs to Procurement). Describe what the work closes, not the live hole or the leverage play.
 - **Key Artifact (`KeyArtifact`)** — one canonical link: the ADR/SAD itself, not the folder. Flag personal-OneDrive URLs (`-my.sharepoint.com`) for re-homing; they 403 for the org audience.
-- **Execution Link (`ExecutionLink`)** — the ADO epic/feature or GitHub location; omit if none, and never create a shadow ticket to fill the column.
+- **Execution Link (`ExecutionLink`)** — the main ADO epic, or a GitHub location. A delivery row with several epics links its main epic here; the full set comes from the Hyperlinks on the epics, so never try to list them in this cell. An influence row links the owning team's epic. Omit if none, and never create a ticket only to fill the column: a missing-item story is for real hands-on work (see the ADO control).
 - **Next Milestone (`NextMilestone`) + Milestone Date (`MilestoneDate`)** — an outcome a non-architect can parse, with the date in the date column: "Options memo to the CTO" + `2026-07-25`, not "Finalize Raft topology".
 - **Who is Responsible (`Who_x0020_is_x0020_Responsible`, multi-person)** — everyone doing the work, EA lead first, then named collaborators. Set from evidence of actual work (ADR authorship, PRs, a runbook), not attendance; only people who would be asked "how is it going?".
 - **Sponsor (`Sponsor`, person)** — the leader who owns the outcome and answers for it: the P&L/budget holder for business work, the technology VP for platform work. Never the EA lead, a delegate, or a working-level contact; only from evidence (a BRIEF sponsor line, an AAB recap, a written commitment) — a name mentioned in a meeting is not a sponsor. Blank beats a guess.
@@ -151,10 +174,14 @@ Always **read the live list first** (existing rows) so curation produces UPDATEs
 - **archeologist** (primary). Ask it a scoped question, e.g. *"What architecture initiatives, ADRs/SADs, and decisions has Alex driven in the last N weeks?"* It returns a markdown briefing with predictable headers — `### Referenced Files` (Obsidian / Developer / OneDrive-Architecture), `### Evidence Chain` (a table), and `### Verification Status` (HIGH / MEDIUM / LOW). Parse loosely by header. The Evidence Chain and Referenced Files are your initiative candidates and your Key-Artifact candidates (ADR/SAD paths, especially OneDrive/Architecture `.docx`). Treat **LOW confidence** findings as questions to ask, never as asserted fact.
 - **ADO** (`ado` agent — org `CuroFinTech`; living projects are `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`; Tiger, Risk Analytics and Marketing are closed to new work and hold legacy items only). WIQL for items created-by / assigned-to
   `alexandrecastro@attainfinance.com`: run it org-wide (`POST /_apis/wit/wiql` with no `[System.TeamProject] = @project` filter), then `workitemsbatch`,
-  and pull `System.Description` — it carries scope the titles hide. The old saved query **"My Open Tickets"** (`fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd`) is scoped by `@project`, so it only sees one project; do not use it for a cross-project sweep. **Epics/features** are
-  initiative-level → candidate Execution Links; stories/tasks fold up into the parent.
+  and pull `System.Description` — it carries scope the titles hide. The old saved query **"My Open Tickets"** (`fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd`) is scoped by `@project`, so it only sees one project; do not use it for a cross-project sweep.
+  **EA team board — sweep on every run** (verified 2026-10-09): project `Information Technology`, team `Enterprise Architecture`, board `Stories` (`https://dev.azure.com/CuroFinTech/Information%20Technology/_boards/board/t/Enterprise%20Architecture/Stories`; the SOW epics sit on the sibling `Epics` board). EA's day-to-day delivery is filed under area path `Information Technology\Enterprise Architecture`, so run
+  `[System.TeamProject] = 'Information Technology' AND [System.AreaPath] UNDER 'Information Technology\Enterprise Architecture'` → `workitemsbatch` (≤ 200 ids per call). It is the one pull that returns EA's whole delivery ledger — the SOW 1–7 epics plus their stories (the count moves daily: 75 items in the morning of 2026-10-09 and 97 by the evening, so never quote a fixed number) — and it catches what the created-by/assigned-to sweep cannot: work teammates file themselves, created and assigned outside Alex. The team runs fortnightly iterations (`Information Technology\Sprint\<year>\<end-date>`; `Information Technology\Sprint\2026\2026-10-20` was current on 2026-10-09), but only 1 of the 97 items sat in the current one — scope by area path, never by iteration. Run the same pull for every area in the EA areas list of the schema reference.
+  **Epics/features** are
+  initiative-level → candidate Execution Links; stories/tasks fold up into the parent — an EA-board story nested under a SOW epic carries it in `System.Parent`, so the area pull collapses to the epics plus the standalone items.
+  **Field map, the epic-to-row Hyperlink join, and the state-to-Status truth-check live in [ado-ea-portfolio-schema.md](references/ado-ea-portfolio-schema.md)** — read it before mapping an EA-board epic to a portfolio row, and before proposing any field that ADO does not already carry (the portfolio-only columns must not be duplicated into ADO).
   **Ticket state truth-checks the row:** a milestone in days while the ticket sits in `New` is a
-  slip; a "Closed" row with an `Active` ticket may not be closed.
+  slip; a "Closed" row with an `Active` ticket may not be closed; the same check runs on the EA-board story or SOW epic behind the row's Execution Link.
 - **GitHub** (`gh`, authed as `AlexandreCastro_attain`). `gh pr list --author @me --state all` / `gh search prs` across the Attain orgs. PRs are artifacts → fold into their initiative; the repo or the ADO epic is the Execution Link.
 - **Microsoft 365** — two paths, one read-only rule. In Claude Code, the `claude_ai_Microsoft_365`
   MCP connector (tools are deferred; load via ToolSearch). Everywhere else, the **`m365` CLI** —
@@ -228,7 +255,7 @@ This is the point of the skill. The board is org-visible and the user must own w
 
 **Name items, never bare IDs** (Alex, 2026-09-28: "Row 47 means nothing to me"): the `Row` column and every report line lead with the initiative or intake item's name; an ID may follow in parentheses.
 
-2. **Emit FOUR sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **Brought documents**: lines numbered `D1, D2, ...` (copies and document edits, with the drafted author messages below the table; see [references/brought-docs.md](references/brought-docs.md)). (d) **EA Projects updates**: lines numbered `E1, E2, ...`. Same columns in (b), (c) and (d): `# | Row | Field | Now | → Proposed | Why | Needs you?`. He answers per table ("A: all. D: 1–4. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
+2. **Emit FIVE sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **Brought documents**: lines numbered `D1, D2, ...` (copies and document edits, with the drafted author messages below the table; see [references/brought-docs.md](references/brought-docs.md)). (d) **ADO updates**: lines numbered `W1, W2, ...` (epic-to-row Hyperlinks, parent links, the weekly epic comments, Current Status, state truth-ups, new items; see the [Weekly ADO control](#weekly-ado-control--what-ea-does)). (e) **EA Projects updates**: lines numbered `E1, E2, ...`. ADO comes before EA Projects because the E lines truth-check rows against the epic state the W lines fix. Same columns in (b) to (e): `# | Row | Field | Now | → Proposed | Why | Needs you?`; for a W line, `Row` is the work item title with the ID in parentheses. He answers per table ("A: all. D: 1–4. W: 1–6. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
 
 3. **He answers by line number.** Apply exactly the approved lines. A line needing input he didn't give (e.g. "yes" to a milestone rewrite but no date) → apply what you can, keep the gap on the open-items list; never fill it with a guess.
 
@@ -274,6 +301,17 @@ verified.
         ]
       }
     },
+    "ado": {
+      "<workItemId>": {
+        "title": "SOW 2 · CVE remediation",
+        "row": "<listItemId>",
+        "created_by_curator": false,
+        "sources": ["gh:https://github.com/<org>/<repo>/pull/42"],
+        "updates": [
+          {"date": "YYYY-MM-DD", "text": "exact posted comment", "current_status": "On Track"}
+        ]
+      }
+    },
     "open_items": ["Row 20: MilestoneDate needs a real date from Alex - ..."],
     "not_doing": [
       {"what": "ADR-0003 Data Warehouse Platform Strategy (Redshift migration)", "decided": "2026-07-28", "note": "Staying on Snowflake - Alex declined even a Closed/Killed record row. Never re-propose."}
@@ -281,6 +319,7 @@ verified.
   }
   ```
 - **`open_items`** — gaps a run couldn't close (a date only Alex knows, an empty row he's handling). Read them every run, re-surface what is still open; resolve or re-write at the end.
+- **`ado`** — one entry per work item the curator linked, commented on, or created: its row, the evidence that justified a created item, and every weekly update posted. It stops a re-run posting a second update in the same week or filing the same work twice.
 - **`docs`** — one entry per intake item whose pre-read was placed or edited; stops a re-run copying twice or adding the same advice row twice. Shape in [references/brought-docs.md](references/brought-docs.md).
 - **`not_doing`** — evaluated-and-rejected initiatives and declined candidates. Check before proposing any NEW row; never re-propose an entry. It stops every fresh session rediscovering the same dead idea.
 
@@ -331,6 +370,74 @@ owns page assembly, not session selection or intake control.
 | Next-week schedule | PASS / ALERT / UNVERIFIED | next-week range and items found, or none |
 
 Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification). **Intake field changes are writes to an org-visible list**: propose them through the numbered review table, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
+
+## Weekly ADO control — what EA does
+
+ADO is where EA's hands-on work lives, so the run updates it before the board: the E lines read the
+state the W lines fix. Sweep every area on the EA areas list in
+[ado-ea-portfolio-schema.md](references/ado-ea-portfolio-schema.md) (see Retrieval), then run these
+checks in order and turn each finding into a `W#` line.
+
+1. **Roll-up link.** Every epic carries exactly one Hyperlink to an EA Projects row. A row link is a
+   Hyperlink whose URL contains `/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx`; count only
+   those, because epics also carry other hyperlinks (SOW documents, briefs). No row link: propose
+   it to the matching row (match rules in the schema reference). No row fits: propose a NEW row as an
+   `E#` line, plus the link as a `W#` line that waits on it. Two or more links: flag it and never pick
+   one yourself, because the wrong row misreports the initiative.
+2. **Parent link.** A Story, Spike or Operational Work item with no parent epic gets a proposed
+   parent, from evidence only (title, a `SOW-<n>` tag, the description). No clear parent: flag it,
+   because a guessed parent rolls the work into the wrong row. A **Request** may stand alone: the IT
+   Request model fulfills it in its own ticket, and Engineering Insights shows a Request with no epic
+   in its intake panel by design. Propose a parent for a Request only when its scope is plainly an
+   epic's; otherwise list it under the control table and do not flag it.
+3. **Weekly epic update, on every active epic, every week** (Alex, 2026-10-09). For each epic in
+   `Active` or `Resolved`, propose ONE comment on the epic that says what moved since the last update.
+   Keep it short, in this shape:
+   - **Done this week:** children closed, PRs merged, artifacts shipped, by name, not ID.
+   - **Next:** the next outcome, with its date when one is known.
+   - **Blocked or at risk:** only when it is real; otherwise leave the line out.
+
+   A week with no movement still gets a comment that says so, with the reason when known, because
+   silence reads as a dead epic. Pair the comment with a **`Curo.CurrentStatus`** line whenever the
+   value is wrong for the evidence (allowed values in the schema reference; `Not Started` on an
+   `Active` epic is always wrong). Current Status rides with the weekly update, so it is proposed on
+   every active EA epic; `System.State` is not (check 4). Read the epic's existing comments first and
+   post at most one update per epic per week. A week is the AAB control's calendar week (Monday to
+   Sunday, America/Chicago), so a Sunday run and a Monday run are two different weeks. The update also feeds the recap's shipped panel, so
+   write it once for both.
+4. **State truth-ups.** Propose a `System.State` move only on an item assigned to Alex, and only when
+   evidence contradicts the state: a merged PR on a story still `New`, every child closed on an epic
+   still `Active`. Each move is its own line marked **Needs you**. Propose the next state, not a jump
+   across several, and report a refused write instead of forcing it. An item assigned to someone else
+   is theirs: report the mismatch in the control table and never propose the move. ADO refuses an
+   epic move to `Active` without the Architecture Review Approved date and approver, so take both
+   from a `Decided` AAB Intake item. An epic with work started but no AAB decision is an AAB finding
+   for Alex, not a `W#` line. Required fields per move: [write-shapes.md](references/write-shapes.md).
+5. **Missing items.** Hands-on work EA did that has no ADO item (a merged PR, a shipped artifact,
+   work done in an AI session) gets a proposed new item: type (Story for delivery, Spike for a
+   timeboxed investigation, Request when another team asked for it), title, area, parent epic,
+   assignee (the person who did the work), and state (`Closed` when the evidence shows it is done).
+   Why: ADO is what EA does, and the Engineering Insights quarterly view counts closed ADO items, so
+   unfiled work is invisible to leadership. Never create an item for attendance or a meeting, or only
+   to fill a link column. Check the ledger `ado` key first, so a re-run never files the same work
+   twice.
+
+**Writes.** REST shapes are in [references/write-shapes.md](references/write-shapes.md); verify every
+write by reading it back. ADO comments follow the same rules as row comments: plain text, no
+@-mentions (an ADO mention notifies the person), append-only, and the full exclusion screen. Never
+delete a work item, and never change an area, iteration, process rule, or permission.
+
+**Report after the AAB control, under this exact heading:**
+
+### ADO WEEKLY CONTROL
+
+| Check | Result | Evidence |
+|---|---|---|
+| Roll-up links | PASS / ALERT | epics with no row link, or more than one |
+| Parent links | PASS / ALERT | items with no parent epic |
+| Epic updates | PASS / ALERT | active epics, and which have this week's update proposed |
+| State mismatches | PASS / ALERT | items whose state contradicts evidence, with the assignee |
+| Missing items | PASS / ALERT | hands-on work with no ADO item |
 
 ## Forum recap — generate it from the scribe transcript note
 
@@ -478,8 +585,10 @@ its verification as of 2026-09-19. Check the copy your tool runs before trusting
 this file; `auth.py` and `sharepoint_api.py` still differ between the trees, which is open and
 belongs to Alex.
 
-**Sources — reuse the run's retrieval sweep, never double-fetch:** the run's own WRITTEN / UPDATED /
-COMMENTED changes (a row moved to Decision-Ready this week IS news), direct GitHub retrieval
+**Sources — reuse the run's retrieval sweep, never double-fetch:** the ADO control first (items in EA
+areas closed this week, grouped by their EA Projects row, and the approved weekly epic updates), the
+run's own WRITTEN / UPDATED / COMMENTED changes (a row moved to Decision-Ready this week IS news), the
+AAB decisions, direct GitHub retrieval
 (`gh search prs --author "@me" --updated ">=$SINCE"`), ADO epic/feature movement, and verified
 artifacts from the archeologist. The archeologist does not give a complete GitHub feed; query GitHub
 directly. Same auth preflight as everything else.
@@ -554,6 +663,7 @@ A bare invocation runs this mode; only `--audit` (or "is the board missing anyth
 1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
 2. If the latest due forum has no published recap, **read that session's scribe note and draft the recap now** ([references/recap.md](references/recap.md)), and carry it into the same review table: a missing recap is work, not a line item. If the note itself is missing, tell Alex to run `/scribe teams` for that date. A past-dated `Scheduled` item plus a real note means the close-out was missed, not the meeting.
 2a. Run control check 3a: write the forum advice back into the brought documents ([references/brought-docs.md](references/brought-docs.md)) as `D#` lines.
+2b. Run the **Weekly ADO control** and emit its `W#` lines, including the update comment for every active epic, before any EA Projects check.
 3. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
 4. Flag any `MilestoneDate` more than 7 days past due: a stale board is evidence against you.
 4a. Flag any row with a past `TargetDate` and Status not `6. Closed`, any pre-Closed row with a `Target:` impact but no `TargetDate` (or the reverse), and any `6. Closed` row whose Impact still carries `Target:` — closing requires documented impact or Outcome Killed/Superseded.
@@ -573,13 +683,15 @@ Discovery + maintenance combined: parallel retrieval (live list + ADO saved quer
 
 After the gate and the write, emit four markdown tables so the run is auditable:
 
-1. **WRITTEN** — new rows added: all columns + the new item Id/URL.
-2. **UPDATED** — row title + each changed field (old → new).
-3. **COMMENTED** — row title + the exact comment text posted.
+1. **WRITTEN** — new rows and new ADO items: all columns or fields + the new Id/URL.
+2. **UPDATED** — row or work item title + each changed field or link (old → new).
+3. **COMMENTED** — row or epic title + the exact comment text posted.
 4. **EXCLUDED** — every rejected candidate + the one-line gate that killed it (`privileged` / `attendance` / `sub-initiative` / `scope-claim` / `personnel` / `vendor-sensitive-unresolved`), so the screen is auditable and over-aggressive filtering is caught on review.
 
 ## Safety recap
 
 Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that line. Screen every candidate, every edited title, and every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the library that fails the exclusion screen or whose sharing scope is unverified: a restricted copy gives the whole org access. Never write the author's response column, never edit an Accepted ADR, never send the author message.
+
+ADO carries the same stakes, because every Information Technology board is readable by the whole org. Every ADO write is an approved `W#` line. Never move `System.State` on an item assigned to someone else; report it instead. Never delete a work item, and never change an area, iteration, process rule, or permission. Epic comments are plain text, no @-mentions, append-only, at most one weekly update per epic, and they pass the exclusion screen.
 
 The recap carries the same stakes plus one risk: it comes from a verbatim transcript of a room that speaks freely about live gaps, vendors and people. **Quote nothing the exclusion screen would block as a board row.** Attribute only what a named person said; never publish a garbled proper noun, promote uncontested discussion into "Decided", or invent an owner or date. The recap goes out staged (`PromotedState=1`) for Alex to publish; any unsure line belongs in the review table as its own question, not softened onto the page.
