@@ -33,6 +33,9 @@ PROSE = {
     "references/write-shapes.md": SKILL_DIR / "references" / "write-shapes.md",
     "references/ado-ea-portfolio-schema.md": SKILL_DIR / "references" / "ado-ea-portfolio-schema.md",
     "references/connections-pass.md": SKILL_DIR / "references" / "connections-pass.md",
+    "references/board-schema.md": SKILL_DIR / "references" / "board-schema.md",
+    "references/retrieval.md": SKILL_DIR / "references" / "retrieval.md",
+    "references/newsletter.md": SKILL_DIR / "references" / "newsletter.md",
 }
 RENDERER = SKILL_DIR / "references" / "render_page.py"
 EXAMPLE = SKILL_DIR / "references" / "example-content.json"
@@ -121,7 +124,20 @@ INVARIANTS = [
     # identity and ledger
     ("SKILL.md", "d2c0a30a-dab4-40a7-bc63-7268736473f2"),
     ("SKILL.md", "80c68e54-eadf-4cf3-946a-3c0e432056a5"),
-    ("SKILL.md", "fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd"),
+    ("references/retrieval.md", "fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd"),
+    # moved out of SKILL.md 2026-10-12: SKILL.md must keep pointing at each reference
+    ("SKILL.md", "references/board-schema.md"),
+    ("SKILL.md", "references/retrieval.md"),
+    ("SKILL.md", "references/newsletter.md"),
+    ("SKILL.md", "never a saved query for the"),
+    ("references/board-schema.md", "Never write or `$select` them"),
+    ("references/board-schema.md", "never to all of them by default"),
+    ("references/retrieval.md", "Auth preflight FIRST"),
+    ("references/retrieval.md", "never a saved query"),
+    ("references/newsletter.md", "OAuth only flow is enabled"),
+    ("references/newsletter.md", "Never judge this page in edit mode"),
+    ("references/newsletter.md", "Composition rule: the summary is a roll-up, nothing new"),
+    ("references/newsletter.md", "moves_baseline"),
     ("SKILL.md", "not_doing"),
     ("SKILL.md", "open_items"),
     ("SKILL.md", "curated.json"),

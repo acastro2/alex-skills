@@ -130,7 +130,7 @@ python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
 ## Recap gates (on top of the prompt)
 
 - **Write the Executive Summary band too.** It is generated from this recap and may not introduce a
-  fact the recap does not carry. Full rules: [SKILL.md, Executive Summary](../SKILL.md#executive-summary--the-elt-readers-gate-new-2026-09-18).
+  fact the recap does not carry. Full rules: [newsletter.md, Executive Summary](newsletter.md#executive-summary--the-elt-readers-gate-new-2026-09-18).
   It goes through the review table as its own numbered line, and it is the line Alex reads most
   closely; `render_page.py` refuses a page without it, or a band outside 3 to 4 points, so a short
   band is a content fix, not an argument with the script.

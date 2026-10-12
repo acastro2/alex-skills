@@ -39,6 +39,9 @@ PROSE_FILES = {
     "references/recap.md": SKILL_DIR / "references" / "recap.md",
     "references/brought-docs.md": SKILL_DIR / "references" / "brought-docs.md",
     "references/write-shapes.md": SKILL_DIR / "references" / "write-shapes.md",
+    "references/board-schema.md": SKILL_DIR / "references" / "board-schema.md",
+    "references/retrieval.md": SKILL_DIR / "references" / "retrieval.md",
+    "references/newsletter.md": SKILL_DIR / "references" / "newsletter.md",
 }
 RENDERER = SKILL_DIR / "references" / "render_page.py"
 

@@ -26,7 +26,7 @@ The page body is rendered from content by `references/render_page.py`, and the *
 band is a reviewed line** because the ELT reads it. ADO, board, intake, and comment writes wait on the
 numbered tables; the recap's other sections do not. Never paste the recap into the terminal.
 
-**Every weekly run updates three surfaces and rolls them up into one page.** It updates **ADO** (what EA does: epics, stories, and a weekly update comment on every active epic), the **EA Projects** board (what EA impacts or influences), and **AAB Intake** (the forum queue). See [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09). Everything that moved on those three surfaces rolls up into that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility). The page carries the **Executive Summary** band (the ELT reader's gate), the **Forum recap**, and the evidence-backed **What Enterprise Architecture shipped** panel, staged as an unpublished draft with `PromotedState=1` set via CSOM and the page title area hidden. Hand Alex the link; he publishes org-visible comms himself. The page body is rendered by [references/render_page.py](references/render_page.py) from a content JSON — never written by hand. Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened. Missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`.
+**Every weekly run updates three surfaces and rolls them up into one page.** It updates **ADO** (what EA does: epics, stories, and a weekly update comment on every active epic), the **EA Projects** board (EA's bets and the value they deliver), and **AAB Intake** (the forum queue). See [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09). Everything that moved rolls up into that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility), staged as a draft for Alex to publish; see [Weekly newsletter](#weekly-newsletter--architecture-weekly). Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened (missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`).
 
 **The Forum recap component is GENERATED from the scribe transcript note by default** — you read the note the `scribe` skill already wrote, you do not fetch or parse the Teams transcript yourself, and you do not wait for Alex to paste notes. See **Forum recap — generate it from the scribe transcript note** below for shared note lookup; read [references/recap.md](references/recap.md) when drafting or reviewing the recap for the exact prompt and all recap checks. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no scribe note exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
@@ -81,31 +81,19 @@ The weekly ADO work is the [Weekly ADO control](#weekly-ado-control--what-ea-doe
 
 ## The board you write to
 
-Live target (verify against the list if a write is rejected — schema can drift):
+List **EA Projects** on `https://attainfinance.sharepoint.com/sites/Architecture`, GUID
+`d2c0a30a-dab4-40a7-bc63-7268736473f2` (URL slug still `/Lists/EA Portfolio`). Write with internal
+names: `Title`, `Theme`, `Status` (display Stage), `EARole`, `AABItems`, `Impact`, `KeyArtifact`,
+`ExecutionLink`, `NextMilestone` (display Milestone), `MilestoneDate`, `Sponsor`.
 
-- Site: `https://attainfinance.sharepoint.com/sites/Architecture` (group Team site, already org-readable).
-- List display name **EA Projects**, GUID `d2c0a30a-dab4-40a7-bc63-7268736473f2`, URL slug still `/Lists/EA Portfolio` (internal name `EA_x0020_PortfolioList`).
-- Page: `SitePages/EA-Portfolio.aspx`. Views (rebuilt 2026-10-12): **leadership views show EA role + Sponsor + Impact; the working view shows milestones + ExecutionLink; All Items shows everything.** List default view is **All Items** (unfiltered, grouped by Stage, keep it default — Alex's rule; 11 columns: Title, Theme, Status, EARole, AAB items, Sponsor, Impact, NextMilestone, MilestoneDate, KeyArtifact, ExecutionLink). **Current bets** (`2c97ee1e-b6ab-4835-bb44-2b8e6ffb8663`, the old CTO view renamed in place, URL still `/Lists/EA Portfolio/CTO view.aspx` so shared links work; filter Status = `2. Committed` OR `3. Delivering`, sorted by MilestoneDate): Title, Status, EARole, Sponsor, Impact, NextMilestone, MilestoneDate, AAB items, KeyArtifact. **Track record** (`4ab8cb26-fc06-4392-ab04-fc7256455404`, filter Status = `4. Delivered`, sorted by MilestoneDate newest first; closing dates backfilled from version history on 2026-10-12): Title, Theme, EARole, Impact, MilestoneDate (the delivered date), KeyArtifact, Sponsor — the page for a future CTO. **AI Program** (`25d2983e-48b7-404e-913e-701266410ec3`, URL `/Lists/EA Portfolio/AI Program.aspx`, filter `Theme eq 'AI Program'`, sorted by Status then MilestoneDate): Title, Status, EARole, AAB items, Sponsor, Impact, NextMilestone, MilestoneDate, KeyArtifact — the leadership AI stack-rank view; an AI initiative not tagged `Theme = AI Program` is invisible there, so check the Theme on every AI row. **Full projects** (`3589d875-06f1-4d2a-b05e-28ce16b97851`, grouped by Theme, sorted by MilestoneDate): Title, Status, EARole, AAB items, NextMilestone, MilestoneDate, ExecutionLink, KeyArtifact — the delivery view. All views RowLimit 100. Modern SharePoint orders view tabs alphabetically with no order setting. When adding a column, add it to the views whose audience needs it, never to all of them by default.
+- **Theme:** `Security Hardening` / `Platform Foundations` / `AI Program` / `Governance` / `Business Initiatives`.
+- **Stage (`Status`):** `1. Exploring` / `2. Committed` / `3. Delivering` / `4. Delivered` / `5. Stopped`.
+- **Deleted on 2026-10-12:** `DecisionNeeded`, `Outcome`, `TargetDate` and `Who_x0020_is_x0020_Responsible`.
+  Never write or `$select` them: the request fails.
 
-Columns (internal name → type → allowed values). Use internal names for any write:
-
-| Internal | Display | Type | Values / rule |
-|---|---|---|---|
-| `Title` | Initiative | Text | Outcome title (see field mapping) |
-| `Theme` | Theme | Choice | `Security Hardening` / `Platform Foundations` / `AI Program` / `Governance` / `Business Initiatives` (EA supporting a business move — market expansion, M&A, vendor due-diligence; named "Initiatives" not "Priorities" so other themes don't read as non-priorities). Cut from 8 to 5 on 2026-10-12: Observability and Tech Recruiting had one row each, and Modernization Enablement ("EA advises") is now `EARole = Influences`, not a theme |
-| `Status` | Stage | Choice | `1. Exploring` / `2. Committed` / `3. Delivering` / `4. Delivered` / `5. Stopped` (since 2026-10-10; default `1. Exploring`; numbered so alphabetical sort = lifecycle order; `2. Committed` is the commitment point: before it "should we?", after it "we're doing it". Pills are outlined before it and solid from it. Display name `Stage` since 2026-10-12; the internal name stays `Status`) |
-| `AABItems` | AAB items | Lookup (multi) to AAB Intake (`Title`) | The AAB items that decide or advise this entry. Write as `AABItemsId` (see write-shapes) |
-| `EARole` | EA role | Choice | `Builds` / `Influences` / `Runs` (added 2026-10-12). Exactly one per row; see field mapping |
-| `Impact` | Impact | Text (single line) | Documented impact, financial or non-financial; OR a forward-looking target prefixed `Target:` while the entry is before `4. Delivered`; blank if neither |
-| `KeyArtifact` | Key Artifact | Hyperlink | One canonical ADR/SAD URL |
-| `ExecutionLink` | Execution Link | Hyperlink | ADO epic/feature or GitHub URL |
-| `NextMilestone` | Milestone | Text | Open rows: the next outcome, one line. Closed rows: `Delivered`, or `Stopped: <why in a few words>` |
-| `MilestoneDate` | Milestone date | Date | Open rows: the date that milestone is due. Closed rows: the date the row closed (Track record's delivered date) |
-| `Sponsor` | Sponsor | Person (single) | The business or technology leader who owns the outcome and answers for it; blank if EA is the only stakeholder. Expected from `2. Committed` on (Alex, 2026-10-12) |
-
-> **Cut on 2026-10-12 (Alex):** `DecisionNeeded`, `Outcome`, `TargetDate` and `Who_x0020_is_x0020_Responsible` are deleted from the list. Never write or `$select` them: the request fails. Their last values are in the snapshot `~/.agents/skill-workspace/alex-skills/ea-projects-curator/backups/ea-portfolio-before-colphase-2026-10-12T0920.json` (`rows`). Who does the work lives in ADO (`AssignedTo`), the finish date lives on the epic, and the stop reason lives in the Milestone and the closing comment.
-
-> Note: `Decision-Ready` was once a Theme and later a Status; both are gone. If you ever see it proposed, it is stale. The old six statuses (Proposed, In Analysis, Decision-Ready, In Progress, Verifying, Closed) were remapped on 2026-10-10; the old values are in each row's version history (the list keeps 50 versions) and the ledger rows still carry old names as history.
+Views, column types, allowed values, and where the deleted columns' last values are:
+[references/board-schema.md](references/board-schema.md). Read it before any list write and before you
+add a column or view; a new column goes only on the views whose audience needs it.
 
 ## Granularity — the rule that matters most
 
@@ -139,7 +127,7 @@ Columns (internal name → type → allowed values). Use internal names for any 
 - **Status (stage)** — exit criteria: `1. Exploring` → `2. Committed` when the decision is made (an AAB item `Decided`, or the named owner's written yes); `2. Committed` → `3. Delivering` when building, piloting, configuring or rollout starts (an Active epic, a merged PR, a pilot live); `3. Delivering` → `4. Delivered` when the outcome is live and the work is finished, with Milestone `Delivered`, Milestone date = the day it closed, and Impact rewritten as documented impact; any stage → `5. Stopped` with Milestone `Stopped: <why>` (killed or superseded, e.g. `Stopped: superseded by four delivery projects`) and the closing date. A step back (Delivering to Committed) is legitimate when honest; only `4. Delivered` and `5. Stopped` are immutable. Blocked-ness is never a stage: a decision block is an AAB item; a non-decision block (vendor, dependency) goes in a comment. When Jev's stage answer and the evidence disagree, the evidence wins and the line says why.
 - **AAB items (`AABItems`)** — link every AAB item that decides or advises the entry. A new link is an `E#` line. An Exploring entry that hits a trigger with no AAB item is a finding; for Alex's own entries propose the item (`A#`) and the link (`E#`) together.
 - **EA role (`EARole`)** — exactly one value. `Builds`: EA does the hands-on work, and an epic in an EA area links to the row. `Influences`: another team builds; EA advises, reviews or sets the standard, the Execution Link is the owning team's epic, and the row needs a recorded outcome (inclusion gate). `Runs`: keep-the-lights-on work EA runs, like the Architecture Advisory Board and the EA operations row. Set it on every new row; a change is its own `E#` line. When the evidence is mixed, ask Jev (`ea_role` in [references/jev-gates.md](references/jev-gates.md)); a Builds answer needs an EA-area epic or hands-on work by EA people (PRs, configuration, infrastructure, a pilot EA ran); an ADR, RFC or standard alone is Influences.
-- **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the metric or the money** ("Unblocks the upgrade to the latest .NET" beats "699 USD per dev license avoided"). Pattern: *outcome first, evidence metric in parens* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). **Documented impact** (no prefix) traces to an ADR, costed analysis, invoice delta, or stated metric — no estimates, no "up to". **Target impact** (`Target:` prefix) is the forward-looking claim a pre-Closed initiative is funded for, traceable to a BRIEF, RFC, or costed options analysis. A target loses its prefix only when evidence exists, rewritten then as documented impact. Never mix the two in one cell. **Progress number** (Alex, 2026-10-09): when the outcome is countable and a live source counts it (ADO, GitHub, a scanner, a report), append `(now X <unit>; baseline Y on YYYY-MM-DD)`, with the unit written once, right after X, and the same unit every week (`(now 4 services; baseline 0 on 2026-09-28)`); no "of N", no extra words, so readers can compare week to week. Set the baseline once, from evidence; update `now` when the source changes; never estimate. It reports progress, not a claim, so it can follow a `Target:` impact without mixing the two. **The number passes the exclusion screen first:** a count of open weaknesses (open CVEs, unrotated credentials, failing controls) is a current-weakness specific, so publish the effect side, the share closed or the drop since the baseline (`critical CVEs down 30% since 2026-09-16`), and keep the raw counts in the run record for Alex. A count of delivered things (services moved, repositories covered) is safe as it is. If the outcome isn't obvious, ASK "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission) or commercial posture ("ends vendor lock-in" telegraphs to Procurement). Describe what the work closes, not the live hole or the leverage play.
+- **Impact (`Impact`, text)** — **lead with the outcome the work unlocks, not the metric or the money** ("Unblocks the upgrade to the latest .NET" beats "699 USD per dev license avoided"). Pattern: *outcome first, evidence metric in parens* (e.g. "Real production visibility org-wide (1→23 accounts, ~5K→127K signals) at ~70% lower run-cost"). **Documented impact** (no prefix) traces to an ADR, costed analysis, invoice delta, or stated metric — no estimates, no "up to". **Target impact** (`Target:` prefix) is the forward-looking claim a row before `4. Delivered` is funded for, traceable to a BRIEF, RFC, or costed options analysis. A target loses its prefix only when evidence exists, rewritten then as documented impact. Never mix the two in one cell. **Progress number** (Alex, 2026-10-09): when the outcome is countable and a live source counts it (ADO, GitHub, a scanner, a report), append `(now X <unit>; baseline Y on YYYY-MM-DD)`, with the unit written once, right after X, and the same unit every week (`(now 4 services; baseline 0 on 2026-09-28)`); no "of N", no extra words, so readers can compare week to week. Set the baseline once, from evidence; update `now` when the source changes; never estimate. It reports progress, not a claim, so it can follow a `Target:` impact without mixing the two. **The number passes the exclusion screen first:** a count of open weaknesses (open CVEs, unrotated credentials, failing controls) is a current-weakness specific, so publish the effect side, the share closed or the drop since the baseline (`critical CVEs down 30% since 2026-09-16`), and keep the raw counts in the run record for Alex. A count of delivered things (services moved, repositories covered) is safe as it is. If the outcome isn't obvious, ASK "what does this unlock?" rather than defaulting to the metric. Blank beats soft. **Effect-side only:** never publish current-weakness specifics ("creds unrotated 2+ yrs" is a timestamped vulnerability admission) or commercial posture ("ends vendor lock-in" telegraphs to Procurement). Describe what the work closes, not the live hole or the leverage play.
 - **Key Artifact (`KeyArtifact`)** — one canonical link: the ADR/SAD itself, not the folder. Flag personal-OneDrive URLs (`-my.sharepoint.com`) for re-homing; they 403 for the org audience.
 - **Execution Link (`ExecutionLink`)** — the main ADO epic, or a GitHub location. A delivery row with several epics links its main epic here; the full set comes from the Hyperlinks on the epics, so never try to list them in this cell. An influence row links the owning team's epic. Omit if none, and never create a ticket only to fill the column: a missing-item story is for real hands-on work (see the ADO control).
 - **Milestone (`NextMilestone`) + Milestone date (`MilestoneDate`)** — on an open row, the next outcome a non-architect can parse, with the date in the date column: "Options memo to the CTO" + `2026-07-25`, not "Finalize Raft topology". When a row closes, the same pair records the close: `Delivered` or `Stopped: <why>`, plus the closing date. Track record sorts on that date, so it is the delivered date a future CTO reads.
@@ -176,62 +164,23 @@ REST shapes for reading/posting comments live in `references/write-shapes.md`.
 
 ## Retrieval — where candidates come from
 
-**Auth preflight FIRST (2026-08-10 lesson):** before any retrieval, check the cookie cache age —
-`stat -f %m <scripts>/sharepoint/.cookies.json` vs `date +%s`, then **probe** with one
-live GET on the EA Projects list (`$top=1`), where `<scripts>` is the sharepoint scripts tree your
-tool runs — `~/.claude/scripts` in Claude Code, `~/.config/opencode/scripts` in OpenCode and Pi.
-The cookie lifetime is not a fixed 7h: on 2026-09-04 a 28h-old cookie read, staged a page, and
-MERGEd rows without a single 401. Ask Alex to run
-`python3 <scripts>/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
-only when the probe fails (401/403), and say so at the top of the report so he can do it while
-retrieval (ADO/GitHub/archeologist sweeps) runs in parallel. Reactively discovering a 403 after the
-sweep wastes the whole run; asking for a refresh the probe shows is unnecessary wastes his.
+**Auth preflight FIRST:** check the cookie age, then probe with one live GET on the EA Projects list
+(`$top=1`). Ask Alex to refresh auth only when the probe fails (401/403), and say so at the top of the
+report so he can do it while the sweep runs. **Always read the live list first**, so curation produces
+UPDATEs, not duplicates.
 
-Always **read the live list first** (existing rows) so curation produces UPDATEs, not duplicates.
+Sources: the **archeologist** (primary; LOW-confidence findings are questions, never facts); **ADO** (the
+created-by/assigned-to WIQL run org-wide with no `@project` filter, plus the EA area pull on every run,
+`[System.AreaPath] UNDER 'Information Technology\Enterprise Architecture'`; never a saved query for the
+sweep); **GitHub** (`gh`); and **Microsoft 365**, read-only (the connector, else the `m365` CLI). Report
+an unreachable store as unreachable, never as no results.
 
-- **archeologist** (primary). Ask it a scoped question, e.g. *"What architecture initiatives, ADRs/SADs, and decisions has Alex driven in the last N weeks?"* It returns a markdown briefing with predictable headers — `### Referenced Files` (Obsidian / Developer / OneDrive-Architecture), `### Evidence Chain` (a table), and `### Verification Status` (HIGH / MEDIUM / LOW). Parse loosely by header. The Evidence Chain and Referenced Files are your initiative candidates and your Key-Artifact candidates (ADR/SAD paths, especially OneDrive/Architecture `.docx`). Treat **LOW confidence** findings as questions to ask, never as asserted fact.
-- **ADO** (`ado` agent — org `CuroFinTech`; living projects are `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`; Tiger, Risk Analytics and Marketing are closed to new work and hold legacy items only). WIQL for items created-by / assigned-to
-  `alexandrecastro@attainfinance.com`: run it org-wide (`POST /_apis/wit/wiql` with no `[System.TeamProject] = @project` filter), then `workitemsbatch`,
-  and pull `System.Description` — it carries scope the titles hide. The old saved query **"My Open Tickets"** (`fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd`) is scoped by `@project`, so it only sees one project; do not use it for a cross-project sweep.
-  **EA team board — sweep on every run** (verified 2026-10-09): project `Information Technology`, team `Enterprise Architecture`, board `Stories` (`https://dev.azure.com/CuroFinTech/Information%20Technology/_boards/board/t/Enterprise%20Architecture/Stories`; the SOW epics sit on the sibling `Epics` board). EA's day-to-day delivery is filed under area path `Information Technology\Enterprise Architecture`, so run
-  `[System.TeamProject] = 'Information Technology' AND [System.AreaPath] UNDER 'Information Technology\Enterprise Architecture'` → `workitemsbatch` (≤ 200 ids per call). It is the one pull that returns EA's whole delivery ledger — the SOW 1–7 epics plus their stories (the count moves daily: 75 items in the morning of 2026-10-09 and 97 by the evening, so never quote a fixed number) — and it catches what the created-by/assigned-to sweep cannot: work teammates file themselves, created and assigned outside Alex. The team runs fortnightly iterations (`Information Technology\Sprint\<year>\<end-date>`; `Information Technology\Sprint\2026\2026-10-20` was current on 2026-10-09), but only 1 of the 97 items sat in the current one — scope by area path, never by iteration. Run the same pull for every area in the EA areas list of the schema reference.
-  **Epics/features** are
-  initiative-level → candidate Execution Links; stories/tasks fold up into the parent — an EA-board story nested under a SOW epic carries it in `System.Parent`, so the area pull collapses to the epics plus the standalone items.
-  **Field map, the epic-to-row Hyperlink join, and the state-to-Status truth-check live in [ado-ea-portfolio-schema.md](references/ado-ea-portfolio-schema.md)** — read it before mapping an EA-board epic to a portfolio row, and before proposing any field that ADO does not already carry (the portfolio-only columns must not be duplicated into ADO).
-  **Ticket state truth-checks the row:** a milestone in days while the ticket sits in `New` is a
-  slip; a "Closed" row with an `Active` ticket may not be closed; the same check runs on the EA-board story or SOW epic behind the row's Execution Link.
-- **GitHub** (`gh`, authed as `AlexandreCastro_attain`). `gh pr list --author @me --state all` / `gh search prs` across the Attain orgs. PRs are artifacts → fold into their initiative; the repo or the ADO epic is the Execution Link.
-- **Microsoft 365** — two paths, one read-only rule. In Claude Code, the `claude_ai_Microsoft_365`
-  MCP connector (tools are deferred; load via ToolSearch). Everywhere else, the **`m365` CLI** —
-  check it with `command -v m365 && m365 --json doctor`, then `m365 sharepoint search`,
-  `m365 teams search`, `m365 teams chats`, `m365 mail search`, `m365 calendar search`. READ-ONLY on
-  both: search/list/read only, never send/create/delete. Three uses:
-  - `sharepoint_search` — the canonical **org-shared** copy of an ADR/SAD across ALL sites (better
-    Key Artifact candidates than Internal-library or personal links; fastest answer to "has this doc
-    been re-homed yet?").
-  - `chat_message_search` / `teams_list_chats` — Teams evidence of initiative movement: decisions
-    agreed in chat, sponsor pings, follow-ups.
-  - `outlook_email_search` / `outlook_calendar_search` — sent proposals, sign-off threads, and the
-    real dates of working sessions → grounded `MilestoneDate` values.
-  The connector is interactively authenticated and may be absent in headless runs; try the connector,
-  then the CLI, and if neither answers say so and fall back to the other three sources — never report
-  an unreachable store as no results. The CLI needs a one-time `m365 login`; if `doctor` reports
-  `no_token`, ask Alex to run it. Graph throttles at 50 req/min — a 429 carries `retryAfterSeconds`;
-  wait it out. Comms content is evidence, not board text: no chat/email quotes in org-visible fields,
-  and nothing privileged or counsel-touched at all. The archeologist searches M365 natively (SOURCE
-  G), so use the direct tools for targeted lookups only.
+**Fire retrieval in parallel**, then cross-check three ways: **missing** (evidence-backed initiatives
+with no row; check `not_doing` first), **misrepresented** (rows contradicted by fresher evidence), and
+**coherence** (does the portfolio read as one story). Coherence outranks any single-row fix.
 
-**Fire retrieval in parallel.** For a full audit, launch in ONE message: the live-list read (inline
-REST), the ADO saved-query agent, and an archeologist sweep of the last ~8 weeks (sorted by recent
-activity, anything privileged quarantined in a flagged section). Then cross-check three ways:
-- **Missing** — evidence-backed initiatives with no row (check `not_doing` first).
-- **Misrepresented** — rows contradicted by fresher evidence: milestone already delivered or sent
-  (email/Teams beats a stale field), Closed row with a live ticket or future-dated milestone,
-  In-Progress row with empty Impact/milestone/artifact.
-- **Coherence** — does the portfolio read as one story? Rows investing in a platform while an
-  exit/replacement decision is pending; themes that bury work where the CTO won't look
-  (privileged-access rows outside Security Hardening; AI rows outside AI Program, which hides
-  them from the AI Program view). Coherence outranks any single-row fix.
+Commands, query text, the fields to pull, the M365 tools and the cross-check detail are in
+[references/retrieval.md](references/retrieval.md). Read it before any sweep.
 
 ## Typed gates — `ask_jev`
 
@@ -315,7 +264,7 @@ verified.
 ## Idempotency & the ledger
 
 - **Match before emit.** Compare each candidate to existing rows by title similarity + Key Artifact URL; a match emits an UPDATE of changed fields, never a duplicate.
-- **Delivered and Stopped are immutable.** An initiative that ends becomes `4. Delivered` (Milestone `Delivered` + date) or `5. Stopped` (Milestone `Stopped: <why>` + date); never deleted, never reopened — a resurrected initiative is a NEW row, with a comment on each row pointing to the other. Pre-Closed rows may step back one stage when honest; nothing disappears silently.
+- **Delivered and Stopped are immutable.** An initiative that ends becomes `4. Delivered` (Milestone `Delivered` + date) or `5. Stopped` (Milestone `Stopped: <why>` + date); never deleted, never reopened — a resurrected initiative is a NEW row, with a comment on each row pointing to the other. Rows before `4. Delivered` may step back one stage when honest; nothing disappears silently.
 - **Ledger `curated.json`** (in this skill's directory) maps each source artifact ID → the row it fed, so overlapping re-runs are no-ops. Read it at the start, update it after writing. Shape:
   ```json
   {
@@ -517,233 +466,36 @@ follow the newsletter gates for a delivery-only draft and state that it carries 
 ## Weekly newsletter — Architecture Weekly
 
 Every weekly page carries THREE components under the title **Architecture Weekly — Month D, YYYY**:
-the **Executive Summary** band at the top (see the gate below), the **Forum recap** (generated from
-the scribe note via [references/recap.md](references/recap.md), or Alex's pasted notes rendered
-verbatim), and the generated **What Enterprise Architecture shipped** panel at the bottom. They
-answer different questions: the band is for the executive leadership team who read the page but were
-not in the room; the forum record says what the group decided; the panel says what EA shipped. Drop
-any delivery item that restates the forum recap.
+the **Executive Summary** band (for the executive leadership team, who read the page but were not in
+the room), the **Forum recap** (generated from the scribe note via [references/recap.md](references/recap.md),
+or Alex's pasted notes rendered verbatim), and the **What Enterprise Architecture shipped** panel at the
+bottom. Drop any delivery item that restates the forum recap.
 
-### The page body is rendered, never written
+**Read [references/newsletter.md](references/newsletter.md) before you build, render, stage or check the
+page.** It holds the design and palette, what SharePoint does to the markup, print, edit mode, the hidden
+title area, visual verification, the sources, the ranking order, the Executive Summary gates,
+readership and planned absence. The rules you must not miss:
 
-**Run [references/render_page.py](references/render_page.py); do not write page HTML.** The run's job
-is content, the script's job is markup:
-
-```
-recap-content.json  →  render_page.py  →  canvas.json  →  stage_news_recap.py --canvas
-```
-
-The script owns every tag, style and colour. Read its docstring for the content schema. There is
-**no "SharePoint-native markup only" rule any more** (Alex, 2026-09-28: "that doesn't hold"): the page
-may use whatever styling the design needs. The only markup the script refuses is `<script>` and
-`javascript:`, for safety. Hand-written HTML is what produced the drift between the 09-09 and
-09-16 pages; two files cannot disagree if only one holds markup.
-
-[references/example-content.json](references/example-content.json) is a complete, valid input: copy
-it to start a week, and render it after any change to the script to prove the script still works.
-
-**It refuses on content shape too, not just markup.** Missing `exec_summary`, a band outside 3 to 4
-points, a blank `footer`, an unknown `outcome.tag`, a decision with no `rationale`: each is a named
-error naming the exact key. Fix the content; do not reach past the script. The safety scan reads
-the MARKUP only, so ordinary prose is safe. Escaping keeps content out of the markup.
-
-`python3 references/render_page.py --text canvas.json` prints the rendered page as plain text, the
-input to `voice_check.py`; see [references/recap.md](references/recap.md) for the commands.
-
-**Design and colour are fixed** (Alex, 2026-09-28, from the Claude Design mock "Architecture Weekly
-Recap"; it replaced the 09-18 design). Sections, in order: navy header band with a blue accent rule,
-Executive Summary band (the `footer` renders as a status chip top right: green when it starts "No"/"Nothing", amber otherwise, so write it short and without a period; points carry a coloured dot and lead: Decided/Also agreed green, Shipped navy, Still open amber), Forum recap (Objective, Outcome callout, TL;DR), **Decisions made** as cards
-(Decided chip + topic chip, then Rationale / Owner rows), **Action items** table (owner initials
-avatars, a dashed avatar for Unassigned, a "From meeting chat" chip, grey "No date"), **Topics
-discussed** as cards (title, summary, owner avatar, status chip, then Label / Explanation rows),
-**Open questions and risks** as a numbered list with a next-step chip, **Artifacts referenced** as two-column icon cards (always
-linked), the speakers line, and the navy **What Enterprise Architecture shipped** panel with a gold rule,
-a delivery count, and a category chip per item. Section titles carry a count badge. Palette: `#17375E`
-navy, `#2A9FD6` accent, `#DFD4B8` gold, `#E8F0F7` light, `#1F2A37` body, `#5F6670` muted, `#0B5CAD`
-links, `#D7DEE6` borders; chips green / amber / gray / blue. Every colour is a named constant in
-`render_page.py`.
-
-**What SharePoint really does to this markup (measured 2026-09-28, throwaway page, then the live
-draft):** it KEEPS `<style>`, `class=`, `display:flex|grid`, `border-radius`, `font-family`; it
-silently STRIPS `gap` and `grid-template-columns`; and its page CSS OVERRIDES `margin` on `<div>` at
-render time (stored, not applied). Text inside a `<div>` does NOT inherit that div's `color` or `font-size` either (the action table header rendered dark-on-navy and the rows at ~17px): set colour and size on the text's own `<span>`/`<p>`. Real `<table>` cells get forced dark gridlines, so tables are built from flex `<div>` rows. Inline `<svg>` icons survive and render (artifact cards). Two-column card layouts = `flex-wrap` with 50%-wide cells padded apart. So the renderer inlines every style, spaces blocks with padding or
-`spacer()`, and builds two-column rows from fixed-width flex children. `render_page.py` refuses
-`gap:`, `grid-template` and any `<div>` margin, so this cannot regress. Storage is not proof: always
-screenshot the read view after a renderer change (browser-control, scroll to each heading).
-
-**Print (Save as PDF), measured 2026-09-28:** SharePoint fixes the body height, so a long page printed ONE page. The renderer opens every body with `<div class="aw-recap">` plus a print-only `<style>` (`PRINT_CSS`): it resets html/body so the issue flows, keeps cards whole (`page-break-inside`) and starts the shipped panel on a new page. `validate()` refuses a body without it. SharePoint's sanitizer strips `:has()`, `@page`, `break-*` and `print-color-adjust` on save, so the page cannot force backgrounds to print. Instead a print theme (Alex, 2026-09-28) turns dark bands white with a navy border and navy text, so the page reads the same with or without **Background graphics**. Any new light-on-dark element needs a print-theme class (`aw-band`, `aw-inv`, `aw-olive`, `aw-avatar`, `aw-tint`, `aw-rule`). Check a change on the SAVED draft (CDP `Page.printToPDF`, with `emulateMedia` cleared), never only on an injected DOM.
-
-New optional content fields (see the `render_page.py` docstring): `decisions[].chip`,
-`actions[].source: "chat"`, `topics[].owner`, `topics[].points[] = {lead, text}`,
-`open_questions[] = {text, next, source}`, `shipped.items[].category`, `artifacts[] = {label, url,
-note}` (url required).
-
-**Fonts default to the site theme** (Segoe UI). A `font-family` is allowed when a design change
-calls for one; it is no longer banned.
-
-### The SharePoint editor does not show this page faithfully (measured 2026-09-18)
-
-The read view renders fully styled; **144 of 147 inline `style` attributes survived an edit and save,
-including the navy band's `background-color`.** The editor's own view drops backgrounds, borders and
-heading sizes while leaving them in the stored page. So:
-
-- **Never judge this page in edit mode.** Use Preview or the read view. Tell Alex this when he edits a
-  page; it will look broken and he will say so.
-- **A `class=` attribute in a read-back canvas is SharePoint's, not drift.** `render_page.py
-  --check-only` validates the RENDERED canvas; do not "fix" what SharePoint adds on save.
-- The page's inline styles are durable across edits, so it is safe for Alex to edit by hand. There
-  is no `<table>` on the page any more (the action table is `<div>` rows).
-
-### Visual verification — the run can look at the page itself
-
-A read-back proves storage, not appearance. Use the **`browser-control` skill** to see the rendered
-page: it drives Alex's own Chromium browser with his profile and cookies, so SharePoint renders
-authenticated. The OpenCode `tools.browser.*` catalog needs the desktop app plus an experimental
-setting and is usually unavailable.
-
-Two gotchas that cost real time on 2026-09-18:
-
-- **`fullPage: true` does not capture the whole page.** The scroll container is inner, so a full-page
-  shot matches a viewport shot. Scroll the container instead:
-  `await page.getByRole("heading", { name: "Topics discussed" }).scrollIntoViewIfNeeded()`, then take
-  viewport shots.
-- **`page.goto` churns through SharePoint's auth redirect query strings** before settling on the real
-  URL. Wait, then read `page.url()`; a noisy redirect chain is normal.
-
-**When to run it:** mandatory whenever the renderer or the page layout changed, and once before Alex's
-first publish of a new format. A content-only week does not need it. Always hand Alex the link anyway;
-his eyes are the final check, and he catches things the shot does not.
-
-### The page title area is hidden
-
-The navy band carries the page title, so the SharePoint title must not repeat above it. **Verified
-2026-09-18:** a page storing `LayoutWebpartsContent = [{"controlType":0}]` shows no title region (the
-09-16 page rendered with the navy band first); the default (`null`) renders the title twice.
-`stage_news_recap.py` sets the field by default and exits non-zero if it did not stick. If a staged
-draft shows a duplicated title, report it; the fallback is to drop "Architecture Weekly" from the
-band, never to accept the duplicate.
-
-**This skill is shared between tools; the scripts it calls are not.** `stage_news_recap.py` exists
-once per tool, and the copies drifted before: the title region was added to one only, so a Pi or
-OpenCode run staged a page with a duplicated title and said nothing. Both carry `--hide-title` and
-its verification as of 2026-09-19. Check the copy your tool runs before trusting any script claim in
-this file; `auth.py` and `sharepoint_api.py` still differ between the trees, which is open and
-belongs to Alex.
-
-**Sources — reuse the run's retrieval sweep, never double-fetch:** the ADO control first (items in EA
-areas closed this week, grouped by their EA Projects row, and the approved weekly epic updates), the
-run's own WRITTEN / UPDATED / COMMENTED changes (a row that changed stage this week IS news), the
-AAB decisions, direct GitHub retrieval
-(`gh search prs --author "@me" --updated ">=$SINCE"`), ADO epic/feature movement, and verified
-artifacts from the archeologist. The archeologist does not give a complete GitHub feed; query GitHub
-directly. Same auth preflight as everything else.
-
-**Portfolio movement** (Alex, 2026-10-10): every board entry that changed stage this week goes in the
-content key `portfolio_moves` (`[{title, from, to, url}]`, at most 8; see the `render_page.py` docstring).
-Read the moves from the list's version history or the run's own approved `E#` stage lines, never from
-memory. No moves: leave the key out, and the section is not rendered. Each move is a review line
-(`Row` = `Recap page`, `Field` = `portfolio move`).
-
-**What leads the page: evidence decides each week** (Alex, 2026-10-09: the board holds everything,
-the newsletter "can focus on the things that matter"). Rank the week's items in this order, and use
-the same order every week so the choice is repeatable: (1) a decision waiting on leadership; (2) a
-forum decision; (3) an EA Projects row that moved Status; (4) a progress number that moved; (5)
-closed ADO work, grouped by its row. The Executive Summary and the shipped panel take the top items.
-Everything else stays on the board and in ADO, not on the page. Put the ranking in the review table's
-`Why` cell for each shipped line, so Alex sees why an item led.
-
-**Shape:** the shipped panel is the navy band with a gold top rule and a delivery count, as the
-renderer builds it. Add 3–6 items; a thin week gets 2 or none. Each item contains:
-- A `category` (Process, Infrastructure, AI tooling, Data, ...), shown in small caps beside a gold
-  check square.
-- One outcome-first sentence, ≤ ~20 words, exec-legible in the voice of `NextMilestone`, rendered
-  bold navy. No session IDs, ticket IDs, or technical provenance.
-- One or two evidence links, rendered as bordered link buttons with an arrow, pointing at the
-  primary org-readable record: merged PR, closed ADO item, portfolio row, the RFC/ADR this work
-  resolves into. Labels describe the destination (`Runtime migration`, `Portfolio outcome`), never
-  raw URLs or naked IDs; the recap's **Artifacts referenced** section follows the same rule — see
-  [references/recap.md](references/recap.md).
-
-### Readership — report it to Alex every run (Alex, 2026-10-09)
-
-People read this page, so watch the trend. Every run, read views and unique viewers for the last
-three published issues and put them in the run record for Alex only, never on the page.
-
-**Verified 2026-10-10 with the curator's cookie:** the SharePoint search API returns the counts.
-
-```
-GET /sites/Architecture/_api/search/query
-    ?querytext='path:"https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Recaps" FileExtension:aspx'
-    &selectproperties='Title,Path,ViewsLifeTime,ViewsLifeTimeUniqueUsers,ViewsRecent,ViewsRecentUniqueUsers'
-    &rowlimit=50&trimduplicates=false
-Accept: application/json;odata=nometadata
-```
-
-Read `PrimaryQueryResult.RelevantResults.Table.Rows[].Cells` (Key/Value pairs). `ViewsLifeTime` is
-views, `ViewsLifeTimeUniqueUsers` unique viewers; the `ViewsRecent` pair is a short recent window.
-Search counts lag (a page published days ago can still show recent views only), so compare issues of
-similar age. Baseline on 2026-10-10: 66 to 79 unique viewers and 90 to 145 views per issue from
-2026-07-29 to 2026-09-30. **Do not use Graph or `_api/v2.1` `itemAnalytics` with the cookie:** it
-returns 403 `OAuth only flow is enabled` (tested 2026-10-10). If search fails, report UNVERIFIED,
-never zero.
-
-### Planned absence — skip, with a one-line note (Alex, 2026-10-09)
-
-When Alex says he will be out, there is no weekly run for those weeks. Before he leaves, stage one
-short News post saying when Architecture Weekly is back (`Architecture Weekly is back on <date>.`),
-with the date he gives, `PromotedState=1`, for him to publish. It is the one page not built by
-`render_page.py`: one sentence of plain text, no styling. The board and ADO wait for his return.
-
-### Executive Summary — the ELT reader's gate (new 2026-09-18)
-
-**Why it exists:** the executive leadership team reads this page, was not in the room, and does not
-know the project vocabulary. The band answers "what did this mean, and does anyone need me?" in the
-first ten seconds.
-
-Generated by the run, and it is the **highest-scrutiny line in the whole review table**:
-
-- **`headline`** — one sentence, plain words: what was decided and what it changes, in the voice of a
-  `NextMilestone`. No acronym or codename a non-engineer would not know; gloss any unavoidable term.
-- **`points`** — 3 to 4, each a bold two-or-three-word lead plus one or two plain sentences. Cover
-  **both halves of the week: what the forum decided, and what EA shipped.** Order: decisions, then
-  shipped, then still open, with the footer's ask last (the order of the published 2026-09-16 issue).
-  Shipped goes before "Still open", so the delivery is not pushed below the asks. *Why it matters* beats *what was configured*. Do not restate the TL;DR.
-- **Composition rule: the summary is a roll-up, nothing new.** Every sentence must trace to a decision,
-  an action, an open item, or a shipped item already on the page. A stated **consequence** of a
-  documented decision is fine ("rotating a credential no longer needs a code change"); a new fact,
-  judgement, or recommendation is not. If the summary needs a fact the recap lacks, the recap is
-  missing it, not the summary.
-- **Compress the shipped half to one line; never list the shipped items.** The navy panel already
-  lists them; a full list in the band makes the reader read the same nouns twice. Name the headline
-  delivery and the theme of the rest (`The new US brand's non-prod network went live, and the Claude
-  and Snowflake tooling picked up three more deliveries.`).
-- **`footer`** — the line that says whether leadership must act: `No decision is waiting on
-  leadership this week.` or the named decision and the person holding it. Never blank, never silence a
-  real pending decision. `Still open` covers EA-internal loose ends; the footer covers leadership.
-  Keep both.
-- Put it through the review table as its own numbered line (`Row` = `Recap page`, `Field` =
-  `executive summary`). Never stage a page with an unreviewed summary.
-
-**Gates (all mandatory):**
-- **Scope is EA's own delivery, and the heading says so:** **What Enterprise Architecture shipped**,
-  never "What Architecture shipped" (corrected 2026-08-28; bare "Architecture" reads as every
-  architect in the company). Include only work EA owns or drove: Alex-authored PRs, EA-owned ADO
-  epics/features, EA board rows that moved, EA-authored artifacts. Another team's delivery does not go
-  in, however good it is.
-- Full exclusion screen applies to the sentence and every linked artifact: no privileged/counsel
-  references, sensitive vendor naming, current-weakness specifics, personnel, personal-OneDrive
-  links, or access-restricted evidence. If no safe evidence link exists, drop the item.
-- **Every number and every "each" in a shipped sentence is checked against the live list, not the
-  plan.** Count from the dump you already pulled; if a column is partly blank, the sentence cannot say
-  "each".
-- Put each complete item through the review table as one line (`Row` = `Recap page`, `Field` =
-  `shipped item`), with the exact sentence, link labels, and target URLs. Apply only approved lines
-  and re-screen anything Alex edits.
-- Stage with `--stage` / `PromotedState=1`; publishing stays Alex's click. `stage_news_recap.py` needs an existing page `--id`: for a new week, create a blank page first with `sharepoint_api.create_page(site, title)` and pass its `Id` (done for the 09-23 page, Id 61). Never re-stage a page whose
-  `FirstPublishedDate` is set, because that demotes a live News post.
-- Build the delivery-only draft, flagged as carrying no forum record, ONLY when the forum genuinely
-  produced nothing to recap: no scribe note exists and Alex pasted no notes. A note you have not
-  looked for is not an absence.
+- **The body is rendered, never written.** `recap-content.json` → [references/render_page.py](references/render_page.py)
+  → `canvas.json` → `stage_news_recap.py --canvas`. Copy [references/example-content.json](references/example-content.json)
+  to start a week. A refusal from the script is a content error: fix the content, never reach past the script.
+- **Stage, never publish.** Stage with `--stage` / `PromotedState=1`; publishing is Alex's click. A new
+  week needs a blank page first (`sharepoint_api.create_page`) for its `--id`. Never re-stage a page whose
+  `FirstPublishedDate` is set: that demotes a live News post.
+- **The Executive Summary is a reviewed line** (`Row` = `Recap page`, `Field` = `executive summary`):
+  3 to 4 points, a roll-up with nothing new, and a footer that is never blank.
+- **The shipped panel is EA's own delivery only.** Each item is one review line and passes the full
+  exclusion screen. What leads: **evidence decides each week**, in the fixed ranking order in the reference.
+- **`portfolio_moves`** lists every board entry that changed stage this week, read from the list's version
+  history or the run's approved `E#` stage lines, never from memory. Only versions after
+  `newsletter.moves_baseline` in the ledger count: the 2026-10-10 remap renamed every status, and those
+  renames are not moves.
+- **Never judge the page in edit mode.** The editor hides backgrounds and borders that the stored page
+  keeps; use Preview or the read view.
+- **Readership** goes in the run record for Alex every run, never on the page. A failed count is
+  UNVERIFIED, never zero.
+- **Planned absence:** when Alex will be out, stage one plain-text note (`Architecture Weekly is back on
+  <date>.`) before he leaves; there are no runs while he is away.
 
 ## Weekly maintenance mode (`--maintain`, and the default for a bare `/ea-projects-curator`)
 
@@ -768,7 +520,7 @@ A bare invocation runs this mode; only `--audit` (or "is the board missing anyth
 
 ## Full audit mode (`--audit`, or "is the board missing or misrepresenting anything?")
 
-Discovery + maintenance combined: parallel retrieval (live list + ADO saved query + 8-week archeologist sweep), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review table. Lead with any coherence problem; rows that check out clean get said so explicitly. Then run the [Connections pass](#connections-pass--ideas-after-the-review-tables), last.
+Discovery + maintenance combined: parallel retrieval (live list + the org-wide ADO WIQL and EA area pull + 8-week archeologist sweep; see [references/retrieval.md](references/retrieval.md)), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review table. Lead with any coherence problem; rows that check out clean get said so explicitly. Then run the [Connections pass](#connections-pass--ideas-after-the-review-tables), last.
 
 ## Output — the record
 
