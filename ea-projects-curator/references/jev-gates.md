@@ -35,9 +35,9 @@ cannot see each other.
 |---|---|
 | `row_qualifies` ≥ 0.80 | Propose the row |
 | `row_qualifies` ≤ 0.20 | Screened out; record the reason in the report's screened-out list |
-| Between | `Needs you? yes` line — the evidence does not settle it |
+| Between | a **Needs you** line — the evidence does not settle it |
 | `choice` confidence ≥ 0.80 | Recommend that value |
-| `choice` confidence < 0.80 | Still propose, but the line is `Needs you? yes` and the `Why` cell carries the Jev confidence and the runner-up |
+| `choice` confidence < 0.80 | Still propose, but as a **Needs you** line whose `Why` line carries the Jev confidence and the runner-up |
 | `dedupe` picks an existing row with confidence ≥ 0.80 | Emit an UPDATE of that row, never a new row |
 
 A low-confidence result that stops a proposal goes on `curated.json` `open_items`, so the
@@ -101,7 +101,7 @@ Build the `dedupe` criteria from the live list read, one entry per existing row 
 
 ## Connections pass questions
 
-One call per candidate idea, after the review tables are built
+One call per candidate idea, after the review is built
 ([connections-pass.md](connections-pass.md)). `state` carries the idea, the connection it claims,
 and a short summary of each cited source. Jev sees only `state`, so put the evidence there, not a
 pointer to it.
@@ -144,7 +144,7 @@ repeat, so a Dropped match never comes back and a Parked match comes back only o
 - **Anything on the exclusion screen** — privileged, vendor-sensitive, scope-claiming, HR.
   These are hard gates; a probability must never admit a row a rule excludes.
 - **`not_doing`** — a declined initiative stays declined. Never re-propose, never re-ask.
-- **Whether to write** — the review table decides that, always.
+- **Whether to write** — the review decides that, always.
 - **Whether an idea is true** — Jev grades fit against the evidence in `state`; checking that each cited source is real and was read this run is your job, before the call.
 
 ## Privacy

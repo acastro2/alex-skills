@@ -88,7 +88,17 @@ INVARIANTS = [
     ("SKILL.md", "Scope-claiming"),
     ("SKILL.md", "HR / personnel"),
     # review gate shape
-    ("SKILL.md", "one table per surface, never one merged list"),
+    ("SKILL.md", "split by surface, never one merged list"),
+    # decisions-first review (Alex, 2026-10-12)
+    ("SKILL.md", "### 1. Needs you"),
+    ("SKILL.md", "### 2. Check the words"),
+    ("SKILL.md", "### 3. Routine"),
+    ("SKILL.md", "No markdown tables anywhere in it"),
+    ("SKILL.md", "Wrap every line at 100 characters"),
+    ("SKILL.md", "the Answer line lists every Needs-you ID once"),
+    ("SKILL.md", "A line he did not answer is not written"),
+    ("SKILL.md", "every Stage (`Status`) move and every `System.State` move, each on its own line"),
+    ("references/connections-pass.md", "Answer: act / park / drop"),
     ("SKILL.md", "A1, A2, ..."),
     ("SKILL.md", "D1, D2, ..."),
     ("SKILL.md", "E1, E2, ..."),

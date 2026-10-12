@@ -164,9 +164,9 @@ no email, same as comments).
 
 ## Review lines and ledger
 
-Every copy and every document edit is a `D#` line in its own table (SKILL.md review gate):
-`# | Document | Field | Now | → Proposed | Why | Needs you?`. One line per copy, one per field, one per
-advice row. Record the copy link in the intake item's `Outcomenotes` line (`Pre-read copied to
+Every copy and every document edit is a `D#` line in the review (SKILL.md review gate), under the
+Brought documents sub-head of its group: a copy or a Status change is **Needs you**, an advice row is
+**Check the words**. One line per copy, one per field, one per advice row. Record the copy link in the intake item's `Outcomenotes` line (`Pre-read copied to
 <link>`), not in `Pre-read links`. That field is the submitter's.
 
 Ledger: `curated.json` `docs`, keyed by intake item ID:

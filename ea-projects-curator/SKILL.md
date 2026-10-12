@@ -7,7 +7,7 @@ description: >
   truth-ups, filing missing work); weekly maintenance; full audits; AAB Intake
   close-outs and forum checks; writing forum advice back into the RFCs and ADRs people bring
   (copying off-site pre-reads into the Architecture library); or Architecture Weekly, Architecture Review Forum and AAB meeting
-  recaps. Org-visible list writes require a numbered user-review table; recap pages are staged
+  recaps. Org-visible list writes require a numbered user review, decisions first; recap pages are staged
   drafts for Alex to publish.
 ---
 
@@ -26,7 +26,7 @@ The page body is rendered from content by `references/render_page.py`, and the *
 band is a reviewed line** because the ELT reads it. ADO, board, intake, and comment writes wait on the
 numbered tables; the recap's other sections do not. Never paste the recap into the terminal.
 
-**Every weekly run updates three surfaces and rolls them up into one page.** It updates **ADO** (what EA does: epics, stories, and a weekly update comment on every active epic), the **EA Projects** board (EA's bets and the value they deliver), and **AAB Intake** (the forum queue). See [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09). Everything that moved rolls up into that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility), staged as a draft for Alex to publish; see [Weekly newsletter](#weekly-newsletter--architecture-weekly). Use one review table and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened (missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`).
+**Every weekly run updates three surfaces and rolls them up into one page.** It updates **ADO** (what EA does: epics, stories, and a weekly update comment on every active epic), the **EA Projects** board (EA's bets and the value they deliver), and **AAB Intake** (the forum queue). See [Where EA work lives](#where-ea-work-lives--ado-ea-projects-aab-decided-2026-10-09). Everything that moved rolls up into that week's **Architecture Weekly** News page (`SitePages/Recaps/YYYY-MM-DD-AAB-Recap.aspx`; keep this filename for cadence compatibility), staged as a draft for Alex to publish; see [Weekly newsletter](#weekly-newsletter--architecture-weekly). Use one review and stage once. A plain publish without `PromotedState` never reaches the Home News rollup, which reads exactly like the update never happened (missed on the 2026-07-28 run; see memory `arf-notes-two-deliverables`).
 
 **The Forum recap component is GENERATED from the scribe transcript note by default** — you read the note the `scribe` skill already wrote, you do not fetch or parse the Teams transcript yourself, and you do not wait for Alex to paste notes. See **Forum recap — generate it from the scribe transcript note** below for shared note lookup; read [references/recap.md](references/recap.md) when drafting or reviewing the recap for the exact prompt and all recap checks. Two overrides: if Alex pastes his own forum notes, render those **verbatim** instead (his text always wins over your generated recap, per the template in the SharePoint agent doc — `~/.claude/agents/sharepoint.md` for Claude Code, `~/.pi/agent/agents/sharepoint.md` for Pi); if no scribe note exists and he pasted nothing, build the delivery-only draft and say plainly that it carries no forum record.
 
@@ -36,7 +36,7 @@ Three invariants that override everything below:
 
 1. **Never invent.** No initiative the evidence doesn't support; no impact claim that isn't documented. An empty cell is better than a soft one.
 2. **Never write unconfirmed.** The list is readable by the entire Technology org, and so is every ADO board (all licensed people can read Information Technology). The review gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
-3. **`Status` is Alex's column.** He curates lifecycle position himself. Never bundle a Status move into other edits; a proposed Status change is always its own line in the review table, flagged as needing his explicit yes. Applying his dictated updates → touch only the fields he named.
+3. **`Status` is Alex's column.** He curates lifecycle position himself. Never bundle a Status move into other edits; a proposed Status change is always its own line in the review, flagged as needing his explicit yes. Applying his dictated updates → touch only the fields he named.
 
 ## Where EA work lives — ADO, EA Projects, AAB (decided 2026-10-09)
 
@@ -197,9 +197,9 @@ Question sets and copy-paste request bodies: [references/jev-gates.md](reference
   clustered evidence plus the matched live row; Jev sees only what is in `state`, and the
   questions in one call cannot see each other.
 - **Gate on confidence.** `row_qualifies` ≥ 0.80 → propose; ≤ 0.20 → screened out, with the
-  reason in the report's screened-out list; between → `Needs you? yes`. A `choice` at ≥ 0.80
-  confidence → recommend that value; below → still propose, but `Needs you? yes` with the
-  confidence and the runner-up in the `Why` cell. These thresholds are defaults; move them
+  reason in the report's screened-out list; between → a **Needs you** line. A `choice` at ≥ 0.80
+  confidence → recommend that value; below → still propose, but as a **Needs you** line with the
+  confidence and the runner-up in its `Why` line. These thresholds are defaults; move them
   deliberately, never per run.
 - **Jev never passes a hard gate.** The exclusion screen, `not_doing`, and the three
   invariants above are rules. A probability must never admit a privileged row, revive a
@@ -214,32 +214,72 @@ Question sets and copy-paste request bodies: [references/jev-gates.md](reference
   report. Here, `state` carries the initiative, its artifacts, and the row, never a raw
   transcript or privileged text: the exclusion screen applies to the request too.
 
-## The review gate — one table, approve by line
+## The review gate — decisions first, approve in one line
 
-This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex's confirmed preference (2026-07-28, after rejecting an `AskUserQuestion` batch): **numbered markdown tables** he can scan in seconds and answer with line numbers ("1 to 13 are good, 15 skip"). Refined 2026-09-04 after he rejected a 32-line merged table ("makes it confusing for me... I need it break down by recap, aab intake updates and ea portfolio updates"): **one table per surface, never one merged list.**
+This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex reads the review in the terminal between other work, so it is built for a fast scan: numbered lines he answers by number, split by surface, never one merged list, items named, never bare IDs ("Row 47 means nothing to me"), and **decisions first, no wide tables** (2026-10-12: a 7-column table wraps into noise, and the lines that needed him were buried among routine ones).
 
-1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; run the typed gates on each candidate; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every column. Do ALL the deciding before the table — the table is for his review, not your thinking. A low-confidence gate verdict is what the `Why` cell is for.
+1. **Build the candidate set internally.** Cluster the retrieved signals into initiatives; apply granularity, inclusion, and the exclusion screen; run the typed gates on each candidate; match each against existing list rows (→ NEW or UPDATE); attach provenance and a fully recommended value for every field. Do ALL the deciding before the review — the review is for his decisions, not your thinking.
 
-**Name items, never bare IDs** (Alex, 2026-09-28: "Row 47 means nothing to me"): the `Row` column and every report line lead with the initiative or intake item's name; an ID may follow in parentheses.
+2. **Number every proposed change by surface:** Recap page `R1, R2, ...` (the executive summary, each shipped item, each portfolio move); AAB Intake `A1, A2, ...`; Brought documents `D1, D2, ...` ([references/brought-docs.md](references/brought-docs.md)); ADO `W1, W2, ...` (links, parents, weekly epic comments, Current Status, state truth-ups, new items; see the [Weekly ADO control](#weekly-ado-control--what-ea-does)); EA Projects `E1, E2, ...`. One line per field change; a comment is a line; a NEW row is one line that shows the full row. Inside every group the surface order is Recap, AAB Intake, Brought documents, ADO, EA Projects: ADO before EA Projects, because the E lines truth-check rows against the epic state the W lines fix.
 
-2. **Emit FIVE sections, one table each, in this order.** (a) **Recap**: the staged page link, what you fixed before staging, and the one action (his Publish click). No lines to approve. (b) **AAB Intake updates**: lines numbered `A1, A2, ...`. (c) **Brought documents**: lines numbered `D1, D2, ...` (copies and document edits, with the drafted author messages below the table; see [references/brought-docs.md](references/brought-docs.md)). (d) **ADO updates**: lines numbered `W1, W2, ...` (epic-to-row Hyperlinks, parent links, the weekly epic comments, Current Status, state truth-ups, new items; see the [Weekly ADO control](#weekly-ado-control--what-ea-does)). (e) **EA Projects updates**: lines numbered `E1, E2, ...`. ADO comes before EA Projects because the E lines truth-check rows against the epic state the W lines fix. Same columns in (b) to (e): `# | Row | Field | Now | → Proposed | Why | Needs you?`; for a W line, `Row` is the work item title with the ID in parentheses. He answers per table ("A: all. D: 1–4. W: 1–6. E: 1–3, 5"). One line per field change; comments get a line too (proposed text in the → column); a NEW row is one line with the full recommended row summarized in →. The `Why` cell carries the reason (lead with the why — it's what he reads). `Needs you?` marks the lines he must explicitly decide: every Status move, every date only he knows, every row where the evidence ran out. Below the table, list what you screened out and why, and which rows checked out clean — the absence of a change is also a finding.
+3. **Sort every line into exactly one group:**
+   - **Needs you:** every Stage (`Status`) move and every `System.State` move, each on its own line; every NEW row or new ADO item; every pick between options; every date or fact only Alex knows; every line where the evidence ran out or a Jev gate was unsure. A line here that also posts text shows the text.
+   - **Check the words:** every line whose value is new org-visible text: comments, weekly epic updates, `Outcomenotes`, advice rows, the recap's executive summary and shipped items. Show the exact text in a `>` quote. The executive summary comes first.
+   - **Routine:** a field or link whose value comes straight from the evidence and adds no new prose (a row link, a parent link, Current Status, `Delivered` on a closed row, a gate answer at 0.80 or more). One line each.
 
-3. **He answers by line number.** Apply exactly the approved lines. A line needing input he didn't give (e.g. "yes" to a milestone rewrite but no date) → apply what you can, keep the gap on the open-items list; never fill it with a guess.
+4. **Emit the review in this shape**, after the AAB and ADO control reports. No markdown tables anywhere in it. **Wrap every line at 100 characters**, Why lines and quoted text included (continue a quote with `> `); only a line that holds a URL may run longer. **Count exactly:** each `(<n>)` equals the IDs in that group, the summary line repeats those numbers, and the Answer line lists every Needs-you ID once.
 
-4. **Re-screen anything he edits** — an edited title or comment can quietly reintroduce a vendor name or a privileged reference. Then, and only then, write.
+   ```
+   ## Review — <date> · <mode>
+   **<n> need you · <n> to check the words · <n> routine.**
+   Recap: <staged link + your one action, or "nothing to stage">
 
-After the five tables, the [Connections pass](#connections-pass--ideas-after-the-review-tables) adds the `I#` ideas table. It asks Alex to judge ideas, not to approve writes, so it never delays or changes the five tables.
+   ### 1. Needs you (<n>)
+   #### EA Projects
+   **E3** Event Streaming Platform · Stage: 1. Exploring → 2. Committed
+   Why: the AAB decided "Event streaming platform choice" on 10-14.
+   Answer: y / n
+
+   **W2** SOW 3 · Data lineage (9603) · two row links
+   Why: a wrong row misreports the work. The title and SOW-3 tag point to Data Lineage Pilot.
+   Answer: a) keep Data Lineage Pilot  b) keep Pipeline Modernization
+
+   ### 2. Check the words (<n>)
+   **W3** EA operations (9600) · weekly comment
+   > Done this week: ... Next: ...
+   Why: no update yet this week.
+
+   ### 3. Routine (<n>)
+   - **W1** SOW 4 · Event streaming evaluation (9604) · row link → Event Streaming Platform.
+     Title and SOW tag match.
+
+   ### Also found
+   - Screened out: <what, and the one-line reason>
+   - Checked clean: <rows and items with no change>
+   - Alerts with no line: <what Alex must know but cannot approve>
+
+   ### Answer
+   needs: E3 y, W2 a · words: all · routine: all
+   ```
+
+   Sub-heads (`#### AAB Intake`, `#### ADO`, ...) appear only for surfaces with lines; skip an empty group. The `Why` line leads with the reason: it is what he reads. The **Answer** line is a ready-to-edit default: Needs-you lines blank for him to fill, the other groups `all`.
+
+5. **He answers in one line.** Group words take `all`, `none` or IDs; a line takes `y`, `n`, a letter, or `edit: <text>`; old style ("E: 1–3, 5") still works. Apply exactly what he approved. A line he did not answer is not written; a Needs-you line he skipped goes on `open_items`. A line needing input he didn't give (e.g. "y" to a milestone but no date) → apply what you can, keep the gap on `open_items`; never fill it with a guess.
+
+6. **Re-screen anything he edits** — an edited title or comment can quietly reintroduce a vendor name or a privileged reference. Then, and only then, write.
+
+After the review, the [Connections pass](#connections-pass--ideas-after-the-review) adds the `I#` ideas, answered in the same Answer line (`ideas: I1 act, I2 drop`). It asks Alex to judge ideas, not to approve writes, so it never delays or changes the review.
 
 `AskUserQuestion` remains a fallback for a single fork mid-run (one decision, 2–4 options); never use it to triage the candidate set.
 
-## Connections pass — ideas after the review tables
+## Connections pass — ideas after the review
 
-The run is prescriptive: it checks rules and fills tables. This pass is the one place where the curator looks across everything it gathered for relations no single row, epic or AAB item shows, and brings Alex ideas he would not see from a glance (Alex, 2026-10-12). It runs last, after every review table is built, and it never writes.
+The run is prescriptive: it checks rules and fills tables. This pass is the one place where the curator looks across everything it gathered for relations no single row, epic or AAB item shows, and brings Alex ideas he would not see from a glance (Alex, 2026-10-12). It runs last, after every review is built, and it never writes.
 
 - **Engine.** In Claude Code, write the brief from the reference into the session, then call the `advisor` tool: it reads the whole run, so it sees every row, epic, AAB item and comment you pulled. Without an advisor (OpenCode, Pi), a fresh-context subagent gets the same brief and a scrubbed evidence summary. The advisor is a reviewer: its ideas are inputs, not facts.
 - **Filter, in order.** Each idea cites at least two pieces of evidence from this run, and you read and checked each one; it passes the exclusion screen; it is not in `not_doing` and not a dropped idea; Jev grades it (`evidence_supports`, `non_obvious`, `actionable`), and any answer at or below 0.20 drops it.
 - **Output.** An `I#` table, last in the report, headed "Ideas (hypotheses, not approved work)". No cap, and zero is a valid answer: never pad. Alex answers Act, Park or Drop per line.
-- **Ledger.** Every idea shown goes in `ideas`. Act: the next run turns it into real lines whose `Why` cell cites the idea key. Park: it comes back only when its `revisit_when` evidence changes. Drop: never again, in any wording.
+- **Ledger.** Every idea shown goes in `ideas`. Act: the next run turns it into real lines whose `Why` line cites the idea key. Park: it comes back only when its `revisit_when` evidence changes. Drop: never again, in any wording.
 
 Brief text, what to look for, table columns and ledger rules: [references/connections-pass.md](references/connections-pass.md).
 
@@ -356,14 +396,14 @@ owns page assembly, not session selection or intake control.
 
 ### AAB WEEKLY CONTROL
 
-| Check | Result | Evidence |
-|---|---|---|
-| Recap published | PASS / ALERT / UNVERIFIED | date, page Id/URL, PromotedState |
-| Intake close-out | PASS / ALERT / UNVERIFIED | item Ids/titles still open, with Status/Scheduledfor |
-| Brought documents | PASS / ALERT / UNVERIFIED | per item: in place / copied / alert (off-site, screened out, scope unverified, unresolvable) |
-| Next-week schedule | PASS / ALERT / UNVERIFIED | next-week range and items found, or none |
+One line per check, `PASS` / `ALERT` / `UNVERIFIED`, then the evidence (a list, not a table):
 
-Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification). **Intake field changes are writes to an org-visible list**: propose them through the numbered review table, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
+- **Recap published:** result · date, page Id/URL, PromotedState
+- **Intake close-out:** result · item titles still open, with Status/Scheduledfor
+- **Brought documents:** result · per item: in place / copied / alert (off-site, screened out, scope unverified, unresolvable)
+- **Next-week schedule:** result · next-week range and items found, or none
+
+Any unresolved ALERT goes on `curated.json` `open_items` (cleared only after live re-verification). **Intake field changes are writes to an org-visible list**: propose them through the review, one line per field (`Status` / `Outcomenotes` / `Scheduledfor`), and apply only what Alex approves by line. Never invent `Outcomenotes` or a `Scheduledfor` date, and never publish the recap yourself — flag it as his action.
 
 ## Weekly ADO control — what EA does
 
@@ -425,13 +465,13 @@ delete a work item, and never change an area, iteration, process rule, or permis
 
 ### ADO WEEKLY CONTROL
 
-| Check | Result | Evidence |
-|---|---|---|
-| Roll-up links | PASS / ALERT | epics with no row link, or more than one |
-| Parent links | PASS / ALERT | items with no parent epic |
-| Epic updates | PASS / ALERT | active epics, and which have this week's update proposed |
-| State mismatches | PASS / ALERT | items whose state contradicts evidence, with the assignee |
-| Missing items | PASS / ALERT | hands-on work with no ADO item |
+One line per check, `PASS` / `ALERT`, then the evidence (a list, not a table):
+
+- **Roll-up links:** result · epics with no row link, or more than one
+- **Parent links:** result · items with no parent epic
+- **Epic updates:** result · active epics, and which have this week's update proposed
+- **State mismatches:** result · items whose state contradicts evidence, with the assignee
+- **Missing items:** result · hands-on work with no ADO item
 
 ## Forum recap — generate it from the scribe transcript note
 
@@ -499,10 +539,10 @@ readership and planned absence. The rules you must not miss:
 
 ## Weekly maintenance mode (`--maintain`, and the default for a bare `/ea-projects-curator`)
 
-A bare invocation runs this mode; only `--audit` (or "is the board missing anything?") widens to discovery. Skip discovery of new initiatives; true up what exists, and still gate every change through the review table:
+A bare invocation runs this mode; only `--audit` (or "is the board missing anything?") widens to discovery. Skip discovery of new initiatives; true up what exists, and still gate every change through the review:
 
 1. Run the **Weekly AAB control** above and report it before any EA Projects finding.
-2. If the latest due forum has no published recap, **read that session's scribe note and draft the recap now** ([references/recap.md](references/recap.md)), and carry it into the same review table: a missing recap is work, not a line item. If the note itself is missing, tell Alex to run `/scribe teams` for that date. A past-dated `Scheduled` item plus a real note means the close-out was missed, not the meeting.
+2. If the latest due forum has no published recap, **read that session's scribe note and draft the recap now** ([references/recap.md](references/recap.md)), and carry it into the same review: a missing recap is work, not a line item. If the note itself is missing, tell Alex to run `/scribe teams` for that date. A past-dated `Scheduled` item plus a real note means the close-out was missed, not the meeting.
 2a. Run control check 3a: write the forum advice back into the brought documents ([references/brought-docs.md](references/brought-docs.md)) as `D#` lines.
 2b. Run the **Weekly ADO control** and emit its `W#` lines, including the update comment for every active epic, before any EA Projects check.
 3. Diff `Status` / `NextMilestone` / `MilestoneDate` against the latest archeologist / ADO / GitHub signals; propose moves.
@@ -516,11 +556,11 @@ A bare invocation runs this mode; only `--audit` (or "is the board missing anyth
 9. Flag any `3. Delivering` row with empty Impact + milestone + artifact; the emptiest row is the one readers click.
 10. For a meaningful weekly signal with no column change, propose a comment (see Comments) rather than forcing a field move; read existing comments first to avoid repeats and catch replies.
 11. Re-surface every unresolved ledger `open_items` entry.
-12. Last, after the review tables are built, run the [Connections pass](#connections-pass--ideas-after-the-review-tables) and emit the `I#` table at the end of the report. Record Alex's Act / Park / Drop answers in the ledger `ideas` key.
+12. Last, after the review is built, run the [Connections pass](#connections-pass--ideas-after-the-review) and emit the `I#` ideas at the end of the report. Record Alex's Act / Park / Drop answers in the ledger `ideas` key.
 
 ## Full audit mode (`--audit`, or "is the board missing or misrepresenting anything?")
 
-Discovery + maintenance combined: parallel retrieval (live list + the org-wide ADO WIQL and EA area pull + 8-week archeologist sweep; see [references/retrieval.md](references/retrieval.md)), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review table. Lead with any coherence problem; rows that check out clean get said so explicitly. Then run the [Connections pass](#connections-pass--ideas-after-the-review-tables), last.
+Discovery + maintenance combined: parallel retrieval (live list + the org-wide ADO WIQL and EA area pull + 8-week archeologist sweep; see [references/retrieval.md](references/retrieval.md)), then the three-way cross-check (missing / misrepresented / coherence), then everything — new rows, field fixes, comments, theme moves — in ONE review. Lead with any coherence problem; rows that check out clean get said so explicitly. Then run the [Connections pass](#connections-pass--ideas-after-the-review), last.
 
 ## Output — the record
 
@@ -533,8 +573,8 @@ After the gate and the write, emit four markdown tables so the run is auditable:
 
 ## Safety recap
 
-Org-visible list. The review table is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that line. Screen every candidate, every edited title, and every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the library that fails the exclusion screen or whose sharing scope is unverified: a restricted copy gives the whole org access. Never write the author's response column, never edit an Accepted ADR, never send the author message. Connections pass ideas are hypotheses for Alex only: never write one to a list, page, ADO item, comment or the newsletter; an idea he marks Act becomes real lines in the next run's tables.
+Org-visible list. The review is the mandatory gate. Never invent initiatives or impact figures — empty beats soft. Never write an unconfirmed row or comment; never move `Status` without an explicit yes on that line. Screen every candidate, every edited title, and every comment's text. Comments: plain text, no @-mentions, append-only. Check `not_doing` before proposing rows. Flag personal-OneDrive artifact links instead of publishing them. Never touch list or site permissions. Never copy a document into the library that fails the exclusion screen or whose sharing scope is unverified: a restricted copy gives the whole org access. Never write the author's response column, never edit an Accepted ADR, never send the author message. Connections pass ideas are hypotheses for Alex only: never write one to a list, page, ADO item, comment or the newsletter; an idea he marks Act becomes real lines in the next run's tables.
 
 ADO carries the same stakes, because every Information Technology board is readable by the whole org. Every ADO write is an approved `W#` line. Never move `System.State` on an item assigned to someone else; report it instead. Never delete a work item, and never change an area, iteration, process rule, or permission. Epic comments are plain text, no @-mentions, append-only, at most one weekly update per epic, and they pass the exclusion screen.
 
-The recap carries the same stakes plus one risk: it comes from a verbatim transcript of a room that speaks freely about live gaps, vendors and people. **Quote nothing the exclusion screen would block as a board row.** Attribute only what a named person said; never publish a garbled proper noun, promote uncontested discussion into "Decided", or invent an owner or date. The recap goes out staged (`PromotedState=1`) for Alex to publish; any unsure line belongs in the review table as its own question, not softened onto the page.
+The recap carries the same stakes plus one risk: it comes from a verbatim transcript of a room that speaks freely about live gaps, vendors and people. **Quote nothing the exclusion screen would block as a board row.** Attribute only what a named person said; never publish a garbled proper noun, promote uncontested discussion into "Decided", or invent an owner or date. The recap goes out staged (`PromotedState=1`) for Alex to publish; any unsure line belongs in the review as its own question, not softened onto the page.

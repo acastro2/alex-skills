@@ -131,7 +131,7 @@ python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
 
 - **Write the Executive Summary band too.** It is generated from this recap and may not introduce a
   fact the recap does not carry. Full rules: [newsletter.md, Executive Summary](newsletter.md#executive-summary--the-elt-readers-gate-new-2026-09-18).
-  It goes through the review table as its own numbered line, and it is the line Alex reads most
+  It goes through the review as its own numbered line, and it is the line Alex reads most
   closely; `render_page.py` refuses a page without it, or a band outside 3 to 4 points, so a short
   band is a content fix, not an argument with the script.
 - **The full exclusion screen applies to every line of the recap**, same as board rows: effect-side
@@ -167,8 +167,8 @@ python3 ../alex-voice/scripts/voice_check.py /tmp/page.txt --register docs
   `docs-reviewer`, address findings, stage it, and hand back **the link plus a short summary of what
   you fixed**. The staged draft is the review surface: Alex reads it rendered and clicks Publish
   there; a stored `CanvasContent1` read-back is no substitute for him seeing it.
-- The recap does **not** go through the review table line by line; `PromotedState=1` is a draft
-  nobody else sees, and Alex approves by publishing. Still in the review table: **intake close-outs,
+- The recap does **not** go through the review line by line; `PromotedState=1` is a draft
+  nobody else sees, and Alex approves by publishing. Still in the review: **intake close-outs,
   board rows, comments, and any judgment call you could not resolve** (a confidentiality trade-off, a
   finding against a house rule, a decision-versus-discussion call you are unsure about). Everything
   else you fix and report.
