@@ -79,6 +79,16 @@ CONTENT SCHEMA (required unless marked optional)
                  "points": [{"lead": "Label", "text": "Explanation."}]}],  # optional, 3-6
                                                        # tag: Decided | Needs follow-up | Parked
   "open_questions": [{"text": "Question.", "next": "Who decides / next step", "source": "chat"}],
+  "portfolio_moves": [{"title": "EA Projects row title", "from": "1. Exploring",
+                       "to": "2. Committed", "url": "https://..."}],
+                                               # optional; renders "Portfolio movement"
+                                               # after the open questions, before the
+                                               # artifacts. Stages, verbatim from the board:
+                                               # 1. Exploring | 2. Committed | 3. Delivering
+                                               # | 4. Delivered | 5. Stopped. from != to.
+                                               # url optional (if present, a real link).
+                                               # At most 8 moves. Absent or [] renders no
+                                               # section.
   "artifacts":      [{"label": "Document title", "url": "https://...", "note": "Optional."}],
   "speakers":       "Alexandre Castro, Chris Goodrich, ...",
   "speakers_source": "Teams meeting transcript, 3:00pm to 4:01pm Central.",
@@ -140,6 +150,29 @@ WARN_TONES = {
     "warn": (WARN_FIELD, WARN_TAPE, WARN_TAPE_LIGHT, WARN_LABEL_BG, WARN_LABEL_BG, WARN_LABEL_FG),
     "stop": (STOP_FIELD, STOP_TAPE, WHITE, STOP_HEAD, STOP_TAPE, WHITE),
 }
+
+# EA Projects stage pills (board stages, 2026-10-10). The "Portfolio movement" chips copy
+# the board's own pill colours so a reader recognises a stage from the list view.
+# Exploring and Stopped are outlines on white; the other three are solid fills with white
+# text, which is light-on-dark, so those chips carry the `aw-avatar` print theme class.
+STAGE_EXPLORING = "#1A66B3"
+STAGE_COMMITTED = "#B45C00"
+STAGE_DELIVERING = "#1F7A33"
+STAGE_DELIVERED = "#3E4653"
+STAGE_STOPPED_EDGE = "#8A94A3"
+STAGE_STOPPED_TEXT = "#5D6570"
+# stage -> (background, border, text, solid). Keys are the board values, verbatim; they
+# are also the only stages check_content() accepts.
+STAGE_CHIP = {
+    "1. Exploring":  (WHITE, STAGE_EXPLORING, STAGE_EXPLORING, False),
+    "2. Committed":  (STAGE_COMMITTED, STAGE_COMMITTED, WHITE, True),
+    "3. Delivering": (STAGE_DELIVERING, STAGE_DELIVERING, WHITE, True),
+    "4. Delivered":  (STAGE_DELIVERED, STAGE_DELIVERED, WHITE, True),
+    "5. Stopped":    (WHITE, STAGE_STOPPED_EDGE, STAGE_STOPPED_TEXT, False),
+}
+# A weekly page lists what moved, not the whole board. More than this is a board review,
+# and it belongs on the board, not in the newsletter.
+PORTFOLIO_MOVES_MAX = 8
 
 TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}   # valid tags
 OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
@@ -360,6 +393,27 @@ def check_content(c):
             optional_str(item, ("next", "source"), f"open_questions[{i}]")
         elif not isinstance(item, str) or not item.strip():
             die(f"open_questions[{i}] must be a string or {{text, next, source}}, got {item!r}")
+
+    # Optional "Portfolio movement" panel. Absent or [] renders nothing. A stage outside
+    # the board's five is a hard stop: it would render with no pill colour and name a
+    # stage the reader cannot find on the board.
+    if "portfolio_moves" in c:
+        moves = need(c, "portfolio_moves", "content", kind=list, allow_empty=True)
+        if len(moves) > PORTFOLIO_MOVES_MAX:
+            die(f"portfolio_moves has {len(moves)}; the page carries at most "
+                f"{PORTFOLIO_MOVES_MAX}. List the moves that matter this week.")
+        for i, m in enumerate(moves):
+            where = f"portfolio_moves[{i}]"
+            need(m, "title", where)
+            for key, stage in (("from", need(m, "from", where)), ("to", need(m, "to", where))):
+                if stage not in STAGE_CHIP:
+                    die(f"{where}.{key} must be one of {list(STAGE_CHIP)}, got {stage!r}")
+            if m["from"] == m["to"]:
+                die(f"{where}.from and {where}.to are both {m['from']!r}; a move changes stage")
+            # Same rule as every other url here: present means a real link, never "".
+            if "url" in m:
+                safe_url(need(m, "url", where))
+
     # Artifacts ALWAYS carry a link (Alex, 2026-09-28). A bare file name is a hard stop.
     for i, item in enumerate(need_list(c, "artifacts", "content")):
         where = f"artifacts[{i}]"
@@ -694,6 +748,49 @@ def open_questions(c):
     return section_title("Open questions and risks", len(c["open_questions"]), tone="amber") + box
 
 
+def stage_chip(stage):
+    """One board-stage pill. Every chip carries a 1px border, so outline and solid chips
+    are the same size. The label drops the board's sort prefix ("2. Committed" shows as
+    "Committed"); the colour and the arrow already say which way the row moved."""
+    bg, edge, fg, solid = STAGE_CHIP[stage]
+    cls = ' class="aw-avatar"' if solid else ""
+    label = re.sub(r"^\d+\.\s*", "", stage)
+    return (f'<span{cls} style="display:inline-block;height:22px;line-height:20px;padding:0 9px;'
+            f'border-radius:2px;border:1px solid {edge};background-color:{bg};color:{fg};'
+            f'font-size:12px;font-weight:600;white-space:nowrap;vertical-align:middle;">'
+            f'{esc(label)}</span>')
+
+
+def portfolio_moves(c):
+    """Rows that changed board stage this week: title, then from-chip, arrow, to-chip.
+
+    Optional: absent or [] returns "" so the page never carries an empty section. Sits
+    after "Open questions and risks" and before "Artifacts referenced" (2026-10-10). Div
+    rows inside one bordered box, like the open questions, because real tables get dark
+    gridlines forced on (SHAREPOINT RULES, 5)."""
+    moves = c.get("portfolio_moves") or []
+    if not moves:
+        return ""
+    rows = []
+    for i, m in enumerate(moves):
+        if m.get("url"):
+            title = (f'<a href="{safe_url(m["url"])}" {NEW_TAB} style="font-size:14px;line-height:21px;'
+                     f'font-weight:600;color:{LINK};text-decoration:underline;">{esc(m["title"])}</a>')
+        else:
+            title = (f'<span style="font-size:14px;line-height:21px;font-weight:600;color:{NAVY};">'
+                     f'{esc(m["title"])}</span>')
+        arrow = (f'<span style="display:inline-block;padding:0 8px;font-size:14px;line-height:22px;'
+                 f'color:{MUTED};vertical-align:middle;">&#8594;</span>')
+        divider = f"border-top:1px solid {ROW_DIV};" if i else ""
+        rows.append(
+            f'<div{KEEP} style="display:flex;align-items:center;padding:14px 22px;{divider}">'
+            f'<div style="flex:1 1 auto;min-width:0;padding-right:16px;">{title}</div>'
+            f'<div style="flex:0 0 auto;white-space:nowrap;">'
+            f'{stage_chip(m["from"])}{arrow}{stage_chip(m["to"])}</div></div>')
+    box = f'<div style="border:1px solid {BORDER};">{"".join(rows)}</div>'
+    return section_title("Portfolio movement", len(moves)) + box
+
+
 def artifact_list(items):
     """Two-column cards with an icon, per the 2026-09-28 mock. Every card is a link
     (Alex, 2026-09-28). No gap/grid: 50%-wide flex cells padded apart."""
@@ -766,7 +863,7 @@ def shipped_panel(c):
 def build(c):
     # One root with the print block first: the print CSS finds the page through it.
     return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join([header(c), exec_summary(c), forum_recap(c), warning(c), decision_cards(c),
-                    action_table(c), topic_list(c), open_questions(c),
+                    action_table(c), topic_list(c), open_questions(c), portfolio_moves(c),
                     artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)]) + '</div>'
 
 

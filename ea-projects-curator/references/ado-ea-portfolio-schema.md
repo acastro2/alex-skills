@@ -8,7 +8,7 @@ How ADO and the EA Projects board line up, and what the curator may read and wri
 
 | Layer | Where | Holds | Answers |
 |---|---|---|---|
-| **Portfolio** | SharePoint list `EA Projects` | One row per initiative: Title, Theme, Status, DecisionNeeded, Outcome, Impact, KeyArtifact, ExecutionLink, NextMilestone, MilestoneDate, Who is Responsible, Sponsor, TargetDate | Why, who decides, what it unlocks |
+| **Portfolio** | SharePoint list `EA Projects` | One row per initiative: Title, Theme, Status (display Stage), EA role, AAB items, Impact, KeyArtifact, ExecutionLink, NextMilestone (display Milestone), MilestoneDate, Sponsor | Why, who decides, what it unlocks |
 | **Work** | ADO, the EA areas below | Epic, User Story, Spike, Request, Operational Work | Who does it, what state it is in, what moved this week |
 
 Two kinds of row:
@@ -32,7 +32,7 @@ Every epic in an EA area carries **exactly one** Hyperlink to its row:
 `https://attainfinance.sharepoint.com/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx?ID=<rowId>`.
 
 - **Many epics, one row.** A program with several epics (the 7 SOW epics of the Pinnacle work) rolls up to its rows without one row per epic.
-- **Run work rolls up too.** Each team that reports to EA has one operations row for its keep-the-lights-on epics.
+- **Run work rolls up too.** EA itself and each team that reports to EA have one operations epic and row for keep-the-lights-on work. EA's standalone Requests get the **EA operations** epic as parent, so they roll up too (Alex, 2026-10-09).
 - **The link lives in ADO only.** A Hyperlink is one-way, so the curator builds the "epics for this row" view from the epics' relations. `ExecutionLink` on the row holds the main epic only.
 - **Matching order** for an epic with no link: a row whose `ExecutionLink` is this epic, then epic title vs row title, then the `SOW-<n>` tag vs the row's SOW. Report an ambiguous match; never guess.
 - **Recognize a row link by its URL.** Only a Hyperlink whose URL contains `/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx` counts. Epics carry other hyperlinks (SOW documents, briefs) that are not row links.
@@ -54,9 +54,9 @@ Every epic in an EA area carries **exactly one** Hyperlink to its row:
 |---|---|---|
 | `System.Title` | Title | Epic naming, e.g. `SOW 3 · Change control automation` |
 | `System.State` | State | Truth-check against the row's `Status` (map below) |
-| `System.AssignedTo` | Assigned To | The doer; maps to *Who is Responsible*, never to *Sponsor* |
+| `System.AssignedTo` | Assigned To | The doer. The board has no doers column since 2026-10-12, so this is where it lives; never maps to *Sponsor* |
 | `System.Tags` | Tags | In use: `AI-DLC`, `enterprise-architecture`, `Pinnacle`, `SOW-<n>`, `Wave-<n>`, plus a domain tag |
-| `Microsoft.VSTS.Scheduling.TargetDate` | Target Date | The epic's date; the row's `TargetDate` is the initiative finish |
+| `Microsoft.VSTS.Scheduling.TargetDate` | Target Date | The epic's date. The board has no finish-date column since 2026-10-12, so this is where the date lives |
 | `Curo.CurrentStatus` | Current Status | Picklist: `Not Started`, `Reqts`, `Reqts+Approval`, `Waiting for Dev Capacity`, `Dev`, `UAT`, `Deployment`, `Done`, `On Track`, `At Risk`, `Blocked`. Set with the weekly epic update. On 2026-10-09 both `Active` EA epics still read `Not Started` |
 | `Curo.StatementOfWork` (+ `…Html`) | Statement of Work | The SOW behind the epic |
 | `Curo.ProjectBrief` (+ `…Html`) | Project Brief | Product's brief, upstream of the SOW |
@@ -65,23 +65,23 @@ Every epic in an EA area carries **exactly one** Hyperlink to its row:
 | `Curo.OnQuarterlyPlan` | OnQuarterlyPlan | `true` puts the epic in the Engineering Insights quarterly view |
 | `Curo.TShirtSize` | T-Shirt Size | Sizing |
 
-## Status mapping (truth-check only)
+## Stage mapping (truth-check only)
 
-Portfolio `Status` is Alex's column and is **never** derived from ADO. The mapping exists so the curator can flag a disagreement. A row with several epics checks against the most advanced live epic.
+The board `Status` is Alex's column and is **never** derived from ADO. The mapping exists so the curator can flag a disagreement. A row with several epics checks against the most advanced live epic.
 
-| ADO epic state | Portfolio status it supports | Flag when |
+| ADO epic state | Board stage it supports | Flag when |
 |---|---|---|
-| `New` | `1. Proposed`, `2. In Analysis`, `3. Decision-Ready` | Row is `4. In Progress` or later but every epic is still `New` |
-| `Active` | `4. In Progress` | Row is `6. Closed` while an epic is `Active` |
-| `Resolved` | `5. Verifying` | — |
-| `Closed` | `6. Closed` | Row is pre-`5` while every epic is `Closed` (understating done work is as bad as overstating it) |
-| `Removed` | `6. Closed` + `Outcome: Killed` | Row still open with no other live epic |
+| `New` | `1. Exploring`, `2. Committed` | Row is `3. Delivering` or later but every epic is still `New` |
+| `Active` | `3. Delivering` | Row is `1. Exploring` while an epic is `Active` (work started before the decision), or `4. Delivered` while an epic is `Active` |
+| `Resolved` | `3. Delivering` (live, outcome not yet checked) | — |
+| `Closed` | `4. Delivered` | Row is before `4. Delivered` while every epic is `Closed` (understating done work is as bad as overstating it) |
+| `Removed` | `5. Stopped` + Milestone `Stopped: <why>` | Row still open with no other live epic |
 
-An influence row has no EA epic, so it has no truth-check here.
+An influence row has no EA epic, so it has no truth-check here. A `2. Committed` row with no epic is normal until building starts.
 
 ## Each fact is typed once
 
-Theme, DecisionNeeded, Outcome, Impact, KeyArtifact, Sponsor, NextMilestone and MilestoneDate stay **only** in SharePoint. Who does the work, state, epic dates and progress stay **only** in ADO, and the weekly epic comment is the progress narrative. If a future field seems needed in both places, the test is: does ADO need it to *do the work*? If not, it stays on the row.
+Theme, EA role, Impact, KeyArtifact, Sponsor, AAB items, NextMilestone and MilestoneDate stay **only** in SharePoint (decisions live in AAB Intake). Who does the work, state, epic dates and progress stay **only** in ADO, and the weekly epic comment is the progress narrative. If a future field seems needed in both places, the test is: does ADO need it to *do the work*? If not, it stays on the row.
 
 ## Tag vocabulary
 

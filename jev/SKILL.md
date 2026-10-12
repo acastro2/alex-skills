@@ -35,7 +35,7 @@ Question shapes:
 {"type": "score",  "instructions": "How strong is this evidence set for the question?", "criteria": ["LOW", "MEDIUM", "HIGH"]}
 ```
 
-The default model is `jev-1.13-free` on the OpenCode Zen endpoint. `jev --model jev-1.13` uses the paid model.
+The default model is the paid `jev-1.13` on the OpenCode Zen endpoint (Alex pays for Zen; default since 2026-10-12). `jev --model jev-1.13-free` uses the free model, which returns HTTP 429 `FreeUsageLimitError` after a few hundred calls.
 
 ## Write questions Jev can answer
 

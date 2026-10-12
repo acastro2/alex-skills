@@ -113,6 +113,19 @@
       "next": "Architecture follows up"
     }
   ],
+  "portfolio_moves": [
+    {
+      "title": "Managed credential store rollout",
+      "from": "1. Exploring",
+      "to": "2. Committed",
+      "url": "/sites/Architecture/Lists/EA%20Portfolio"
+    },
+    {
+      "title": "US brand non-prod network",
+      "from": "3. Delivering",
+      "to": "4. Delivered"
+    }
+  ],
   "artifacts": [
     {
       "label": "Credential rotation design note",

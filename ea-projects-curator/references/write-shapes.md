@@ -15,7 +15,8 @@ Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_Portfo
 
 ## Field value shapes
 
-- **Choice** (`Theme`, `Status`, `DecisionNeeded`) — plain string, must exactly match an allowed value.
+- **Choice** (`Theme`, `Status`, `EARole`) — plain string, must exactly match an allowed value. `DecisionNeeded`, `Outcome`, `TargetDate` and `Who_x0020_is_x0020_Responsible` were deleted on 2026-10-12: never write or `$select` them, the request fails.
+- **Lookup, multi** (`AABItems`) — write the AAB Intake item IDs as `"AABItemsId": {"results": [33, 34]}` in verbose mode; the whole set is replaced, so read the current IDs first and send the union. Not yet verified by a live write: read the field back after the first one.
 - **Impact** (`Impact`) — single line of text; the documented impact, financial or not. Omit the key entirely for blank.
 - **Hyperlink** (`KeyArtifact`, `ExecutionLink`) — an `SP.FieldUrlValue`:
   ```json
@@ -23,16 +24,8 @@ Use the returned `ListItemEntityTypeFullName` (expected `SP.Data.EA_x0020_Portfo
   ```
 - **Date** (`MilestoneDate`) — ISO 8601. Send **noon UTC** (`2026-07-25T12:00:00Z`) not midnight, so a timezone offset can't roll the displayed date back a day. Omit the key for no date.
 - **Text** (`Title`, `NextMilestone`) — plain string.
-- **Person, multi** (`Who_x0020_is_x0020_Responsible`) — write the `...Id` field with an int collection;
-  resolve each person with `POST /_api/web/ensureuser` (`{"logonName": "i:0#.f|membership|<email>"}`,
-  verbose headers) → `d.Id`. Verified 2026-09-04:
-  ```json
-  "Who_x0020_is_x0020_ResponsibleId": {"__metadata": {"type": "Collection(Edm.Int32)"}, "results": [12, 34]}
-  ```
-  The bare `Who_x0020_is_x0020_Responsible` (no `Id`) or names as strings is rejected. The list
-  replaces the whole set, so include members you want to keep. **Person, single** (`Sponsor`):
-  `"SponsorId": <int>`.
-- **Date** (`TargetDate`) — same noon-UTC rule as `MilestoneDate`.
+- **Person, single** (`Sponsor`) — `"SponsorId": <int>`; resolve the person with `POST /_api/web/ensureuser`
+  (`{"logonName": "i:0#.f|membership|<email>"}`, verbose headers) → `d.Id`. Names as strings are rejected.
 
 ## Create a NEW row
 
@@ -45,8 +38,8 @@ Headers: Content-Type: application/json;odata=verbose | Accept: application/json
   "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListItem"},
   "Title": "Privileged Access Renewal",
   "Theme": "Platform Foundations",
-  "Status": "3. Decision-Ready",
-  "DecisionNeeded": "CTO",
+  "Status": "1. Exploring",
+  "EARole": "Builds",
   "Impact": "$478K/yr documented savings",
   "KeyArtifact": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://.../ADR-0002.aspx", "Description": "ADR-0002 Privileged Access"},
   "ExecutionLink": {"__metadata": {"type": "SP.FieldUrlValue"}, "Url": "https://dev.azure.com/CuroFinTech/<living-project>/_workitems/edit/1234", "Description": "ADO epic"},
@@ -65,8 +58,7 @@ Headers: ...odata=verbose | X-RequestDigest: <digest> | X-HTTP-Method: MERGE | I
 ```json
 {
   "__metadata": {"type": "SP.Data.EA_x0020_PortfolioListItem"},
-  "Status": "4. In Progress",
-  "DecisionNeeded": "None",
+  "Status": "3. Delivering",
   "NextMilestone": "Rollout to first team",
   "MilestoneDate": "2026-08-08T12:00:00Z"
 }
@@ -107,7 +99,7 @@ Gotchas:
 ## Find an item Id for matching (idempotency)
 
 ```
-GET /_api/web/lists(guid'...')/items?$select=Id,Title,KeyArtifact,Status,DecisionNeeded,Impact,NextMilestone,MilestoneDate&$top=100
+GET /_api/web/lists(guid'...')/items?$select=Id,Title,KeyArtifact,Status,AABItemsId,Impact,NextMilestone,MilestoneDate&$top=100
 ```
 Match a candidate to an existing row by `Title` similarity + `KeyArtifact` Url. Match → UPDATE that `Id`; no match → CREATE.
 
