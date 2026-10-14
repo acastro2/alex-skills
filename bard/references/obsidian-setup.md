@@ -153,7 +153,7 @@ _Last ~4 weeks. Older rolls to [[Done Archive]]._
 
 _Topic:_ ☁️ AWS · ❄️ Snowflake · 🏗️ Terraform · 📊 Grafana · 🔐 Security · 🏛️ EA & docs · 🎫 Azure DevOps · 🐙 GitHub · 🧪 Testing · 🤖 AI & agents · 👥 People · 💰 Cost · 🗄️ Databases · 📦 Other
 _Priority:_ 🔺 deadline ≤7d, secret, prod, legal · ⏫ someone waits on you, or an event · 🔼 real work, no deadline · 🔽 hygiene · ⏬ someday
-_Line:_ `- [ ] <topic> <next action> [[Bard note]] (session id) <priority>` — click the note for context, `claude --resume <id>` for the raw session. Overflow lives in [[Backlog]].
+_Line:_ `- [ ] <topic> <next action> [[Bard note]] (session id) <priority>` — click the note for context, `claude --resume <id>` for the raw session. Task-lane lines carry their source instead: `(ado:N)`, `(pr:repo#N)`, `(planner)`, `(todo)`, `(todoist)`, `(teams:date)`, `(mail:date)`. Overflow lives in [[Backlog]].
 ```
 
 Optional priority-sorted view for the root board:

@@ -1,8 +1,10 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-10-12 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
+Updated: 2026-10-14 CDT. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
 
 ## Current state
+
+**bard task lane + Jev gates, 2026-10-14 (uncommitted).** Alex asked that bard find every task (Teams, mail, everything) and use Jev for all decisions. New step 3 sub-lane in `bard/SKILL.md` + `bard/references/task-lane.md` (tested calls: Teams/mail by `recipient`, Planner+To Do, Todoist, ADO WIQL `ChangedBy <> @Me` cut 42 to 4, `gh` review requests looped per `*-Attain-Finance` org). New `bard/references/jev-gates.md`: Sets T (task), K (knowledge), D (dedupe), bands, known-answer table. Alex's rule: Jev `state` is a redacted summary only (Jev runs on OpenCode Zen, outside Attain). Board rules: source breadcrumb `(ado:N)` etc. in `todo-board.md`. New eval case 11. Not verified: channel @mentions, unanswered invites (see task-lane.md). Planner/To Do MCP not signed in. Set A (is it an ask?) and Set R (already answered?) screen Teams before Set T. Evals 46/46 (11 cases, USD 4.33) + re-run 15/15; skill-creator pass moved store mechanics to `bard/references/session-stores.md` (SKILL.md 548 to 490 lines); old-vs-new 15/20 vs 20/20 (`2026-10-14-compare/`). Description triggering not tested (bard has no trigger evals). Rule (Alex): every Jev answer between the bands escalates to the sweep model with full evidence (`jev-gates.md` → Unsure → escalate); covered by eval case 12 with recorded Jev answers: pre 5/7 ×2, new 7/7 ×2 (`2026-10-14-escalate/`): `~/.agents/skill-workspace/alex-skills/bard/2026-10-14-run1/`.
 
 **Curator review is decisions-first, 2026-10-12 (uncommitted).** Alex found the 5-table review hard to use (a small week: 25-32 lines, 12-18 Needs you, rows up to 550 chars wide). New review gate in SKILL.md: three groups (Needs you / Check the words / Routine), still split by surface with A/D/W/E IDs, no tables, a Why line per item, one editable Answer line (`needs: E3 y · words: all · routine: all`); unanswered lines are never written. Control reports are lists; `I#` ideas are blocks. Evals (config `with_skill_ux`): regression 171/171, UX 27/27 (old format 3/27); USD 11.85 per 17 runs. 117 tests, audit 0. Open: Why lines still run past 100 chars (27-28 lines over 120 per weekly run).
 
@@ -40,6 +42,7 @@ Updated: 2026-10-12 CDT. Full session history lives in the git history of this f
 
 ## Top 3 next actions
 
+0. **Alex: sign in to Planner/To Do** (`tasks_login_begin`), then run `/bard` live and check the task-lane ledger and the Jev numbers in the report. Commit bard with `git add -f bard/evals`.
 0. **Alex: commit the curator restructure + evals** (`git add -f ea-projects-curator/evals`). Re-run `iteration-3/run.py with_skill` after any later curator edit and compare with `grade-new.md`.
 1. **Check that skills auto-load.** Managed `syncClaudeAiPlugins: false` is live: the skill list dropped from 466 to 147 (checked 2026-10-07 with a `claude -p` init event). Still to check: in a fresh interactive session, "review this…" loads `reviewer` without being named. Before the change it triggered 0 of 24 times, because the list was too long for the descriptions to fit.
 2. **alex-voice round 3:** find out whether Alex marked the round 3 lineup; if so, score his picks against the key and turn each miss into a rule.

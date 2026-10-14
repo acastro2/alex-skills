@@ -59,7 +59,10 @@ open items and stopped being readable.
    the Bard note written from that session whenever one exists (see line format). When
    no note exists yet, the item may still go on the board with the session id alone, but
    the sweep report lists it under "board items without a note" and the NEXT sweep writes
-   that note. Hand-added items with no session id are exempt.
+   that note. Hand-added items with no session id are exempt. Task-lane items (Teams, mail,
+   Planner, To Do, Todoist, ADO, GitHub) carry a source breadcrumb instead (see line format)
+   and need no Bard note: the source item is the evidence. Never list them under "board
+   items without a note".
 
 **Caps.** Hard limits, checked after every sweep and before the write:
 
@@ -120,6 +123,20 @@ the wikilink, keep the session id, report the gap, and write the note on the nex
 (see gate). The backticked session id stays beside the link so
 `claude --resume <id>` still works when the note is not enough. The id has no `session `
 prefix, repo, or ` · ` separator.
+
+**Source breadcrumb (task-lane items).** An item from the task lane has no session and no
+note, so the backticked slot holds its source instead, in the same place before the
+priority emoji (the parser constraint still holds):
+
+| source | breadcrumb |
+|---|---|
+| ADO work item | `(ado:900001)` |
+| GitHub PR review | `(pr:<repo>#<n>)` (Attain-Finance repos only) |
+| Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
+| Teams chat / mail | `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
+
+The line text names the action and a role or first name only. Never put a mail subject,
+an address, a phone number, or any customer data on the board.
 
 Every line, open or done, starts with its topic emoji from the fixed map. The
 priority emoji is the last token on an open line. On a done line, the priority emoji and

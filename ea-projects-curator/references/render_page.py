@@ -67,7 +67,8 @@ CONTENT SCHEMA (required unless marked optional)
                 "tone": "warn", "links": [{"label": "Doc", "url": "https://..."}]},
                                                # optional; renders at the end of the Forum
                                                # recap, before "Decisions made". tone is
-                                               # "warn" (amber) or "stop" (red). label,
+                                               # "warn" (amber), "stop" (red) or "info"
+                                               # (blue, navy chip). label,
                                                # links optional. headline <= 90 chars,
                                                # text <= 400.
   "decisions": [{"lead": "Bold first sentence.", "text": "Rest.", "rationale": "Text.",
@@ -90,6 +91,18 @@ CONTENT SCHEMA (required unless marked optional)
                                                # At most 8 moves. Absent or [] renders no
                                                # section.
   "artifacts":      [{"label": "Document title", "url": "https://...", "note": "Optional."}],
+  "no_forum":       {"headline": "No forum met on October 7.",
+                     "text": "The next forum is Wednesday, October 14, 3:00 to 4:00pm Central.",
+                     "agenda": [{"title": "Item", "url": "https://...", "note": "Optional."}]},
+                                               # tone defaults to "info" (blue band), label to
+                                               # "NO FORUM THIS WEEK"; links and agenda_title
+                                               # ("Agenda for October 14") optional.
+                                               # optional; a week with no forum. Renders this
+                                               # line in the forum's slot and drops every forum
+                                               # section. objective, outcome, tldr, decisions,
+                                               # actions, topics, open_questions, speakers and
+                                               # speakers_source must then be ABSENT;
+                                               # artifacts become optional.
   "speakers":       "Alexandre Castro, Chris Goodrich, ...",
   "speakers_source": "Teams meeting transcript, 3:00pm to 4:01pm Central.",
   "shipped": {"window": "September 19 to 25, 2026",
@@ -145,11 +158,18 @@ STOP_TAPE = "#B8433B"
 STOP_FIELD = "#FBE4E1"
 STOP_HEAD = "#7A1F1A"
 
+# Blue "info" tone (Alex, 2026-10-12): same geometry, navy chip with white caps, from his
+# NO FORUM THIS WEEK label. For notices that are not a risk: no forum, a schedule change.
+INFO_LABEL_BG = "#183A63"
+INFO_TAPE_LIGHT = "#DCE7F3"
+
 # tone -> (field, tape, tape_alt, headline, chip_bg, chip_fg)
 WARN_TONES = {
     "warn": (WARN_FIELD, WARN_TAPE, WARN_TAPE_LIGHT, WARN_LABEL_BG, WARN_LABEL_BG, WARN_LABEL_FG),
     "stop": (STOP_FIELD, STOP_TAPE, WHITE, STOP_HEAD, STOP_TAPE, WHITE),
+    "info": (LIGHT, INFO_LABEL_BG, INFO_TAPE_LIGHT, INFO_LABEL_BG, INFO_LABEL_BG, WHITE),
 }
+WARN_DEFAULT_LABEL = {"warn": "IMPORTANT", "stop": "BLOCKED", "info": "NOTE"}
 
 # EA Projects stage pills (board stages, 2026-10-10). The "Portfolio movement" chips copy
 # the board's own pill colours so a reader recognises a stage from the list view.
@@ -176,6 +196,9 @@ PORTFOLIO_MOVES_MAX = 8
 
 TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}   # valid tags
 OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
+# The forum record. A no_forum page must carry none of these (check_content).
+FORUM_KEYS = ("objective", "outcome", "tldr", "decisions", "actions", "topics",
+              "open_questions", "speakers", "speakers_source")
 OUTCOME_GREEN = {"Achieved"}
 
 # SKILL.md, Executive Summary gate. Enforced, not suggested: a band that quietly comes
@@ -225,6 +248,9 @@ PRINT_CSS = (
     f"border:1px solid {WARN_LABEL_BG} !important;}}"
     # The red tone's STOP chip is white-on-red inside a red ring, which prints as white on
     # white without a theme, so both the ring and the chip get one.
+    # The blue tone's chip is white on navy: same reason, same fix.
+    f".aw-recap .aw-infolabel{{background-color:{WHITE} !important;color:{INFO_LABEL_BG} !important;"
+    f"border:1px solid {INFO_LABEL_BG} !important;}}"
     f".aw-recap .aw-stopring{{background-color:{WHITE} !important;border:1px solid {STOP_TAPE} !important;}}"
     f".aw-recap .aw-stoplabel{{background-color:{WHITE} !important;color:{STOP_TAPE} !important;"
     f"border:2px solid {STOP_TAPE} !important;}}"
@@ -313,7 +339,21 @@ def optional_str(obj, keys, where):
 
 
 def check_content(c):
-    for key in ("title", "subtitle", "objective", "tldr", "speakers", "speakers_source"):
+    # A week with no forum (Alex, 2026-10-12): the page carries one line in the forum's
+    # slot and no forum sections. Never fill decisions or topics a forum did not produce.
+    no_forum = "no_forum" in c
+    if no_forum:
+        nf = need(c, "no_forum", "content", kind=dict)
+        check_band(nf, "no_forum")
+        for i, a in enumerate(nf.get("agenda") or []):
+            need(a, "title", f"no_forum.agenda[{i}]")
+            safe_url(need(a, "url", f"no_forum.agenda[{i}]"))
+            optional_str(a, ("note",), f"no_forum.agenda[{i}]")
+        optional_str(nf, ("agenda_title",), "no_forum")
+        for key in FORUM_KEYS:
+            if key in c:
+                die(f"{key} is set on a no_forum page; a week with no forum has no forum record")
+    for key in ("title", "subtitle") + (() if no_forum else ("objective", "tldr", "speakers", "speakers_source")):
         need(c, key, "content")
 
     e = need(c, "exec_summary", "content", kind=dict)
@@ -334,26 +374,35 @@ def check_content(c):
     # layout argument. Bounds follow Alex's own template ("[Headline]" plus one or two
     # short sentences).
     if "warning" in c:
-        w = need(c, "warning", "content", kind=dict)
-        need(w, "headline", "warning")
-        need(w, "text", "warning")
-        optional_str(w, ("label",), "warning")
-        tone = w.get("tone", "warn")
-        if tone not in WARN_TONES:
-            die(f"warning.tone must be one of {sorted(WARN_TONES)}, got {tone!r}. "
-                f"'warn' is the amber IMPORTANT band, 'stop' is the red STOP band.")
-        if len(w["headline"]) > 90:
-            die(f"warning.headline is {len(w['headline'])} chars; keep it under 90. It is "
-                f"a headline, not a paragraph.")
-        if len(w["text"]) > 400:
-            die(f"warning.text is {len(w['text'])} chars; keep it under 400. One or two "
-                f"short sentences, per the design.")
-        # Optional sources, rendered as bordered link buttons under the text.
-        for i, l in enumerate(w.get("links") or []):
-            where = f"warning.links[{i}]"
-            need(l, "label", where)
-            safe_url(need(l, "url", where))
+        check_band(need(c, "warning", "content", kind=dict), "warning")
 
+    if not no_forum:
+        check_forum(c)
+    check_moves_artifacts_shipped(c, no_forum)
+
+
+def check_band(w, where):
+    # The amber/red warning and the blue no-forum notice share one band, so one check.
+    need(w, "headline", where)
+    need(w, "text", where)
+    optional_str(w, ("label",), where)
+    tone = w.get("tone", "warn")
+    if tone not in WARN_TONES:
+        die(f"{where}.tone must be one of {sorted(WARN_TONES)}, got {tone!r}. 'warn' is "
+            f"the amber IMPORTANT band, 'stop' the red STOP band, 'info' the blue notice.")
+    if len(w["headline"]) > 90:
+        die(f"{where}.headline is {len(w['headline'])} chars; keep it under 90. It is "
+            f"a headline, not a paragraph.")
+    if len(w["text"]) > 400:
+        die(f"{where}.text is {len(w['text'])} chars; keep it under 400. One or two "
+            f"short sentences, per the design.")
+    # Optional sources, rendered as bordered link buttons under the text.
+    for i, l in enumerate(w.get("links") or []):
+        need(l, "label", f"{where}.links[{i}]")
+        safe_url(need(l, "url", f"{where}.links[{i}]"))
+
+
+def check_forum(c):
     o = need(c, "outcome", "content", kind=dict)
     need(o, "text", "outcome")
     tag = need(o, "tag", "outcome")
@@ -394,6 +443,8 @@ def check_content(c):
         elif not isinstance(item, str) or not item.strip():
             die(f"open_questions[{i}] must be a string or {{text, next, source}}, got {item!r}")
 
+
+def check_moves_artifacts_shipped(c, no_forum):
     # Optional "Portfolio movement" panel. Absent or [] renders nothing. A stage outside
     # the board's five is a hard stop: it would render with no pill colour and name a
     # stage the reader cannot find on the board.
@@ -415,7 +466,9 @@ def check_content(c):
                 safe_url(need(m, "url", where))
 
     # Artifacts ALWAYS carry a link (Alex, 2026-09-28). A bare file name is a hard stop.
-    for i, item in enumerate(need_list(c, "artifacts", "content")):
+    # A no_forum page may still link artifacts, but needs none.
+    artifacts = need_list(c, "artifacts", "content") if not no_forum else c.get("artifacts", [])
+    for i, item in enumerate(artifacts):
         where = f"artifacts[{i}]"
         if not isinstance(item, dict):
             die(f"{where} must be {{label, url, note}} with a real link, got {item!r}")
@@ -565,7 +618,11 @@ def warning(c):
     """
     if "warning" not in c:
         return ""
-    w = c["warning"]
+    return band(c["warning"])
+
+
+def band(w):
+    """The band itself, shared by the warning and the no-forum notice (tone `info`)."""
     tone = w.get("tone", "warn")
     field, tape_c, tape_alt, head_c, chip_bg, chip_fg = WARN_TONES[tone]
     tape = (f'<div style="height:8px;font-size:0;line-height:0;background-color:{tape_c};'
@@ -583,6 +640,12 @@ def warning(c):
                  f'</span>'
                  f'<span style="padding-left:10px;color:{head_c};font-size:10px;font-weight:700;'
                  f'letter-spacing:2px;">{esc(w.get("label", "BLOCKED"))}</span></div>')
+    elif tone == "info":
+        # Alex's chip was a one-cell <table>; a <span> keeps the look without the gridlines
+        # SharePoint forces onto real table cells.
+        label = (f'<span class="aw-infolabel" style="display:inline-block;padding:3px 8px;'
+                 f'background-color:{chip_bg};color:{chip_fg};font-size:10px;'
+                 f'font-weight:700;letter-spacing:2px;">{esc(w.get("label", "NOTE"))}</span>')
     else:
         label = (f'<span class="aw-warnlabel" style="display:inline-block;padding:3px 8px;'
                  f'background-color:{chip_bg};color:{chip_fg};font-size:10px;'
@@ -601,9 +664,24 @@ def warning(c):
             f'font-weight:600;text-decoration:none;border:1px solid {tape_c};padding:4px 9px;'
             f'color:{head_c};margin:0 8px 4px 0;">{esc(l["label"])}</a>' for l in w["links"])
         links = f'<div style="padding-top:10px;">{btns}</div>'
+    # Optional agenda (no-forum notice): one row per item, linked title plus a short note.
+    agenda = ""
+    if w.get("agenda"):
+        rows = "".join(
+            f'<div style="padding:8px 0 0 0;"><a href="{safe_url(a["url"])}" {NEW_TAB} '
+            f'style="font-size:13px;font-weight:700;color:{LINK};text-decoration:underline;">'
+            f'{esc(a["title"])}</a>'
+            + (f'<span style="font-size:13px;color:{WARN_TEXT};line-height:20px;"> {esc(a["note"])}</span>'
+               if a.get("note") else "") + '</div>'
+            for a in w["agenda"])
+        # Sentence-case subhead in the headline's colour: 10px spaced caps read as a stray
+        # label under a bold headline (Alex, 2026-10-12).
+        agenda = (f'<div style="padding-top:14px;"><span style="font-size:13px;font-weight:700;'
+                  f'color:{head_c};line-height:20px;">{esc(w.get("agenda_title", "Agenda"))}</span>'
+                  f'</div>{rows}')
     return (spacer(20) + f'<div class="aw-keep" style="background-color:{field};'
             f'border-left:1px solid {tape_c};border-right:1px solid {tape_c};">'
-            f'{tape}<div style="padding:12px 18px 14px 18px;">{label}{head}{body}{links}</div>'
+            f'{tape}<div style="padding:12px 18px 14px 18px;">{label}{head}{body}{agenda}{links}</div>'
             f'{tape}</div>')
 
 
@@ -860,11 +938,25 @@ def shipped_panel(c):
             f'{head}{"".join(items)}</div>')
 
 
+def no_forum_note(c):
+    # Blue band (Alex, 2026-10-12): NO FORUM THIS WEEK, then the next forum's agenda.
+    nf = dict(c["no_forum"])
+    nf.setdefault("tone", "info")
+    nf.setdefault("label", "NO FORUM THIS WEEK")
+    return section_title("Forum recap") + band(nf)
+
+
 def build(c):
     # One root with the print block first: the print CSS finds the page through it.
-    return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join([header(c), exec_summary(c), forum_recap(c), warning(c), decision_cards(c),
-                    action_table(c), topic_list(c), open_questions(c), portfolio_moves(c),
-                    artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)]) + '</div>'
+    if "no_forum" in c:
+        artifacts = artifact_list(c["artifacts"]) if c.get("artifacts") else ""
+        blocks = [header(c), exec_summary(c), no_forum_note(c), warning(c), portfolio_moves(c),
+                  artifacts, shipped_panel(c)]
+    else:
+        blocks = [header(c), exec_summary(c), forum_recap(c), warning(c), decision_cards(c),
+                  action_table(c), topic_list(c), open_questions(c), portfolio_moves(c),
+                  artifact_list(c["artifacts"]), speakers_line(c), shipped_panel(c)]
+    return f'<div class="aw-recap">{STYLE_BLOCK}' + "".join(blocks) + '</div>'
 
 
 def markup_only(html):

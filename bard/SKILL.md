@@ -10,11 +10,13 @@ description: >-
   runs /bard, asks to capture/record what they've been working on into Obsidian,
   to sweep recent sessions, meetings, or comms into the knowledge base, to bootstrap the bard
   hubs, or to turn past decisions/lessons/patterns into notes, and to maintain the
-  root-vault `Todo.md` board. On-demand only. Reads sessions, meetings, and comms via the
+  root-vault `Todo.md` board from every place a task reaches Alex (Teams and mail to him,
+  Planner, To Do, Todoist, ADO, GitHub reviews), with every judgment typed through Jev.
+  On-demand only. Reads sessions, meetings, and comms via the
   archeologist agent; writes
   OKF-envelope markdown notes. Never commits, never runs a server, never invents
   provenance.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Azure_DevOps__wit_query, mcp__claude_ai_Azure_DevOps__wit_work_item
 ---
 
 # bard — session history → Obsidian knowledge base
@@ -165,58 +167,9 @@ so it is derived from real work and ratified by Alex.
      vault-synced, so mtime is safe here), then keep only the messages newer than
      `watermark` (see the per-message pitfall below). opencode already selects by message
      time; Claude Code's `history.jsonl` has one line per prompt, so it needs nothing extra.
-     - Claude Code: `~/.claude/history.jsonl` (`.timestamp` epoch-ms; `.sessionId`, `.project`).
-     - Cortex: `~/.snowflake/cortex/conversations/<uuid>.json` → `.created_at`.
-     - Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
-       timestamp is the session start (UTC ISO). Pi dir names start with `--`, so
-       glob with a `./` prefix or absolute paths: bare `--...` paths are parsed as
-       options by `head`/`jq`/`ls`/`find` and silently return nothing. The record
-       shape is NOT the same as Claude Code's: a Pi turn is
-       `{"type":"message","message":{"role":"user","content":[{"type":"text","text":...}]}}`,
-       so the selector is `select(.type=="message" and .message.role=="user")` and the
-       text is under `.message.content[]`. A jq filter written against the Claude Code
-       shape returns an empty string per line, which looks exactly like "this session
-       had no user messages" — verify with `jq -r '.type' <file> | sort | uniq -c`
-       before concluding a session is empty.
-     - **opencode (every sweep, since 2026-09-25)**: `~/.local/share/opencode/opencode.db`,
-       opened read-only (`sqlite3 -readonly`). Live data is in `session_v2` (one row per
-       session; `parent_id IS NULL` = main session, non-null = subagent) and
-       `session_message` (`session_id`, `type`, `time_created` epoch-ms, `data` JSON). Select
-       sessions that have `session_message.time_created` newer than `watermark`, not
-       `session_v2.time_created` alone, because sessions span days. Text lives in `data`: a
-       `user` row has `.text`; an `assistant` row has `.content[]`, keep only
-       `type=="text"` parts (drop `reasoning` and tool parts). Skip subagent sessions unless
-       the parent points at them, and skip `*-smoke`/`cctest` scratch directories. The
-       legacy `session` table is stale (last row 2026-08); never use it as the cursor.
-       Verified 2026-09-25: 139 sessions (51 main) in one week, the second-largest store
-       after Claude Code, and the first opencode-free sweep missed all of it.
-     - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
-       one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
-       call recordings). **Select by the seen-set, not by `date`:** sweep every note whose
-       vault-relative path is not in `scribe_seen` in `.bard-state.json`. Frontmatter `date`
-       is the meeting start, and scribe often writes a note a day or more after the meeting
-       (late HiDock sync, Teams transcript not ready). By then `watermark` has moved past
-       that `date`, so a date filter skips the note forever. Do not use file mtime either:
-       vault sync can rewrite it. If `scribe_seen` is absent, seed it with the notes whose
-       `date` is more than 7 days before `watermark`, and sweep the rest; dedupe absorbs any
-       repeat. A note scribe rewrites with `--force` keeps its path and is not re-swept; ask
-       Alex if he wants it swept again. They are the meeting-side twin of the coding
-       sessions: same STEP 1-5, same quote rule. Read the whole note; `## Summary`,
-       `## Decisions`, `## Actions` are scribe's digest, `## Transcript` is the verbatim
-       source and the only thing you may quote. Provenance is the note path
-       (`Obsidian: Scribe/Meetings/Transcripts/<file>`) plus the frontmatter
-       `provenance` block; never invent more. HiDock notes carry diarization labels
-       (`speaker 0`, `speaker 1`, ...), and scribe adds a hedge — `speaker 1 (likely
-       Alexandre Castro)` — only where the transcript's own text supports it, quoting that
-       text in `provenance.speaker_hints`. Treat a hedged name as likely, not certain: when
-       you attribute a quote or a commitment, keep the hedge or say the speaker is inferred.
-       A plain `speaker N` is unattributed — never guess who it was. `## Actions` lines owned
-       by Alex are board candidates for `Todo.md`; the others are context, not tasks. scribe
-       writes everything, including standups and 1:1s: the half-life filter in STEP 1 is
-       where the noise dies, so expect to drop most of them. People and HR material inside a
-       note is distilled like any other durable knowledge, into the `People` hub — the
-       consumer-PII ban covers third-party datafiles, not meeting knowledge (Alex,
-       2026-09-24).
+     **Read [Session stores](references/session-stores.md) for each store's path, start
+     field, and pitfalls** (Claude Code, Cortex, Pi, opencode, scribe meeting notes). scribe
+     notes use the `scribe_seen` set as their cursor, never `date` or mtime.
    - **Read raw every candidate you intend to distil**, from the locator the briefing
      gave you (Read/Bash on the `.jsonl` / SQLite, per the patterns in the archeologist
      skill), so STEP 1–5 operate on real text and quotes are verbatim. When a locator
@@ -228,12 +181,22 @@ so it is derived from real work and ratified by Alex.
      sessions (first user message = this skill's text) — skip them as mechanics, and
      expect Cortex sidecar files (`*.history.jsonl`) to be JSONL, one object per line,
      not a JSON array.
+   - **Task lane — what is asked of Alex (since 2026-10-14).** The archeologist searches by
+     topic, so it finds knowledge and misses a plain "can you get me X" with no topic word.
+     Run this lane in the main thread on every sweep. **Read
+     [Task lane](references/task-lane.md) first**: it holds the tested calls, the ADO query,
+     and the code filters. Sources: Teams chats and mail sent to Alex (window from
+     `watermark`), mail with no reply from him, and the open items assigned to him now in
+     Planner, To Do, Todoist, ADO, and GitHub review requests (snapshot, no watermark).
+     Add each source to the coverage ledger. Every survivor of the code filters goes through
+     Set A (is it an ask?) and Set R (did Alex already answer it?), then Set T; it never becomes a knowledge note on its own.
    - **AI attention pass** — before distillation, explicitly scan every candidate for
      durable AI work even when AI was not the session's main topic: model or tool
      choices, agents, skills, prompts, evals, context or memory, governance, security,
      cost, adoption, and measured outcomes or failures. Do not rely only on the session
      title or repo name to surface it.
-4. Run the **Generation prompt** (below) over the raw material.
+4. Run the **Generation prompt** (below) over the raw material. Its STEP 1 keep/drop and
+   STEP 4 hub pick are typed calls (Set K in **Typed gates**).
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
 6. **Update the root TODO board** (`<vault>/Todo.md`). **Read
@@ -243,15 +206,16 @@ so it is derived from real work and ratified by Alex.
    `<!-- BARD:START -->`, except Alex's checked `- [x]` lines there, which move verbatim
    to `Bard/Done Archive.md` (Ownership split exception); if the marker is absent, append the whole BARD List block at
    the END of the file. Dedupe against every existing board line, open and done, and
-   against `Bard/Backlog.md`. Run every candidate through the intake gate (consequence,
-   one next action, Bard note exists); failures go to the backlog, not the board. Derive
+   against `Bard/Backlog.md` (Set D for text-only matches). Run every candidate through the
+   intake gate (Set T answers consequence and one next action; "Bard note exists" is a file
+   check); failures go to the backlog, not the board. Priority and owner come from Set T. Derive
    each board item's horizon from those rules, prefix it with its fixed-map topic
    emoji, and sort it by priority then topic inside the horizon (no topic sub-headings). Every line carries the
    `[[Bard note]]` evidence wikilink and the session id before the priority emoji. Age
    out items with no evidence for 30 days, then enforce the caps (5 in `🔥 This week`,
    12 open total) by demoting to the backlog. Promote backlog items that now pass the
    gate. Re-check every open item against the swept sessions;
-   auto-complete clearly finished items, keep the topic emoji, move it to the top of
+   auto-complete items whose `done` answer is 0.90 or more, or that the model confirms after an unsure answer, keep the topic emoji, move it to the top of
    flat `## Done`, and append the ISO date. Roll `## Done` entries older than ~4 weeks
    to `<vault>/Bard/Done Archive.md`; move them, never delete them. This is one of the
    existing files bard edits in place.
@@ -279,7 +243,9 @@ so it is derived from real work and ratified by Alex.
    `bard/unreviewed` flags raised (notes that found no fitting hub), a one-line
    summary of TODO-board changes (N added by horizon and topic, M marked done, D demoted
    to `Backlog.md` and why, P promoted from it, A aged out, R rolled over to
-   `Done Archive.md`, and the final open count against the 12/5 caps), a line for evidence files copied (N added, and any PII
+   `Done Archive.md`, and the final open count against the 12/5 caps), the Jev number and band
+   for each board change plus every "Jev unsure" call, the task-lane coverage ledger (one line
+   per source), a line for evidence files copied (N added, and any PII
    files deliberately excluded), and the vault sync status. Alex reviews in Obsidian
    via the `Bard.base` dashboard + health view.
 
@@ -316,7 +282,7 @@ technique), **artifact** (a tool/approach worth remembering), **impact** (an
 outcome that mattered). DROP ephemera: routine fixes, transient debugging, one-off
 lookups — anything where you cannot state in one line why it'll matter later
 (Hofmann's test). On the first sweep, when unsure, DROP. Easier to add later than
-to prune a graveyard.
+to prune a graveyard. **Typed:** ask Set K `kind` (see **Typed gates**); `drop` drops it.
 
 **AI gets special attention.** Treat durable AI decisions, lessons, patterns,
 artifacts, and impact as high-value candidates. Look for model or tool choices,
@@ -377,7 +343,7 @@ Never fabricate one; omit the key if enrichment found nothing. Body is markdown 
   Never a bare `[[Alias]]` (won't resolve/backlink) — resolve to canonical + use
   the `|display` form.
 - **`up` is mandatory** and is the orphan backbone. Pick from `hubs`; note→hub only,
-  never edit a hub. If no hub fits: **OMIT the `up` key entirely** (do not write an
+  never edit a hub. **Typed:** Set K `hub` picks it. If no hub fits: **OMIT the `up` key entirely** (do not write an
   empty string) AND add tag `bard/unreviewed` — that tag is the reliable no-hub
   signal the `Bard.base` health view filters on. Never coin a new hub.
 - **Link only to targets that exist** (in `existing_notes` or `hubs`). A link to a
@@ -395,7 +361,8 @@ Never fabricate one; omit the key if enrichment found nothing. Body is markdown 
 
 - If a note covering the same concept/source already exists in `existing_notes`,
   UPDATE it or SKIP — never create a near-duplicate. Surface which. Dedupe key:
-  `source` session_id + concept/title.
+  `source` session_id + concept/title; a match on `source` is code, a title-only match is
+  Set D (see **Typed gates**).
 - Write only into `Bard/`. Never touch files outside it; never rewrite hubs or
   existing notes.
 
@@ -437,6 +404,21 @@ do not move `watermark`; they have their own cursor because they arrive late.
 `watermark` keys off reliable **session-start** timestamps (never per-message
 assistant timestamps — ~50% are null in Cortex). Read at the start of a sweep to
 bound lookback; write the newest session-start swept after a successful run.
+
+## Typed gates — `ask_jev`
+
+Every judgment in a sweep is a typed Jev call, never prose (Alex, 2026-10-14): ask or not,
+already answered, keep or drop and `type`, hub, gate, priority, owner, done, and same item.
+Why: the same evidence gets the same answer every sweep, and the unsure calls show as
+numbers. **Read [Typed gates](references/jev-gates.md) before the first call**: it owns the
+question sets (A, R, T, K, D), the bands, what stays a rule, and the no-Jev fallback.
+
+**Jev unsure → the model decides, always.** Any answer between the bands goes to you, the
+model running the sweep: read the full evidence, decide, and report `Jev unsure (0.xx) →
+model: <answer>`. Never take a default for an unsure call.
+
+Hard rule: Jev runs on OpenCode Zen, outside Attain, so `state` is a redacted summary you
+write, never source text. No names, quotes, subjects, locators, ids, or customer data.
 
 ## Root TODO board (`Todo.md`)
 
