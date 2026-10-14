@@ -72,6 +72,10 @@ Drop these in code, before any Jev call. They are rules, not judgments:
 - Alex's own messages (he is the sender), and duplicate notices for the same item (the same
   change control arrives once from ADO and twice from IT-Alerts: keep one per item id).
 - Monitoring cards (`[FIRING:`) unless a person in the same thread asks Alex to act.
+- Approval-queue notices (CAB / "needs CAB Manager", CSM approval, SailPoint review) and
+  meeting invites or "please join" asks. They are operational work Alex does in the tool,
+  the CAB meeting, or the calendar, never board items (Alex, 2026-10-14; see
+  [todo-board.md](todo-board.md) → intake gate). Count them in the ledger only.
 - A request to approve a PR that Alex authored. Check the author with `gh pr view <n> -R
   <org/repo> --json author` first: Alex cannot approve his own PR, so the ask is
   backwards (2026-10-14: a contractor's "can you approve this for me" pointed at Alex's own
@@ -91,6 +95,20 @@ Then two typed screens, in this order, before Set T (all in [jev-gates.md](jev-g
    not run on that pair. For mail, use the "Mail with no reply" row.
 
 Only an ask that is still open becomes a `candidate_action` for Set T.
+
+## Manager and skip-level chats: read in full, every sweep
+
+`chat_message_search` returns a `summary` cut at about 250 characters, and a Set A screen
+over a cut summary misses the ask in the second half. On 2026-10-14 that hid most of what
+Jeremy (Alex's manager) and Rick (CTO) asked across two days: an Enterprise-plan push, a
+.NET question, an AI use-case gap read, a BCP investment ask, a session Alex promised to
+join. Alex runs bard almost daily, so each sweep must close its own day.
+
+For the 1:1 chats with Jeremy and Rick, and any group chat with both: call `read_resource`
+on the chat URI (`teams:///chats/<id>/messages`). It returns the latest 50 messages with
+full bodies; page back with `chat_message_search` plus `beforeDateTime` until you pass the
+watermark. Run Set A on full bodies, never on summaries. Treat every question from them
+that Alex has not answered in the same chat as an open ask.
 
 ## Asks the recipient filter cannot see
 

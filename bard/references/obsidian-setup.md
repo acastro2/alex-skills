@@ -129,7 +129,7 @@ roll-over rules all live in [todo-board.md](todo-board.md).
 
 # BARD List
 
-_Seeded by `/bard` from swept sessions. Max 12 open, 5 this week; overflow lives in [[Backlog]]. Sorted by priority, then topic. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
+_Seeded by `/bard` from swept sessions. Anything someone waits on stays here, even past 12 open / 5 this week; 🔭 Eventually holds up to 10 things to bump up when you have time; the rest lives in [[Backlog]]. Sorted by priority, then topic. Alex curates, bard is the scribe. The priority emoji at line end is Obsidian Tasks syntax._
 
 ## Open
 

@@ -64,6 +64,15 @@ open items and stopped being readable.
    and need no Bard note: the source item is the evidence. Never list them under "board
    items without a note".
 
+**Not board items at all (Alex, 2026-10-14): operational and meeting work.** "This … and
+this … are operational/meeting work … this doesn't need TODO." Two kinds never go on the
+board or the backlog, even when someone waits:
+- Attending a meeting or session, even one Alex promised to join. The calendar holds it.
+  Prep work with its own deliverable for the meeting (slides, a doc) still counts.
+- Routine approval queues worked in their own tool or meeting: CAB / change-control
+  approvals, CSM approvals, SailPoint access reviews. A single approval only counts when a
+  named person chases Alex for it in chat and it is blocked on him.
+
 **Caps.** Hard limits, checked after every sweep and before the write:
 
 | scope | cap |
@@ -73,6 +82,15 @@ open items and stopped being readable.
 
 Over a cap, move lines to the backlog until under it: lowest priority first, then oldest
 source session first. Never bump an item Alex added or edited by hand; ask instead.
+
+**The caps never drop an owed item (Alex, 2026-10-14).** An item where a person waits on
+Alex, or that he promised (any 🔺 or ⏫, or `consequence` = `someone_waits_on_user` /
+`promise` / `deadline` / `risk`), stays on the board even when that breaks 12 or 5. Only
+🔼 and lower lines with nobody waiting move to the backlog to hold the size. Report the
+overflow ("board at 31, 19 over cap, all owed") instead of hiding it. Why: on 2026-10-14
+the cap rule pushed CAB approvals, PR reviews and asks from Alex's manager off the board,
+and Alex said "I need to be able to trust that you won't let me drop the ball otherwise
+this defeats the purpose".
 Report every moved line in the sweep report.
 
 **Backlog.** Everything that fails the gate or falls off a cap goes to
@@ -207,7 +225,7 @@ databases / SQL Server · `📦` anything else.
 ## Horizon derivation and seeding
 
 Horizon is DERIVED, never guessed from prose. The fixed horizon set and order are:
-`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`.
+`### 🔥 This week`, `### 📅 This month`, `### ⏳ Waiting on others`, `### 🔭 Eventually`.
 Test `⏳ Waiting on others` FIRST — ownership beats priority.
 
 | horizon | rule |
@@ -215,9 +233,21 @@ Test `⏳ Waiting on others` FIRST — ownership beats priority.
 | 🔥 This week | the top 5 Alex-owned items by priority (🔺 before ⏫), ties broken by the nearest deadline or event |
 | 📅 This month | every other Alex-owned item: 🔺/⏫ that missed the top 5 sort first as "next up", then 🔼 |
 | ⏳ Waiting on others | the next action belongs to someone else, at any priority |
+| 🔭 Eventually | up to 10 🔼 items worth doing with nobody waiting, picked from `Bard/Backlog.md` (Alex, 2026-10-14) |
 
-There is no `🧊 Someday` horizon any more. Priority 🔽 or ⏬, or parked with no owner, means
-the item failed the gate: it belongs in `Bard/Backlog.md`, not on the board.
+**🔭 Eventually (Alex, 2026-10-14): "a list of stuff we need to look eventually, and you can
+slowly bump those up as I have time."** It does not count toward the 12/5 caps. Two steps, every sweep, in this order:
+
+1. **Fill.** Bring 🔭 Eventually up to 10 lines with the most valuable 🔼 backlog items (real
+   work, a known next step, no owner waiting).
+2. **Bump.** If `🔥 This week` then holds fewer than 5 lines, move the top 🔭 Eventually line
+   into `📅 This month` (keep its 🔼), then refill Eventually from the backlog. Do this in the
+   same sweep that filled the list — a freshly filled list is not a reason to skip it. Report
+   the bump as "bumped 1 from Eventually: <item>".
+
+Example: This week has 2 lines and the backlog holds six 🔼 items. Fill puts all six in
+Eventually; Bump moves the first one to This month; Eventually ends with five. Items 🔽 or ⏬, or parked with no owner, stay in
+`Bard/Backlog.md`.
 
 Inside a horizon, order lines by priority (🔺 first), then by fixed topic-map order, then
 newest first. Omit any horizon heading with zero items. The board never shows an empty

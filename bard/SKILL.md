@@ -227,8 +227,10 @@ so it is derived from real work and ratified by Alex.
    emoji, and sort it by priority then topic inside the horizon (no topic sub-headings). Every line carries the
    `[[Bard note]]` evidence wikilink and the session id before the priority emoji. Age
    out items with no evidence for 30 days, then enforce the caps (5 in `🔥 This week`,
-   12 open total) by demoting to the backlog. Promote backlog items that now pass the
-   gate. Re-check every open item against the swept sessions;
+   12 open total) by demoting to the backlog — but never demote an item someone waits on
+   (Board rules → Caps). Promote backlog items that now pass the gate. Fill `🔭 Eventually`
+   and, when `🔥 This week` has fewer than 5 lines, bump its top line into `📅 This month`
+   (Board rules → 🔭 Eventually). Re-check every open item against the swept sessions;
    auto-complete items whose `done` answer is 0.90 or more, or that the model confirms after an unsure answer, keep the topic emoji, move it to the top of
    flat `## Done`, and append the ISO date. Roll `## Done` entries older than ~4 weeks
    to `<vault>/Bard/Done Archive.md`; move them, never delete them. This is one of the
