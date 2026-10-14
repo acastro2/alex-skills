@@ -135,6 +135,12 @@ so it is derived from real work and ratified by Alex.
      indexes below cannot see. An unavailable store in the briefing is missing data, not
      empty data: name it in the sweep report, never let it pass silently.
 
+     **Run it on every sweep, short windows included.** On 2026-10-14 two back-to-back
+     sweeps of 30-40 minutes skipped it and searched Teams and mail directly. The re-run
+     over that window found a live P1 batch incident in a channel, three risk-register
+     to-dos assigned to Alex in a SharePoint doc, and two chat commitments — none of
+     them visible to a `recipient` search.
+
      **Demand the coverage ledger, and check it before you trust the briefing.** The
      archeologist owes one line per store — what it ran and how many hits (its
      **Coverage** rule). No ledger, or a store missing from it, means that lane was not
@@ -197,6 +203,14 @@ so it is derived from real work and ratified by Alex.
      title or repo name to surface it.
 4. Run the **Generation prompt** (below) over the raw material. Its STEP 1 keep/drop and
    STEP 4 hub pick are typed calls (Set K in **Typed gates**).
+   **Parallel distill lanes (a busy window).** You may split the raw reading across
+   background agents, one store per lane, each staging notes in the scratchpad for you to
+   validate and copy (never straight into `Bard/`). Two rules from 2026-10-14: compute every
+   cursor in code and paste the value into the brief (a hand-typed epoch sent one lane
+   three days into the future), and require each lane's final report to list every
+   `Jev unsure (0.xx) → model: …` line. You cannot get that log afterwards: resuming three
+   finished lanes to ask for it failed on the API safety filter. The step 10 report needs
+   every line.
 5. Write the resulting notes into `Bard/` (respecting dedupe — update or skip,
    never duplicate; never touch hubs/existing notes).
 6. **Update the root TODO board** (`<vault>/Todo.md`). **Read
@@ -485,7 +499,10 @@ obsidian sync:status vault=Alex   # expect "status: synced"
   and skip sync, never try to launch it.
 - There is **no explicit "push now" command** — Obsidian Sync flushes automatically.
   `sync:status` returning `synced` is the confirmation; if it shows pending/syncing,
-  report that rather than claiming it's done.
+  report that rather than claiming it's done. `syncing` is not a failure: on 2026-10-14 it
+  read `syncing` for over 30 minutes while Alex confirmed the vault was in sync (other
+  sessions keep writing to it). Report the line and ask Alex to glance at the Sync icon;
+  never retry in a loop.
 - Never use `sync off` / `reload` / `restart` / destructive `sync:restore` in a sweep.
   Only `sync:status` (read-only) is part of the flow.
 

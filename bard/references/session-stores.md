@@ -29,6 +29,16 @@ already cost a sweep.
   legacy `session` table is stale (last row 2026-08); never use it as the cursor.
   Verified 2026-09-25: 139 sessions (51 main) in one week, the second-largest store
   after Claude Code, and the first opencode-free sweep missed all of it.
+  **Compute the cursor in code, never type it.** Convert `watermark` with
+  `datetime.fromisoformat(...).timestamp()*1000` in the same script that queries. On
+  2026-10-14 a hand-typed epoch in a lane brief was three days in the future, so the lane
+  saw zero messages until it caught the error itself. **Query order matters on this
+  2.7 GB file:** select from `session_message` by `time_created` first, then look up each
+  `session_v2` row by its exact `id`. A `LIKE` on `session_v2.id` joined to
+  `session_message` ran past the 120 s tool timeout twice (2026-10-14).
+- **Shell pitfall in the vault:** `grep` is aliased to `ugrep` in Alex's shell, and an
+  `ls | grep` inside the vault hung until the tool timeout (2026-10-14). List or match
+  vault files with Python (`glob`, `os.listdir`) instead.
 - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
   one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
   call recordings). **Select by the seen-set, not by `date`:** sweep every note whose

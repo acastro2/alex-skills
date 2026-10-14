@@ -6,7 +6,8 @@ The `Tested` column says which calls were run for real on 2026-10-14 and what ca
 A row marked **not run** is the documented call shape only: check it on the first live sweep.
 
 Run this lane in the main thread, not inside the archeologist: the archeologist agent has no
-Planner, To Do, Todoist, ADO, or `gh` tools.
+Planner, To Do, Todoist, ADO, or `gh` tools. The one exception is the Teams-and-mail paging
+on a busy window, which a general background agent can carry (see **Volume** below).
 
 ## Two cursor kinds
 
@@ -48,6 +49,13 @@ ORDER BY [System.ChangedDate] DESC
 
 Then read each hit (`wit_work_item`) for the title and latest comment before you judge it.
 
+**`ChangedBy <> @Me` still lets noise through.** On 2026-10-14 every non-canary hit was
+noise: two changes by `Azure Boards` (automation, not a person) and two where a colleague
+only re-ranked the backlog (`StackRank` was the only changed field). Drop both in code
+before Jev: skip a hit whose `System.ChangedBy` display name is `Azure Boards`, and for the
+rest read the last revision (`list_revisions`) and skip it when `Microsoft.VSTS.Common.StackRank`
+is the only field that changed. Also skip any item titled `[CANARY] … DO NOT APPROVE`.
+
 **GitHub orgs.** `gh api user/orgs --jq '.[].login'`, keep names ending in `-Attain-Finance`.
 `--owner Attain-Finance` is not an org and fails; loop the real ones.
 
@@ -64,6 +72,10 @@ Drop these in code, before any Jev call. They are rules, not judgments:
 - Alex's own messages (he is the sender), and duplicate notices for the same item (the same
   change control arrives once from ADO and twice from IT-Alerts: keep one per item id).
 - Monitoring cards (`[FIRING:`) unless a person in the same thread asks Alex to act.
+- A request to approve a PR that Alex authored. Check the author with `gh pr view <n> -R
+  <org/repo> --json author` first: Alex cannot approve his own PR, so the ask is
+  backwards (2026-10-14: a contractor's "can you approve this for me" pointed at Alex's own
+  PR, and Set A scored it 0.97). Report it to Alex as unclear instead of filing it.
 
 Then two typed screens, in this order, before Set T (all in [jev-gates.md](jev-gates.md)):
 
@@ -80,6 +92,15 @@ Then two typed screens, in this order, before Set T (all in [jev-gates.md](jev-g
 
 Only an ask that is still open becomes a `candidate_action` for Set T.
 
+## Asks the recipient filter cannot see
+
+Some asks never arrive as a message to Alex: an `@alex` to-do written into SharePoint
+meeting notes, or a commitment Alex types in a group meeting chat. On 2026-10-14 the
+archeologist's SharePoint and channel lanes found three risk-register to-dos assigned to
+Alex and two commitments he made in chats, all missed by the `recipient` searches. Take
+every ask or commitment in the archeologist's briefing through Set T as well, with the
+`(sharepoint:…)` or `(teams:…)` breadcrumb.
+
 ## What was not verified
 
 - **Channel @mentions.** Channel posts have no recipients, so the `recipient` filter skips
@@ -92,7 +113,18 @@ Only an ask that is still open becomes a `candidate_action` for Set T.
 ## Other hosts
 
 In OpenCode or Pi there is no Planner, To Do, or Todoist tool: write `unavailable — no tool on
-this host`. Mail and Teams use the `m365` CLI (`../m365/SKILL.md`); ADO uses the `ado` agent.
+this host`. Claude Code can lack them too: on 2026-10-14 neither `tasks_login_status` nor a
+Todoist tool was in the session's tool list. Check the list (ToolSearch) before you write
+the ledger line, and use the same wording when they are absent.
+
+## Volume
+
+On 2026-10-14 the `recipient` filter returned 662 Teams messages and Alex's own posts
+returned about 778 over two working days. Paging both and running Set A and Set R on that
+volume fills the main thread. Give the Teams-and-mail part to one background agent with
+this file and `jev-gates.md` as its brief, and keep ADO, GitHub and Planner in the main
+thread. The agent returns the ledger, the open asks with their numbers, and the answered
+asks. Mail and Teams use the `m365` CLI (`../m365/SKILL.md`); ADO uses the `ado` agent.
 
 ## Coverage ledger
 

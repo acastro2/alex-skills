@@ -134,6 +134,7 @@ priority emoji (the parser constraint still holds):
 | GitHub PR review | `(pr:<repo>#<n>)` (Attain-Finance repos only) |
 | Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
 | Teams chat / mail | `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
+| Ask inside a SharePoint doc (an `@alex` to-do in meeting notes) | `(sharepoint:YYYY-MM-DD)`, the doc's modified date |
 
 The line text names the action and a role or first name only. Never put a mail subject,
 an address, a phone number, or any customer data on the board.
