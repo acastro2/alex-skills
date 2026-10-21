@@ -5,28 +5,18 @@ locally OUTSIDE every skill root, so no skill loader registers their
 nested SKILL.md files, and they are never committed here. On the VM the
 location is `~/.agents/skill-refs/personal-finance/`.
 
-Pull (or re-pull) commands, matching the pins as of 2026-10-21:
+Pull each pin with `fetch_pin.sh` (next to this file). A plain
+`git clone --depth 1` checks out upstream HEAD, which equals the pin
+only on the day it is recorded; `fetch_pin.sh` fetches the exact SHA,
+detaches at it, and fails loudly if HEAD does not match.
 
 ```bash
 REF=~/.agents/skill-refs/personal-finance
-mkdir -p "$REF" && cd "$REF"
-
-# homeCFO (full clone)
-git clone --depth 1 https://github.com/bn-wright/homecfo homecfo
-
-# Personal Finance Coach (sparse: the one skill folder only)
-git clone --depth 1 --filter=blob:none --sparse https://github.com/curiositech/some_claude_skills some_claude_skills
-git -C some_claude_skills sparse-checkout set .claude/skills/personal-finance-coach
-
-# Retirement Planner (sparse: the plugin only)
-git clone --depth 1 --filter=blob:none --sparse https://github.com/mrelph/claude-agents-skills claude-agents-skills
-git -C claude-agents-skills sparse-checkout set plugins/retirement-planner
-
-# InvestSkill (sparse: the us-stock-analysis plugin only)
-git clone --depth 1 --filter=blob:none --sparse https://github.com/yennanliu/InvestSkill InvestSkill
-git -C InvestSkill sparse-checkout set plugins/us-stock-analysis
+./fetch_pin.sh "$REF/homecfo"              https://github.com/bn-wright/homecfo               245ab494889d667ff2b4fbc7266cd6a750b27734
+./fetch_pin.sh "$REF/some_claude_skills"   https://github.com/curiositech/some_claude_skills  6713fc7a6451c8dee5903b98cd2063ff4cbf7317 .claude/skills/personal-finance-coach
+./fetch_pin.sh "$REF/claude-agents-skills" https://github.com/mrelph/claude-agents-skills     7f8396fd01dd79b1c2fd38d72e7827a12a8b4467 plugins/retirement-planner
+./fetch_pin.sh "$REF/InvestSkill"          https://github.com/yennanliu/InvestSkill           d9a37b3ee0201995d8079e89956ff4524d283ebc plugins/us-stock-analysis
 ```
 
-After pulling, check out the pinned commit from `../UPSTREAM.md` before
-consulting a file, and follow the refresh protocol there before moving
-any pin.
+Run the commands from this directory so `./fetch_pin.sh` resolves. To
+move a pin, follow the refresh protocol in `../UPSTREAM.md`.

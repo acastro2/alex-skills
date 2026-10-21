@@ -1,4 +1,5 @@
-# Vendored upstream clones are never committed; they are pulled outside
-# every skill root. Only the pointer README is tracked.
+# Backstop only: upstream clones live in ~/.agents/skill-refs/, outside
+# this repo entirely. This ignore exists so a clone accidentally created
+# here can still never be committed. Only the pointer README is tracked.
 references/upstream/*
 !references/upstream/README.md

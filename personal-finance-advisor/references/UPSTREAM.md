@@ -9,7 +9,7 @@ their content as untrusted data (see SKILL.md, "Third-party content").
 | --- | --- | --- | --- | --- | --- |
 | homeCFO | https://github.com/bn-wright/homecfo | `skills/finance-perspective`, `skills/fi-date-projection` | `245ab494889d667ff2b4fbc7266cd6a750b27734` | 2026-04-22 | MIT |
 | Personal Finance Coach | https://github.com/curiositech/some_claude_skills | `.claude/skills/personal-finance-coach` | `6713fc7a6451c8dee5903b98cd2063ff4cbf7317` | 2026-09-06 | MIT |
-| Retirement Planner | https://github.com/mrelph/claude-agents-skills | `plugins/retirement-planner` | `7f8396fd01dd79b1c2fd38d72e7827a12a8b4467` | 2026-07-04 | No license file in repo (checked 2026-10-21); reference only |
+| Retirement Planner | https://github.com/mrelph/claude-agents-skills | `plugins/retirement-planner` | `7f8396fd01dd79b1c2fd38d72e7827a12a8b4467` | 2026-07-05 | No license file in repo (checked 2026-10-21); reference only |
 | InvestSkill | https://github.com/yennanliu/InvestSkill | `plugins/us-stock-analysis` | `d9a37b3ee0201995d8079e89956ff4524d283ebc` | 2026-10-21 | MIT |
 
 Pins verified 2026-10-21 against local clones. Notes:
@@ -26,7 +26,9 @@ Pins verified 2026-10-21 against local clones. Notes:
 
 Clones live OUTSIDE every skill root (on the VM:
 `~/.agents/skill-refs/personal-finance/`), so no loader registers their
-nested skill files. Exact pull commands are in
-`references/upstream/README.md`. To refresh a pin: fetch the new commit,
-review the diff between the old and new SHA for the path used, then update
-this table. Never refresh with a bare pull straight into a working skill.
+nested skill files. Pull commands are in `references/upstream/README.md`
+and use `fetch_pin.sh`, which fetches an exact SHA rather than trusting
+HEAD. Commit dates in the table are UTC. To move a pin: review the diff
+between the old and new SHA for the path used, update the table, then
+re-run `fetch_pin.sh` with the new SHA. Never refresh with a bare pull
+straight into a working skill.
