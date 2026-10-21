@@ -1,0 +1,4 @@
+# Vendored upstream clones are never committed; they are pulled outside
+# every skill root. Only the pointer README is tracked.
+references/upstream/*
+!references/upstream/README.md
