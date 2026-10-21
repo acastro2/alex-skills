@@ -1,0 +1,54 @@
+[
+  {
+    "query": "did we overspend this month, and does it actually matter?",
+    "should_trigger": true
+  },
+  {
+    "query": "what is my FI date if I keep saving at this rate?",
+    "should_trigger": true
+  },
+  {
+    "query": "this card offers to split a purchase into 12 payments for a monthly fee, what does that really cost?",
+    "should_trigger": true
+  },
+  {
+    "query": "does this ETF overlap with the funds already in my portfolio?",
+    "should_trigger": true
+  },
+  {
+    "query": "which card should a spare USD 1,000 go to first?",
+    "should_trigger": true
+  },
+  {
+    "query": "write a python script that parses this CSV of transactions",
+    "should_trigger": false
+  },
+  {
+    "query": "search for the best high-yield savings account rates today",
+    "should_trigger": false
+  },
+  {
+    "query": "draft an email to my landlord about the lease renewal",
+    "should_trigger": false
+  },
+  {
+    "query": "categorize my October Amex statement into Copilot categories",
+    "should_trigger": false
+  },
+  {
+    "query": "reconcile the GL cash account to the bank statement for October close",
+    "should_trigger": false
+  },
+  {
+    "query": "budget vs actual variance for Q3 cloud spend",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how a backdoor Roth works",
+    "should_trigger": false
+  },
+  {
+    "query": "is it worth paying this store card's promo off early?",
+    "should_trigger": true
+  }
+]

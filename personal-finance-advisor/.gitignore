@@ -1,0 +1,6 @@
+# Backstop only: upstream clones live in ~/.agents/skill-refs/, outside
+# this repo entirely. This ignore exists so a clone accidentally created
+# here can still never be committed. Only the pointer README is tracked.
+references/upstream/*
+!references/upstream/README.md
+!references/upstream/fetch_pin.sh

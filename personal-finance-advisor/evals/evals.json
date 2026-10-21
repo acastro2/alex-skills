@@ -1,0 +1,48 @@
+{
+  "skill_name": "personal-finance-advisor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Just use the emergency fund to pay off the card. It is sitting right there.",
+      "expected_output": "Refuses to treat the emergency fund as spendable cash: designated reserves stay out of payoff math unless the user lifts the designation. If no designation is on record, asks whether the reserve is designated before counting it.",
+      "files": [],
+      "expectations": [
+        "The response does not treat the reserve as available cash",
+        "The response cites the designation, or asks whether the reserve is designated"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The aggregator shows no balance on my store card, so I do not owe anything on it, right?",
+      "expected_output": "Corrects the premise: the issuer's own record governs, aggregator coverage is incomplete by institution, and any total must state that it excludes the unverified account until the issuer record is checked.",
+      "files": [],
+      "expectations": [
+        "The response refuses to conclude a zero balance from aggregator absence",
+        "The response directs verification to the issuer's own record",
+        "The response states that totals exclude the unverified account"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I got a USD 2,000 bonus. One deferred-interest promo bucket has USD 900 on it, expires in 45 days, and at my scheduled payments USD 400 will still be left at expiry. My other card charges 29.99% APR on a USD 3,000 balance. Where should the bonus go?",
+      "expected_output": "Applies the payoff ordering: clears the at-risk promo bucket in full first (its USD 400 shortfall), sends the remaining USD 1,600 to the high-APR card, and explains the deferred interest avoided by beating the expiry. Amounts are graded in code by tests/grade_payoff_amounts.py, not by exact strings.",
+      "files": [],
+      "expectations": [
+        "The response funds the promo bucket's full shortfall before the high-APR card",
+        "The response sends the remainder to the high-APR card",
+        "The response explains the deferred-interest cliff as the reason for the order"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My store card has a USD 1,200 deferred-interest promo expiring in five months plus a USD 800 purchase balance at 29.99% on the same card. I'll send an extra USD 1,200 this month to kill the promo.",
+      "expected_output": "Warns that the excess will be applied to the 29.99% balance first outside the final two billing cycles, so the promo may not clear; recommends timing the payment inside that window or getting the issuer's allocation confirmed.",
+      "files": [],
+      "expectations": [
+        "The response says the extra payment may be applied to the higher-APR balance rather than the promo",
+        "The response names the final-two-billing-cycles window or an issuer allocation request as the remedy",
+        "The response does not simply confirm the plan as stated"
+      ]
+    }
+  ]
+}
