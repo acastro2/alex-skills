@@ -3,3 +3,4 @@
 # here can still never be committed. Only the pointer README is tracked.
 references/upstream/*
 !references/upstream/README.md
+!references/upstream/fetch_pin.sh
