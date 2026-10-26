@@ -18,7 +18,7 @@ The exceptions are skills that carry facts, not only method: `ub-mode`, plus the
 
 | Kind | Skills |
 | --- | --- |
-| Tools | `search` (Context7 and Exa), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
+| Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
 | Alex's systems | `scribe`, `bard`, `archeologist`, `ea-projects-curator`, `ado-ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator` |
 | Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode` |
 | Upstream dependencies | `codebase-design`, `domain-modeling`, `grilling` |

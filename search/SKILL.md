@@ -1,11 +1,35 @@
 ---
 name: search
-description: "Search and research the public web and current library or API docs instead of answering from memory. Use Context7 for library, framework, SDK, CLI, and cloud-service docs; use Exa for web search, page extraction, and multi-step research agents. Trigger on any request to search, research, look up, find, source, or verify a public fact or a current version: API syntax, configuration, version migrations, setup and library-specific debugging; finding pages, news, companies, people, papers, or products; reading and extracting known URLs; and research that needs more than one search, such as building a list from open-ended criteria, enriching rows with new fields, or a sourced answer with citations. Use it whenever a public fact may have changed since training or the user needs a public source, even when they never say search or research."
+description: "Search and research the public web and current library or API docs instead of answering from memory. Use Context7 for library, framework, SDK, CLI, and cloud-service docs; use Exa for web search, page extraction, and multi-step research agents. Trigger on any request to search, research, look up, find, source, or verify a public fact or a current version: API syntax, configuration, version migrations, setup and library-specific debugging; finding pages, news, companies, people, papers, or products; reading and extracting known URLs; and research that needs more than one search, such as building a list from open-ended criteria, enriching rows with new fields, a sourced answer with citations, or a research write-up captured as a cited Markdown file. Use it whenever a public fact may have changed since training or the user needs a public source, even when they never say search or research."
 ---
 
 # Search
 
-One skill for looking things up on the public web. Walk the tree below to pick the tool, then load only that tool's reference.
+One skill for looking things up on the public web. Two shapes of job: an answer in the chat, or findings in a cited file. Decide that first, then walk the tree to pick the tool and load only that tool's reference.
+
+## Lookup or research
+
+```mermaid
+graph TD
+  Q[What does done look like?] --> F{Findings in a file?}
+  F -->|no, an answer in the chat| T[Pick the tool, below]
+  F -->|yes| R[Background subagent writes a cited file]
+```
+
+### Research that ends in a file
+
+Sometimes the user wants a written record, not an answer: "research X", "gather the docs facts", "write up how this API works". Then the deliverable is one Markdown file, with every claim traced to a source.
+
+1. **Dispatch a background subagent** so you keep working while it reads. Use `scout` here, `Task` in Claude Code, and `general` only when the reading must also change code. Read it yourself when the job is one page or one question: delegation costs more than it saves at that size.
+2. **Primary sources only.** Official docs, source code, specs, first-party APIs. Follow every claim back to the source that owns it, not to a secondary write-up of it. A blog post is a lead, never a citation.
+3. **Cite every claim** with a URL or a Context7 library ID, right next to the claim that depends on it.
+4. **Save it where the repo already keeps such notes**, and match that convention. If there is no convention, pick a sensible path and tell the user where it went. Notes for Alex's own knowledge base go to the Obsidian vault through `bard`, not into the repo.
+
+Tell the subagent the question, which sources to trust, the exact file path, and the citation format. Ask it to report the path and the claims it could not source. Read the file before you hand it over: a subagent that fails to find a source will still write a confident sentence.
+
+The "agent" in this section is a harness subagent. An **Exa Agent** below is a different thing: a paid, asynchronous Exa run that returns structured records.
+
+_Folded from `mattpocock/skills`, `skills/engineering/research`._
 
 ## Pick the tool
 
@@ -37,7 +61,7 @@ Walk it in order. The first match wins.
 4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at `low` effort (the MCP search has no `deep` type); in Pi, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
 5. **Escalate.** If you are about to run a third Exa Search for the same question, stop and start an Agent run with what you learned. A third search means the job has more than one step.
 
-### Why Agent is the default for research, not the last resort
+### Why an Exa Agent run beats a search loop
 
 A manual loop of searches and page reads spends far more model tokens and time than an Agent run, and it returns prose with no per-field citations. Agent returns structured output with citations, and a confidence where it has one.
 
