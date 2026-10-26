@@ -42,6 +42,7 @@ run "$UV" run --with pyyaml python ea-projects-curator/tests/ea_projects_curator
 # --- tests ---------------------------------------------------------------------
 run "$UV" run --with pytest --with pyyaml python -m pytest scripts/tests ea-projects-curator/tests -q
 run "$UV" run --with pytest --with requests python -m pytest browser-cookie-auth/tests -q
+run "$UV" run --with pytest python -m pytest bard/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
 run python3 -m unittest discover -s browser-apple-events/tests -p 'test_*.py'
 run python3 -m unittest discover -s alex-voice/tests -p 'test_*.py'

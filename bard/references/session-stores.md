@@ -39,6 +39,9 @@ already cost a sweep.
 - **Shell pitfall in the vault:** `grep` is aliased to `ugrep` in Alex's shell, and an
   `ls | grep` inside the vault hung until the tool timeout (2026-10-14). List or match
   vault files with Python (`glob`, `os.listdir`) instead.
+- **Read and write the state through `scripts/state.py`** (`show`, `record`). It owns the
+  merge rules, refuses a watermark that moves backwards or names a whole day, and writes
+  atomically. Do not hand-edit `.bard-state.json`.
 - **scribe meeting notes** (since 2026-09-03): `<vault>/Scribe/Meetings/Transcripts/*.md`,
   one note per meeting written by the `scribe` skill (Teams transcripts and HiDock
   call recordings). **Select by the seen-set, not by `date`:** sweep every note whose

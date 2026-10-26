@@ -248,17 +248,21 @@ so it is derived from real work and ratified by Alex.
    authored deliverables not yet in `Evidence/`, copy them per **Evidence capture**
    below, loading its mechanics reference before copying. Update `Evidence/README.md`
    to match. This is another existing file bard edits in place.
-8. Update `.bard-state.json`: set `last_run` = now (ISO), add every scribe note swept this
-   run to `scribe_seen`, and set `watermark` = the newest session-start timestamp swept this
-   run, not counting scribe notes. It must be a **real session-start you
-   actually swept**, taken from the index scan or the newest timestamp the briefing
-   observed — the max real value, never a rounded day boundary. A watermark
-   of `...T00:00:00Z` re-sweeps that whole day on the next run (seen on 2026-09-04,
-   where the prior run left `2026-09-03T00:00:00Z`). **Then read the file back and
-   confirm.** Alex's zsh has `noclobber` set, so a plain `> state.json` fails with
-   `file exists` and leaves the OLD watermark in place — the sweep looks successful and
-   the next one redoes everything. Write it with `>|`, a heredoc into `python3`, or the
-   Write tool, and `cat` it afterwards.
+8. **Update `.bard-state.json` with the script, not a heredoc.** One call per run:
+
+   ```
+   python3 scripts/state.py record <vault>/Bard/.bard-state.json \
+     --watermark <newest real session-start swept> \
+     --seen <scribe note path> [--seen ...]
+   ```
+
+   It sets `last_run` to now, adds the notes to `scribe_seen`, and refuses the two values
+   that silently re-sweep: a watermark older than the stored one, and a rounded day
+   boundary. The watermark must still be a **real session-start you actually swept**, taken
+   from the index scan or the newest timestamp the briefing observed, not a rounded value
+   the script happens to accept. It writes atomically and reads the file back, so the
+   `noclobber` trap that once left an old watermark in place cannot happen (2026-09-04).
+   `python3 scripts/state.py show <path>` prints the current state.
 9. **Sync the vault** — Obsidian watches the filesystem, so on-disk writes are picked
    up on their own. Run ONLY `obsidian sync:status vault=Alex` (see **Vault sync**
    below) and report the status line. Do NOT run `obsidian reload`: it prints
