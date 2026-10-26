@@ -12,6 +12,8 @@ A skill stays in this repo only if it holds facts the model cannot know:
 
 Generic method (how to do TDD, how to debug, how to grill a plan) does not belong here. Current models do that well without a skill, and every extra skill competes for the agent's attention.
 
+The exceptions are skills that carry facts, not only method: `ub-mode`, plus the three that `improve-codebase-architecture` calls by name. `AGENTS.md` records why each one stays.
+
 ## Skills
 
 | Kind | Skills |
@@ -19,8 +21,11 @@ Generic method (how to do TDD, how to debug, how to grill a plan) does not belon
 | Tools | `search` (Context7 and Exa), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
 | Alex's systems | `scribe`, `bard`, `archeologist`, `ea-projects-curator`, `ado-ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator` |
 | Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode` |
+| Upstream dependencies | `codebase-design`, `domain-modeling`, `grilling` |
 
 Each skill's `SKILL.md` frontmatter says what it does and when it loads. `agent-creator` and `improve-codebase-architecture` are manual-only: you type them.
+
+The upstream dependencies are copied verbatim from [mattpocock/skills](https://github.com/mattpocock/skills) and refreshed with them, never edited by hand. `improve-codebase-architecture` calls `codebase-design` for its vocabulary, `domain-modeling` to keep `GLOSSARY.md` and ADRs current, and `grilling` at its grill step.
 
 ## Install
 
