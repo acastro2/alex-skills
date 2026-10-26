@@ -85,10 +85,55 @@ def test_seen_helper_returns_a_set(tmp_path: Path) -> None:
     assert state_module.seen(path) == {"Scribe/A.md"}
 
 
-def test_write_is_atomic(tmp_path: Path) -> None:
+def test_write_leaves_no_temporary_file(tmp_path: Path) -> None:
     path = tmp_path / "state.json"
     state_module.record_run(path, "2026-10-25T15:00:00Z", ["Scribe/A.md"])
     assert not (tmp_path / "state.json.tmp").exists()
+
+
+def test_a_failed_replace_leaves_the_old_file_untouched(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "state.json"
+    state_module.record_run(path, "2026-10-25T15:00:00Z", ["Scribe/A.md"])
+    before = path.read_text()
+
+    def refuse(source, target):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(state_module.os, "replace", refuse)
+    with pytest.raises(StateError, match="previous file is unchanged"):
+        state_module.record_run(path, "2026-10-25T16:00:00Z")
+
+    assert path.read_text() == before
+    assert not (tmp_path / "state.json.tmp").exists()
+
+
+def test_a_missing_folder_is_refused_not_created(tmp_path: Path) -> None:
+    target = tmp_path / "typo-vault" / "Bard" / ".bard-state.json"
+    with pytest.raises(StateError, match="does not exist"):
+        state_module.record_run(target, "2026-10-25T15:00:00Z")
+    assert not target.parent.parent.exists(), "a wrong vault path must not be created"
+
+
+def test_a_watermark_in_the_future_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(StateError, match="ahead of the clock"):
+        state_module.record_run(tmp_path / "state.json", "2099-01-01T09:00:00Z")
+
+
+def test_unknown_keys_survive_a_write(tmp_path: Path) -> None:
+    path = tmp_path / "state.json"
+    path.write_text(
+        json.dumps(
+            {
+                "last_run": None,
+                "watermark": None,
+                "scribe_seen": [],
+                "store_cursors": {"teams": "2026-10-20T14:00:00Z"},
+            }
+        )
+    )
+    state = state_module.record_run(path, "2026-10-25T15:00:00Z", ["Scribe/A.md"])
+    assert state["store_cursors"] == {"teams": "2026-10-20T14:00:00Z"}
+    assert json.loads(path.read_text())["store_cursors"] == {"teams": "2026-10-20T14:00:00Z"}
 
 
 def test_cli_show_and_record(tmp_path: Path, capsys) -> None:

@@ -13,12 +13,17 @@ reads the file back before it reports success.
     python3 scripts/state.py record <path> --watermark 2026-10-25T15:00:00Z \
         --seen Scribe/Meetings/Transcripts/2026-10-25-team-sync.md
 
-Three facts it enforces:
+Four facts it enforces:
 
 - `watermark` moves forward. A value older than the stored one is a bug, not a decision.
 - `watermark` carries a real time. A rounded day boundary (`...T00:00:00Z`) re-sweeps that
   whole day on the next run, so it is refused.
+- `watermark` is not in the future. A typo in the year would skip every sweep until that
+  date, silently, and the backwards check cannot see it.
 - `scribe_seen` only grows. Notes are a set, and a repeat is free because dedupe absorbs it.
+
+Any other key in the file is carried through the write untouched: this module owns three
+facts, not the whole file.
 """
 from __future__ import annotations
 
@@ -26,7 +31,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DEFAULTS = {"last_run": None, "watermark": None, "scribe_seen": []}
@@ -40,15 +45,17 @@ def load(path: str | Path) -> dict:
     """The state, with defaults for a file that does not exist yet."""
     path = Path(path)
     if not path.exists():
-        return dict(DEFAULTS, scribe_seen=[])
+        return {**DEFAULTS, "scribe_seen": []}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise StateError(f"{path} is not readable JSON: {error}") from error
     if not isinstance(data, dict):
         raise StateError(f"{path} must hold an object, got {type(data).__name__}")
-    state = dict(DEFAULTS, scribe_seen=[])
-    state.update({key: data.get(key, state[key]) for key in DEFAULTS})
+    state = dict(data)
+    state.setdefault("last_run", None)
+    state.setdefault("watermark", None)
+    state.setdefault("scribe_seen", [])
     if not isinstance(state["scribe_seen"], list):
         raise StateError(f"{path} has a non-list scribe_seen")
     return state
@@ -62,7 +69,7 @@ def _when(value: str, field: str) -> datetime:
             f"{field} {value!r} is a date without a time; use the real session start"
         )
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as error:
         raise StateError(f"{field} is not ISO-8601: {value!r}") from error
     if parsed.tzinfo is None:
@@ -84,14 +91,32 @@ def _check_watermark(new: str, old: str | None) -> None:
             raise StateError(
                 f"watermark {new!r} is older than the stored {old!r}; a run never moves it back"
             )
+    ahead = parsed_new - datetime.now().astimezone()
+    if ahead > timedelta(days=1):
+        raise StateError(
+            f"watermark {new!r} is {ahead.days} day(s) ahead of the clock; a date typo here "
+            f"skips every sweep until that date, so check it"
+        )
 
 
 def _write_atomic(path: Path, state: dict) -> None:
-    """Write beside the target, then replace it: no truncated file, no noclobber surprise."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    """Write beside the target, then replace it: no truncated file, no noclobber surprise.
+
+    The folder must already exist. Creating it was a footgun: a mistyped or moved vault path
+    then wrote a state file somewhere else, exited 0, left the real state behind, and the next
+    sweep redid the work this module exists to prevent.
+    """
+    if not path.parent.is_dir():
+        raise StateError(
+            f"{path.parent} does not exist; check the vault path, or create the Bard folder first"
+        )
     temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-    os.replace(temporary, path)
+    try:
+        temporary.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    except OSError as error:
+        temporary.unlink(missing_ok=True)
+        raise StateError(f"could not write {path}: {error}; the previous file is unchanged") from error
 
 
 def record_run(
@@ -112,7 +137,8 @@ def record_run(
 
     stamp = now or datetime.now().astimezone().isoformat(timespec="seconds")
     _when(stamp, "last_run")
-    updated = {"last_run": stamp, "watermark": watermark, "scribe_seen": merged}
+    updated = dict(state)
+    updated.update(last_run=stamp, watermark=watermark, scribe_seen=merged)
 
     _write_atomic(path, updated)
 

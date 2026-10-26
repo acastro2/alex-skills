@@ -117,7 +117,7 @@ so it is derived from real work and ratified by Alex.
      otherwise append the whole block at the end of the file,
    - create `<vault>/Bard/Done Archive.md` from the archive template if it is absent,
      so the `[[Done Archive]]` board link resolves,
-   - initialise `.bard-state.json` with `{ "last_run": null, "watermark": null, "scribe_seen": [] }`.
+   - leave `.bard-state.json` absent; the first `scripts/state.py record` creates it.
 5. Tell Alex to apply the one-time **graph color groups** (documented in
    `references/obsidian-setup.md`) — bard never writes `.obsidian/graph.json`.
 
