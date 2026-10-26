@@ -31,6 +31,9 @@ RENDERER = SKILL_DIR / "references" / "render_page.py"
 VOICE = REPO / "alex-voice" / "scripts" / "voice_check.py"
 EXAMPLE = SKILL_DIR / "references" / "example-content.json"
 
+sys.path.insert(0, str(RENDERER.parent))
+import content_schema  # noqa: E402
+
 
 def _found(ctx: SkillText, rule: str, name: str, line: int | None, message: str) -> Finding:
     return Finding(rule=rule, skill=ctx.skill, file=name, line=line, message=message)
@@ -149,12 +152,13 @@ def case_json_blocks(ctx: SkillText) -> list[Finding]:
 SCHEMA_KEY_RE = re.compile(r"`([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)(?:\[\])?`")
 
 
-def schema_vocabulary(renderer: str) -> tuple[set[str], set[str]]:
-    """(top-level required keys, every key name the renderer ever reads)."""
-    match = re.search(r"def check_content\(.*?\n(?=# --- block builders)", renderer, re.S)
-    body = match.group(0) if match else ""
-    top = set(re.findall(r'need(?:_list)?\(\s*\w+,\s*"(\w+)"', body))
-    return top, set(top) | set(re.findall(r'\[\s*"(\w+)"\s*\]', renderer))
+def schema_vocabulary() -> tuple[set[str], set[str]]:
+    """(top-level keys, every key name the contract knows).
+
+    This used to parse `render_page.py` for `need()` calls, which meant renaming a validator
+    silently narrowed the check. The contract module now publishes both sets.
+    """
+    return set(content_schema.TOP_LEVEL_KEYS), set(content_schema.KEY_VOCABULARY)
 
 
 def case_schema_keys(ctx: SkillText) -> list[Finding]:
@@ -162,7 +166,7 @@ def case_schema_keys(ctx: SkillText) -> list[Finding]:
     reads is documentation drift (e.g. `exec_summary.footnote`). Tokens that do not start
     with a schema key at all (`page.goto`, `author.email`) are not our subject."""
     out: list[Finding] = []
-    top, vocabulary = schema_vocabulary(_renderer())
+    top, vocabulary = schema_vocabulary()
     for name in ctx.texts:
         for lineno, line in ctx.prose_lines(name):
             for match in SCHEMA_KEY_RE.finditer(line):

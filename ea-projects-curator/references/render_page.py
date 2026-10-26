@@ -50,70 +50,26 @@ means the template was edited or the content is incomplete, and neither must hap
 quietly. Content is checked all the way down, not just at the top level, so a missing
 `rationale` on one decision is a named error and not a traceback.
 
-CONTENT SCHEMA (required unless marked optional)
-------------------------------------------------
-{
-  "title":     "Architecture Weekly, September 23, 2026",
-  "subtitle":  "Forum held Wednesday, September 23. Delivery covering September 19 to 25, 2026.",
-  "exec_summary": {
-    "headline": "One sentence, plain words, no acronyms.",
-    "points":   [{"lead": "Decided.", "text": "What it means."}],   # 3 or 4; lead optional
-    "footer":   "Nothing needs leadership this week"   # status chip: green if it starts No/Nothing
-  },
-  "objective": "Text.",
-  "outcome":   {"tag": "Achieved", "text": "Text."},   # Achieved | Partially achieved | Not achieved
-  "tldr":      "Text.",
-  "warning":   {"headline": "Text.", "text": "Text.", "label": "IMPORTANT",
-                "tone": "warn", "links": [{"label": "Doc", "url": "https://..."}]},
-                                               # optional; renders at the end of the Forum
-                                               # recap, before "Decisions made". tone is
-                                               # "warn" (amber), "stop" (red) or "info"
-                                               # (blue, navy chip). label,
-                                               # links optional. headline <= 90 chars,
-                                               # text <= 400.
-  "decisions": [{"lead": "Bold first sentence.", "text": "Rest.", "rationale": "Text.",
-                 "owner": "Name, Name", "chip": "Topic label"}],        # lead, chip optional
-  "actions":   [{"action": "Text.", "owner": "Name | Unassigned (who asked)",
-                 "due": "Next sprint", "source": "chat"}],             # due, source optional
-  "topics":    [{"title": "Short name.", "summary": "One or two sentences.", "tag": "Decided",
-                 "owner": "Name",                                       # optional
-                 "points": [{"lead": "Label", "text": "Explanation."}]}],  # optional, 3-6
-                                                       # tag: Decided | Needs follow-up | Parked
-  "open_questions": [{"text": "Question.", "next": "Who decides / next step", "source": "chat"}],
-  "portfolio_moves": [{"title": "EA Projects row title", "from": "1. Exploring",
-                       "to": "2. Committed", "url": "https://..."}],
-                                               # optional; renders "Portfolio movement"
-                                               # after the open questions, before the
-                                               # artifacts. Stages, verbatim from the board:
-                                               # 1. Exploring | 2. Committed | 3. Delivering
-                                               # | 4. Delivered | 5. Stopped. from != to.
-                                               # url optional (if present, a real link).
-                                               # At most 8 moves. Absent or [] renders no
-                                               # section.
-  "artifacts":      [{"label": "Document title", "url": "https://...", "note": "Optional."}],
-  "no_forum":       {"headline": "No forum met on October 7.",
-                     "text": "The next forum is Wednesday, October 14, 3:00 to 4:00pm Central.",
-                     "agenda": [{"title": "Item", "url": "https://...", "note": "Optional."}]},
-                                               # tone defaults to "info" (blue band), label to
-                                               # "NO FORUM THIS WEEK"; links and agenda_title
-                                               # ("Agenda for October 14") optional.
-                                               # optional; a week with no forum. Renders this
-                                               # line in the forum's slot and drops every forum
-                                               # section. objective, outcome, tldr, decisions,
-                                               # actions, topics, open_questions, speakers and
-                                               # speakers_source must then be ABSENT;
-                                               # artifacts become optional.
-  "speakers":       "Alexandre Castro, Chris Goodrich, ...",
-  "speakers_source": "Teams meeting transcript, 3:00pm to 4:01pm Central.",
-  "shipped": {"window": "September 19 to 25, 2026",
-              "items": [{"sentence": "Outcome-first sentence.", "category": "Infrastructure",
-                         "evidence": [{"label": "Network change", "url": "https://..."}]}]}
-}
+CONTENT SCHEMA
+--------------
+`content_schema.py` owns it: every field, its bounds, its enums, and the `validate()` that
+enforces them. Read that module, not a copy here. `references/example-content.json` is the
+complete worked example.
+
+This file owns markup only. It renders what the schema has already accepted, and it refuses
+on the markup as hard as the schema refuses on the content: a hand edit shows up as a named
+error, never as a page that looks slightly wrong.
 """
 import json
 import re
 import sys
 from html import unescape
+from pathlib import Path
+
+# The contract lives next to this file. Running `python3 render_page.py` from any cwd
+# puts this script's own folder on sys.path only for the script itself, so add it once.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from content_schema import ContentError, validate as validate_content  # noqa: E402
 
 # --- palette (design v2, Alex 2026-09-28, from the "Architecture Weekly Recap" mock) ---
 NAVY = "#17375E"
@@ -192,19 +148,11 @@ STAGE_CHIP = {
 }
 # A weekly page lists what moved, not the whole board. More than this is a board review,
 # and it belongs on the board, not in the newsletter.
-PORTFOLIO_MOVES_MAX = 8
 
 TOPIC_TAG_COLOR = {"Decided": GREEN_LEAD, "Needs follow-up": AMBER_EDGE, "Parked": MUTED}   # valid tags
-OUTCOME_TAGS = ("Achieved", "Partially achieved", "Not achieved")
 # The forum record. A no_forum page must carry none of these (check_content).
-FORUM_KEYS = ("objective", "outcome", "tldr", "decisions", "actions", "topics",
-              "open_questions", "speakers", "speakers_source")
 OUTCOME_GREEN = {"Achieved"}
 
-# SKILL.md, Executive Summary gate. Enforced, not suggested: a band that quietly comes
-# out at two points is the drift this script exists to stop, and it is the line Alex
-# reads most closely.
-EXEC_POINTS_MIN, EXEC_POINTS_MAX = 3, 4
 
 # --- validation ---------------------------------------------------------------
 FORBIDDEN = [
@@ -309,184 +257,14 @@ def safe_url(u):
 
 
 # --- content validation -------------------------------------------------------
-# Every key is named where it lives, so a failure says "decisions[2].rationale" and not
-# KeyError. The top-level-only check this replaces let a missing nested key reach the
-# builders and come out as a traceback, which reads like the script is broken.
-def need(obj, key, where, kind=str, allow_empty=False):
-    if not isinstance(obj, dict):
-        die(f"{where} must be an object, got {type(obj).__name__}")
-    if key not in obj:
-        die(f"{where} is missing required key {key!r}")
-    value = obj[key]
-    if not isinstance(value, kind):
-        die(f"{where}.{key} must be {kind.__name__}, got {type(value).__name__}")
-    if not allow_empty and not value:
-        die(f"{where}.{key} is empty; fill it or the page ships with a hole in it")
-    return value
-
-
-def need_list(obj, key, where, min_len=1):
-    items = need(obj, key, where, kind=list, allow_empty=min_len == 0)
-    if len(items) < min_len:
-        die(f"{where}.{key} needs at least {min_len} item(s), got {len(items)}")
-    return items
-
-
-def optional_str(obj, keys, where):
-    for k in keys:
-        if k in obj and not isinstance(obj[k], str):
-            die(f"{where}.{k} must be a string, got {type(obj[k]).__name__}")
-
-
+# The contract, its bounds and its enums live in `content_schema.py`, so a content test can
+# call `validate()` on a dict instead of rendering HTML and matching strings. This function
+# only reports the verdict in the renderer's own voice.
 def check_content(c):
-    # A week with no forum (Alex, 2026-10-12): the page carries one line in the forum's
-    # slot and no forum sections. Never fill decisions or topics a forum did not produce.
-    no_forum = "no_forum" in c
-    if no_forum:
-        nf = need(c, "no_forum", "content", kind=dict)
-        check_band(nf, "no_forum")
-        for i, a in enumerate(nf.get("agenda") or []):
-            need(a, "title", f"no_forum.agenda[{i}]")
-            safe_url(need(a, "url", f"no_forum.agenda[{i}]"))
-            optional_str(a, ("note",), f"no_forum.agenda[{i}]")
-        optional_str(nf, ("agenda_title",), "no_forum")
-        for key in FORUM_KEYS:
-            if key in c:
-                die(f"{key} is set on a no_forum page; a week with no forum has no forum record")
-    for key in ("title", "subtitle") + (() if no_forum else ("objective", "tldr", "speakers", "speakers_source")):
-        need(c, key, "content")
-
-    e = need(c, "exec_summary", "content", kind=dict)
-    need(e, "headline", "exec_summary")
-    # Never blank, and never softened into silence: SKILL.md, Executive Summary gate.
-    need(e, "footer", "exec_summary")
-    points = need_list(e, "points", "exec_summary", min_len=EXEC_POINTS_MIN)
-    if len(points) > EXEC_POINTS_MAX:
-        die(f"exec_summary.points has {len(points)}; SKILL.md sets {EXEC_POINTS_MIN} to "
-            f"{EXEC_POINTS_MAX}. Merge two points, do not widen the band.")
-    for i, pt in enumerate(points):
-        need(pt, "text", f"exec_summary.points[{i}]")
-        if "lead" in pt:
-            need(pt, "lead", f"exec_summary.points[{i}]", allow_empty=True)
-
-    # Optional warning band. Refuses rather than warns, like everything else here: a
-    # warning is the most-read block on the page, so a long one is a content fix, not a
-    # layout argument. Bounds follow Alex's own template ("[Headline]" plus one or two
-    # short sentences).
-    if "warning" in c:
-        check_band(need(c, "warning", "content", kind=dict), "warning")
-
-    if not no_forum:
-        check_forum(c)
-    check_moves_artifacts_shipped(c, no_forum)
-
-
-def check_band(w, where):
-    # The amber/red warning and the blue no-forum notice share one band, so one check.
-    need(w, "headline", where)
-    need(w, "text", where)
-    optional_str(w, ("label",), where)
-    tone = w.get("tone", "warn")
-    if tone not in WARN_TONES:
-        die(f"{where}.tone must be one of {sorted(WARN_TONES)}, got {tone!r}. 'warn' is "
-            f"the amber IMPORTANT band, 'stop' the red STOP band, 'info' the blue notice.")
-    if len(w["headline"]) > 90:
-        die(f"{where}.headline is {len(w['headline'])} chars; keep it under 90. It is "
-            f"a headline, not a paragraph.")
-    if len(w["text"]) > 400:
-        die(f"{where}.text is {len(w['text'])} chars; keep it under 400. One or two "
-            f"short sentences, per the design.")
-    # Optional sources, rendered as bordered link buttons under the text.
-    for i, l in enumerate(w.get("links") or []):
-        need(l, "label", f"{where}.links[{i}]")
-        safe_url(need(l, "url", f"{where}.links[{i}]"))
-
-
-def check_forum(c):
-    o = need(c, "outcome", "content", kind=dict)
-    need(o, "text", "outcome")
-    tag = need(o, "tag", "outcome")
-    if tag not in OUTCOME_TAGS:
-        die(f"outcome.tag must be one of {list(OUTCOME_TAGS)}, got {tag!r}. A typo here "
-            f"renders amber and reads to the org as 'Partially achieved'.")
-
-    for i, d in enumerate(need_list(c, "decisions", "content")):
-        where = f"decisions[{i}]"
-        for key in ("text", "rationale", "owner"):
-            need(d, key, where)
-        optional_str(d, ("lead", "chip"), where)
-
-    for i, a in enumerate(need_list(c, "actions", "content")):
-        where = f"actions[{i}]"
-        need(a, "action", where)
-        need(a, "owner", where)
-        optional_str(a, ("due", "source"), where)
-
-    for i, t in enumerate(need_list(c, "topics", "content")):
-        where = f"topics[{i}]"
-        need(t, "title", where)
-        need(t, "summary", where)
-        optional_str(t, ("owner",), where)
-        for j, p in enumerate(t.get("points") or []):
-            if isinstance(p, dict):
-                need(p, "lead", f"{where}.points[{j}]")
-                need(p, "text", f"{where}.points[{j}]")
-            elif not isinstance(p, str) or not p.strip():
-                die(f"{where}.points[{j}] must be a non-empty string or {{lead, text}}")
-        if need(t, "tag", where) not in TOPIC_TAG_COLOR:
-            die(f"{where}.tag must be one of {sorted(TOPIC_TAG_COLOR)}, got {t['tag']!r}")
-
-    for i, item in enumerate(need_list(c, "open_questions", "content")):
-        if isinstance(item, dict):
-            need(item, "text", f"open_questions[{i}]")
-            optional_str(item, ("next", "source"), f"open_questions[{i}]")
-        elif not isinstance(item, str) or not item.strip():
-            die(f"open_questions[{i}] must be a string or {{text, next, source}}, got {item!r}")
-
-
-def check_moves_artifacts_shipped(c, no_forum):
-    # Optional "Portfolio movement" panel. Absent or [] renders nothing. A stage outside
-    # the board's five is a hard stop: it would render with no pill colour and name a
-    # stage the reader cannot find on the board.
-    if "portfolio_moves" in c:
-        moves = need(c, "portfolio_moves", "content", kind=list, allow_empty=True)
-        if len(moves) > PORTFOLIO_MOVES_MAX:
-            die(f"portfolio_moves has {len(moves)}; the page carries at most "
-                f"{PORTFOLIO_MOVES_MAX}. List the moves that matter this week.")
-        for i, m in enumerate(moves):
-            where = f"portfolio_moves[{i}]"
-            need(m, "title", where)
-            for key, stage in (("from", need(m, "from", where)), ("to", need(m, "to", where))):
-                if stage not in STAGE_CHIP:
-                    die(f"{where}.{key} must be one of {list(STAGE_CHIP)}, got {stage!r}")
-            if m["from"] == m["to"]:
-                die(f"{where}.from and {where}.to are both {m['from']!r}; a move changes stage")
-            # Same rule as every other url here: present means a real link, never "".
-            if "url" in m:
-                safe_url(need(m, "url", where))
-
-    # Artifacts ALWAYS carry a link (Alex, 2026-09-28). A bare file name is a hard stop.
-    # A no_forum page may still link artifacts, but needs none.
-    artifacts = need_list(c, "artifacts", "content") if not no_forum else c.get("artifacts", [])
-    for i, item in enumerate(artifacts):
-        where = f"artifacts[{i}]"
-        if not isinstance(item, dict):
-            die(f"{where} must be {{label, url, note}} with a real link, got {item!r}")
-        need(item, "label", where)
-        safe_url(need(item, "url", where))
-        optional_str(item, ("note",), where)
-
-    sh = need(c, "shipped", "content", kind=dict)
-    need(sh, "window", "shipped")
-    for i, it in enumerate(need_list(sh, "items", "shipped")):
-        where = f"shipped.items[{i}]"
-        need(it, "sentence", where)
-        optional_str(it, ("category",), where)
-        # An item with no evidence renders as a bare "Evidence:" with nothing after it.
-        # The panel's whole claim is that it is evidence-backed, so this is a hard stop.
-        for j, ev in enumerate(need_list(it, "evidence", where)):
-            need(ev, "label", f"{where}.evidence[{j}]")
-            safe_url(need(ev, "url", f"{where}.evidence[{j}]"))
+    try:
+        validate_content(c)
+    except ContentError as error:
+        die(str(error))
 
 
 # --- block builders (see SHAREPOINT RULES in the module docstring) -------------

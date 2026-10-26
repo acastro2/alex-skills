@@ -16,7 +16,7 @@ is content, the script's job is markup:
 recap-content.json  →  render_page.py  →  canvas.json  →  stage_news_recap.py --canvas
 ```
 
-The script owns every tag, style and colour. Read its docstring for the content schema. There is
+The script owns every tag, style and colour. Read `content_schema.py` for the content schema. There is
 **no "SharePoint-native markup only" rule any more** (Alex, 2026-09-28: "that doesn't hold"): the page
 may use whatever styling the design needs. The only markup the script refuses is `<script>` and
 `javascript:`, for safety. Hand-written HTML is what produced the drift between the 09-09 and
@@ -56,7 +56,7 @@ screenshot the read view after a renderer change (browser-control, scroll to eac
 
 **Print (Save as PDF), measured 2026-09-28:** SharePoint fixes the body height, so a long page printed ONE page. The renderer opens every body with `<div class="aw-recap">` plus a print-only `<style>` (`PRINT_CSS`): it resets html/body so the issue flows, keeps cards whole (`page-break-inside`) and starts the shipped panel on a new page. `validate()` refuses a body without it. SharePoint's sanitizer strips `:has()`, `@page`, `break-*` and `print-color-adjust` on save, so the page cannot force backgrounds to print. Instead a print theme (Alex, 2026-09-28) turns dark bands white with a navy border and navy text, so the page reads the same with or without **Background graphics**. Any new light-on-dark element needs a print-theme class (`aw-band`, `aw-inv`, `aw-olive`, `aw-avatar`, `aw-tint`, `aw-rule`). Check a change on the SAVED draft (CDP `Page.printToPDF`, with `emulateMedia` cleared), never only on an injected DOM.
 
-New optional content fields (see the `render_page.py` docstring): `decisions[].chip`,
+New optional content fields (see `content_schema.py`): `decisions[].chip`,
 `actions[].source: "chat"`, `topics[].owner`, `topics[].points[] = {lead, text}`,
 `open_questions[] = {text, next, source}`, `shipped.items[].category`, `artifacts[] = {label, url,
 note}` (url required).
@@ -122,7 +122,7 @@ artifacts from the archeologist. The archeologist does not give a complete GitHu
 directly. Same auth preflight as everything else.
 
 **Portfolio movement** (Alex, 2026-10-10): every board entry that changed stage this week goes in the
-content key `portfolio_moves` (`[{title, from, to, url}]`, at most 8; see the `render_page.py` docstring).
+content key `portfolio_moves` (`[{title, from, to, url}]`, at most 8; see `content_schema.py`).
 Read the moves from the list's version history or the run's own approved `E#` stage lines, never from
 memory. Only versions after `newsletter.moves_baseline` in the ledger count (2026-10-12, Alex): the 2026-10-10 remap renamed every status, and those renames are not moves. No moves: leave the key out, and the section is not rendered. Each move is a review line
 (`Row` = `Recap page`, `Field` = `portfolio move`).
