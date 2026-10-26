@@ -2,6 +2,7 @@
 """Validate top-level skills in this repository."""
 from __future__ import annotations
 
+import difflib
 import re
 import sys
 from dataclasses import dataclass
@@ -19,6 +20,21 @@ FRONTMATTER_RE = re.compile(
 )
 RELATIVE_PATH_RE = re.compile(
     r"(?<![.\w])(\.\./[^\s`'\"<>()\[\]{}]+)"
+)
+NAME_MAX_LENGTH = 64
+DESCRIPTION_MAX_LENGTH = 1024
+NAME_RE = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+ALLOWED_KEYS = frozenset(
+    {
+        "name",
+        "description",
+        "license",
+        "compatibility",
+        "metadata",
+        "allowed-tools",
+        "disable-model-invocation",
+        "version",
+    }
 )
 
 
@@ -74,6 +90,13 @@ def validate_repo(root: Path) -> ValidationResult:
         if frontmatter_error:
             errors.append(f"{display_path}: {frontmatter_error}")
         else:
+            for key in sorted(frontmatter, key=str):
+                if key in ALLOWED_KEYS:
+                    continue
+                close = difflib.get_close_matches(str(key), sorted(ALLOWED_KEYS), n=1)
+                hint = f", did you mean {close[0]!r}?" if close else ""
+                errors.append(f"{display_path}: unknown frontmatter key {key!r}{hint}")
+
             name = frontmatter.get("name")
             description = frontmatter.get("description")
 
@@ -85,9 +108,34 @@ def validate_repo(root: Path) -> ValidationResult:
                     f"{skill_file.parent.name!r}"
                 )
 
+            if isinstance(name, str) and name.strip():
+                if len(name) > NAME_MAX_LENGTH:
+                    errors.append(
+                        f"{display_path}: name is {len(name)} characters, "
+                        f"the maximum is {NAME_MAX_LENGTH}"
+                    )
+                elif not NAME_RE.fullmatch(name):
+                    errors.append(
+                        f"{display_path}: name {name!r} must be lowercase "
+                        "letters and digits, joined by single hyphens"
+                    )
+
             if not isinstance(description, str) or not description.strip():
                 errors.append(
                     f"{display_path}: description must be a non-empty string"
+                )
+            elif len(description) > DESCRIPTION_MAX_LENGTH:
+                errors.append(
+                    f"{display_path}: description is {len(description)} characters, "
+                    f"the maximum is {DESCRIPTION_MAX_LENGTH}"
+                )
+
+            if "disable-model-invocation" in frontmatter and not isinstance(
+                frontmatter["disable-model-invocation"], bool
+            ):
+                errors.append(
+                    f"{display_path}: disable-model-invocation must be true or "
+                    "false without quotes"
                 )
 
         for relative_path in sorted(find_relative_paths(text)):

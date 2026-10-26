@@ -76,6 +76,89 @@ description: A mismatched skill.
             self.assertFalse(result.passed)
             self.assertTrue(any("must equal directory" in error for error in result.errors))
 
+    def test_unknown_frontmatter_key_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.write_skill(
+                root,
+                "typo-skill",
+                """---
+name: typo-skill
+description: A skill with a typo.
+disable-model-invokation: true
+---
+""",
+            )
+
+            result = validate_skill_graph.validate_repo(root)
+
+            self.assertFalse(result.passed)
+            self.assertTrue(
+                any("disable-model-invokation" in error for error in result.errors)
+            )
+
+    def test_invalid_skill_name_fails(self) -> None:
+        cases = {
+            "uppercase": "Bad-Name",
+            "underscore": "bad_name",
+            "double_hyphen": "bad--name",
+            "too_long": "a" * 65,
+        }
+        for case, name in cases.items():
+            with self.subTest(case=case):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    root = Path(temporary_directory)
+                    self.write_skill(
+                        root,
+                        name,
+                        f"---\nname: {name}\ndescription: A badly named skill.\n---\n",
+                    )
+
+                    result = validate_skill_graph.validate_repo(root)
+
+                    self.assertFalse(result.passed)
+                    self.assertTrue(
+                        any("name" in error for error in result.errors), result.errors
+                    )
+
+    def test_overlong_description_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.write_skill(
+                root,
+                "wordy-skill",
+                f"---\nname: wordy-skill\ndescription: {'x' * 1025}\n---\n",
+            )
+
+            result = validate_skill_graph.validate_repo(root)
+
+            self.assertFalse(result.passed)
+            self.assertTrue(
+                any("description" in error for error in result.errors), result.errors
+            )
+
+    def test_non_boolean_invocation_flag_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.write_skill(
+                root,
+                "stringly-skill",
+                """---
+name: stringly-skill
+description: A skill with a stringly-typed flag.
+disable-model-invocation: "false"
+---
+""",
+            )
+
+            result = validate_skill_graph.validate_repo(root)
+
+            self.assertFalse(result.passed)
+            self.assertTrue(
+                any("disable-model-invocation" in error for error in result.errors),
+                result.errors,
+            )
+
     def test_broken_sibling_path_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
