@@ -5,6 +5,15 @@ description: Use the cf CLI, Cloudflare's unified technical-preview CLI (`npm i 
 
 # cf CLI
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 `cf` is the technical preview of the unified Cloudflare CLI: one consistent command surface over Cloudflare's ~3,000 API operations, built for agents as much as humans. It is early and covers a subset of products, so treat it as the escape hatch for everything Wrangler does not do.
 
 Division of labour: Wrangler still owns Worker dev and deploy. `cf` owns the rest of the account (DNS, tokens, R2, Containers, AI Gateway, and so on).
@@ -50,14 +59,14 @@ Do not chain nested `--help` calls to explore the tree, and keep search queries 
 
 Two paths:
 
-**API token via environment (preferred for scripts and agents).** `cf` reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. On this machine the company token lives in `~/.config/hookme/account.env` (fallback `dev.env`) as `TF_VAR_*`, so:
+**API token via environment (preferred for scripts and agents).** `cf` reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The credentials file on this machine keeps them as `TF_VAR_*`, so map them with this skill's own script:
 
 ```
-source ~/.config/hookme/cf.sh
+. scripts/cf-env.sh
 cf auth whoami
 ```
 
-That helper maps `TF_VAR_cloudflare_api_token`/`TF_VAR_cloudflare_account_id` to the names `cf` and wrangler read, matching `hook-me-app/scripts/deploy-env.sh`.
+`scripts/cf-env.sh` reads `~/.config/hookme/account.env` (override with `CF_ENV_FILE`) and exports only those two names. Without a token, wrangler falls back to an OAuth login that points at a different Cloudflare account.
 
 **OAuth profiles (interactive, directory-bound).** `cf auth login`, `cf auth create <name>`, `cf auth activate <name> [dir]`, `cf auth list`, `cf auth whoami`, `cf auth logout`. The OAuth login is a different Cloudflare account from the company token, so do not use it to reach the company account.
 
@@ -68,7 +77,7 @@ A `401` whose hint says "Try running: cf auth login" is usually not an auth prob
 - Plan gates surface as API errors, not clean messages. Example: Containers returns `401 Unauthorized: You do not have access to Cloudflare Containers. Deploying containers requires the Workers Paid plan.`
 - Beta coverage is partial. Search first; if nothing matches, the operation may exist in the REST API but not yet in `cf`.
 - `cf cli telemetry` configures anonymous usage telemetry.
-- Local Explorer mirrors local simulated resources (KV, R2, D1, Durable Objects, Workflows) at `/cdn-cgi/explorer/api` while running Wrangler or the Vite plugin; `--local` with `--persist-to` points `cf` at that local simulation instead of the API. See `references/local-explorer.md`.
+- Local Explorer mirrors local simulated resources (KV, R2, D1, Durable Objects, Workflows) at `/cdn-cgi/explorer/api` while running Wrangler or the Vite plugin; `--local` with `--persist-to` points `cf` at that local simulation instead of the API.
 
 ## Worked examples
 

@@ -23,6 +23,14 @@ The exceptions are the ones that carry facts, not only method:
 
 Do not widen this list without the same argument: name the fact the skill carries.
 
+**A skill carries its own code.** Anything a skill runs or reads to do its job lives in its
+own folder: `scripts/`, `references/`, `assets/`. A path outside the repo is allowed only
+for a work artifact the skill cites, such as an incident's evidence file, and the exact span
+is recorded in `skillcheck/policy.py` under `external_paths`. Why: a skill that calls
+`~/.claude/scripts/...` breaks the day that tree moves, and two copies of the same helper
+drift apart. `browser-cookie-auth`, `cf-cli`, and `autoresearch` were rebuilt this way on
+2026-10-26.
+
 ## Skill anatomy
 
 ```
@@ -37,7 +45,7 @@ skill-name/
   LICENSE.txt
 ```
 
-Repo-wide tooling stays in the top-level `scripts/`: `validate_skill_graph.py` (pre-commit hook) and `link_claude_skills.sh`. Tooling for one skill goes in that skill's `tests/`.
+Repo-wide tooling lives in `skillcheck/` and `scripts/`: `python -m skillcheck` owns every skill rule and is the pre-commit hook, `validate_skill_graph.py` is a shim over it, `scripts/check.sh` runs the rules plus every test suite, and `link_claude_skills.sh` relinks Claude Code. Tooling for one skill goes in that skill's `tests/`.
 
 ## Key patterns
 

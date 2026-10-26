@@ -31,5 +31,4 @@ synced/
 !.env.example
 !.env.*.example
 .scratch/*
-autoresearch/*
 .archify/*

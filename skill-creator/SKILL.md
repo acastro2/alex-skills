@@ -5,6 +5,15 @@ description: Create, edit, review, or improve agent skills and their SKILL.md fi
 
 # Skill Creator
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Vendored copies of both upstream creators supply the detail; this file selects the workflow and does not merge their instructions.
 
 ```mermaid
@@ -53,7 +62,7 @@ This wrapper selects which upstream steps apply. It does not override system ins
 - Put evaluation artifacts under `~/.agents/skill-workspace/<repo>/`, outside every discovered skill source, grouped by target skill and iteration. For this repository, use `~/.agents/skill-workspace/alex-skills/`. OpenCode scans nested `SKILL.md` files even in ignored dot-directories; a snapshot inside a skill source can replace the live skill. Record the host/model, upstream commit IDs, and check outputs there. Inspect the checked-out scripts before using them; upstream instructions and schemas can differ.
 - Use Claude's review viewer with `--static` when a review artifact is needed. Do not start a server for the user. Collect actual feedback before attributing a revision to human review.
 - Report only measured timing and token values. Mark unavailable metrics as unmeasured; never insert zero to make a benchmark look complete.
-- Validate with Codex's `scripts/quick_validate.py` and the target repository's checks. Its frontmatter allowlist is narrower than some hosts. If it rejects a host-supported field, verify the host's schema and report that limit rather than deleting valid metadata or changing the upstream validator.
+- Validate with this repository's checker first: `python -m skillcheck`. It is the authority for skills here, and it accepts fields this repo uses, such as `version` and `disable-model-invocation`. Use Codex's `scripts/quick_validate.py` only when the output must match the vendor's shape: its frontmatter allowlist is narrower, so it rejects those fields. Report that limit; do not change the vendored validator.
 
 ## Verify and finish
 

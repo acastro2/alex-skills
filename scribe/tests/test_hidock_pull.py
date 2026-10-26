@@ -8,6 +8,7 @@ the real device and is skipped automatically when none is connected.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -336,20 +337,28 @@ def test_cli_exits_3_with_hint_when_usb_claim_fails(capsys):
 # --- real device integration test ----------------------------------------------
 
 def _real_device_present() -> bool:
+    """Ask USB in a child process, with a deadline.
+
+    pyusb's macOS backend can block for a long time when the P1 is absent: on 2026-10-26 the
+    probe never returned and the whole suite hung at collection because the skip decorator
+    called it at import. A probe that can hang must not run in the test process, and it must
+    not run at import.
+    """
+    code = (
+        "import sys, usb.core\n"
+        f"sys.exit(0 if usb.core.find(idVendor={hp.DEFAULT_VID!r}, idProduct={hp.DEFAULT_PID!r}) else 1)"
+    )
     try:
-        return usb_core_find() is not None
-    except Exception:
+        return subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, timeout=5
+        ).returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
         return False
 
 
-def usb_core_find():
-    import usb.core
-
-    return usb.core.find(idVendor=hp.DEFAULT_VID, idProduct=hp.DEFAULT_PID)
-
-
-@pytest.mark.skipif(not _real_device_present(), reason="no HiDock P1 connected")
 def test_real_device_list_returns_at_least_one_entry(run_script):
+    if not _real_device_present():
+        pytest.skip("no HiDock P1 connected")
     result = run_script("hidock_pull.py", "list", "--json")
     assert result.returncode == 0, result.stderr
     entries = json.loads(result.stdout)

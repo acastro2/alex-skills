@@ -16,6 +16,15 @@ description: >-
 
 # Browser Apple Events
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 The user is working on this Mac. Prefer Apple Events so they can keep working. Accessibility inspection has standing approval within the requested task. AX writes were dropped after failed live verification. Do not treat a changed page as permission to pick another target.
 
 Use the bundled helper for compatible dictionaries. It supplies the checks that short `front window` snippets miss. It is a small command tool, not a browser server.

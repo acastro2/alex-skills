@@ -84,7 +84,7 @@ Top-level posts only. Median 12 words. 62% are 15 words or fewer, 27% are 16 to 
 12. Do not use the long "Hi all! ... Thank you," announcement shape in channel posts. His own typing never uses it. If Alex wants a formal cross-org announcement, write it as email.
 13. No swearing, no "lol", no "ok so", no tag question in a post (swearing 0 of 448 channel replies; tags 1.1%).
 
-Anything longer than a few lines that lands in a Teams channel pastes as an HTML fragment. The compose box ignores pasted markdown. Follow [Teams delivery](../teams-delivery.md).
+Any message longer than a few lines that is pasted into a Teams channel arrives as an HTML fragment. The compose box ignores pasted markdown. Follow [Teams delivery](../teams-delivery.md).
 
 ## Red flags
 

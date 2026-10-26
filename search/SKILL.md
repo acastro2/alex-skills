@@ -5,6 +5,15 @@ description: "Search and research the public web and current library or API docs
 
 # Search
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 One skill for looking things up on the public web. Two shapes of job: an answer in the chat, or findings in a cited file. Decide that first, then walk the tree to pick the tool and load only that tool's reference.
 
 ## Lookup or research

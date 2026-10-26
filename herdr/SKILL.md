@@ -5,6 +5,15 @@ description: "Control Herdr, a terminal multiplexer for coding agents. Use only 
 
 # Herdr
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Herdr organizes terminals into workspaces, tabs, and panes, recognizes coding agents running inside panes, and exposes the current session through the `herdr` CLI.
 
 Before issuing any control command, verify that this agent is running inside a Herdr-managed pane:

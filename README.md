@@ -20,7 +20,7 @@ The exceptions are skills that carry facts, not only method: `ub-mode`, plus the
 | --- | --- |
 | Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
 | Alex's systems | `scribe`, `bard`, `archeologist`, `ea-projects-curator`, `ado-ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator` |
-| Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode` |
+| Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode`, `terminal-report` |
 | Upstream dependencies | `codebase-design`, `domain-modeling`, `grilling` |
 
 Each skill's `SKILL.md` frontmatter says what it does and when it loads. `agent-creator` and `improve-codebase-architecture` are manual-only: you type them.

@@ -5,6 +5,15 @@ description: "Ask O'Reilly Answers (learning.oreilly.com/answers2, the AI answer
 
 # O'Reilly Answers
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Ask questions in Alex's own browser session and capture the answers with their book citations. Needs the `browser-control` skill working and Alex logged in to learning.oreilly.com in that browser.
 
 ## Run it

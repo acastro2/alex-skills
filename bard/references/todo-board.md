@@ -174,7 +174,7 @@ Use Obsidian Tasks native symbols:
 | ⏫ | High | a **named person or team is waiting on you** (Jeremy, Tyler, counsel, CAB, the DBAs); OR it blocks a specific PR, ticket, or someone else's work; OR it is tied to a real-world event — townhall, forum, review, release — even with no written date |
 | 🔼 | Medium | real work, nobody named is waiting, no deadline |
 | 🔽 | Low | cleanup or hygiene, no consequence if it slips a month |
-| ⏬ | Lowest | someday/maybe, parked with no owner |
+| ⏬ | Lowest | someday, parked with no owner |
 
 Grade from the EVIDENCE, not the wording. A deadline counts even when it is implied
 rather than written as a date. A person counts when they are named anywhere in the

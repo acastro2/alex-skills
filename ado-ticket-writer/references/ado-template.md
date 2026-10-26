@@ -219,15 +219,15 @@ npm run test:integration
 
 - **Infrastructure Source**: [Git repository link]
 - **Related PRs**:
-  - [PR #1](link)
-  - [PR #2](link)
+  - [PR #1](https://example.com/pullrequest/1)
+  - [PR #2](https://example.com/pullrequest/2)
 - **Related Tickets**:
-  - [TICKET-123](link)
-  - [TICKET-124](link)
+  - [TICKET-123](https://example.com/workitem/123)
+  - [TICKET-124](https://example.com/workitem/124)
 
 ### Team & Support
 
-- **Support Channel**: [#slack-channel](link)
+- **Support Channel**: [#slack-channel](https://example.com/slack-channel)
 - **Team**: [Team name]
 - **Stakeholders**: [List of stakeholders]
 

@@ -5,16 +5,26 @@ description: Reuse an already-authenticated interactive browser session (SSO/pas
 
 # Browser Cookie Auth
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Pattern for scripted automation against internal services that only support interactive
 SSO login (no service principal, no long-lived API key): open a real browser once,
 let the operator log in (or reuse an already-logged-in persistent profile), capture the
 session cookies, and cache them to disk with a TTL so later script runs skip the login
 step until the cache expires.
 
-This is exactly the mechanism the SharePoint page-assistant skill uses
-(`~/.claude/scripts/sharepoint/auth.py`) — generalized here so a new integration doesn't
-have to reinvent it. Read `~/.claude/scripts/sharepoint/auth.py` and `sharepoint_api.py`
-for a complete worked example (auth + REST calls + a cookie-authenticated `requests.Session`).
+The mechanism ships with this skill: `scripts/cookie_auth.py`. It opens one visible browser
+window, waits for the operator's login, stores the named cookies under
+`~/.cache/browser-cookie-auth/`, and hands back either the cookies or a ready
+`requests.Session`. Nothing else is needed, and nothing is read from another skill or from
+a tool's config tree.
 
 ## Before you wire this to a new service — scope it explicitly
 
@@ -40,57 +50,56 @@ specific service named and confirmed first.
 
 ## Hard rules (same as any credential)
 
-- **Cookie values are secrets.** Never print, log, or paste a cookie value anywhere —
-  not in chat, not in a report, not in a commit message. `cookie_auth.py` only ever prints
-  cookie *names* and *domains*, never values. Keep that discipline in anything you build
-  on top of it.
-- **Cache files and browser profiles are secret-bearing artifacts, not source.** They must
-  live somewhere gitignored. This skill's script writes to `.cache/` and `.profiles/`
-  next to itself under `~/.claude/scripts/browser-cookie-auth/`, which is covered by
-  `~/.claude/scripts/.gitignore` (added 2026-07-20 alongside this skill — that same fix also
-  closed a real gap where the SharePoint script's `.cookies.json`/`.browser-profile/` were
-  untracked-but-not-ignored in a repo with a live GitHub remote). If you copy this script
-  elsewhere, port the gitignore protection with it.
-- **Don't build unattended/background harvesting.** The visible-browser-window login step
-  is a feature, not friction — it's the moment a human either reuses their own consented
-  session or explicitly logs in. Don't silently read another browser's cookie store or
-  attach to a running browser via CDP as the *default* path for a new service; those are
-  higher-sensitivity variants (present as a reference implementation in
-  `sharepoint/auth.py`'s `extract_cookies_from_edge_store` / `extract_cookies_via_cdp`)
-  that should only be added for a specific named, already-approved service, not by default.
+- **Cookie values are secrets.** The CLI prints cookie names, domains, and paths only,
+  never a value. Keep that discipline in anything you build on top of it: no cookie value in
+  chat, in a report, in a log, or in a commit message.
+- **Cache files and browser profiles are secret-bearing artifacts, not source.** They live
+  under `~/.cache/browser-cookie-auth/`, with the cache at mode 0600 and its directory and
+  the browser profile at 0700. Never move them next to the script: a cache in a git
+  checkout is a credential in a git checkout.
+- **Don't build unattended or background harvesting.** The visible login window is the
+  consent step, not friction. This script deliberately does not read another browser's
+  cookie store and does not attach to a running browser over CDP; adding either is a
+  separate, higher-sensitivity decision for one named, already-approved service.
 
 ## Usage
 
 ```bash
-python3 ~/.claude/scripts/browser-cookie-auth/cookie_auth.py <service_slug> <url> \
-  --cookie-names FedAuth,rtFa \
-  [--ttl-hours 7] [--refresh] [--browser msedge|chromium]
+python3 scripts/cookie_auth.py <service_slug> <url> \
+  [--cookie-names FedAuth,rtFa] [--ttl-hours 7] [--refresh] \
+  [--browser chromium|msedge|chrome] [--timeout 120]
 ```
 
-- `service_slug`: short name for the service (e.g. `confluence`, `internal-wiki`) — keys the
-  cache file and the persistent browser profile so different services don't collide.
-- `url`: a page on the target service that will mint/hold the session cookies.
-- `--cookie-names`: comma-separated names to wait for and capture (service-specific —
-  find them via devtools on that service while logged in).
-- `--ttl-hours`: how long to trust the cache before forcing a fresh login (default 7h,
-  tuned for typical enterprise SSO session length — adjust per service).
-- `--refresh`: force a fresh interactive login even if a cache entry exists.
+- `service_slug`: short name for the service (e.g. `confluence`, `internal-wiki`). It keys
+  the cache file and the persistent browser profile, so services never collide.
+- `url`: a page on the target service that mints or holds the session cookies.
+- `--cookie-names`: comma-separated names to wait for and capture (default
+  `FedAuth,rtFa`; find the real ones in devtools while logged in).
+- `--ttl-hours`: how long to trust the cache before forcing a fresh login (default 7,
+  tuned for typical enterprise SSO lifetime).
+- `--refresh`: force an interactive login even when a cache entry is valid.
+- `--browser`: `chromium` by default, or an installed Chrome or Edge channel.
 
-From Python, `import` the module directly for the same functions
-(`get_cookies`, `make_session`) — see the module docstring in
-`~/.claude/scripts/browser-cookie-auth/cookie_auth.py` for the full API, which mirrors
-`sharepoint_api.py`'s `make_session`/`get_request_digest` pattern: load the cached cookies
-into a `requests.Session`, fetch a fresh request-verification token per write if the
-target service uses one (SharePoint's `X-RequestDigest` is one example), and proceed with
-normal authenticated REST calls.
+From Python, import the module:
+
+```python
+from cookie_auth import make_session
+
+session = make_session("sharepoint", "https://example.internal/sites/team")
+response = session.get("https://example.internal/sites/team/_api/web")
+```
+
+`make_session` loads the cached cookies into a `requests.Session`. For a service that needs
+a per-write verification token (SharePoint's `X-RequestDigest` is one), fetch that token
+once per session and send it as a header on writes; the module does not guess at a
+service-specific token.
 
 ## Workflow for a brand-new service
 
 1. Confirm scope with the user (see "Before you wire this" above).
-2. Log into the target service once in a normal browser tab to find its session cookie
-   name(s) via devtools.
-3. Run the CLI once interactively to seed the cache and persistent profile.
-4. Build the service-specific REST calls on top of `make_session(service_slug)`, following
-   `sharepoint_api.py` as the reference shape (session + request-digest/token fetch +
-   typed helper functions per operation).
-5. On 401/403 in later runs, re-run with `--refresh`.
+2. Log into the target service once in a normal browser tab and find its session cookie
+   name(s) in devtools.
+3. Run the CLI once interactively to seed the cache and the persistent profile.
+4. Build the service's REST calls on top of `make_session`, adding a token fetch only if
+   that service requires one.
+5. On 401 or 403 in a later run, re-run with `--refresh`.

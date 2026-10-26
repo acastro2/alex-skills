@@ -10,6 +10,15 @@ metadata:
 
 # ADO Work Item Writer
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Write spec-driven Azure DevOps work items that capture **what** changed and **why** — derived from actual code changes, not written in isolation.
 
 ## Core Principle: Code-First Ticket Writing
@@ -153,7 +162,7 @@ Every Story / User Story / Product Backlog Item MUST use the 6-section structure
 <p><strong>Related PRs:</strong> [links]</p>
 ```
 
-Where possible, attach PRs and related work items as **link relations** instead of inline URLs (see `references/ado-api-guide.md`).
+Attach PRs and related work items as **link relations** instead of inline URLs (see `references/ado-api-guide.md`).
 
 ---
 

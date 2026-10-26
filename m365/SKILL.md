@@ -12,6 +12,15 @@ description: >-
 
 # m365 — read-only Microsoft 365 CLI
 
+## Asking
+
+When you need a decision from Alex, ask through the `question` tool, not prose. One call
+carries the whole round. The recommended option goes first, and its description carries the
+why. Do not add a "type your own answer" option: the tool adds it. A decision with one
+plausible answer is not a question, so decide it and say why. Where this skill defines its
+own review or answer format, that format wins. If the host has no question tool, use
+`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+
 Reaches **your own** mailbox, calendar, Teams, and SharePoint through Microsoft Graph.
 It replaces nothing: where the Claude M365 connector exists, that connector is the better
 path because its tools are already wired into the agent. This is the path for hosts that

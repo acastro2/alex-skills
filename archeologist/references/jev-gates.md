@@ -96,8 +96,8 @@ saying HIGH is not evidence that a file still exists.
 
 ## Hard limits
 
-- **`ask_jev` is not a source.** It never returns evidence, never turns a 0-hit store into a
-  hit, and never appears in the coverage ledger as a store that was searched.
+- **`ask_jev` is not a source.** An answer carries no evidence, cannot turn a 0-hit store
+  into a hit, and never enters the coverage ledger as a store that was searched.
 - **The ledger reports what actually ran.** A suggested source set is not a search. A sweep
   still covers all stores A–I.
 - **The rubric owns confidence.** "HONEST CONFIDENCE: if you cannot verify, say so. Do not
