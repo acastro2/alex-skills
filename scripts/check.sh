@@ -47,6 +47,7 @@ run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
 run python3 -m unittest discover -s browser-apple-events/tests -p 'test_*.py'
 run python3 -m unittest discover -s alex-voice/tests -p 'test_*.py'
 run_in m365/scripts python3 -m unittest tests
+run "$UV" run --with requests python ea-projects-curator/scripts/sharepoint/test_draft_only.py
 
 # --- ub-mode tools, behind --tools ---------------------------------------------
 if [ "$WITH_TOOLS" = "1" ]; then

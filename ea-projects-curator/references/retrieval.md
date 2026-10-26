@@ -3,12 +3,12 @@
 Read this before a retrieval sweep: every `--audit`, and any run that pulls ADO, GitHub, Microsoft 365 or the archeologist. SKILL.md keeps the order (auth probe, live list, parallel sweep, three-way cross-check); this file holds the commands and the source details.
 
 **Auth preflight FIRST (2026-08-10 lesson):** before any retrieval, check the cookie cache age —
-`stat -f %m <scripts>/sharepoint/.cookies.json` vs `date +%s`, then **probe** with one
-live GET on the EA Projects list (`$top=1`), where `<scripts>` is the sharepoint scripts tree your
-tool runs — `~/.claude/scripts` in Claude Code, `~/.config/opencode/scripts` in OpenCode and Pi.
+`stat -f %m ~/.cache/ea-projects-curator/cookies.json` vs `date +%s`, then **probe** with one
+live GET on the EA Projects list (`$top=1`), where `scripts/sharepoint` is this
+skill's own folder — `~/.claude/scripts` in Claude Code, `~/.config/opencode/scripts` in OpenCode and Pi.
 The cookie lifetime is not a fixed 7h: on 2026-09-04 a 28h-old cookie read, staged a page, and
 MERGEd rows without a single 401. Ask Alex to run
-`python3 <scripts>/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+`python3 scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
 only when the probe fails (401/403), and say so at the top of the report so he can do it while
 retrieval (ADO/GitHub/archeologist sweeps) runs in parallel. Reactively discovering a 403 after the
 sweep wastes the whole run; asking for a refresh the probe shows is unnecessary wastes his.

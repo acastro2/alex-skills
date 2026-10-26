@@ -27,7 +27,7 @@ Every time you are asked to make a change follow:
 The three tools this skill names live in `tools/` next to this file, at pinned
 commits, in one shared virtualenv. First use installs them. See `tools/README.md`.
 
-    ~/.agents/skills/ub-mode/tools/setup.sh              # once
+    tools/setup.sh                                       # once
     tools/bin/crapper src                                # CRAP per function
     tools/bin/dryer --threshold 0.8 src                  # duplicate candidates
     tools/bin/mutator --test-command "pytest -q" src     # mutation score

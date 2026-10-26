@@ -67,7 +67,7 @@ Walk it in order. The first match wins.
    - Each fact needs **its own citation**, or the output must match a schema.
    - It is a **follow-up** on earlier research: "find ten more", "now add their pricing". Continue the earlier run with `previousRunId`. If that is rejected (teams with Zero Data Retention cannot use it), start a new run and pass the earlier results in `input.exclusion` or `input.data`.
    - You would need to **open more than about three pages** to answer well.
-4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at `low` effort (the MCP search has no `deep` type); in Pi, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
+4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at the effort its tool lists (`ultra`; `low` exists on the API only, see [exa-agent.md](references/exa-agent.md)), because the MCP search has no `deep` type; in Pi, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
 5. **Escalate.** If you are about to run a third Exa Search for the same question, stop and start an Agent run with what you learned. A third search means the job has more than one step.
 
 ### Why an Exa Agent run beats a search loop
@@ -79,6 +79,7 @@ What it costs (from [exa-agent.md](references/exa-agent.md), last updated 2026-1
 - Research on one entity uses a fixed effort at a flat price: `low` USD 0.025, `medium` USD 0.10, up to `xhigh` USD 1.00.
 - Lists and any task whose size you cannot predict use `auto`, which is metered with a default cap of USD 5. Set `budget.maxCostDollars` on purpose, and put `maxItems` on arrays in the schema.
 - `ultra` is the highest effort, for large list builds and deep research: metered up to USD 20 by default, and it can run for hours. Use it only when the user asks for maximum completeness, and set `budget.maxDurationSeconds` (300 to 10800).
+- `minimal`, `high`, and the beta `max` tier exist too; `max` needs an extra `Exa-Beta` header. The full table is in [exa-agent.md](references/exa-agent.md).
 
 (Prices are written as USD because Claude Code replaces a dollar sign followed by a digit in this file with the skill's arguments.)
 

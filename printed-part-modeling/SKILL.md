@@ -95,7 +95,7 @@ slots, curve sampling, and writing a 3MF without extra dependencies.
 
 ## 4. Assert the design rules
 
-Every rule you reason about once should become an assertion, in the build script,
+Every rule you reason about once becomes an assertion, in the build script,
 next to the parameters. They cost one line and they catch the regression three
 changes later when you have forgotten the rule existed.
 
@@ -165,8 +165,9 @@ Two things to hold onto while iterating:
 
 Detail lives in the references; the headlines:
 
-- **Clearance:** ~0.2 mm for a snug press, 0.3–0.5 mm for parts that must slide,
-  1–2 mm of float for a guide that only needs to stop something swinging.
+- **Clearance:** 0.1–0.2 mm for a snug fit, 0.0 to −0.1 mm of interference for a press
+  fit, 0.3–0.5 mm for parts that must slide,
+  1–2.5 mm of float for a guide that only needs to stop something swinging.
 - **Walls:** at least 1 mm of material around any hole; 1.2–2 mm for a structural
   wall; a thin sheet spanning a gap is fine as a tie and poor as a beam.
 - **Fasteners:** clearance hole ≈ screw major diameter + 0.4 mm. A countersink

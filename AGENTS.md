@@ -31,6 +31,10 @@ is recorded in `skillcheck/policy.py` under `external_paths`. Why: a skill that 
 drift apart. `browser-cookie-auth`, `cf-cli`, and `autoresearch` were rebuilt this way on
 2026-10-26.
 
+Every `SKILL.md` carries an `## Asking` block: decisions go through the `question` tool,
+one call per round, recommended option first with its reason. `reviewer` folds the same rule
+into its step 5 (grill rounds) instead of a separate section.
+
 ## Skill anatomy
 
 ```

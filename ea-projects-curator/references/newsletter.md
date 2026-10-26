@@ -106,12 +106,10 @@ The navy band carries the page title, so the SharePoint title must not repeat ab
 draft shows a duplicated title, report it; the fallback is to drop "Architecture Weekly" from the
 band, never to accept the duplicate.
 
-**This skill is shared between tools; the scripts it calls are not.** `stage_news_recap.py` exists
-once per tool, and the copies drifted before: the title region was added to one only, so a Pi or
-OpenCode run staged a page with a duplicated title and said nothing. Both carry `--hide-title` and
-its verification as of 2026-09-19. Check the copy your tool runs before trusting any script claim in
-this file; `auth.py` and `sharepoint_api.py` still differ between the trees, which is open and
-belongs to Alex.
+**The scripts ship with this skill, once.** `stage_news_recap.py`, `sharepoint_api.py`, and
+`auth.py` live in `scripts/sharepoint/`, so every host runs the same copy. That ends the drift that
+staged a page with a duplicated title on one tool and not another (2026-09). If a script claim here
+disagrees with `--help`, the script is right: read it, then fix this file.
 
 **Sources — reuse the run's retrieval sweep, never double-fetch:** the ADO control first (items in EA
 areas closed this week, grouped by their EA Projects row, and the approved weekly epic updates), the

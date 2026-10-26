@@ -1,6 +1,6 @@
 ---
 name: peekaboo
-description: "Use Peekaboo for macOS screenshots, Accessibility inspection, and background app/window/UI automation, including fallback computer use when the primary tool cannot handle an authorized task."
+description: "Use Peekaboo for macOS screenshots, Accessibility inspection, and background app/window/UI automation, including fallback computer use when the primary tool cannot handle an authorized task. Not for reading page content, DOM, forms, or tabs; use a browser skill for those."
 ---
 
 # Peekaboo

@@ -44,7 +44,7 @@ Three frames govern it:
 
 ## Paths (verified)
 
-- Vault root: `/Users/alexandrecastro/Developer/obsidian/Alex`
+- Vault root: `~/Developer/obsidian/Alex`
 - KB folder: `<vault>/Bard/` (flat)
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`

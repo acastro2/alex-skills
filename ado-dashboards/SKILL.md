@@ -40,7 +40,7 @@ Full endpoint table, object schemas, request/response examples, and eTag/concurr
 Quick facts:
 - Base: `https://dev.azure.com/{org}/{project}/{team}/_apis/dashboard/...`
 - Every call needs a **preview** api-version (`7.1-preview.2` for widgets, `7.1-preview.3` for dashboards) — bare `7.1` 404s.
-- Auth: same `$AZURE_DEVOPS_PAT` pattern as the `ado` agent (`~/.claude/agents/ado.md`) — this skill doesn't own auth, it owns dashboard/widget authoring on top of it.
+- Auth: same `$AZURE_DEVOPS_PAT` pattern as the `ado` agent (the `ado` agent in your tool's agents tree: `~/.claude/agents/`, `~/.config/opencode/agents/`, or `~/.pi/agent/agents/`) — this skill doesn't own auth, it owns dashboard/widget authoring on top of it.
 - `settings` is a JSON-encoded **string** field, not a nested object — serialize before writing, parse after reading.
 - Writes need the dashboard's current `eTag` nested as `"dashboard": {"eTag": "..."}` in the request body (optimistic concurrency) — GET fresh immediately before writing.
 

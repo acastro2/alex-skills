@@ -47,7 +47,7 @@ graph TD
 
 ## Paths (verified 2026-09-03)
 
-- Vault root: `/Users/alexandrecastro/Developer/obsidian/Alex`
+- Vault root: `~/Developer/obsidian/Alex`
 - Notes: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <title>.md`
 - Glossary: `<vault>/Scribe/Glossary.md` (`- wrong => Right` lines; scribe applies, you may append)
 - State: `<vault>/Scribe/.scribe-state.json`
@@ -224,9 +224,9 @@ One meeting, or no subagents on this host: run all eight steps serially.
 
    ```bash
    uv run python write_note.py ~/.scribe/transcripts/<id>.json \
-     --vault /Users/alexandrecastro/Developer/obsidian/Alex \
+     --vault ~/Developer/obsidian/Alex \
      --summary-file ~/.scribe/transcripts/<id>.summary.md \
-     --glossary /Users/alexandrecastro/Developer/obsidian/Alex/Scribe/Glossary.md \
+     --glossary ~/Developer/obsidian/Alex/Scribe/Glossary.md \
      [--title "..."] [--attendees "A,B"] [--tags aab,forum]
    ```
 

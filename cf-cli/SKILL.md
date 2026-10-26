@@ -59,7 +59,7 @@ Do not chain nested `--help` calls to explore the tree, and keep search queries 
 
 Two paths:
 
-**API token via environment (preferred for scripts and agents).** `cf` reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The credentials file on this machine keeps them as `TF_VAR_*`, so map them with this skill's own script:
+**API token via environment (preferred for scripts and agents).** `cf` reads `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. If `~/.config/hookme/account.env` exists it keeps them as `TF_VAR_*`, so map them with this skill's own script; if it does not, export the two names yourself:
 
 ```
 . scripts/cf-env.sh

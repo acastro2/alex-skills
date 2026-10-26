@@ -117,9 +117,10 @@ Rules that bind every figure:
   1. Deferred-interest buckets projected to miss expiry at scheduled
      payments: fund only buckets the cash clears IN FULL (a partial payment
      still lets the whole deferred interest land). Choose the set that avoids
-     the most deferred interest net of the APR interest those dollars would
-     have saved elsewhere; with a handful of buckets, check every combination.
-     Ties go to the nearest expiry.
+     the most deferred interest; with a handful of buckets, check every
+     combination. The helper below ranks on deferred interest alone, so when
+     two sets land within a few dollars, prefer the one that leaves more cash
+     for an APR-carrying balance. Ties go to the nearest expiry.
   2. What remains goes to the highest-APR interest-bearing balance.
   3. Same-account check (see the allocation rule) before promising where a
      payment lands.
@@ -176,6 +177,8 @@ financial independence, "does this purchase matter?"
   ```python
   import math
   def months_to_fi(P, C, T, r):  # P now, C monthly contribution, T target, r monthly REAL return
+      if r == 0:
+          return (T - P) / C
       return math.log((T * r + C) / (P * r + C)) / math.log(1 + r)
   ```
 

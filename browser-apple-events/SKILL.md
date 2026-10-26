@@ -41,7 +41,7 @@ flowchart LR
 
 ## What is the safe path?
 
-1. Confirm the browser and task. Prefer Edge when the user has not chosen a browser. An installed app is not permission to act in every tab.
+1. Confirm the browser and task. Prefer the browser the user has open: Edge on the work Mac, Chrome or Brave at home. Check what is installed before you name one. An installed app is not permission to act in every tab.
 2. Discover its dictionary. Use its bundle path and reported ID, not a guessed display name.
 3. Save a tab-selection snapshot with `tabs --out`. It keeps the browser PID and launch time with the IDs. Match the intended site, page, and account. If more than one candidate fits, ask with numbered candidates. IDs identify tabs, not business records or accounts.
 4. Bind the chosen window ID, tab ID, exact URL, browser process, and document. Keep the target file local and private.

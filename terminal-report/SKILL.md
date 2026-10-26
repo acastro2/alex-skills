@@ -63,7 +63,7 @@ A visual must replace at least three numbers that would otherwise sit in prose. 
 - **No chart for one number, two numbers, or a list of three.** A gauge for a single percentage is a sentence with extra rows.
 - **Do not decorate.** A visual that repeats what the answer line already said is noise, and it makes a weak report look confident.
 
-Charts in this terminal are drawn from a `chart` fence. The fence contract, the family per point, and the options live in the `opencode-charts` skill. This skill never restates them.
+Charts in this terminal are drawn from a `chart` fence, and the renderer owns that contract: copy the worked chart in [references/example.md](references/example.md) instead of inventing options. This skill owns layout, not chart syntax.
 
 ## Anti-patterns, by name
 

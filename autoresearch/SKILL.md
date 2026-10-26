@@ -1,6 +1,6 @@
 ---
 name: autoresearch
-description: "Autonomous iteration loop: modify, verify, keep/discard against any metric"
+description: "Autonomous iteration loop: modify, verify, keep/discard against any metric. Use when a change must be measured against a number rather than judged by opinion. Not for one-shot edits, or work with no metric to move."
 version: 3.0.0
 ---
 
@@ -41,7 +41,7 @@ this number go up".
 - Results go to `autoresearch/loop-{YYMMDD}-{HHMM}/` **in the repo under test**, never in
   this skill directory.
 - Screen every derived or persisted shell command before it runs:
-  `bash "<skill-dir>/scripts/orchestrate.sh" screen-cmd "<command>"` must print `ok`.
+  `bash ~/.agents/skills/autoresearch/scripts/orchestrate.sh screen-cmd "<command>"` must print `ok`.
   On `refuse`, stop and tell the user why.
 - The Verify command and its files are read-only. Never edit them to make a number pass.
 - Discard by revert only: `git revert HEAD --no-edit`. Never rewrite history.

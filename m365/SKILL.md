@@ -47,7 +47,7 @@ m365 --json doctor
 Answer these in order:
 
 1. `auth` is `ok`, and `user` is you. If `auth` is `missing` or `no_token`, stop and ask
-   Alexandre to run `m365 login` — it opens a browser and cannot be done for him.
+   Alex to run `m365 login` — it opens a browser and cannot be done for him.
 2. Which surfaces say `ok`. A surface that says `fail: <code>` is unavailable **this run**;
    report it as missing data, never as "no results".
 3. Do not proceed on a partial `doctor` without saying which parts are down.
@@ -79,7 +79,7 @@ Put `--json` before the command, as in `m365 --json request /me`.
 Flags, defaults and return shapes are authoritative in
 [cli-reference.md](references/cli-reference.md).
 
-## The read path you should use
+## The read path
 
 1. **Find the container before the content.** `teams chats` gives you a `chat-id`;
    `sharepoint search --sites` gives you a site; `mail search` gives you message ids.
@@ -99,12 +99,11 @@ The method is fixed; pass only the path, for example `m365 --json request /me`.
 
 ## What not to do
 
-- Do not attempt to send, reply to, or modify mail. There is no command for it, and you
-  should not go looking for one.
+- Do not attempt to send, reply to, or modify mail. There is no command for it.
 - Do not paste mail or chat bodies into an org-visible surface. Same exclusion screen as
   any other store.
 - Do not treat a `fail:` surface as empty. Name it.
-- Do not run `m365 logout` — that deletes Alexandre's cached token and costs him a browser
+- Do not run `m365 logout` — that deletes Alex's cached token and costs him a browser
   sign-in.
 
 ## Known gaps

@@ -295,13 +295,13 @@ Brief text, what to look for, table columns and ledger rules: [references/connec
 ## Writing to the list
 
 Hand confirmed rows to the **`sharepoint` agent**, or write a small batch inline with the helper
-(`sys.path` → `<scripts>/sharepoint`, module **`sharepoint_api`** — not `sharepoint_helper`;
+(`sys.path` → `scripts/sharepoint`, module **`sharepoint_api`** — not `sharepoint_helper`;
 `make_session()` no args + `get_request_digest(session, site)`; CLI verbs need `SHAREPOINT_SITE_URL`
 exported or they exit with "Set SHAREPOINT_SITE_URL"); one script MERGE-ing all approved items beats
 N agent round-trips. Payloads and field shapes live in `references/write-shapes.md`; read it before
 writing, and read `ListItemEntityTypeFullName` live rather than hardcoding it. **Verify every write:**
 MERGE → 204, comment POST → 201, then GET the changed fields back. If a call 401/403s, ask Alex to
-run `python3 <scripts>/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+run `python3 scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
 (headed passkey — a human step). **Never change list or site permissions.**
 
 **If the network dies mid-batch** (TLS aborts, curl showing HTTP 000 — usually the corporate security
