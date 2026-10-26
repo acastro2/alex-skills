@@ -1,0 +1,3 @@
+# Vendored tool checkouts and their shared venv. Rebuilt by tools/setup.sh.
+tools/src/
+tools/.venv/

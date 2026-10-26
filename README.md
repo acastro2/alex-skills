@@ -18,7 +18,7 @@ Generic method (how to do TDD, how to debug, how to grill a plan) does not belon
 | --- | --- |
 | Tools | `search` (Context7 and Exa), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control`, `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `ado-dashboards` |
 | Alex's systems | `scribe`, `bard`, `archeologist`, `ea-projects-curator`, `ado-ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator` |
-| Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor` |
+| Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode` |
 
 Each skill's `SKILL.md` frontmatter says what it does and when it loads. `agent-creator` and `improve-codebase-architecture` are manual-only: you type them.
 
@@ -30,6 +30,13 @@ git clone https://github.com/acastro2/alex-skills.git ~/.agents/skills
 ```
 
 OpenCode and Pi read `~/.agents/skills` directly. Claude Code reads `~/.claude/skills`, so the script links each skill there, one symlink per skill. Run it again after you add or remove a skill.
+
+`ub-mode` is the one skill with a slash command. It ships at `ub-mode/commands/ub-mode.md`, linked into both hosts so `/ub-mode` works in each:
+
+```bash
+ln -sfn ~/.agents/skills/ub-mode/commands/ub-mode.md ~/.config/opencode/commands/ub-mode.md
+ln -sfn ~/.agents/skills/ub-mode/commands/ub-mode.md ~/.claude/commands/ub-mode.md
+```
 
 Do not point `~/.claude/skills` at this repo with one symlink. Claude Code syncs personal claude.ai skills into `~/.claude/skills/synced/`, and with a whole-folder link those copies land inside the repo, where OpenCode and Pi load them as skills.
 

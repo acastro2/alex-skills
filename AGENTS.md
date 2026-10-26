@@ -8,6 +8,12 @@ Self-contained skills for Claude Code, OpenCode, and Pi. Each top-level folder w
 
 Keep a skill only if it holds facts the model cannot know: how to use a tool, Alex's systems, or Alex's taste. Do not add generic method skills (TDD, debugging, grilling); the model does those well, and each extra description competes in the skill list. Before you add a skill, say which of the three it is.
 
+One exception: `ub-mode` (Uncle Bob's reduced principles). It is a method skill,
+and it stays because three of its gates cannot be done from memory: CRAP under 10,
+duplicate rank above 0.8, and mutation survivors killed. Those are the tools in
+`ub-mode/tools/`, pinned and installed by `ub-mode/tools/setup.sh`, so the skill
+carries tool facts and not only method.
+
 ## Skill anatomy
 
 ```

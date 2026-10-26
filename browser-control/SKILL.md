@@ -3,6 +3,13 @@ name: browser-control
 description: Drive the user's existing Chromium-family browser with deterministic Playwright. Use when asked to inspect, automate, test, or interact with a visible browser tab; continue an authenticated browser workflow; handle 2FA, passkeys, CAPTCHAs, or payment confirmation; record browser behavior; or capture an authenticated network flow.
 ---
 
+> **Scope note (2026-10-26):** this skill drives a Chromium-family browser on the
+> machine that hosts it, through Playwright and the browser extension. It does not
+> apply inside the Hermes container: no host Chromium, no extension, no CDP endpoint
+> exist there. Inside that container use the `camoufox-browsing` skill instead; it
+> drives the in-container Camoufox on `127.0.0.1:9377`. Do not follow the CDP or
+> Playwright steps below when the agent runs inside the container.
+
 # Browser Control
 
 Browser Control is a **driver**, not an agent. The calling agent decides what to
