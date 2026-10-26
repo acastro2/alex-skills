@@ -1,3 +1,6 @@
+# Personal-only skills revived from git history (Attain-flavored). Local machine only; never push.
+local/
+
 # Skill run artifacts
 .skill-workspace/
 cohort-out/
