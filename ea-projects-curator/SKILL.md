@@ -90,8 +90,8 @@ The weekly ADO work is the [Weekly ADO control](#weekly-ado-control--what-ea-doe
 
 ## The board you write to
 
-List **EA Projects** on `https://attainfinance.sharepoint.com/sites/Architecture`, GUID
-`d2c0a30a-dab4-40a7-bc63-7268736473f2` (URL slug still `/Lists/EA Portfolio`). Write with internal
+List **EA Projects** on `https://example.sharepoint.com/sites/Architecture`, GUID
+`<EA Projects list id>` (URL slug still `/Lists/EA Portfolio`). Write with internal
 names: `Title`, `Theme`, `Status` (display Stage), `EARole`, `AABItems`, `Impact`, `KeyArtifact`,
 `ExecutionLink`, `NextMilestone` (display Milestone), `MilestoneDate`, `Sponsor`.
 
@@ -301,7 +301,7 @@ exported or they exit with "Set SHAREPOINT_SITE_URL"); one script MERGE-ing all 
 N agent round-trips. Payloads and field shapes live in `references/write-shapes.md`; read it before
 writing, and read `ListItemEntityTypeFullName` live rather than hardcoding it. **Verify every write:**
 MERGE → 204, comment POST → 201, then GET the changed fields back. If a call 401/403s, ask Alex to
-run `python3 scripts/sharepoint/auth.py "https://attainfinance.sharepoint.com/sites/Architecture" --refresh`
+run `python3 scripts/sharepoint/auth.py "https://example.sharepoint.com/sites/Architecture" --refresh`
 (headed passkey — a human step). **Never change list or site permissions.**
 
 **If the network dies mid-batch** (TLS aborts, curl showing HTTP 000 — usually the corporate security
@@ -317,7 +317,7 @@ verified.
 - **Ledger `curated.json`** (in this skill's directory) maps each source artifact ID → the row it fed, so overlapping re-runs are no-ops. Read it at the start, update it after writing. Shape:
   ```json
   {
-    "list_guid": "d2c0a30a-dab4-40a7-bc63-7268736473f2",
+    "list_guid": "<EA Projects list id>",
     "rows": {
       "<listItemId>": {
         "initiative": "Privileged Access Renewal",
@@ -370,8 +370,8 @@ Board forum queue), plus the weekly **AAB Recap** News post (you generate its fo
 scribe note; publishing stays Alex's action). This control runs **first**, before any EA Projects
 check, in both `--maintain` and `--audit`.
 
-- **AAB Intake list:** `https://attainfinance.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `80c68e54-eadf-4cf3-946a-3c0e432056a5`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime, **DateOnly**), `Outcomenotes`, `Modified`.
-- **Recaps folder:** `/sites/Architecture/SitePages/Recaps`, page name `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
+- **AAB Intake list:** `https://example.sharepoint.com/sites/Architecture/Lists/AAB%20Intake/AllItems.aspx`, GUID `<AAB Intake list id>`, entity `SP.Data.AAB_x0020_IntakeListItem`. Fields: `Title`, `Status` (`New` / `Triaged` / `Scheduled` / `Decided` / `Parked` / `Deflected`), `Scheduledfor` (DateTime, **DateOnly**), `Outcomenotes`, `Modified`.
+- **Recaps folder:** `/sites/Architecture/SitePages/Recaps`, page name `YYYY-MM-DD-AAB-Recap.aspx`. Browse view: `https://example.sharepoint.com/sites/Architecture/SitePages/Forms/ByAuthor.aspx?id=%2Fsites%2FArchitecture%2FSitePages%2FRecaps&viewid=a74d565d%2Da0da%2D444e%2Daae0%2D092bef143ca8`.
 - **Timezone/week:** read `RegionalSettings/TimeZone` live (Central Time, America/Chicago). A calendar week is Monday–Sunday; if the timezone no longer maps to America/Chicago, report UNVERIFIED instead of guessing date boundaries.
 
 Use [references/write-shapes.md](references/write-shapes.md) for the control's REST read/write shapes.

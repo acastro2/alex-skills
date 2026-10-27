@@ -21,7 +21,7 @@ these are plain JSONL files; never modify them.
 
 - One directory per project: `~/.pi/agent/sessions/--<path>--/`, where `<path>` is the absolute
   cwd with `/` replaced by `-`, wrapped in `--...--`. Dots are PRESERVED (unlike Claude Code).
-  Example: `/Users/alexandrecastro/.agents/skills` -> `--Users-alexandrecastro-.agents-skills--`.
+  Example: `~/.agents/skills` -> `--Users-<user>-.agents-skills--`.
   As with Claude Code, NEVER trust a constructed path: start GLOBAL (`rg -l` over
   `~/.pi/agent/sessions/`) and resolve specific sessions by uuid (the header's `.id`).
 - `<timestamp>_<uuid>.jsonl` — one main session per file. Filename timestamp is session start
@@ -94,7 +94,7 @@ agent (`subagent-<agent>-...`) spawned it.
 ## Strategy H3: Session listing (uuid -> project + start + name)
 
 > **Gotcha: `--`-prefixed dir names are parsed as options.** Every dir under
-> `~/.pi/agent/sessions/` starts with `--` (e.g. `--Users-alexandrecastro-Developer--`).
+> `~/.pi/agent/sessions/` starts with `--` (e.g. `--Users-<user>-Developer--`).
 > Any bare `--...` path handed to `head`, `jq`, `ls`, `find`, etc. is treated as a
 > command-line option and fails (or silently returns nothing). Always glob with a
 > `./` prefix or use absolute paths: `./*/*.jsonl`, `./--Users...--/...`, or the
@@ -111,7 +111,7 @@ by project with `| select(.cwd|ascii_downcase|contains("grafana"))`.
 
 ## Strategy H4: Read a session in order
 ```bash
-F=~/.pi/agent/sessions/--Users-alexandrecastro-Developer--/2026-08-01T12-00-00-000Z_<uuid>.jsonl
+F=~/.pi/agent/sessions/--Users-<user>-Developer--/2026-08-01T12-00-00-000Z_<uuid>.jsonl
 jq -r 'select(.type=="message") | . as $l
   | ((.message.content // []) | if type=="array" then . else [{type:"text", text:.}] end)[]
   | select(.type=="text" or .type=="thinking")

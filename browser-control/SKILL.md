@@ -6,8 +6,8 @@ description: Drive the user's existing Chromium-family browser with deterministi
 > **Scope note (2026-10-26):** this skill drives a Chromium-family browser on the
 > machine that hosts it, through Playwright and the browser extension. It does not
 > apply inside the Hermes container: no host Chromium, no extension, no CDP endpoint
-> exist there. Inside that container use the `camoufox-browsing` skill instead; it
-> drives the in-container Camoufox on `127.0.0.1:9377`. Do not follow the CDP or
+> exist there. Inside that container, use whatever browser skill that image ships (its own
+> Camoufox on `127.0.0.1:9377`, when present) rather than this one. Do not follow the CDP or
 > Playwright steps below when the agent runs inside the container.
 
 # Browser Control

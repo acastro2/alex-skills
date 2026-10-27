@@ -52,21 +52,6 @@ POLICY: dict[str, Policy] = {
         path_bases=("../m365",),
         standalone=frozenset({"references/jev-gates.md"}),
     ),
-    # a work artifact in the Attain IT portfolio repo; not cloned on this machine.
-    "ado-ticket-writer": Policy(
-        external_paths=frozenset(
-            {"docs/knowledge/information-technology/request-model.md"}
-        ),
-    ),
-    # screenshots' evidence JSONs live in the Attain IT portfolio repo, off this machine.
-    "browser-apple-events": Policy(
-        external_paths=frozenset(
-            {
-                "information-technology/evidence/it-states-v2-ui-2026-09-09/request-rejection-255270.json",
-                "information-technology/evidence/it-states-v2-ui-2026-09-09/normal-submission-readiness-defect.json",
-            }
-        ),
-    ),
     # the exa references are three separate API calls and each stands alone, so all three
     # must carry the same wording about the curl blocks being for Pi.
     "search": Policy(

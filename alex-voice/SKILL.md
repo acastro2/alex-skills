@@ -162,4 +162,4 @@ Read it aloud, then ask:
 
 ## Maintenance
 
-When Alex catches a new AI tell in output, add it to Never use here and to `BANNED` in `scripts/voice_check.py` in the same change. When a new register appears, measure it first (see `references/voice-fingerprint.md`), then write rules. Real excerpts go to the private vault note, never here. The private corpus and findings notes live in `~/Developer/obsidian/Alex/40 Writing/Voice/`.
+When Alex catches a new AI tell in output, add it to Never use here and to `BANNED` in `scripts/voice_check.py` in the same change. When a new register appears, measure it first (see `references/voice-fingerprint.md`), then write rules. Real excerpts go to the private vault note, never here. The private corpus and findings notes live under the voice folder in the vault, when that vault is on this machine (`$OBSIDIAN_VAULT/40 Writing/Voice/`).

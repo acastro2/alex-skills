@@ -60,7 +60,7 @@ ADO renders `<pre>` in monospace with a light background. There is no syntax hig
 ## Links
 
 ```html
-<p>See the <a href="https://github.com/CuroFinTech/echo/pull/42">related PR</a>.</p>
+<p>See the <a href="https://github.com/example-org/echo/pull/42">related PR</a>.</p>
 ```
 
 For PRs and other work items, prefer attaching them as **link relations** on the work item (`Hyperlink` or `Related`) instead of inline `<a>` — they show up in the dedicated Links tab.
@@ -92,7 +92,7 @@ Tables render but the rich-text editor sometimes reformats them. Keep them simpl
 To embed an image, first upload it via the attachments API, then reference the returned URL:
 
 ```html
-<img src="https://dev.azure.com/CuroFinTech/{project}/_apis/wit/attachments/{guid}" alt="diagram" />
+<img src="https://dev.azure.com/example-org/{project}/_apis/wit/attachments/{guid}" alt="diagram" />
 ```
 
 ---
@@ -177,7 +177,7 @@ Use **both**: Section 1 of the description shows ACs inline for context, and the
 
 <h3>6. Resources &amp; Team Context</h3>
 <p><strong>Runbook:</strong> <a href="https://wiki/runbooks/oauth">OAuth incident runbook</a></p>
-<p><strong>Infrastructure Source:</strong> <a href="https://github.com/CuroFinTech/echo">echo repo</a></p>
+<p><strong>Infrastructure Source:</strong> <a href="https://github.com/example-org/echo">echo repo</a></p>
 <p><strong>Support Channel:</strong> <a href="https://slack/echo-team">#echo-team</a></p>
 <p><strong>Related PRs:</strong> attached as Hyperlink relations on this work item.</p>
 ```

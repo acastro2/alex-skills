@@ -54,9 +54,9 @@ Saved rejection evidence recorded the ITCC/source result and revisions, while la
 Evidence pointers on the source Mac:
 
 - `/tmp/it-ax.applescript`, `/tmp/it-board-ui.py`, `/tmp/d06-buttons.txt`, `/tmp/d06-submit-text.txt`
-- `/Users/alexandrecastro/Developer/ado-restructuring/docs/ITCC-TEST-LEDGER.md`
-- `information-technology/evidence/it-states-v2-ui-2026-09-09/request-rejection-255270.json`
-- `information-technology/evidence/it-states-v2-ui-2026-09-09/normal-submission-readiness-defect.json`
+- `~/Developer/<work-repo>/docs/ITCC-TEST-LEDGER.md`
+- `<case>/request-rejection.json`
+- `<case>/readiness-defect.json`
 
 No saved ID is a current binding. No signed iframe URL or broad AX dump was copied into this skill.
 

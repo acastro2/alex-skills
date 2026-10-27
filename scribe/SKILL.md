@@ -47,7 +47,7 @@ graph TD
 
 ## Paths (verified 2026-09-03)
 
-- Vault root: `~/Developer/obsidian/Alex`
+- Vault root: `$OBSIDIAN_VAULT`, or the vault the `obsidian` CLI reports. Never a literal path.
 - Notes: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <title>.md`
 - Glossary: `<vault>/Scribe/Glossary.md` (`- wrong => Right` lines; scribe applies, you may append)
 - State: `<vault>/Scribe/.scribe-state.json`

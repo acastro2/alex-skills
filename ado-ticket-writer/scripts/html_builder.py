@@ -222,7 +222,7 @@ def main() -> None:
         ],
         resources={
             "Runbook": "https://wiki/runbooks/oauth",
-            "Infrastructure Source": "https://github.com/CuroFinTech/echo",
+            "Infrastructure Source": "https://github.com/example-org/echo",
             "Support Channel": "#echo-team",
         },
     )
@@ -237,8 +237,8 @@ def main() -> None:
             title="[ECHO] Enable OAuth2 Google authentication for users",
             description_html=description_html,
             acceptance_criteria_html=ac_html,
-            area_path="Software Engineering\\Alpha",
-            iteration_path="Software Engineering",
+            area_path="Engineering Project\\Alpha",
+            iteration_path="Engineering Project",
             tags=["auth", "oauth2"],
             priority=2,
         )

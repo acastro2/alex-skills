@@ -2,7 +2,7 @@
 description: Work a coding change in ub-mode: Make it Work, then Make it Right, then Practice
 ---
 
-Read `/Users/acastro/.agents/skills/ub-mode/SKILL.md` and work this task in that mode.
+Read `~/.agents/skills/ub-mode/SKILL.md` and work this task in that mode.
 
 Task: $ARGUMENTS
 

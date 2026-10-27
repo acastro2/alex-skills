@@ -1,6 +1,6 @@
 # Azure DevOps REST API Guide
 
-Quick reference for common Azure DevOps work item API operations against one of the five living projects at `https://dev.azure.com/CuroFinTech` — `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`. Tiger, Risk Analytics and Marketing are closed to new work; read them for legacy items only.
+Quick reference for common Azure DevOps work item API operations. The org comes from `scripts/resolve_ado.py org`; the project from `scripts/resolve_ado.py projects`. Neither is written here, because both are per-person facts that go stale.
 
 ## Authentication
 
@@ -8,7 +8,7 @@ All requests use Basic Auth with empty username and a Personal Access Token:
 
 ```bash
 AUTH=(-u ":$AZURE_DEVOPS_PAT")
-BASE="https://dev.azure.com/CuroFinTech/Software%20Engineering"  # substitute the team's living project
+BASE="https://dev.azure.com/$ORG/<project>"  # resolved, never memorized
 ```
 
 Required PAT scopes: `vso.work` (read) and `vso.work_write` (create/update).
@@ -68,7 +68,7 @@ curl -s "${AUTH[@]}" -X POST -H "Content-Type: application/json" \
   -d "$QUERY" | jq '.workItems[].id'
 ```
 
-`@project` and `@me` are server-side macros. `@currentIteration('[Software Engineering]\Alpha')` gives the current sprint of a team; substitute the real project and team.
+`@project` and `@me` are server-side macros. `@currentIteration('[<project>]\Alpha')` gives the current sprint of a team; substitute the real project and team.
 
 WIQL gotchas:
 
@@ -96,7 +96,7 @@ curl -s "${AUTH[@]}" \
 # Agile  → "User Story", "Bug", "Task", "Epic", "Feature"
 # Scrum  → "Product Backlog Item", "Bug", "Task", "Epic", "Feature"
 # Basic  → "Issue", "Epic", "Task"
-# Living projects here use custom sets (Software Engineering ships User Story,
+# Types and states are per project and drift: read them from the API (see SKILL.md).
 # Bug, Epic, Task, Spike, Operational Work, ITCC, CC and Milestone; Information
 # Technology has at least Epic, Feature, User Story and Spike), so always list
 # first, then choose per ticket
@@ -113,8 +113,8 @@ curl -s "${AUTH[@]}" -X POST -H "Content-Type: application/json-patch+json" \
     {"op":"add","path":"/fields/System.Title","value":"[ECHO] Enable OAuth2 Google login"},
     {"op":"add","path":"/fields/System.Description","value":"<h3>1. Constitutional Intent</h3><p>...</p>"},
     {"op":"add","path":"/fields/Microsoft.VSTS.Common.AcceptanceCriteria","value":"<ul><li>Given user is logged out, When they click Google, Then OAuth flow starts</li></ul>"},
-    {"op":"add","path":"/fields/System.AreaPath","value":"Software Engineering\\Alpha"},
-    {"op":"add","path":"/fields/System.IterationPath","value":"Software Engineering"},
+    {"op":"add","path":"/fields/System.AreaPath","value":"<project>\\<area>"},
+    {"op":"add","path":"/fields/System.IterationPath","value":"<project>"},
     {"op":"add","path":"/fields/System.Tags","value":"auth; oauth2"}
   ]'
 ```
@@ -183,7 +183,7 @@ curl -s "${AUTH[@]}" -X PATCH -H "Content-Type: application/json-patch+json" \
     "op":"add","path":"/relations/-",
     "value":{
       "rel":"System.LinkTypes.Related",
-      "url":"https://dev.azure.com/CuroFinTech/Software%20Engineering/_apis/wit/workItems/5678",
+      "url":"https://dev.azure.com/$ORG/<project>/_apis/wit/workItems/5678",
       "attributes":{"comment":"related to"}
     }
   }]'
@@ -218,7 +218,7 @@ curl -s "${AUTH[@]}" \
   "$BASE/_apis/wit/classificationnodes/iterations?api-version=7.1&\$depth=3"
 ```
 
-Area/iteration values for fields use **backslash separators**, e.g. `Software Engineering\Alpha` (in JSON: `"Software Engineering\\Alpha"`).
+Area/iteration values for fields use **backslash separators**, e.g. `<project>\<area>` (in JSON: `"Engineering Project\\Alpha"`).
 
 ### Team Settings (default area + current iteration)
 

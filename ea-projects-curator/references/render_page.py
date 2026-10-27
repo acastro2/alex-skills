@@ -281,7 +281,7 @@ def _initials(name):
 
 
 def _owners(owner):
-    """'Flor Delgado Perez, Uday Parande' -> ['Flor Delgado Perez', 'Uday Parande']."""
+    """'Ana Example, Bo Example' -> ['Ana Example', 'Bo Example']."""
     return [o.strip() for o in re.split(r",| and ", owner) if o.strip()]
 
 

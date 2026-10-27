@@ -2,7 +2,7 @@
 
 ## Query Results widget (WitViewWidget) renders blank / stuck loading / "Widget failed to load"
 
-Worked example from a real incident, **now root-caused** (RestructureSandbox, "Change Control Overview" dashboard, `WitViewWidget` bound to query "All Change Controls").
+Worked example from a real incident, **now root-caused** (Sandbox, "Change Management Overview" dashboard, `WitViewWidget` bound to query "All Change Managements").
 
 **Root cause: `settings` missing `selectedColumns`.** A WitViewWidget created via API with only the bare `{"query":{"queryId","queryName"}}` settings passes every server-side check but the browser client fails to render it ("Widget failed to load"). An org-wide sweep of 37 live, human-added, confirmed-in-use WitViewWidget instances showed **every single one** carries a `selectedColumns` array (plus `lastArtifactName`) in settings — see `widget-catalog.md` for the full required shape.
 

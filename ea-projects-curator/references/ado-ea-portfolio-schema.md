@@ -29,7 +29,7 @@ A team's area joins this list only when Alex says its reporting change is offici
 ## The join: a Hyperlink on the epic
 
 Every epic in an EA area carries **exactly one** Hyperlink to its row:
-`https://attainfinance.sharepoint.com/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx?ID=<rowId>`.
+`https://example.sharepoint.com/sites/Architecture/Lists/EA%20Portfolio/DispForm.aspx?ID=<rowId>`.
 
 - **Many epics, one row.** A program with several epics (the 7 SOW epics of the Pinnacle work) rolls up to its rows without one row per epic.
 - **Run work rolls up too.** EA itself and each team that reports to EA have one operations epic and row for keep-the-lights-on work. EA's standalone Requests get the **EA operations** epic as parent, so they roll up too (Alex, 2026-10-09).
@@ -40,7 +40,7 @@ Every epic in an EA area carries **exactly one** Hyperlink to its row:
 
 ## Verified ADO facts (2026-10-09)
 
-- Project `Information Technology`, id `2cb392bc-968c-44aa-a851-8967b830138b`. Team `Enterprise Architecture`, area `Information Technology\Enterprise Architecture`, `includeChildren: false`. Item count moves daily (75 in the morning, 97 by the evening); never quote a fixed number.
+- Project: resolve with `scripts/resolve_ado.py projects`; never carry its id. Team and area: read them from the project's classification nodes. Team `Enterprise Architecture`, area `Information Technology\Enterprise Architecture`, `includeChildren: false`. Item count moves daily (75 in the morning, 97 by the evening); never quote a fixed number.
 - **Inherited process** (custom `Information Technology`). Field and state changes are process edits, and the curator never makes them.
 - **Read access is org-wide** for all licensed people in Information Technology, so every comment and title is org-visible.
 - **Epic states:** `New` · `Active` · `Resolved` · `Closed` · `Removed`, one step at a time.

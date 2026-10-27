@@ -154,7 +154,7 @@ three published issues and put them in the run record for Alex only, never on th
 
 ```
 GET /sites/Architecture/_api/search/query
-    ?querytext='path:"https://attainfinance.sharepoint.com/sites/Architecture/SitePages/Recaps" FileExtension:aspx'
+    ?querytext='path:"$SHAREPOINT_SITE_URL/SitePages/Recaps" FileExtension:aspx'
     &selectproperties='Title,Path,ViewsLifeTime,ViewsLifeTimeUniqueUsers,ViewsRecent,ViewsRecentUniqueUsers'
     &rowlimit=50&trimduplicates=false
 Accept: application/json;odata=nometadata

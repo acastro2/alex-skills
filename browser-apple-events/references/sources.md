@@ -1,6 +1,6 @@
 # Evidence and limits
 
-Checked on 2026-09-09. The user's research supplied the starting source list. The claims below were checked against installed bundles, actual execution, or the linked primary source. Do not reuse the original research's session-local citation markers as evidence.
+Checked on 2026-09-09 on the work Mac. The user's research supplied the starting source list. The claims below were checked against installed bundles, actual execution, or the linked primary source. Do not reuse the original research's session-local citation markers as evidence, and re-measure a version before quoting it: this table records what was installed then, not what is installed now.
 
 ## What was checked locally?
 

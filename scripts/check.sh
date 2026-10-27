@@ -40,7 +40,7 @@ run "$UV" run --with pyyaml python -m skillcheck
 run "$UV" run --with pyyaml python ea-projects-curator/tests/ea_projects_curator_audit.py
 
 # --- tests ---------------------------------------------------------------------
-run "$UV" run --with pytest --with pyyaml python -m pytest scripts/tests ea-projects-curator/tests -q
+run "$UV" run --with pytest --with pyyaml --with requests python -m pytest scripts/tests ea-projects-curator/tests ado-ticket-writer/tests -q
 run "$UV" run --with pytest --with requests python -m pytest browser-cookie-auth/tests -q
 run "$UV" run --with pytest python -m pytest bard/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q

@@ -25,9 +25,9 @@ on a busy window, which a general background agent can carry (see **Volume** bel
 | Mail with no reply | filter | per kept ask: `outlook_email_search` `sender: <Alex>`, `recipient: <asker>`, `afterDateTime: <ask date>`; a hit means answered | — | **not run** |
 | Planner + To Do | snapshot | `tasks_login_status`, then `tasks_assigned_to_me` `include_completed: false` | no | login check run: `none`; `tasks_assigned_to_me` **not run** |
 | Todoist | snapshot | `find-tasks-by-date` `startDate: "today"`, `daysCount: 14` (includes overdue) | no | run: 0 |
-| ADO assigned | snapshot | `wit_query` `action: "wiql"`, `project: "Information Technology"`, WIQL below | no | run: 4 of 42 open |
+| ADO assigned | snapshot | `wit_query` `action: "wiql"`, `project:` from `resolve_ado.py projects`, WIQL below | no | run: 4 of 42 open |
 | ADO item detail | read | `wit_work_item` per hit | — | **not run** |
-| GitHub reviews | snapshot | `gh search prs --review-requested=@me --state=open --owner <org>` per Attain org | no | run: 0 in 8 orgs |
+| GitHub reviews | snapshot | `gh search prs --review-requested=@me --state=open --owner <org>` per org from step 1 | no | run: 0 in 8 orgs |
 
 Alex's address comes from `get_me`; do not hard-code it in a note or the board.
 
@@ -56,8 +56,7 @@ before Jev: skip a hit whose `System.ChangedBy` display name is `Azure Boards`, 
 rest read the last revision (`list_revisions`) and skip it when `Microsoft.VSTS.Common.StackRank`
 is the only field that changed. Also skip any item titled `[CANARY] … DO NOT APPROVE`.
 
-**GitHub orgs.** `gh api user/orgs --jq '.[].login'`, keep names ending in `-Attain-Finance`.
-`--owner Attain-Finance` is not an org and fails; loop the real ones.
+**GitHub orgs.** `gh api user/orgs --jq '.[].login'` lists them; pick the work orgs from that list, one per call. A parent company name is not an org and fails, so never guess one.
 
 **Planner and To Do sign-in.** When `tasks_login_status` returns `none`, write
 `unavailable — not signed in` in the ledger and tell Alex to sign in (`tasks_login_begin`
@@ -67,7 +66,7 @@ gives a device code). Never start the login yourself in a sweep.
 
 Drop these in code, before any Jev call. They are rules, not judgments:
 
-- Mail from outside `attainfinance.com`, except system senders that carry approvals
+- Mail from outside `example.com`, except system senders that carry approvals
   (`IT-Alerts@`, `azuredevops@microsoft.com`). Newsletters and conference mail die here.
 - Alex's own messages (he is the sender), and duplicate notices for the same item (the same
   change control arrives once from ADO and twice from IT-Alerts: keep one per item id).

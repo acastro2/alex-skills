@@ -56,7 +56,7 @@ _URI_PATTERN = re.compile(
 _TOKEN_PATTERN = re.compile(r"meeting-transcript:///events/([A-Za-z0-9_\-%=]+)")
 _SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
 
-DEFAULT_VAULT = "/Users/alexandrecastro/Developer/obsidian/Alex"
+DEFAULT_VAULT = str(Path.home() / "Developer" / "obsidian" / "Alex")
 
 
 # --- reading the Claude Code artifacts -----------------------------------------

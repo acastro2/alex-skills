@@ -149,7 +149,7 @@ priority emoji (the parser constraint still holds):
 | source | breadcrumb |
 |---|---|
 | ADO work item | `(ado:900001)` |
-| GitHub PR review | `(pr:<repo>#<n>)` (Attain-Finance repos only) |
+| GitHub PR review | `(pr:<repo>#<n>)` (repos in the work org only) |
 | Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
 | Teams chat / mail | `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
 | Ask inside a SharePoint doc (an `@alex` to-do in meeting notes) | `(sharepoint:YYYY-MM-DD)`, the doc's modified date |

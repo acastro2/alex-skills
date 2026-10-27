@@ -44,7 +44,7 @@ Three frames govern it:
 
 ## Paths (verified)
 
-- Vault root: `~/Developer/obsidian/Alex`
+- Vault root: `$OBSIDIAN_VAULT`, or the vault the `obsidian` CLI reports. Never a literal path.
 - KB folder: `<vault>/Bard/` (flat)
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`

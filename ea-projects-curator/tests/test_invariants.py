@@ -132,9 +132,6 @@ INVARIANTS = [
     ("SKILL.md", "Never change list or site permissions"),
     ("SKILL.md", "no @-mentions"),
     # identity and ledger
-    ("SKILL.md", "d2c0a30a-dab4-40a7-bc63-7268736473f2"),
-    ("SKILL.md", "80c68e54-eadf-4cf3-946a-3c0e432056a5"),
-    ("references/retrieval.md", "fe9c1f44-8a0c-4f68-b0b1-bf8741eed4fd"),
     # moved out of SKILL.md 2026-10-12: SKILL.md must keep pointing at each reference
     ("SKILL.md", "references/board-schema.md"),
     ("SKILL.md", "references/retrieval.md"),
@@ -168,6 +165,18 @@ INVARIANTS = [
     ("references/write-shapes.md", "Never change permissions"),
     ("references/write-shapes.md", "Append-only"),
 ]
+
+
+def test_no_sharepoint_id_is_written_down() -> None:
+    """Ids are resolved by title at run time; a literal id is a stale id with a 404 attached."""
+    pattern = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+    offenders = [
+        f"{name}:{pattern.search(text).group(0)}"
+        for name, path in PROSE.items()
+        for text in [path.read_text(encoding="utf-8")]
+        if pattern.search(text)
+    ]
+    assert not offenders, f"hardcoded ids: {offenders}"
 
 
 @pytest.mark.parametrize(("name", "phrase"), INVARIANTS, ids=[f"{n}::{p[:24]}" for n, p in INVARIANTS])

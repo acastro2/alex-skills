@@ -172,11 +172,11 @@ Attach PRs and related work items as **link relations** instead of inline URLs (
 
 Always verify before API calls:
 
-**First resolve the project.** New work goes only to the five living projects: `Software Engineering`, `Information Technology`, `Change Control`, `Incident Response`, `Enterprise Portfolio`. Tiger, Risk Analytics and Marketing are closed to new work — read them for legacy items only.
+**First resolve the org and the project, never memorize them.** `ORG=$(python3 scripts/resolve_ado.py org)` reads the environment, `az devops configure`, or `~/.config/ado-ticket-writer.json`. `python3 scripts/resolve_ado.py projects` lists the projects that exist right now. New work goes only to a project the user confirms is live; retired projects stay read-only. A stale name files work where nobody looks.
 
 ```bash
 AUTH=(-u ":$AZURE_DEVOPS_PAT")
-BASE="https://dev.azure.com/CuroFinTech/Software%20Engineering"  # the team's living project
+BASE="https://dev.azure.com/$ORG/<project>"  # <project> from `resolve_ado.py projects`
 
 # List EVERY work item type in the project, then match each ticket to one (see "Choose the type")
 curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitemtypes?api-version=7.1" \
@@ -211,7 +211,7 @@ Never default to the Story type. List the types first, then pick per ticket:
 
 Never mark a spike with a `spike` tag on a Story: use the Spike type. If the type you need is not in the list, say so and ask; do not substitute.
 
-**Known custom sets (verify, they drift):** Software Engineering ships User Story, Bug, Epic, Task, Spike, Operational Work, ITCC, CC and Milestone. Information Technology has at least Epic, Feature, User Story and Spike (checked 2026-09-29). In Information Technology, Spike and User Story have a `Ready` state; Feature only has New/Active/Resolved/Closed and is hidden on the Enterprise Architecture team backlog, so a Feature there cannot be moved to Ready on the board.
+**Read the process, do not remember it.** Types and states differ per project and drift: `GET $BASE/_apis/wit/workitemtypes` and `GET $BASE/_apis/wit/workitemtypes/{type}/states`. A type can be valid for the API and hidden on a team's backlog, so check the state list before you move an item.
 
 Changing the type of an existing item works: update `System.WorkItemType` (it keeps the ID and links), then re-set the state, since states differ per type.
 
@@ -247,7 +247,7 @@ Identity fields take the person's email, and the person must be a member of the 
 
 Moving to Validating or Pending with validation evidence and a nominated verifier starts the verification round: the verifier gets a Teams message and an email, then a weekday reminder. The flow closes the Request when it accepts the verification. Closing needs Validated By, Validation Notes, Verified By and Verified Date filled.
 
-Source: the `ado-restructuring` repo, `docs/knowledge/information-technology/request-model.md` and `request-verification.md`. The rules drift, so read those first when in doubt.
+Source: the `ado-restructuring` repo, `docs/knowledge/<domain>/request-model.md` and `request-verification.md`. The rules drift, so read those first when in doubt.
 
 ### Creating New Work Items
 
@@ -273,7 +273,7 @@ Source: the `ado-restructuring` repo, `docs/knowledge/information-technology/req
 
 - `/fields/System.Title`
 - `/fields/System.Description` (HTML, PARCH-6)
-- `/fields/System.AreaPath` (e.g. `Software Engineering\Alpha`)
+- `/fields/System.AreaPath` (e.g. `<project>\<area>`; read the area tree, never guess it)
 - `/fields/System.IterationPath`
 
 **Recommended**:

@@ -1,6 +1,6 @@
 # ADO Dashboards/Widgets REST API — Reference
 
-Confirmed against Microsoft Learn (as of 2026-07) plus live calls against org `CuroFinTech`. Where the two disagree, the live-call result wins and is marked accordingly.
+Confirmed against Microsoft Learn (as of 2026-07) plus live calls against org `example-org`. Where the two disagree, the live-call result wins and is marked accordingly.
 
 ## Endpoints
 
@@ -17,8 +17,8 @@ All require api-version with a **preview suffix** — there is no GA version of 
 | Update widget (partial) | `PATCH /{org}/{project}/{team}/_apis/dashboard/dashboards/{dashboardId}/widgets/{widgetId}` | `7.1-preview.2` | `vso.dashboards_manage` |
 | Replace all widgets | `PUT /{org}/{project}/{team}/_apis/dashboard/dashboards/{dashboardId}/widgets` | `7.1-preview.2` | `vso.dashboards_manage` — destructive, drops any widget not in the payload |
 | Delete widget | `DELETE /{org}/{project}/{team}/_apis/dashboard/dashboards/{dashboardId}/widgets/{widgetId}` | `7.1-preview.2` | `vso.dashboards_manage` |
-| Widget type metadata (single) | `GET /{org}/{project}/_apis/dashboard/widgettypes/{contributionId}` | `7.1-preview.1` | `vso.dashboards` — **404 confirmed on CuroFinTech, see Gotcha below** |
-| Widget type catalog (all) | `GET /{org}/_apis/dashboard/widgettypes` | `7.1-preview.1` | `vso.dashboards` — **404 confirmed on CuroFinTech, every variant tried, see Gotcha below** |
+| Widget type metadata (single) | `GET /{org}/{project}/_apis/dashboard/widgettypes/{contributionId}` | `7.1-preview.1` | `vso.dashboards` — **404 confirmed on example-org, see Gotcha below** |
+| Widget type catalog (all) | `GET /{org}/_apis/dashboard/widgettypes` | `7.1-preview.1` | `vso.dashboards` — **404 confirmed on example-org, every variant tried, see Gotcha below** |
 
 `{team}` is optional in the path for project-scoped dashboards but the URL segment is still accepted/expected either way.
 
@@ -63,10 +63,10 @@ Both `Dashboard.eTag` and `Widget.eTag` exist for edit-collision detection. When
 ```json
 POST .../dashboards/{dashboardId}/widgets?api-version=7.1-preview.2
 {
-  "name": "All Change Controls",
+  "name": "All Change Managements",
   "position": { "row": 1, "column": 1 },
   "size": { "rowSpan": 4, "columnSpan": 4 },
-  "settings": "{\"query\":{\"queryId\":\"<guid>\",\"queryName\":\"All Change Controls\"}}",
+  "settings": "{\"query\":{\"queryId\":\"<guid>\",\"queryName\":\"All Change Managements\"}}",
   "settingsVersion": { "major": 1, "minor": 0, "patch": 0 },
   "dashboard": { "eTag": "18" },
   "contributionId": "ms.vss-mywork-web.Microsoft.VisualStudioOnline.MyWork.WitViewWidget"
@@ -78,7 +78,7 @@ Response: 200, full Widget object including server-assigned `id`, `eTag`, `allow
 
 ## Gotchas specific to this API surface
 
-- **`_apis/dashboard/widgettypes` (both the catalog list and the single-contributionId lookup) 404s on Azure DevOps Services org `CuroFinTech`** — tried every reasonable variant (org-only, project-scoped, multiple api-version revisions down to 5.0, `$scope` query param, casing variants). Some variants return a JSON `VSSF` error, others return a raw HTML "page not found" — meaning the route isn't recognized at all for some combos, not just permission-denied. Microsoft Learn documents this endpoint but it is **not reliably usable in practice**. Do not build automation that depends on it. Treat the widget catalog as something you harvest empirically (see SKILL.md Rule Zero), not something you query live.
+- **`_apis/dashboard/widgettypes` (both the catalog list and the single-contributionId lookup) 404s on Azure DevOps Services org `example-org`** — tried every reasonable variant (org-only, project-scoped, multiple api-version revisions down to 5.0, `$scope` query param, casing variants). Some variants return a JSON `VSSF` error, others return a raw HTML "page not found" — meaning the route isn't recognized at all for some combos, not just permission-denied. Microsoft Learn documents this endpoint but it is **not reliably usable in practice**. Do not build automation that depends on it. Treat the widget catalog as something you harvest empirically (see SKILL.md Rule Zero), not something you query live.
 - **No canonical contributionId → widget-name lookup table is published anywhere.** The human-readable widget catalog page (learn.microsoft.com widget-catalog) never prints a single contributionId string. The only ones documented are those that leak incidentally into REST API example payloads (~9 of the ~30+ OOB widgets). See `widget-catalog.md` in this folder for the confirmed list.
 - **PATCH (Update Widget) partial-update semantics are undocumented.** The one official example sends a nearly-complete Widget object, not a true minimal diff. Don't assume unlisted fields are preserved — send the full known-good object (id, eTag, name, position, size, settings, settingsVersion, dashboard.eTag, contributionId) on every write.
 - **`Replace all widgets` (PUT) is destructive** — any widget on the dashboard not included in the payload is dropped. Use PATCH-per-widget unless you intend a full rebuild.

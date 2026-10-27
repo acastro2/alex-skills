@@ -20,7 +20,7 @@ plausible answer is not a question, so decide it and say why. Where this skill d
 own review or answer format, that format wins. If the host has no question tool, use
 `❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
 
-The Forge is Alex's article-draft agent: a Flue service in `/Users/acastro/Developer/the-forge`
+The Forge is Alex's article-draft agent: a Flue service in `~/Developer/the-forge`
 that reads the Obsidian vault, drafts in his voice, and writes to one place, `staging/`. The
 workbench (`web/`) is its human client; `npm run forge` is the client for a coding agent.
 
@@ -31,7 +31,7 @@ a click in the workbench and only Alex makes it. Do not go looking for a way aro
 ## Start it first
 
 ```bash
-cd /Users/acastro/Developer/the-forge
+cd ~/Developer/the-forge
 npm run dev                                  # agent server on http://localhost:5199
 curl -sf http://localhost:5199/api/health    # open route: proves it is up, no token needed
 ```
@@ -128,7 +128,7 @@ log the token. The CLI never does, and neither should you.
 ## One worked run
 
 ```bash
-cd /Users/acastro/Developer/the-forge
+cd ~/Developer/the-forge
 npm run dev &                                                              # if it is not already up
 npm run --silent forge -- "draft the weekly about the vault refactor"
 # stderr: [forge] conversation cli-20261016-ab12

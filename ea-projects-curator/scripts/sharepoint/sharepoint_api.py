@@ -23,12 +23,18 @@ SITE_URL = os.environ.get("SHAREPOINT_SITE_URL", "").rstrip("/")
 
 
 def load_cookies() -> dict:
-    """Load cookies from cache file."""
-    cache = SCRIPT_DIR / ".cookies.json"
-    if not cache.exists():
+    """Load the cookie cache that `auth.py` wrote.
+
+    One owner for the path: `auth.py` decides where the cache lives, because it moved out
+    of the checkout when this repo went public. Importing it here keeps the two in step.
+    """
+    sys.path.insert(0, str(SCRIPT_DIR))
+    from auth import COOKIE_CACHE  # noqa: E402  (same folder, resolved above)
+
+    if not COOKIE_CACHE.exists():
         print("ERROR: No cached cookies. Run auth.py first.", file=sys.stderr)
         sys.exit(1)
-    data = json.loads(cache.read_text())
+    data = json.loads(COOKIE_CACHE.read_text())
     return data.get("cookies", {})
 
 

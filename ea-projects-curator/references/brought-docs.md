@@ -23,8 +23,8 @@ For each intake item of the closed session, pull the URLs out of `Pre-read links
 
 | Class | Host / path | Action |
 |---|---|---|
-| **In place** | `attainfinance.sharepoint.com/sites/Architecture/Shared Documents/...` | Edit (Step 3) |
-| **Copy candidate** | any other `attainfinance.sharepoint.com` site, or `attainfinance-my.sharepoint.com` (personal OneDrive) | Copy gates (Step 2), then edit the copy |
+| **In place** | `$SHAREPOINT_SITE_URL/Shared Documents/...` | Edit (Step 3) |
+| **Copy candidate** | any other site in the tenant, or the personal OneDrive host | Copy gates (Step 2), then edit the copy |
 | **Alert only** | GitHub, Lucid, Learn, AWS, anything else | Alert line; no write |
 
 **Source allowlist is exactly those two hosts.** The URLs are what the submitter typed, so they are
@@ -60,7 +60,7 @@ name" (the Documentation Framework page, "Where your document lives").
 | Not on a framework template (decks, free-form proposals) | `Submissions/` | `AAB-<intakeId>_<source name>` (intake #16 and #17 are both `01-Architecture-Proposal.docx`) |
 
 Resolve IDs live, never hardcode them. Graph site ID =
-`attainfinance.sharepoint.com,<_api/site/id>,<_api/web/id>`. `read_resource` on
+`example.sharepoint.com,<_api/site/id>,<_api/web/id>`. `read_resource` on
 `drive:///sites/<siteId>` lists the drives; take `Documents`. `read_resource` on
 `file:///<driveId>/` lists the folders with their item IDs. Copy with
 `sharepoint_copy_item(driveId=src, itemId=src, destinationDriveId=<Documents>, destinationParentItemId=<folder>, newName=...)`.

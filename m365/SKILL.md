@@ -124,7 +124,7 @@ m365 --json calendar search --after 2026-09-01 --before 2026-09-30 --limit 30
 
 # locate a document across every SharePoint site, then read it
 m365 --json sharepoint search "Privileged Access" --limit 10
-m365 --json sharepoint read "https://attainfinance.sharepoint.com/sites/.../file.docx"
+m365 --json sharepoint read "https://example.sharepoint.com/sites/.../file.docx"
 ```
 
 ## Auth, in case it matters

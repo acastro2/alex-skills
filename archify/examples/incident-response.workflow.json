@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Incident Response Runbook",
+    "title": "Incident Handling Runbook",
     "output": "examples/incident-response.html",
     "animation": "trace",
     "visual_preset": "signal-flow",
