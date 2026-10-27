@@ -185,10 +185,10 @@ Payloads for the [Weekly ADO control](../SKILL.md#weekly-ado-control--what-ea-do
 
 | Move | Required, or the write is refused |
 |---|---|
-| Epic `New` → `Active` | `Curo.ArchitectureReviewApprovedDate` and `Curo.ArchitectureReviewApprovedBy` (a person from the field's allowed list). This is the AAB gate in ADO. Take both values from a `Decided` AAB Intake item or Alex's own words, never from a guess |
+| Epic `New` → `Active` | the Architecture Review Approved date and by fields (a person from the field's allowed list). This is the AAB gate in ADO. Take both values from a `Decided` AAB Intake item or Alex's own words, never from a guess |
 | Epic `New` → `Closed` | Refused. States move one step at a time: `New` → `Active` → `Resolved` → `Closed` |
 | Story to `In Progress` | `System.AssignedTo`, `System.Description`, `Microsoft.VSTS.Scheduling.StoryPoints` |
-| Story to `Closed` | `Curo.IT.ValidationNotes` (the evidence, for example the merged PR) and `Curo.IT.ValidatedBy` (a person from the field's allowed list) |
+| Story to `Closed` | the validation-notes field (the evidence, for example the merged PR) and the validated-by field (a person from the field's allowed list) |
 | Story created in `New` | Title and area are enough |
 
 A missing-item story that is already done needs validation evidence and a validator on its `W#` line. If the evidence or the person is missing, propose it in `New` and put the gap on `open_items`.
@@ -225,7 +225,7 @@ An item can have only one parent; the write fails if it already has one.
 ## Set Current Status or State
 
 ```json
-[{"op": "add", "path": "/fields/Curo.CurrentStatus", "value": "On Track"}]
+[{"op": "add", "path": "/fields/<ref: Current Status>", "value": "On Track"}]
 ```
 `System.State` uses the same shape, one step at a time, and only on items assigned to Alex.
 

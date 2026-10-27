@@ -4,14 +4,14 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 
 ## Contents
 
-- [Use Attain's standard AWS modules first](#use-attains-standard-aws-modules-first)
+- [Use the company's standard AWS modules first](#use-the-companys-standard-aws-modules-first)
 - [Use stable OpenTofu deliberately](#use-stable-opentofu-deliberately)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
 
-Attain-specific module, runner, and reusable-workflow choices apply only to Attain repositories. Outside Attain, keep the same safety rules but use the repo's approved equivalents.
+Company-specific module, runner, and reusable-workflow choices apply only to work repositories. Outside them, keep the same safety rules but use the repo's approved equivalents.
 
-### Use Attain's standard AWS modules first
+### Use the company's standard AWS modules first
 
 - **Use a module from `terraform-aws-modules` when it cleanly covers the AWS requirement.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules and Attain's standard, not official AWS modules.
 - **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why the module was rejected.
@@ -127,7 +127,7 @@ Attain-specific module, runner, and reusable-workflow choices apply only to Atta
 
   Recursive mode reads a child module's own `.terraform-docs.yml` when present. If modules live elsewhere, add an explicit terraform-docs hook entry for each module path instead of assuming auto-discovery.
 
-- **Run pre-commit on every pull request.** In Attain repos, use the reusable workflow below and match `OPENTOFU_VERSION` to the repo's exact tool pin. Outside Attain, use the repo's approved equivalent.
+- **Run pre-commit on every pull request.** In work repos, use the reusable workflow below and match `OPENTOFU_VERSION` to the repo's exact tool pin. Outside Attain, use the repo's approved equivalent.
 
   ```yaml
   name: Pre-commit
@@ -141,9 +141,9 @@ Attain-specific module, runner, and reusable-workflow choices apply only to Atta
 
   jobs:
     pre-commit:
-      uses: Engineering-Attain-Finance/reusable-workflows/.github/workflows/pre-commit.yml@master
+      uses: example-org/reusable-workflows/.github/workflows/pre-commit.yml@master
       with:
-        GITHUB_RUNNER: attain-eks
+        GITHUB_RUNNER: example-runner
         OPENTOFU_VERSION: "1.12.5"
   ```
 

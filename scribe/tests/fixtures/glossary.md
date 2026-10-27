@@ -3,5 +3,5 @@
 Corrections applied case-insensitively, whole word only.
 
 - SC => SE
-- Attain Financ => Attain Finance
+- Example Financ => Example Finance
 - teh => the

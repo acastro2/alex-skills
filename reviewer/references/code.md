@@ -1,6 +1,6 @@
 # Code layer: PRs, branches, diffs
 
-Read `../../code-rules/SKILL.md` and the repo's own rules (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, standards docs) first. The repo wins over everything here. If a team standards skill is available (for example `attain-standards`, or `attain-change-control` for anything that ships to production at Attain), load it too.
+Read `../../code-rules/SKILL.md` and the repo's own rules (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, standards docs) first. The repo wins over everything here. If a team standards skill is available (for example the team's standards skill, or its change-control skill for anything that ships to production), load it too.
 
 ## Pin the diff
 
@@ -22,7 +22,7 @@ Look for: the intent and user impact, the risk areas (auth, money, data writes, 
 
 Review the same diff three times and report each axis under its own heading. Each finding lives in one axis only: put it where it is worst (a missing authorization check is Production risk), and from the other axis write one line that points to it. The same code element is one finding even when it breaks two axes: an unrequested factory is one finding (Spec, unrequested scope) with the smell named inside it, not a second finding in Standards. Do not merge them or rank across them: code can follow every standard and still build the wrong thing, or do exactly what the ticket said and still be unsafe to ship.
 
-1. **Spec.** Find the work item: references in commit messages (`AB#1234`, `#45`), a path or URL the user gave, or a spec under `docs/` or `specs/`. At Attain, work items live in Azure DevOps: fetch the item with the Azure DevOps connector if this session has it, or the `ado` agent, and read the description, the acceptance criteria, and the comments. If neither is available, ask the user to paste the item. Report what was asked but is missing or partial, what was built but not asked for, and what looks implemented but wrong. Quote the work item line for each. If there is no spec, say so and skip the axis.
+1. **Spec.** Find the work item: references in commit messages (`AB#1234`, `#45`), a path or URL the user gave, or a spec under `docs/` or `specs/`. At his employer, work items live in Azure DevOps: fetch the item with the Azure DevOps connector if this session has it, or the `ado` agent, and read the description, the acceptance criteria, and the comments. If neither is available, ask the user to paste the item. Report what was asked but is missing or partial, what was built but not asked for, and what looks implemented but wrong. Quote the work item line for each. If there is no spec, say so and skip the axis.
 2. **Standards.** Every place the diff breaks a documented repo standard (cite the rule), plus any smell from the baseline below. Documented breaches can be hard violations. Smells are always judgment calls.
 3. **Production risk.** What breaks in production. Blockers first:
    - 🚨 Security and privacy: authz bypass, injection, secrets, personal data in logs or responses. Check authorization on **every** new route, handler, or export path on its own, including the ones nobody asked for: an unrequested endpoint with no authorization check is a Blocker, not just "more surface".

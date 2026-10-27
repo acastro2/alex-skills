@@ -15,8 +15,8 @@ gh --version && gh auth status
 If not installed or not authenticated, report "GitHub store unavailable this session" in NO DATA
 and move on. Never treat unavailability as "no results".
 
-> **Multi-account gotcha:** `@me` resolves against the ACTIVE `gh` account (currently
-> `AlexandreCastro_attain`; verified 2026-08-21). A second account (`acastro2`) may also be logged
+> **Multi-account gotcha:** `@me` resolves against the ACTIVE `gh` account (`gh api user
+> --jq .login` reports it). A second account (`acastro2`) may also be logged
 > in but inactive — when hunting history from the other identity, pass the login explicitly
 > (e.g. `--author acastro2`) instead of `@me`.
 

@@ -21,7 +21,7 @@ Load `../../alex-voice/references/alex-blogger.md` first. It owns the brand, aud
 
 ## Sanitization: any hit is a Blocker
 
-- Employer names (Enova, Attain, or any other)
+- Employer names (any current or former employer)
 - Team, colleague, customer, or partner names
 - Internal tool names, URLs, channels, tickets
 - Revenue or user counts (percentages are fine)

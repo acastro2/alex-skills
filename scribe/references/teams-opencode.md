@@ -98,7 +98,7 @@ Then continue at [Summary and write](../SKILL.md#summary-and-write-both-sources)
   reported as unrequested and left alone; a series' only transcript may belong to
   an earlier occurrence that already has a note.
 - **`FORBIDDEN 3003`** means no transcript is readable for that meeting, whatever
-  the cause. On 2026-09-30 the organiser's address was on curo.com, but the join URL
+  the cause. On 2026-09-30 the organiser's address was on another domain, but the join URL
   carried the same tenant id as every other meeting, so "another tenant" was a guess,
   not evidence. The HiDock copy is the record.
 - Verified 2026-09-30: four meetings recovered from real session artifacts, byte-identical

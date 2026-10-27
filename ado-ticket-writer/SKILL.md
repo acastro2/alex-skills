@@ -192,7 +192,7 @@ curl -s "${AUTH[@]}" "$BASE/_apis/wit/workitems/1234?api-version=7.1&\$expand=al
 
 **Same checks through the Azure DevOps MCP connector** (when you use the `mcp__claude_ai_Azure_DevOps__*` tools instead of curl):
 
-- Type schema, fields, states: `wit_work_item` with `action: get_type` and the type name. The result is large; read states, required fields and custom `Curo.*` fields from the saved file.
+- Type schema, fields, states: `wit_work_item` with `action: get_type` and the type name. The result is large; read states, required fields and the project's custom fields from the saved file. Field reference names carry the org's own prefix, so never retype one from memory.
 - Team area and default iteration: `work` with `action: get_team_settings`.
 - Duplicate check before every create: `wit_query` with `action: wiql`, searching the area for the title you are about to use. Run it again before retrying a create that returned an error: the create may have landed.
 
@@ -202,12 +202,12 @@ Never default to the Story type. List the types first, then pick per ticket:
 
 | The ticket is... | Type | Set also |
 |---|---|---|
-| A timeboxed investigation, exploration, inventory or spike | **Spike** | `Curo.Spike.TimeboxValue` + `Curo.Spike.TimeboxUnit` (e.g. 2, Days); `Curo.Spike.Outcome` when it closes |
+| A timeboxed investigation, exploration, inventory or spike | **Spike** | the type's timebox fields, read from `get_type` (value plus unit, e.g. 2 days); its outcome field when it closes |
 | A defect in something that already shipped | **Bug** | `Microsoft.VSTS.TCM.ReproSteps` |
 | Planned delivery with a user-visible outcome | **User Story** (or the project's Story equivalent) | AcceptanceCriteria |
 | Run-the-business work with no new outcome | **Operational Work**, if the project has it | |
-| A change record | **CC** / **ITCC** | follow `attain-change-control` |
-| An ask from another team that an IT team fulfills in the same ticket (Information Technology only) | **Request** | the intake fields in "The IT Request" below |
+| A change record | the project's change-control type (`CC` / `ITCC`) | follow the org's change-control process; ask for its skill or doc name |
+| An ask from another team that an IT team fulfills in the same ticket (only in the project that defines it) | **Request** | the intake fields in "The IT Request" below |
 
 Never mark a spike with a `spike` tag on a Story: use the Spike type. If the type you need is not in the list, say so and ask; do not substitute.
 
@@ -215,9 +215,9 @@ Never mark a spike with a `spike` tag on a Story: use the Spike type. If the typ
 
 Changing the type of an existing item works: update `System.WorkItemType` (it keeps the ID and links), then re-set the state, since states differ per type.
 
-#### The IT Request (Information Technology only)
+#### The IT Request
 
-A `Request` is an internal team-to-team ask that the requested IT team fulfills **in the same ticket**. It does not spawn a child Story, Bug, Spike or Operational Work item by default. It exists only in the `Information Technology` project.
+A `Request` is an internal team-to-team ask that the requested IT team fulfills **in the same ticket**. It does not spawn a child Story, Bug, Spike or Operational Work item by default. It exists only in the project whose process defines the `Request` type; confirm with `get_type` before you use it.
 
 **Not a Request:**
 
@@ -227,14 +227,16 @@ A `Request` is an internal team-to-team ask that the requested IT team fulfills 
 
 **Intake fields.** Created By is not the requester, and Assigned To is not the requested team, so set the request fields:
 
-| Field | Rule |
+| Field (by meaning) | Rule |
 |---|---|
-| `Curo.IT.Planned` | Always required |
-| `Curo.IT.NeededByDate` | Required in New, Ready and In Progress |
-| `Curo.IT.RequestUrgentChoice` | Required in New, Ready and In Progress; if Urgent = Yes, `Curo.IT.UrgencyReason` is required too |
-| `Curo.IT.Requester`, `Curo.IT.RequestingTeam` | Who asked, and for which team |
-| `Curo.IT.DeadlineReason`, `Curo.IT.RequestCategory`, `Curo.IT.RequestServiceCategory`, `Curo.IT.RequestBusinessArea`, `Curo.IT.RequestPurpose` | The context the requested team needs |
-| `Curo.IT.RequestPriority` | 1 to 12. The requester describes urgency; the requested team owns queue order |
+| Planned | Always required |
+| Needed-by date | Required in New, Ready and In Progress |
+| Urgent choice | Required in New, Ready and In Progress; when Urgent = Yes, an urgency reason is required too |
+| Requester, requesting team | Who asked, and for which team |
+| Deadline reason, category, service category, business area, purpose | The context the requested team needs |
+| Request priority | A 1 to 12 scale. The requester describes urgency; the requested team owns queue order |
+
+Resolve each field's reference name from `get_type`; the names carry the org's custom prefix.
 
 Identity fields take the person's email, and the person must be a member of the project.
 
@@ -242,12 +244,12 @@ Identity fields take the person's email, and the person must be a member of the 
 
 **Two checks before it closes:**
 
-1. **Internal validation**: IT confirms the work is done, in `Curo.IT.ValidatedBy`, `Curo.IT.ValidatedDate` and `Curo.IT.ValidationNotes`.
-2. **Requester verification**: the requester, or the nominated `Curo.IT.RequestVerifier`, confirms it landed, in `Curo.IT.VerifiedBy`, `Curo.IT.VerifiedDate` and `Curo.IT.VerificationNotes`. Someone may verify on the requester's behalf only with evidence in the notes.
+1. **Internal validation**: IT confirms the work is done, in the validated-by, validated-date and validation-notes fields.
+2. **Requester verification**: the requester, or the nominated verifier, confirms it landed, in the verified-by, verified-date and verification-notes fields. Someone may verify on the requester's behalf only with evidence in the notes.
 
 Moving to Validating or Pending with validation evidence and a nominated verifier starts the verification round: the verifier gets a Teams message and an email, then a weekday reminder. The flow closes the Request when it accepts the verification. Closing needs Validated By, Validation Notes, Verified By and Verified Date filled.
 
-Source: the `ado-restructuring` repo, `docs/knowledge/<domain>/request-model.md` and `request-verification.md`. The rules drift, so read those first when in doubt.
+Source: the work repo's `docs/knowledge/<domain>/request-model.md` and `request-verification.md`. The rules drift, so read those first when in doubt.
 
 ### Creating New Work Items
 

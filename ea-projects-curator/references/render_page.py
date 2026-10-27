@@ -33,7 +33,7 @@ SHAREPOINT RULES THE MARKUP OBEYS (measured 2026-09-18 to 2026-09-28)
 Storage is not proof. After any change here, screenshot the read view.
 
 The design and palette are Alex's Claude Design mock "Architecture Weekly Recap"
-(2026-09-28), deliberately not the Attain brand palette. Every colour the page emits is a
+(2026-09-28), deliberately not the company brand palette. Every colour the page emits is a
 named constant below; a bare hex in a builder is drift.
 
 USAGE

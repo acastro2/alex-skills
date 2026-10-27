@@ -2,7 +2,7 @@
 
 Load `../../alex-voice/SKILL.md` first for the core voice rules and the never-use list, then `../../alex-voice/references/registers/docs.md`, and use its rules, red flags, and test as the checklist: why on every step that is not obvious, one recommended path, an expected result for each step, ADR context and reversal, and "can a new teammate follow it alone?". That file was written for drafting, so read each rule as a question about the doc in front of you.
 
-For an Attain Enterprise Architecture doc (ADR, RFC, STANDARD, RUN, SOW, SAD, BRIEF), also load the EA doc framework skill if it is available (`ea-doc-framework`, or `docs-reviewer` for its hard rules). It owns the rules for each doc type. When it is loaded, its type definitions win over check 1 below.
+For an enterprise architecture doc at his employer (ADR, RFC, STANDARD, RUN, SOW, SAD, BRIEF), also load the EA doc framework skill if it is available (`ea-doc-framework`, or `docs-reviewer` for its hard rules). It owns the rules for each doc type. When it is loaded, its type definitions win over check 1 below.
 
 Then add the checks below. The register does not cover them, because they only show up when you review.
 

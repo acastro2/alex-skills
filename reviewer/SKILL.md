@@ -31,7 +31,7 @@ Run these on every type, in this order. Each one is a place where Alex catches r
 4. **Smallest thing that works.** Flag scope nobody asked for: speculative abstractions, extra layers, "while I was here" changes, future-proofing. Every extra is something to maintain forever. For code and docs, also flag the reverse: a real change with no tests or docs.
 5. **Readable in one pass.** Point first. Short sentences, one idea each. Plain words a non-native reader gets without a dictionary. No filler, no preamble, no recap. Structure (a flow, a sequence, a before and after) needs a diagram, not a paragraph.
 6. **Done means shown.** "It works", "tested", "fixed" with no output, run, or link is a claim, not proof. Ask for the proof or flag it.
-7. **What breaks, and who gets hurt?** When the thing touches personal data, money, or production state, name the failure and its cost: data exposed, a wrong or stale value someone acts on, money moved wrong, no way back. Attain is a regulated lender, so an unhandled case of these is a Blocker, not a question for later. If the author may already handle it somewhere you cannot see, tag it **Worth checking** and keep it a Blocker until they show where.
+7. **What breaks, and who gets hurt?** When the thing touches personal data, money, or production state, name the failure and its cost: data exposed, a wrong or stale value someone acts on, money moved wrong, no way back. His employer is a regulated lender, so an unhandled case of these is a Blocker, not a question for later. If the author may already handle it somewhere you cannot see, tag it **Worth checking** and keep it a Blocker until they show where.
 
 ## 3. Type layer: add the one that fits
 

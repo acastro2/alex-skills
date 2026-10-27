@@ -441,7 +441,7 @@ checks in order and turn each finding into a `W#` line.
    - **Blocked or at risk:** only when it is real; otherwise leave the line out.
 
    A week with no movement still gets a comment that says so, with the reason when known, because
-   silence reads as a dead epic. Pair the comment with a **`Curo.CurrentStatus`** line whenever the
+   silence reads as a dead epic. Pair the comment with a **the Current Status field**** line whenever the
    value is wrong for the evidence (allowed values in the schema reference; `Not Started` on an
    `Active` epic is always wrong). Current Status rides with the weekly update, so it is proposed on
    every active EA epic; `System.State` is not (check 4). Read the epic's existing comments first and

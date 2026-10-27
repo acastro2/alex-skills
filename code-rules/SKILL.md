@@ -1,6 +1,6 @@
 ---
 name: code-rules
-description: "The coding standards for every language and tool in this setup: shaping code for testability, where seams belong, writing tests that prove behaviour instead of restating the implementation, comment rules, and the Terraform and OpenTofu conventions using Attain's AWS modules. Use whenever you write, change, or review code, and when a repo has its own standards and you need to know which wins."
+description: "The coding standards for every language and tool in this setup: shaping code for testability, where seams belong, writing tests that prove behaviour instead of restating the implementation, comment rules, and the Terraform and OpenTofu conventions using the company's standard AWS modules. Use whenever you write, change, or review code, and when a repo has its own standards and you need to know which wins."
 license: MIT
 ---
 

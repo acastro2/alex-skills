@@ -20,7 +20,7 @@ change the run order or who approves writes and publishes the page.
 ## Teams garbles proper nouns — verify or omit, never publish a guess
 
 `scribe` applies the glossary at `<vault>/Scribe/Glossary.md` (Lucidchart, FireMon, Ivanti, ADO,
-CURO, Five9, SE), so most noise is gone. Verify every remaining proper noun: correct only what you
+product and vendor names), so most noise is gone. Verify every remaining proper noun: correct only what you
 can confirm, otherwise describe the thing without naming it. A confirmed new garble is appended to
 that glossary as `- wrong => Right`; it is the one scribe-owned file the curator may append to. If
 the note ends mid-sentence, say so in the recap footer rather than inventing an ending.
@@ -221,7 +221,7 @@ as plain text (strip the HTML). Fix what it confirms, and tell Alex what you cha
 Decisions table claiming four decisions while zero topics were tagged `[Decided]`, and a recap three
 times its stated length).
 
-Run it via the Skill tool (`attain-docs:docs-reviewer`) against the assembled page content, not the
+Run it via the Skill tool (the docs-reviewer skill) against the assembled page content, not the
 markdown draft, so the shipped panel and rendered structure are in scope. **Fix every BLOCKER and
 SIGNIFICANT finding before staging**; do not hand Alex a review and ask what to do with it. Bring him
 a decision only when a finding conflicts with a house rule or

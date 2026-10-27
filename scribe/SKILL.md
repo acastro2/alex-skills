@@ -348,7 +348,7 @@ scribe_schema: scribe.transcript/1
   `m365 request /me/calendarView` instead; the connector's own calendar list is the
   other source that agrees with it.
 - `FORBIDDEN 3003` means no transcript is readable for that meeting. On 2026-09-30 that
-  was a meeting whose organiser sits on curo.com, but its join URL carried the same
+  was a meeting whose organiser sits on another domain, but its join URL carried the same
   tenant id as every other meeting, so the cause is unverified. The HiDock copy is the
   record.
 - A transcript-only meeting (no recording) still yields the full transcript; its OneDrive

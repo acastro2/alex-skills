@@ -8,7 +8,7 @@ to read 34 private configs would be a rule nobody can review.
 skill, the vendored trees, Alex's own tool configs. A base that no longer exists is a
 finding, so a stale entry fails loudly instead of quietly excusing a dead path.
 
-`external_paths` -- exact spans that are real but live off this machine: the Attain repos
+`external_paths` -- exact spans that are real but live off this machine: the work repos
 are not cloned here and the work OneDrive is not mounted. Exact spans, never prefixes, so
 the exemption cannot hide a new broken path. Each entry names where the file is.
 

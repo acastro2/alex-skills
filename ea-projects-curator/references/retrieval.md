@@ -26,7 +26,7 @@ Always **read the live list first** (existing rows) so curation produces UPDATEs
   **Field map, the epic-to-row Hyperlink join, and the state-to-Status truth-check live in [ado-ea-portfolio-schema.md](ado-ea-portfolio-schema.md)** — read it before mapping an EA-board epic to a portfolio row, and before proposing any field that ADO does not already carry (the portfolio-only columns must not be duplicated into ADO).
   **Ticket state truth-checks the row:** a milestone in days while the ticket sits in `New` is a
   slip; a `4. Delivered` row with an `Active` ticket may not be delivered; the same check runs on the EA-board story or SOW epic behind the row's Execution Link.
-- **GitHub** (`gh`, authed as `AlexandreCastro_attain`). `gh pr list --author @me --state all` / `gh search prs` across the Attain orgs. PRs are artifacts → fold into their initiative; the repo or the ADO epic is the Execution Link.
+- **GitHub** (`gh`, authed as the account `gh api user --jq .login` reports). `gh pr list --author @me --state all` / `gh search prs` across the work orgs. PRs are artifacts → fold into their initiative; the repo or the ADO epic is the Execution Link.
 - **Microsoft 365** — two paths, one read-only rule. In Claude Code, the `claude_ai_Microsoft_365`
   MCP connector (tools are deferred; load via ToolSearch). Everywhere else, the **`m365` CLI** —
   check it with `command -v m365 && m365 --json doctor`, then `m365 sharepoint search`,

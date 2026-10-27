@@ -102,7 +102,7 @@ REVIEW = "https://teams.microsoft.com/l/meetup-join/19%3ameeting_bbb%40thread.v2
 
 def test_recovers_inline_and_spilled_payloads_into_raw_files(run_script, tmp_path):
     inline = _payload("EA Daily Standup", STANDUP, "2026-09-30T14:00:55Z", "2026-09-30T14:29:31Z")
-    spilled = _payload("CURO / Heights Risks - Weekly review", REVIEW, "2026-09-30T15:59:33Z", "2026-09-30T16:26:01Z", speakers=("Greg Glazier",))
+    spilled = _payload("Quarterly review", REVIEW, "2026-09-30T15:59:33Z", "2026-09-30T16:26:01Z", speakers=("Greg Glazier",))
     project = _project(
         tmp_path,
         [
@@ -121,7 +121,7 @@ def test_recovers_inline_and_spilled_payloads_into_raw_files(run_script, tmp_pat
         tmp_path,
         [
             {"subject": "EA Daily Standup", "event_id": "evt-standup", "start": "2026-09-30T14:00:00Z", "end": "2026-09-30T14:15:00Z"},
-            {"subject": "CURO / Heights Risks - Weekly review", "event_id": "evt-review", "start": "2026-09-30T16:00:00Z", "end": "2026-09-30T16:30:00Z"},
+            {"subject": "Quarterly review", "event_id": "evt-review", "start": "2026-09-30T16:00:00Z", "end": "2026-09-30T16:30:00Z"},
         ],
     )
 
@@ -129,10 +129,10 @@ def test_recovers_inline_and_spilled_payloads_into_raw_files(run_script, tmp_pat
 
     assert result.returncode == 0, result.stderr
     assert sorted(p.name for p in raw.iterdir()) == [
-        "2026-09-30-curo-heights-risks-weekly-review.json",
-        "2026-09-30-curo-heights-risks-weekly-review.vtt",
         "2026-09-30-ea-daily-standup.json",
         "2026-09-30-ea-daily-standup.vtt",
+        "2026-09-30-quarterly-review.json",
+        "2026-09-30-quarterly-review.vtt",
     ]
     recovered = json.loads((raw / "2026-09-30-ea-daily-standup.json").read_text(encoding="utf-8"))
     assert recovered["meeting"]["subject"] == "EA Daily Standup"
@@ -140,7 +140,7 @@ def test_recovers_inline_and_spilled_payloads_into_raw_files(run_script, tmp_pat
     vtt = (raw / "2026-09-30-ea-daily-standup.vtt").read_bytes().decode("utf-8")
     assert vtt.startswith("WEBVTT\r\n\r\n")
     assert vtt == inline["transcripts"][0]["content"]
-    assert "CURO / Heights Risks - Weekly review" in result.stdout
+    assert "Quarterly review" in result.stdout
     assert "2 rebuilt" in result.stdout or "2 of 2" in result.stdout
 
 
@@ -279,5 +279,5 @@ def test_project_dir_defaults_to_the_working_directory_name():
 
 
 def test_slug_key_flattens_a_subject_for_filenames():
-    assert claude_session_payloads.subject_key("CURO / Heights Risks - Weekly review") == "curo-heights-risks-weekly-review"
+    assert claude_session_payloads.subject_key("Quarterly review") == "quarterly-review"
     assert claude_session_payloads.subject_key("DLP Open Questions") == "dlp-open-questions"

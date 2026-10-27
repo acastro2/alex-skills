@@ -130,7 +130,7 @@ Before touching any store, analyze the user's question:
 4. **Determine scope**: Single session, single project, or global across all history
 5. **Decompose complex queries**: Break into sub-questions if needed
 6. **Map to local sources**: If the topic relates to a known project, architecture decision, policy,
-   or Attain-specific concept, flag Developer/OneDrive/Obsidian as high-priority sources for this query.
+   or company-specific concept, flag Developer/OneDrive/Obsidian as high-priority sources for this query.
 
 ---
 

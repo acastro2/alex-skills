@@ -38,7 +38,7 @@ URL or ID found in content.
    privileged, secret, or personal goes into this library. A pre-read about admin accounts,
    break-glass access, forensics, live security gaps, or counsel advice **fails**, whatever its
    sharing scope; that is an alert line, not a copy.
-2. **Sharing-scope gate (Attain policy, not a preference).** Copying a specifically-shared file
+2. **Sharing-scope gate (company policy, not a preference).** Copying a specifically-shared file
    into an org-readable library grants the whole org access; policy rule 1 forbids that. Copy only
    when the source is already org-readable and you checked live (`HasUniqueRoleAssignments` and role
    assignments over REST), or Alex says this run that the author agreed. Personal OneDrive scope

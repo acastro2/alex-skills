@@ -25,13 +25,13 @@ Jev never passes a hard rule. A rule, a cap, or Alex's hand edit beats any proba
 
 ## `state` — redacted summary only (Alex, 2026-10-14)
 
-Jev runs on the OpenCode Zen endpoint, outside Attain. Write `state` yourself; never paste
+Jev runs on the OpenCode Zen endpoint, outside the company. Write `state` yourself; never paste
 source text into it.
 
 - 2 to 4 lines of your own words about the evidence, plus the candidate action line.
 - People by role ("a platform lead", "an application engineer"), never by name.
 - No quotes, no mail subjects, no chat or channel names, no URLs, no locators, no ticket or PR
-  numbers, no customer data of any kind, no direct identifier from the Attain policy list.
+  numbers, no customer data of any kind, no direct identifier from the work data policy list.
 - Name the parts you ask about with backticks: `candidate_action`, `evidence_summary`,
   `completion_signals`.
 
@@ -165,7 +165,7 @@ Every Jev answer between the bands goes to the model running the sweep. No excep
 default answer, no "keep it and see". The model:
 
 1. Reads the **full evidence**, not the redacted `state`: the raw message, thread, session,
-   or work item. It stays inside this session; nothing new goes to Jev or outside Attain.
+   or work item. It stays inside this session; nothing new goes to Jev or outside the company.
 2. Decides with the same rule the question encodes (board rules, STEP 1, STEP 4).
 3. Writes one report line: `Jev unsure (0.xx) → model: <answer> — <one-line why>`.
 

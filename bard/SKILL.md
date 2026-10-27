@@ -80,7 +80,7 @@ Three frames govern it:
   nothing → "not available". Retrieve, never fabricate.
 - Never emit a link to a note that does not already exist (a dead `[[link]]`
   silently creates a stray note). Link only to resolvable targets.
-- The CURO/Attain matter is **"an incident," never "a breach"** — never reframe, never
+- The confidential matter is **"an incident," never "a breach"** — never reframe, never
   widen audience.
 
 ---
@@ -446,7 +446,7 @@ question sets (A, R, T, K, D), the bands, what stays a rule, and the no-Jev fall
 model running the sweep: read the full evidence, decide, and report `Jev unsure (0.xx) →
 model: <answer>`. Never take a default for an unsure call.
 
-Hard rule: Jev runs on OpenCode Zen, outside Attain, so `state` is a redacted summary you
+Hard rule: Jev runs on OpenCode Zen, outside the company, so `state` is a redacted summary you
 write, never source text. No names, quotes, subjects, locators, ids, or customer data.
 
 ## Root TODO board (`Todo.md`)
@@ -486,7 +486,7 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
   line, not a judgment call: a personal-sync vault is not a place for other people's data.
 - Incident-related / internal-sensitive deliverables (incident briefings, security
   incident summaries, PII access reviews, legal hold notices, exec-only updates) go into
-  `Evidence/Confidential/` and get flagged in `Evidence/README.md`. The CURO/Attain
+  `Evidence/Confidential/` and get flagged in `Evidence/README.md`. The confidential
   matter is **"an incident," never "a breach"** — never reframe, never widen audience.
 
 Before copying a qualifying file, read

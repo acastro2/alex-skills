@@ -50,20 +50,22 @@ Every epic in an EA area carries **exactly one** Hyperlink to its row:
 
 ### Epic fields that matter
 
-| ADO field | Display | Use for the curator |
+Reference names carry the org's custom prefix, which is a per-installation fact: resolve each one from `get_type` before you write. The display names below are stable; the prefix is not.
+
+| Field (display name) | Resolved reference | Use for the curator |
 |---|---|---|
 | `System.Title` | Title | Epic naming, e.g. `SOW 3 · Change control automation` |
 | `System.State` | State | Truth-check against the row's `Status` (map below) |
 | `System.AssignedTo` | Assigned To | The doer. The board has no doers column since 2026-10-12, so this is where it lives; never maps to *Sponsor* |
 | `System.Tags` | Tags | In use: `AI-DLC`, `enterprise-architecture`, `Pinnacle`, `SOW-<n>`, `Wave-<n>`, plus a domain tag |
 | `Microsoft.VSTS.Scheduling.TargetDate` | Target Date | The epic's date. The board has no finish-date column since 2026-10-12, so this is where the date lives |
-| `Curo.CurrentStatus` | Current Status | Picklist: `Not Started`, `Reqts`, `Reqts+Approval`, `Waiting for Dev Capacity`, `Dev`, `UAT`, `Deployment`, `Done`, `On Track`, `At Risk`, `Blocked`. Set with the weekly epic update. On 2026-10-09 both `Active` EA epics still read `Not Started` |
-| `Curo.StatementOfWork` (+ `…Html`) | Statement of Work | The SOW behind the epic |
-| `Curo.ProjectBrief` (+ `…Html`) | Project Brief | Product's brief, upstream of the SOW |
-| `Curo.ArchitectureReviewApprovedDate` / `…By` | Architecture Review Approved | The AAB gate; required before `Active`. Values come from a `Decided` AAB Intake item |
-| `Curo.ELTPriority` | ELT Priority | The ELT stack rank (1 = highest) |
-| `Curo.OnQuarterlyPlan` | OnQuarterlyPlan | `true` puts the epic in the Engineering Insights quarterly view |
-| `Curo.TShirtSize` | T-Shirt Size | Sizing |
+| Current Status | resolved with `get_type` | Picklist: `Not Started`, `Reqts`, `Reqts+Approval`, `Waiting for Dev Capacity`, `Dev`, `UAT`, `Deployment`, `Done`, `On Track`, `At Risk`, `Blocked`. Set with the weekly epic update. On 2026-10-09 both `Active` EA epics still read `Not Started` |
+| Statement of Work (+ its `…Html` pair) | resolved with `get_type` | The SOW behind the epic |
+| Project Brief (+ its `…Html` pair) | resolved with `get_type` | Product's brief, upstream of the SOW |
+| Architecture Review Approved (date and by) | resolved with `get_type` | The AAB gate; required before `Active`. Values come from a `Decided` AAB Intake item |
+| ELT Priority | resolved with `get_type` | The ELT stack rank (1 = highest) |
+| OnQuarterlyPlan | resolved with `get_type` | `true` puts the epic in the Engineering Insights quarterly view |
+| T-Shirt Size | resolved with `get_type` | Sizing |
 
 ## Stage mapping (truth-check only)
 
