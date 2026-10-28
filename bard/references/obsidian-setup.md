@@ -6,7 +6,8 @@ maintains the root `Todo.md` board per [todo-board.md](todo-board.md); it does n
 rewrite these setup assets.
 
 > Verified against the live vault: `bases: true`, `properties: true`, `sync: true`,
-> wikilinks default, no community plugins (no Dataview — Bases only).
+> wikilinks default, no Dataview (Bases only). Community plugins in use since then: Tasks,
+> Iconize, Admonition, Charts (checked 2026-10-28); bard depends on none of them.
 
 ## Contents
 

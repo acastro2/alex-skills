@@ -1,0 +1,42 @@
+#!/bin/sh
+# ripgrep --pre helper: print the text of a docx, pptx, xlsx, or pdf file.
+# Usage: rg --pre office2txt --pre-glob '*.{docx,pptx,xlsx,pdf}' <pattern> <path>
+# Text is cached in ~/.cache/archeologist/text, keyed on the file path and mtime,
+# so only new or changed files are extracted again.
+set -eu
+
+f=$1
+abs=$(cd "$(dirname "$f")" && pwd -P)/$(basename "$f")
+
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/archeologist/text
+mkdir -p "$cache"
+chmod 700 "$cache"
+
+key=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-32)
+out=$cache/$key-$(stat -f %m "$abs").txt
+if [ -f "$out" ]; then
+  exec cat "$out"
+fi
+
+tmp=$(mktemp "$cache/.tmp.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+case $f in
+  *.pdf|*.PDF)
+    pdftotext -q "$abs" - >"$tmp"
+    # An image-only PDF has no text layer: fall back to macOS Vision OCR.
+    if [ "$(tr -d '[:space:]' <"$tmp" | wc -c)" -lt 100 ]; then
+      src=$(dirname "$0")/ocr_pdf.swift
+      ocr=${XDG_CACHE_HOME:-$HOME/.cache}/archeologist/bin/ocr_pdf
+      if [ ! -x "$ocr" ] || [ "$src" -nt "$ocr" ]; then
+        mkdir -p "$(dirname "$ocr")"
+        swiftc -O "$src" -o "$ocr.$$" 2>/dev/null && mv "$ocr.$$" "$ocr"
+      fi
+      "$ocr" "$abs" >"$tmp"
+    fi
+    ;;
+  *) uvx -q --from 'markitdown[docx,pptx,xlsx]' markitdown "$abs" >"$tmp" 2>/dev/null ;;
+esac
+
+rm -f "$cache/$key"-*.txt
+mv "$tmp" "$out"
+cat "$out"

@@ -35,7 +35,7 @@ scope. Use the tiers below for cross-store searches or when the named source is 
 | [A: Claude Code](references/claude-code.md) | Tier 1: current coding sessions, prompt history, and delegated work. |
 | [H: Pi sessions](references/pi-sessions.md) | Tier 1: current Pi sessions, summaries, and delegated work; search alongside A for recent work. |
 | [C: Cortex](references/cortex.md) | Tier 1: current Snowflake/data CLI conversations and plans, alongside A. |
-| [D: Obsidian](references/obsidian.md) | Tier 1: personal decisions and session notes; search Scribe meeting transcripts before M365 for who-said or meeting questions. |
+| [D: Obsidian](references/obsidian.md) | Tier 1: personal decisions and session notes, plus the formal record in `Evidence/` (docx, pptx, pdf: always use the `--pre` flags); search Scribe meeting transcripts before M365 for who-said or meeting questions. |
 | [E: Developer docs](references/developer-docs.md) | Tier 2: project CONTEXT.md, ADRs, READMEs, and plans; markdown only, not source code. |
 | [F: OneDrive Architecture](references/onedrive-architecture.md) | Tier 2: formal ADRs, SADs, SIPs, briefs, and policy; includes docx extraction and path fallback. |
 | [G: Microsoft 365](references/microsoft-365.md) | Tier 2, promoted for communications: Teams, tenant SharePoint, Outlook mail/calendar; the `claude_ai_Microsoft_365` connector where the host has it, otherwise the `m365` CLI. |
