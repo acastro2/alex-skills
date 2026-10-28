@@ -80,7 +80,7 @@ process per case. **With-skill only. Baseline was not run**; no delta is claimed
 
 Total 13/13. Graded inline: Jev returned HTTP 401. One call was close: case 2 puts a
 two-line why-it-matters note and a diagram between the finding and the references. The
-narrative (`Primary Context`) still follows the references, so it passes. These cases do
+narrative (`Primary Context`) still follows the references, so it passes. Re-checked with Jev once its key was fixed (same day): yes-probability 0.66, in the unsure band, so the pass stays a judgment call. These cases do
 not touch Source D, so they show no regression in the output contract only. The Evidence
 search itself was checked live: an `archeologist` run found a fact that exists only inside
 an Evidence docx.
