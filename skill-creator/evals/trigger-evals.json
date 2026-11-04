@@ -1,0 +1,37 @@
+[
+  {
+    "query": "write a new skill for release notes",
+    "expect": "skill-creator",
+    "should_trigger": true
+  },
+  {
+    "query": "my skill never triggers, fix the description",
+    "expect": "skill-creator",
+    "should_trigger": true
+  },
+  {
+    "query": "review this skill folder's structure",
+    "expect": "skill-creator",
+    "should_trigger": true
+  },
+  {
+    "query": "compare two versions of my skill and tell me which triggers better",
+    "expect": "skill-creator",
+    "should_trigger": true
+  },
+  {
+    "query": "turn this workflow into a skill",
+    "expect": "skill-creator",
+    "should_trigger": true
+  },
+  {
+    "query": "add a subagent that reviews my prs",
+    "expect": "agent-creator",
+    "should_trigger": false
+  },
+  {
+    "query": "the sharepoint agent's prompt is too long, trim it",
+    "expect": "agent-creator",
+    "should_trigger": false
+  }
+]
