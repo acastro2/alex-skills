@@ -1,0 +1,37 @@
+[
+  {
+    "query": "pull the transcripts from this morning's standup and save them",
+    "expect": "scribe",
+    "should_trigger": true
+  },
+  {
+    "query": "sync the hidock and transcribe the calls from yesterday",
+    "expect": "scribe",
+    "should_trigger": true
+  },
+  {
+    "query": "clean up the speaker labels in yesterday's recording",
+    "expect": "scribe",
+    "should_trigger": true
+  },
+  {
+    "query": "fetch the teams transcript for the aab meeting",
+    "expect": "scribe",
+    "should_trigger": true
+  },
+  {
+    "query": "turn this recording into speaker labelled notes",
+    "expect": "scribe",
+    "should_trigger": true
+  },
+  {
+    "query": "sweep this week's sessions and meetings into my obsidian notes",
+    "expect": "bard",
+    "should_trigger": false
+  },
+  {
+    "query": "when did we decide to drop the neon migration",
+    "expect": "archeologist",
+    "should_trigger": false
+  }
+]

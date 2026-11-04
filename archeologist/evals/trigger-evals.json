@@ -1,0 +1,37 @@
+[
+  {
+    "query": "when did we decide to drop the neon migration",
+    "expect": "archeologist",
+    "should_trigger": true
+  },
+  {
+    "query": "find the pr that changed the skill validation hook",
+    "expect": "archeologist",
+    "should_trigger": true
+  },
+  {
+    "query": "what did sarah say about the q3 budget in teams",
+    "expect": "archeologist",
+    "should_trigger": true
+  },
+  {
+    "query": "recover the context from the session where we built the archify exporter",
+    "expect": "archeologist",
+    "should_trigger": true
+  },
+  {
+    "query": "review what shipped last sprint",
+    "expect": "archeologist",
+    "should_trigger": true
+  },
+  {
+    "query": "write this week's decisions into my vault",
+    "expect": "bard",
+    "should_trigger": false
+  },
+  {
+    "query": "fetch the transcript from today's meeting",
+    "expect": "scribe",
+    "should_trigger": false
+  }
+]

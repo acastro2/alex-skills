@@ -1,0 +1,37 @@
+[
+  {
+    "query": "grill me on this plan",
+    "expect": "grilling",
+    "should_trigger": true
+  },
+  {
+    "query": "stress test my thinking on this pricing decision",
+    "expect": "grilling",
+    "should_trigger": true
+  },
+  {
+    "query": "poke holes in this idea before I take it to the cto",
+    "expect": "grilling",
+    "should_trigger": true
+  },
+  {
+    "query": "ask me hard questions about this architecture choice",
+    "expect": "grilling",
+    "should_trigger": true
+  },
+  {
+    "query": "i want to be challenged on this rollout plan",
+    "expect": "grilling",
+    "should_trigger": true
+  },
+  {
+    "query": "review this adr and tell me what is wrong with it",
+    "expect": "reviewer",
+    "should_trigger": false
+  },
+  {
+    "query": "is this pr ready to merge",
+    "expect": "reviewer",
+    "should_trigger": false
+  }
+]
