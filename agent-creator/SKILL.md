@@ -1,6 +1,6 @@
 ---
 name: agent-creator
-description: Create or update OpenCode subagent definitions in ~/.config/opencode/agents/. Use when asked to add an agent, change its role or prompt, or adjust its permissions.
+description: Create or update OpenCode subagent definitions in ~/.config/opencode/agents/. Use when asked to add an agent, change its role or prompt, or adjust its permissions. Not for agent skills; that is skill-creator.
 license: MIT
 compatibility: opencode
 disable-model-invocation: true

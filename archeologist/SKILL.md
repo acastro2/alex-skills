@@ -4,7 +4,8 @@ description: >
   Trace past decisions and fixes, recover session context, find who said or sent something
   or when a meeting happened, and review shipped work (PRs, reviews, commits). Use for history
   questions, lost context, past communications, and activity reviews. Read-only; returns a
-  sourced, confidence-scored briefing with session IDs for resumption.
+  sourced, confidence-scored briefing with session IDs for resumption. Not for writing
+  notes, that is bard, or fetching transcripts, that is scribe.
 ---
 
 # Archeologist: Context Excavation Specialist

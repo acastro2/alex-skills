@@ -4,18 +4,18 @@ description: >-
   Mine AI-coding session history, scribe meeting transcript notes
   (Scribe/Meetings/Transcripts), and the comms (Outlook mail, Teams, calendar) that
   the archeologist surfaces during a sweep, and distill them into durable,
-  graph-native notes
-  in the personal Obsidian knowledge base at obsidian/Alex/Bard, and copy authored
+  graph-native notes in the Obsidian vault at obsidian/Alex/Bard, and copy authored
   deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
   to sweep recent sessions, meetings, or comms into the knowledge base, to bootstrap the bard
-  hubs, or to turn past decisions/lessons/patterns into notes, and to maintain the
-  root-vault `Todo.md` board from every place a task reaches Alex (Teams and mail to him,
-  Planner, To Do, Todoist, ADO, GitHub reviews), with every judgment typed through Jev.
+  hubs, or to turn past decisions/lessons/patterns into notes, and to keep the
+  root-vault `Todo.md` board fed from Teams, mail, Planner, To Do, Todoist, ADO and
+  GitHub, with every judgment typed through Jev.
   On-demand only. Reads sessions, meetings, and comms via the
   archeologist agent; writes
   OKF-envelope markdown notes. Never commits, never runs a server, never invents
-  provenance.
+  provenance. Not for raw transcripts, that is scribe, or history questions, that
+  is archeologist.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Azure_DevOps__wit_query, mcp__claude_ai_Azure_DevOps__wit_work_item
 ---
 
