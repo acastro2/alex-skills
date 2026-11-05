@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Create, edit, review, or improve agent skills and their SKILL.md files. Use when turning a workflow into a skill, fixing skill structure, testing skill behavior, comparing versions, or improving when a skill triggers. Routes to the pinned OpenAI creator for structure and the Anthropic creator for evaluation. Supports work in Pi, Claude, and Codex without assuming their tools are interchangeable.
+description: Create, edit, review, or improve agent skills and their SKILL.md files. Use when turning a workflow into a skill, fixing skill structure, testing skill behavior, comparing versions, or improving when a skill triggers. Routes to the pinned OpenAI creator for structure and the Anthropic creator for evaluation. Supports work in Pi, Claude, and Codex without assuming their tools are interchangeable. Not for subagents or their permissions; that is agent-creator.
 ---
 
 # Skill Creator

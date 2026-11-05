@@ -6,9 +6,11 @@ description: >-
   Microsoft 365 connector — directly in Claude Code, or through the ask-claude
   subagent in OpenCode) and HiDock P1 call recordings (pulled over USB, transcribed
   locally with mlx-whisper, speaker-diarized locally with mlx-audio). Use when the user
-  runs /scribe, asks to fetch, pull, clean,
-  or save meeting transcripts or call recordings, to sync the HiDock, or to prepare
-  meeting notes for bard. On-demand only. Read-only on the device and on Microsoft 365.
+  runs /scribe, asks to fetch, pull, clean, transcribe or save meeting transcripts,
+  call recordings or one recording, to add speaker labels or diarize a call, to sync
+  the HiDock, or to prepare meeting notes for bard. Not for writing notes into
+  Obsidian, that is bard, or searching past sessions, that is archeologist.
+  On-demand only. Read-only on the device and on Microsoft 365.
   Never commits, never runs a server.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, ToolSearch, mcp__claude_ai_Microsoft_365__outlook_calendar_search, mcp__claude_ai_Microsoft_365__read_resource
 ---
