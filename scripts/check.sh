@@ -44,7 +44,13 @@ run "$UV" run --with pytest --with pyyaml --with requests python -m pytest scrip
 run "$UV" run --with pytest --with requests python -m pytest browser-cookie-auth/tests -q
 run "$UV" run --with pytest python -m pytest bard/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
-run python3 -m unittest discover -s browser-apple-events/tests -p 'test_*.py'
+# Apple Events exist only on macOS and the suite raises by design elsewhere, so skip it
+# rather than fail the gate on a Linux runner.
+if [ "$(uname -s)" = "Darwin" ]; then
+  run python3 -m unittest discover -s browser-apple-events/tests -p 'test_*.py'
+else
+  echo "== browser-apple-events: skipping (Apple Events need macOS)"
+fi
 run python3 -m unittest discover -s alex-voice/tests -p 'test_*.py'
 run_in m365/scripts python3 -m unittest tests
 run "$UV" run --with requests python ea-projects-curator/scripts/sharepoint/test_draft_only.py
