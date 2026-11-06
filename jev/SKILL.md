@@ -1,6 +1,6 @@
 ---
 name: jev
-description: "Send your own judgment calls to Jev, TypeSafe's decision model, through the ask_jev tool (or the jev CLI in Pi), and get typed answers with probabilities instead of deciding in prose. Use whenever you would otherwise classify, route, gate, score against a rubric, pick one option from a fixed set, check whether a statement is true of a document, decide if two items are the same thing, or grade an output against expectations, such as skill eval grading. Use it most when the same judgment repeats across many items or runs, when you need a number to branch on, or when the call should be auditable. Not for generating text, math, counting, or comparing dates."
+description: "Use when a judgment needs a typed answer with a probability: route, classify, gate, score against a rubric, pick one of a fixed set, check a claim against a document, or match two items. Covers ask_jev, question shapes, confidence bands, and routing patterns. Prefer a Jev call over a prose guess."
 ---
 
 # Jev

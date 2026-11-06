@@ -26,10 +26,9 @@ plausible answer is not a question, so decide it and say why. Where this skill d
 own review or answer format, that format wins. If the host has no question tool, use
 `❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
 
-scribe is the intake step of Alex's knowledge pipeline: **scribe → bard → ea-projects-curator**.
+scribe is the intake step of Alex's knowledge pipeline: **scribe → bard**.
 It fetches raw transcripts, cleans them, adds a short summary, and writes one note per meeting
-into the vault. It does not distill knowledge (bard does) and does not publish anything
-(ea-projects-curator does).
+into the vault. It does not distill knowledge (bard does) and does not publish anything.
 
 ```mermaid
 graph TD
@@ -89,8 +88,8 @@ Mac both were already present on 2026-09-24.
 - **Write only** inside `<vault>/Scribe/`, `~/.scribe/`, and the state file. Never touch
   `Bard/`, `Evidence/`, `Todo.md`, or any other vault folder. Never edit an existing transcript
   note; re-run with `--force` only when Alex asks for a rewrite.
-- **Never invent.** No guessed names, owners, dates, or decisions in the summary: bard and the
-  AAB recap build on these notes as the record of what was said, so one invented owner becomes a
+- **Never invent.** No guessed names, owners, dates, or decisions in the summary: bard and any
+  meeting recap build on these notes as the record of what was said, so one invented owner becomes a
   wrong commitment downstream. A garbled proper noun you cannot confirm stays described, not
   named. A transcript that ends mid-sentence gets a footer line saying so.
 - **Never `git`, never a server, never commit.** Alex reviews and signs every commit himself.
@@ -271,21 +270,21 @@ One meeting, or no subagents on this host: run all eight steps serially.
   "last_run": "2026-09-03T16:40:12Z",
   "teams_last_run": "2026-09-03T16:40:12Z",
   "hidock_last_run": "2026-09-03T16:35:02Z",
-  "teams": { "<eventId>": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1500 Architecture Advisory Board.md" },
+  "teams": { "<eventId>": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1500 Weekly Design Review.md" },
   "hidock": { "2026Sep02-113150-Rec13.hda": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1131 EKSKubernetesBackstage Discussion.md" },
-  "skipped": { "2026Sep02-150056-Rec17.hda": "teams-covers: 2026-09-02 1500 Architecture Advisory Board" }
+  "skipped": { "2026Sep02-150056-Rec17.hda": "teams-covers: 2026-09-02 1500 Weekly Design Review" }
 }
 ```
 
 Keys are the Teams event id and the device filename, so a re-run recognises both sources without
 re-fetching. `skipped` values start with the reason, then a short why.
 
-## Note shape (what bard and ea-projects-curator read)
+## Note shape (what bard reads)
 
 ```markdown
 ---
 type: transcript
-title: "Architecture Advisory Board"
+title: "Weekly Design Review"
 description: "One-sentence summary."
 date: 2026-09-02T20:00:56Z
 end: 2026-09-02T21:25:40Z
@@ -303,7 +302,7 @@ glossary_replacements: 3
 scribe_schema: scribe.transcript/1
 ---
 
-# Architecture Advisory Board
+# Weekly Design Review
 
 ## Summary
 ...

@@ -1,6 +1,6 @@
 # Source A — Microsoft Teams
 
-Verified end to end by ea-projects-curator on 2026-08-28; the mechanics moved here unchanged.
+Verified end to end on 2026-08-28.
 These steps run directly in Claude Code. In OpenCode the same steps are the `ask-claude`
 subagent's brief and the payload is recovered from disk afterwards: see
 [Source A in OpenCode](teams-opencode.md).
@@ -9,8 +9,7 @@ subagent's brief and the payload is recovered from disk afterwards: see
    `ToolSearch("select:mcp__claude_ai_Microsoft_365__outlook_calendar_search,mcp__claude_ai_Microsoft_365__read_resource")`.
 2. Find candidate meetings: `outlook_calendar_search` with `query: "*"` and a
    `afterDateTime`/`beforeDateTime` window covering the requested days. Search by the **real
-   calendar subject** (the AAB forum is `Architecture Advisory Board`, not "Architecture Review
-   Forum"). The search returns 25 events per page; when the result ends with `nextOffset`,
+   calendar subject** (the name on the invite, not what people call the meeting). The search returns 25 events per page; when the result ends with `nextOffset`,
    call again with `offset` until it is gone (two working days already exceed one page). Skip
    events already present in state under `teams`.
 3. For each event, `read_resource` on `calendar:///events/{eventId}` to get its
@@ -26,7 +25,7 @@ subagent's brief and the payload is recovered from disk afterwards: see
    for that occurrence: record `no-transcript` for that event. **Check every occurrence, every
    run.** A standup that had no transcript yesterday is not evidence about today; the read costs
    one call, and inferring from history was a mistake made on 2026-09-04.
-5. The payload comes back two ways. Above roughly 50 KB (an 85-minute AAB is ~114 KB) the
+5. The payload comes back two ways. Above roughly 50 KB (an 85-minute meeting is ~114 KB) the
    harness saves it to a file and gives you the path: do not `Read` it (one giant line), copy it
    to `~/.scribe/raw/<eventId>.json`. Below that it arrives **inline** in the tool result, and
    the only way to disk is to write it yourself. Write the `content` (WEBVTT) to
@@ -48,6 +47,6 @@ subagent's brief and the payload is recovered from disk afterwards: see
    window matches the event you meant. `meeting.startDateTime` is the SERIES start; the script
    ignores it on purpose. Two transcripts in one payload means you dropped the window params:
    the script refuses and you re-fetch. The note's `date`/`end` and its filename come from the
-   `?start=&end=` calendar slot in the URI (so the AAB note is `... 1500 ...`, not `1459`); the
+   `?start=&end=` calendar slot in the URI (so the note is `... 1500 ...`, not `1459`); the
    transcript's own first/last cue times land in provenance.
 6. Continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).

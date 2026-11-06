@@ -4,16 +4,16 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 
 ## Contents
 
-- [Use the company's standard AWS modules first](#use-the-companys-standard-aws-modules-first)
+- [Use community AWS modules first](#use-community-aws-modules-first)
 - [Use stable OpenTofu deliberately](#use-stable-opentofu-deliberately)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
 
 Company-specific module, runner, and reusable-workflow choices apply only to work repositories. Outside them, keep the same safety rules but use the repo's approved equivalents.
 
-### Use the company's standard AWS modules first
+### Use community AWS modules first
 
-- **Use a module from `terraform-aws-modules` when it cleanly covers the AWS requirement.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules and Attain's standard, not official AWS modules.
+- **Use a module from `terraform-aws-modules` when it cleanly covers the AWS requirement.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules, not official AWS modules.
 - **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why the module was rejected.
 - **Use a `~>` constraint on registry modules, never an exact version.** OpenTofu's dependency lock file locks providers, not modules, so the constraint is the only thing that keeps a module off a new major. Check the Registry for the latest stable release, then set the minimum to the oldest release that supports every input the configuration uses. This is the required shape:
 
@@ -91,7 +91,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 ### Enforce checks locally and in CI
 
 - **Whenever Terraform or OpenTofu is touched, ensure `.pre-commit-config.yaml` and CI enforcement exist.** In GitHub repos, use `.github/workflows/pre-commit.yml`; otherwise use the repo's approved equivalent. Add whichever part is missing. Merge with existing hooks and CI; never replace repo-specific checks.
-- **Keep `tofu_validate` only when CI has git access to all module sources.** The hook runs `tofu init` to download providers and modules. If the repo references private GitHub modules (e.g., `github.com/Engineering-Attain-Finance/tf-aws-golden-path-mod`), the CI runner must have credentials to clone them. Without git auth, `tofu init` fails and the hook breaks. Drop `tofu_validate` from repos that reference private modules. The Atlantis plan is the real validation gate. For repos that only use public modules or local paths, keep it.
+- **Keep `tofu_validate` only when CI has git access to all module sources.** The hook runs `tofu init` to download providers and modules. If the repo references private GitHub modules (e.g., `github.com/example-org/tf-aws-private-mod`), the CI runner must have credentials to clone them. Without git auth, `tofu init` fails and the hook breaks. Drop `tofu_validate` from repos that reference private modules. The Atlantis plan is the real validation gate. For repos that only use public modules or local paths, keep it.
 - **Use the right terraform-docs scope.** The CLI arguments below work without a settings file. If the repo stores settings, name the file `.terraform-docs.yml`; `.terraform-docs.yaml` is not auto-discovered. The base config handles one module at the repo root.
 
   ```yaml
@@ -127,7 +127,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
   Recursive mode reads a child module's own `.terraform-docs.yml` when present. If modules live elsewhere, add an explicit terraform-docs hook entry for each module path instead of assuming auto-discovery.
 
-- **Run pre-commit on every pull request.** In work repos, use the reusable workflow below and match `OPENTOFU_VERSION` to the repo's exact tool pin. Outside Attain, use the repo's approved equivalent.
+- **Run pre-commit on every pull request.** In work repos, use the reusable workflow below and match `OPENTOFU_VERSION` to the repo's exact tool pin. Without one, use the repo's approved equivalent.
 
   ```yaml
   name: Pre-commit
@@ -147,7 +147,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
         OPENTOFU_VERSION: "1.12.5"
   ```
 
-  The OpenTofu value is an example. Replace it with the repo's exact pin; for a new repo, verify and use the latest stable release. The `@master` reference intentionally follows centrally managed Attain workflow updates. Use an approved commit SHA instead when a repo requires immutable CI dependencies.
+  The OpenTofu value is an example. Replace it with the repo's exact pin; for a new repo, verify and use the latest stable release. The `@master` reference intentionally follows centrally managed workflow updates. Use an approved commit SHA instead when a repo requires immutable CI dependencies.
 
 - **Verify the setup before finishing.** Run:
 

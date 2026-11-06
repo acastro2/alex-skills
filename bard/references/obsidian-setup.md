@@ -148,7 +148,7 @@ _Seeded by `/bard` from swept sessions. Anything someone waits on stays here, ev
 
 _Last ~4 weeks. Older rolls to [[Done Archive]]._
 
-- [x] 🏛️ Published the 08-19 AAB recap [[AAB recap 2026-08-19]] `(da41d7ea)` ⏫ ✅ 2026-08-21
+- [x] 🏛️ Published the 08-19 forum recap [[Forum recap 2026-08-19]] `(da41d7ea)` ⏫ ✅ 2026-08-21
 
 ## Legend
 
@@ -188,7 +188,7 @@ type: board
 
 ## 2026-08
 
-- [x] 🏛️ Published the 08-19 AAB recap `(da41d7ea)` ⏫ ✅ 2026-08-21
+- [x] 🏛️ Published the 08-19 forum recap `(da41d7ea)` ⏫ ✅ 2026-08-21
 ```
 
 Roll-over and never-delete rules are in [todo-board.md](todo-board.md).

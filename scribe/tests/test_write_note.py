@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def _note_path(vault):
-    return vault / "Scribe" / "Meetings" / "Transcripts" / "2026-08-26 1501 Architecture Advisory Board.md"
+    return vault / "Scribe" / "Meetings" / "Transcripts" / "2026-08-26 1501 Weekly Design Review.md"
 
 
 def test_builds_expected_path_and_frontmatter(run_script, fixtures_dir, tmp_path):
@@ -31,7 +31,7 @@ def test_builds_expected_path_and_frontmatter(run_script, fixtures_dir, tmp_path
     content = expected_path.read_text(encoding="utf-8")
 
     assert 'type: transcript' in content
-    assert 'title: "Architecture Advisory Board"' in content
+    assert 'title: "Weekly Design Review"' in content
     assert 'date: 2026-08-26T20:01:12Z' in content
     assert 'end: 2026-08-26T21:26:40Z' in content
     assert 'duration_min: 85' in content
@@ -46,7 +46,7 @@ def test_builds_expected_path_and_frontmatter(run_script, fixtures_dir, tmp_path
     assert 'glossary_replacements: 1' in content
     assert 'scribe_schema: scribe.transcript/1' in content
     assert content.startswith("---\n")
-    assert "# Architecture Advisory Board" in content
+    assert "# Weekly Design Review" in content
 
 
 def test_glossary_replacement_is_case_insensitive_and_word_bounded(run_script, fixtures_dir, tmp_path):
@@ -235,7 +235,7 @@ def test_dry_run_writes_nothing(run_script, fixtures_dir, tmp_path):
     )
 
     assert result.returncode == 0, result.stderr
-    assert "# Architecture Advisory Board" in result.stdout
+    assert "# Weekly Design Review" in result.stdout
     assert not vault.exists()
 
 
@@ -312,7 +312,7 @@ def test_dir_flag_puts_the_note_in_another_vault_folder(run_script, fixtures_dir
     )
     assert result.returncode == 0, result.stderr
     path = Path(result.stdout.strip())
-    assert path == tmp_path / "Scribe" / "Personal" / "2026-08-26 1501 Architecture Advisory Board.md"
+    assert path == tmp_path / "Scribe" / "Personal" / "2026-08-26 1501 Weekly Design Review.md"
     assert path.exists()
     assert not (tmp_path / "Scribe" / "Meetings").exists()
 

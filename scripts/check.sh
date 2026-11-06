@@ -37,10 +37,9 @@ run_in() { local dir="$1"; shift; step "$* (in $dir)"; ( cd "$dir" && "$@" ) || 
 
 # --- rules ---------------------------------------------------------------------
 run "$UV" run --with pyyaml python -m skillcheck
-run "$UV" run --with pyyaml python ea-projects-curator/tests/ea_projects_curator_audit.py
 
 # --- tests ---------------------------------------------------------------------
-run "$UV" run --with pytest --with pyyaml --with requests python -m pytest scripts/tests ea-projects-curator/tests ado-ticket-writer/tests -q
+run "$UV" run --with pytest --with pyyaml --with requests python -m pytest scripts/tests -q
 run "$UV" run --with pytest --with requests python -m pytest browser-cookie-auth/tests -q
 run "$UV" run --with pytest python -m pytest bard/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
@@ -53,7 +52,6 @@ else
 fi
 run python3 -m unittest discover -s alex-voice/tests -p 'test_*.py'
 run_in m365/scripts python3 -m unittest tests
-run "$UV" run --with requests python ea-projects-curator/scripts/sharepoint/test_draft_only.py
 
 # --- ub-mode tools, behind --tools ---------------------------------------------
 if [ "$WITH_TOOLS" = "1" ]; then

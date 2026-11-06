@@ -247,7 +247,10 @@ so it is derived from real work and ratified by Alex.
 7. **Capture evidence files** — when a swept session or the sweep's file scan surfaces
    authored deliverables not yet in `Evidence/`, copy them per **Evidence capture**
    below, loading its mechanics reference before copying. Update `Evidence/README.md`
-   to match. This is another existing file bard edits in place.
+   to match, then rebuild the machine catalog:
+   `python3 ~/.agents/skills/bard/scripts/evidence_catalog.py build --vault <vault>` and
+   `... check --vault <vault>`. `Evidence/README.md` and the generated catalog files are
+   existing files bard edits in place.
 8. **Update `.bard-state.json` with the script, not a heredoc.** One call per run:
 
    ```
@@ -423,7 +426,7 @@ must equal the canonical `title`. Sanitize illegal chars (`/`, `:`, `#`, `^`, `|
 {
   "last_run": "2026-06-29T14:30:00Z",
   "watermark": "2026-06-28T09:12:00Z",
-  "scribe_seen": ["Scribe/Meetings/Transcripts/2026-06-28 0900 Architecture Advisory Board.md"]
+  "scribe_seen": ["Scribe/Meetings/Transcripts/2026-06-28 0900 Weekly Design Review.md"]
 }
 ```
 
@@ -480,7 +483,7 @@ Authored deliverables Alex produced or co-authored, from local repos or OneDrive
 
 ### Confidentiality (hard rule, same as notes)
 
-- **Never copy consumer-PII datafiles** (loan documents, consumer-count datafiles,
+- **Never copy consumer-PII datafiles** (customer documents, consumer-count datafiles,
   candidate resumes, watchlist extracts, any file whose content is third-party personal
   data) into the vault at all — record the work as a Bard note instead. This is a hard
   line, not a judgment call: a personal-sync vault is not a place for other people's data.

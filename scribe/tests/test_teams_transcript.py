@@ -22,7 +22,7 @@ def test_parses_cues_merges_consecutive_speakers_and_uses_occurrence_window(
 
     assert normalized["schema"] == "scribe.transcript/1"
     assert normalized["source"] == "teams"
-    assert normalized["title"] == "Architecture Advisory Board"
+    assert normalized["title"] == "Weekly Design Review"
 
     # Series-start trap: transcripts[0].createdDateTime, never meeting.startDateTime.
     assert normalized["start"] == "2026-08-26T20:01:12Z"

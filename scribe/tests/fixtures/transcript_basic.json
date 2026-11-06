@@ -1,7 +1,7 @@
 {
   "schema": "scribe.transcript/1",
   "source": "teams",
-  "title": "Architecture Advisory Board",
+  "title": "Weekly Design Review",
   "start": "2026-08-26T20:01:12Z",
   "end": "2026-08-26T21:26:40Z",
   "speakers": [
