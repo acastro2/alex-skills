@@ -33,7 +33,7 @@ Alex's address comes from `get_me`; do not hard-code it in a note or the board.
 
 **ADO WIQL.** 42 items are open on a normal day and most are long-lived stories. A plain
 "changed since watermark" filter still returned all 42 on 2026-10-14, because Alex's own
-curator run touches them every week. Take only items **someone else** changed in the window,
+weekly run touches them. Take only items **someone else** changed in the window,
 or items due in the next 14 days. This returned 4 of 42 (pass `timePrecision: true` so the
 watermark time counts):
 

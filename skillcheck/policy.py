@@ -68,6 +68,21 @@ POLICY: dict[str, Policy] = {
     "scribe": Policy(
         standalone=frozenset({"references/teams.md", "references/hidock.md"}),
     ),
+    # the skill is a symlink into the opencode-chart-tui repo, and the schema sits at that
+    # repo's root, outside the linked folder.
+    "opencode-charts": Policy(external_paths=frozenset({"schema/chart.schema.json"})),
+    # CC BY 4.0 needs the credit in every copy, so each reference carries the same line.
+    "unslop": Policy(
+        standalone=frozenset(
+            {
+                "references/effects.md",
+                "references/refs.md",
+                "references/signs.md",
+                "references/tokens.md",
+                "references/visuals.md",
+            }
+        ),
+    ),
     # skill-creator's prose talks about the vendored creators' own trees.
     "skill-creator": Policy(path_bases=("vendor/codex", "vendor/claude")),
 }
