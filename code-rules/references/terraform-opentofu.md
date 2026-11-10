@@ -4,17 +4,19 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 
 ## Contents
 
-- [Use community AWS modules first](#use-community-aws-modules-first)
+- [Use the SRE module library first, community modules second](#use-the-sre-module-library-first-community-modules-second)
 - [Use stable OpenTofu deliberately](#use-stable-opentofu-deliberately)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
 
 Company-specific module, runner, and reusable-workflow choices apply only to work repositories. Outside them, keep the same safety rules but use the repo's approved equivalents.
 
-### Use community AWS modules first
+### Use the SRE module library first, community modules second
 
-- **Use a module from `terraform-aws-modules` when it cleanly covers the AWS requirement.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules, not official AWS modules.
-- **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why the module was rejected.
+- **First, use the company's SRE module library when it has a module for the job.** Find the library in an existing SRE-reviewed root: it is the `git::` module source next to the root's defaults module. SRE reviews new roots against that library, and its modules already carry the company naming, tagging, and guardrails.
+- **Pin a library module to an exact release tag (`?ref=<tag>`), and look the tag up.** Git sources have no version ranges, so the `~>` rule below applies to registry modules only. Get the newest tag with `git ls-remote --tags <library-url> '<module-path>/*'`; never copy a tag from memory or from another root.
+- **Second, use a module from `terraform-aws-modules` when the library has nothing that fits.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules, not official AWS modules.
+- **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why each module was rejected.
 - **Use a `~>` constraint on registry modules, never an exact version.** OpenTofu's dependency lock file locks providers, not modules, so the constraint is the only thing that keeps a module off a new major. Check the Registry for the latest stable release, then set the minimum to the oldest release that supports every input the configuration uses. This is the required shape:
 
   ```hcl
@@ -26,13 +28,13 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
   `~> 6.3` means `>= 6.3.0, < 7.0.0`, so patches and new minors arrive without a code change, while the next major stays a deliberate one.
 
-**Why:** standard modules keep common AWS patterns consistent and reduce code we own. The fit check prevents a large abstraction from making a simple resource harder to understand.
+**Why:** the SRE library is what reviewers check against, so using it first avoids rework at review. Community modules beat raw resources because they keep common AWS patterns consistent and reduce code we own. The fit check prevents a large abstraction from making a simple resource harder to understand.
 
 ### Use stable OpenTofu deliberately
 
 - **Use the latest stable OpenTofu for new repos and planned upgrades.** Pin the exact CLI version in local tooling and CI.
 - **Do not upgrade OpenTofu as unrelated cleanup.** In an existing repo, keep its current pin unless the task needs an upgrade. When upgrading, update local tooling, `required_version`, CI, and docs together.
-- **For OpenTofu 1.11 or newer, use `lifecycle.enabled` for a zero-or-one resource or module.** Use `count` only for multiple identical instances. If the repo must also run with Terraform, do not use OpenTofu-only syntax.
+- **For OpenTofu 1.11 or newer, use `lifecycle.enabled` for a zero-or-one resource or module.** Use `count` only for multiple identical instances. If the repo must also run with Terraform, do not use OpenTofu-only syntax. This holds even when a platform team's guide says `count`: state in the PR that the choice is deliberate, and set `required_version` to at least `~> 1.11`, the release that added `enabled`.
 
   ```hcl
   resource "aws_s3_bucket" "logs" {
@@ -83,6 +85,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   }
   ```
 
+- **When another team owns the CI OpenTofu version, use a minor-level range.** A shared reusable workflow picks the CLI version, so `~> 1.12.0` breaks your root the day that team moves CI to 1.13. Use `~> 1.<minimum>` with the honest minimum instead, for example `~> 1.11` for a root that uses `lifecycle.enabled`.
 - **Do not lower a real minimum just to end the constraint in `.0`.** `~> 6.8` means `>= 6.8.0, < 7.0.0` and does allow 6.9. Use `~> 6.0` only when the code truly supports every provider release from 6.0 onward. `~> 6.8.0` is different: it allows 6.8 patch releases but blocks 6.9.
 - **Handle `.terraform.lock.hcl` by working-directory role.** Commit it for every independently applied root configuration. Ignore a lock file created only to validate a reusable module because consumers do not use it. Never edit a lock file by hand. Upgrade providers deliberately with `tofu init -upgrade`, review the diff, and run a plan.
 
@@ -91,7 +94,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 ### Enforce checks locally and in CI
 
 - **Whenever Terraform or OpenTofu is touched, ensure `.pre-commit-config.yaml` and CI enforcement exist.** In GitHub repos, use `.github/workflows/pre-commit.yml`; otherwise use the repo's approved equivalent. Add whichever part is missing. Merge with existing hooks and CI; never replace repo-specific checks.
-- **Keep `tofu_validate` only when CI has git access to all module sources.** The hook runs `tofu init` to download providers and modules. If the repo references private GitHub modules (e.g., `github.com/example-org/tf-aws-private-mod`), the CI runner must have credentials to clone them. Without git auth, `tofu init` fails and the hook breaks. Drop `tofu_validate` from repos that reference private modules. The Atlantis plan is the real validation gate. For repos that only use public modules or local paths, keep it.
+- **Keep `tofu_validate` only when CI has git access to all module sources.** The hook runs `tofu init` to download providers and modules. If the repo references private GitHub modules (e.g., `github.com/example-org/tf-aws-private-mod`), the CI runner must have credentials to clone them. Without git auth, `tofu init` fails and the hook breaks. Drop `tofu_validate` from repos that reference private modules. The plan that the CI pipeline posts on the pull request is the real validation gate. For repos that only use public modules or local paths, keep it.
 - **Use the right terraform-docs scope.** The CLI arguments below work without a settings file. If the repo stores settings, name the file `.terraform-docs.yml`; `.terraform-docs.yaml` is not auto-discovered. The base config handles one module at the repo root.
 
   ```yaml
@@ -127,7 +130,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
   Recursive mode reads a child module's own `.terraform-docs.yml` when present. If modules live elsewhere, add an explicit terraform-docs hook entry for each module path instead of assuming auto-discovery.
 
-- **Run pre-commit on every pull request.** In work repos, use the reusable workflow below and match `OPENTOFU_VERSION` to the repo's exact tool pin. Without one, use the repo's approved equivalent.
+- **Run pre-commit on every pull request.** If the company publishes a reusable pre-commit workflow, call it. If not, add this plain workflow, and set `tofu_version` to the version the CI pipeline runs:
 
   ```yaml
   name: Pre-commit
@@ -141,13 +144,20 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
   jobs:
     pre-commit:
-      uses: example-org/reusable-workflows/.github/workflows/pre-commit.yml@master
-      with:
-        GITHUB_RUNNER: example-runner
-        OPENTOFU_VERSION: "1.12.5"
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v7
+        - uses: actions/setup-python@v7
+          with:
+            python-version: "3.13"
+        - uses: opentofu/setup-opentofu@v2
+          with:
+            tofu_version: "1.12.0"
+            tofu_wrapper: false
+        - uses: pre-commit/action@v3.0.1
   ```
 
-  The OpenTofu value is an example. Replace it with the repo's exact pin; for a new repo, verify and use the latest stable release. The `@master` reference intentionally follows centrally managed workflow updates. Use an approved commit SHA instead when a repo requires immutable CI dependencies.
+  The OpenTofu value is an example. Change `runs-on` when the repo must use the company's self-hosted runners. Use approved commit SHAs instead of tags when a repo requires immutable CI dependencies.
 
 - **Verify the setup before finishing.** Run:
 
