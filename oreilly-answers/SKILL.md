@@ -14,7 +14,7 @@ plausible answer is not a question, so decide it and say why. Where this skill d
 own review or answer format, that format wins. If the host has no question tool, use
 `❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
 
-Ask questions in Alex's own browser session and capture the answers with their book citations. Needs the `browser-control` skill working and Alex logged in to learning.oreilly.com in that browser.
+Ask questions in Alex's own browser session and capture the answers with their book citations. Needs the `browser-control` CLI (the scripts call it directly, not the browse MCP) and Alex logged in to learning.oreilly.com in that browser.
 
 ## Run it
 
