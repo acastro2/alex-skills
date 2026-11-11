@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pull as the acastro2 GitHub account without touching the active gh account.
+# Defaults to `git pull --rebase` (Alex's gpr alias); extra args are passed through.
+set -euo pipefail
+
+if ! token=$(gh auth token --user acastro2 2>/dev/null) || [[ -z ${token} ]]; then
+  echo 'git-pull-acastro2: not logged in as acastro2. Run: gh auth login' >&2
+  exit 1
+fi
+
+url=$(git remote get-url origin 2>/dev/null || true)
+case ${url} in
+  git@* | ssh://*)
+    echo 'git-pull-acastro2: origin is SSH, so GH_TOKEN is ignored and the machine key picks the account.' >&2
+    ;;
+esac
+
+echo 'Pulling as acastro2'
+GH_TOKEN=${token} git pull --rebase "$@"

@@ -8,6 +8,7 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 - [Use stable OpenTofu deliberately](#use-stable-opentofu-deliberately)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
+- [Match the sibling root before review](#match-the-sibling-root-before-review)
 
 Company-specific module, runner, and reusable-workflow choices apply only to work repositories. Outside them, keep the same safety rules but use the repo's approved equivalents.
 
@@ -17,16 +18,9 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 - **Pin a library module to an exact release tag (`?ref=<tag>`), and look the tag up.** Git sources have no version ranges, so the `~>` rule below applies to registry modules only. Get the newest tag with `git ls-remote --tags <library-url> '<module-path>/*'`; never copy a tag from memory or from another root.
 - **Second, use a module from `terraform-aws-modules` when the library has nothing that fits.** Check the Terraform Registry before writing raw `aws_*` resources. These are verified, community-maintained modules, not official AWS modules.
 - **Do not force a module that needs forks or workarounds.** If no module fits cleanly, write the minimum raw resources and say why each module was rejected.
-- **Use a `~>` constraint on registry modules, never an exact version.** OpenTofu's dependency lock file locks providers, not modules, so the constraint is the only thing that keeps a module off a new major. Check the Registry for the latest stable release, then set the minimum to the oldest release that supports every input the configuration uses. This is the required shape:
-
-  ```hcl
-  module "vpc" {
-    source  = "terraform-aws-modules/vpc/aws"
-    version = "~> 6.3"
-  }
-  ```
-
-  `~> 6.3` means `>= 6.3.0, < 7.0.0`, so patches and new minors arrive without a code change, while the next major stays a deliberate one.
+- **In a root that CI applies, pin a registry module to an exact version.** OpenTofu's lock file locks providers, not modules, so a `~>` range lets a new module release change the next plan with no code change. Look up the newest release on the Registry and pin it: `version = "8.13.0"`. Bump it on purpose, in its own commit, and read the plan.
+- **In a reusable module, use a `~>` range on registry modules.** Consumers resolve it, so set the honest minimum and block the next major: `version = "~> 6.3"` (`>= 6.3.0, < 7.0.0`).
+- **A community module in an SRE root is a deviation: record its exit.** Put it in the root README's deviation table with the reason the library module does not fit and the library ask (ticket) that would remove it.
 
 **Why:** the SRE library is what reviewers check against, so using it first avoids rework at review. Community modules beat raw resources because they keep common AWS patterns consistent and reduce code we own. The fit check prevents a large abstraction from making a simple resource harder to understand.
 
@@ -34,7 +28,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
 - **Use the latest stable OpenTofu for new repos and planned upgrades.** Pin the exact CLI version in local tooling and CI.
 - **Do not upgrade OpenTofu as unrelated cleanup.** In an existing repo, keep its current pin unless the task needs an upgrade. When upgrading, update local tooling, `required_version`, CI, and docs together.
-- **For OpenTofu 1.11 or newer, use `lifecycle.enabled` for a zero-or-one resource or module.** Use `count` only for multiple identical instances. If the repo must also run with Terraform, do not use OpenTofu-only syntax. This holds even when a platform team's guide says `count`: state in the PR that the choice is deliberate, and set `required_version` to at least `~> 1.11`, the release that added `enabled`.
+- **For OpenTofu 1.11 or newer, use `lifecycle.enabled` for a zero-or-one resource or module.** Use `count` only for multiple identical instances. If the repo must also run with Terraform, do not use OpenTofu-only syntax. This holds even when a platform team's guide says `count`: put it in the README deviation table, ask the platform team to bless it on their standard page (it pins the root to OpenTofu >= 1.11), and set `required_version` to at least `~> 1.11`.
 
   ```hcl
   resource "aws_s3_bucket" "logs" {
@@ -169,3 +163,17 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   When adding or deliberately upgrading hooks, run `pre-commit autoupdate` before these checks. If a hook changes files, review them and rerun `pre-commit run --all-files` until it passes.
 
 **Why:** local hooks catch formatting, validation, and generated-doc issues early. CI makes the same checks mandatory for every pull request.
+
+### Match the sibling root before review
+
+SRE reviewers check a new root against the closest existing root of the same team (for Builder Tools: builder-hub `.sre/tf/*` on `develop`). Diff your root against it before you open the PR. Each rule below is a finding from a real review (bt-cortex #22, 2026-11-11).
+
+- **Copy conventions from the sibling, not from memory.** Tag keys and their casing (`Application`, `Ticket`), log retention (30 days), and caller inputs (`require-apply-reviewers`) come from the sibling's current files. Policy changes land there first, so read `develop`, not an old copy.
+- **Compose resource names only through the defaults module, including in CI.** If a workflow needs a resource name, publish it in the root's SSM contract and read it with `aws ssm get-parameter`. A `case "$ENV"` that rebuilds `DV-USE2-...` is name composition outside `module.q`.
+- **Every override of a module default carries a reason in a comment.** Never turn off a module's logging (`log_publishing_options = []`) to save effort. If the default fails (Auto-Tune on t3), say that in the comment and when to remove the override.
+- **A generated secret needs `keepers` and a rotation note.** `random_password` with `keepers` tied to the resource it protects, so a plan never rotates it by accident; the README says how to rotate.
+- **Document every out-of-band secret:** owner, scope, expiry, and the ticket that replaces it (for example a PAT replaced by a GitHub App).
+- **Guard list indexing on contract values.** `slice(list, 0, 2)` on an SSM list fails with an index error on a short list. Clamp it with `min()` so the module's own validation reports the real problem, or add a `precondition` with a clear message.
+- **When the code works around the platform, write the runtime decision down.** Wiping `/tmp` every run or living under a 900 s cap is a sign; add an ADR line in the README with the intent and the trigger to move.
+- **Take external identifiers from the live system, not from old code.** Org names, account IDs and repository lists come from the running environment (or the API) when one exists. `ChamberlainGroupFirmware` and `ChamberlainGroup-myQ-Firmware` are different orgs.
+- **Keep the PR body current.** Remove "before merge" items and CI notes as soon as they are done; reviewers read stale notes as open work.

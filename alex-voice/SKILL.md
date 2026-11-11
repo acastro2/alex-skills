@@ -25,7 +25,7 @@ Load order:
 
 Paths in this file, including script commands, are relative to the `alex-voice/` skill directory, even after loading a register reference. Resolve them to absolute paths before use. The blog and fingerprint references use reference-local `../` paths; resolve those from their own directory to the same skill files.
 
-Before handing over any draft, run `python3 scripts/voice_check.py <draft-file> --register <name>` (a file path, not pasted text) and fix every BLOCKER. Act on every length warning: cut words before you hand it over (his real messages are shorter than first drafts). Other warnings are judgment calls. For chat, write one message per line.
+Before handing over any draft, run `python3 scripts/voice_check.py <draft-file> --register <name>` (a file path, not pasted text) and fix every BLOCKER. Act on every length warning: cut words before you hand it over (his real messages are shorter than first drafts). Other warnings are judgment calls. For chat, write one message per line. Output is one verdict line plus only the problems; add `--stats` only when you need the raw metrics. Fix and re-run without narrating each score.
 
 ## Who Alex is
 

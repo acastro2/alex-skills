@@ -252,24 +252,26 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("file", type=Path)
     parser.add_argument("--register", choices=sorted(TARGETS), default="blog")
+    parser.add_argument("--stats", action="store_true", help="also print the raw metrics")
     args = parser.parse_args(argv)
 
     stats = analyze(args.file.read_text(encoding="utf-8", errors="replace"))
     blockers, warnings = report(stats, args.register)
 
-    print(f"voice_check {args.file.name} [{args.register}] words={stats['words']} sentences={stats['sentences']}")
-    print(f"  avg_sent={stats['avg_sent']} p90_sent={stats['p90_sent']} ?/10k={stats['q']} !/10k={stats['bang']} (/10k={stats['paren']} emdash/10k={stats['emdash']}")
-    print(f"  tag_q/10k={stats['tag_q']} opinion/10k={stats['opinion']} the_start%={stats['the_start_pct']} lower_start%={stats['lower_start_pct']} one_line_para%={stats['one_line_para_pct']}")
+    notes = [f"words={stats['words']}"]
     if stats["words"] < MIN_WORDS_FOR_RATES:
-        print("  short-form: rates not scored")
+        notes.append("short-form: rates not scored")
     if args.register == "spoken":
-        print("  punctuation from speech-to-text, not calibrated")
+        notes.append("punctuation from speech-to-text, not calibrated")
+    verdict = "PASS: inside Alex's measured range" if not blockers and not warnings else f"{len(blockers)} blocker, {len(warnings)} warn"
+    print(f"voice_check {args.file.name} [{args.register}] {', '.join(notes)} -> {verdict}")
     for item in blockers:
         print(f"  BLOCKER: {item}")
     for item in warnings:
         print(f"  warn: {item}")
-    if not blockers and not warnings:
-        print("  PASS: inside Alex's measured range")
+    if args.stats:
+        print(f"  stats: sentences={stats['sentences']} avg_sent={stats['avg_sent']} p90_sent={stats['p90_sent']} ?/10k={stats['q']} !/10k={stats['bang']} (/10k={stats['paren']} emdash/10k={stats['emdash']}")
+        print(f"  stats: tag_q/10k={stats['tag_q']} opinion/10k={stats['opinion']} the_start%={stats['the_start_pct']} lower_start%={stats['lower_start_pct']} one_line_para%={stats['one_line_para_pct']}")
     return 1 if blockers else 0
 
 
