@@ -1,0 +1,35 @@
+diff --git a/src/sync/client.py b/src/sync/client.py
+--- a/src/sync/client.py
++++ b/src/sync/client.py
+@@ -1,6 +1,9 @@
+ import httpx
++import random
++import time
+
++RETRYABLE = {502, 503, 504}
+
+ class SyncClient:
+     def __init__(self, base_url: str, token: str):
+@@ -40,10 +43,26 @@ class SyncClient:
+-    def fetch_page(self, cursor: str | None) -> dict:
+-        resp = self._http.get("/devices", params={"cursor": cursor})
+-        resp.raise_for_status()
+-        return resp.json()
++    def fetch_page(self, cursor: str | None, *, max_attempts: int = 4) -> dict:
++        for attempt in range(1, max_attempts + 1):
++            resp = self._http.get("/devices", params={"cursor": cursor})
++            if resp.status_code not in RETRYABLE:
++                resp.raise_for_status()
++                return resp.json()
++            if attempt == max_attempts:
++                resp.raise_for_status()
++            # 0.5 s, 1 s, 2 s, plus up to 250 ms jitter
++            time.sleep(0.5 * 2 ** (attempt - 1) + random.uniform(0, 0.25))
++        raise AssertionError("unreachable")
+diff --git a/tests/sync/test_client.py b/tests/sync/test_client.py
+--- a/tests/sync/test_client.py
++++ b/tests/sync/test_client.py
+@@ -60,0 +61,41 @@  (test bodies elided in this excerpt; 41 lines added)
++def test_fetch_page_retries_503_then_succeeds(fake_http, no_sleep): ...
++def test_fetch_page_gives_up_after_4_attempts(fake_http, no_sleep): ...
++def test_fetch_page_does_not_retry_404(fake_http, no_sleep): ...

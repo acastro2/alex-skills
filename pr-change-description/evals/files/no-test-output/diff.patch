@@ -1,0 +1,41 @@
+diff --git a/src/api/handlers/schedules.py b/src/api/handlers/schedules.py
+@@ -22,8 +22,12 @@ def list_schedules(device_id: str, db: Session) -> Response:
+-    rows = db.query(Schedule).filter_by(device_id=device_id).all()
+-    return Response(200, {"schedules": [s.to_dict() for s in rows]})
++    device = db.get(Device, device_id)
++    if device is None:
++        return Response(404, {"error": "device_not_found", "device_id": device_id})
++    rows = db.query(Schedule).filter_by(device_id=device_id).all()
++    return Response(200, {"schedules": [s.to_dict() for s in rows]})
+diff --git a/src/sdk/errors.py b/src/sdk/errors.py
++class DeviceNotFound(ApiError):
++    """The device id does not exist or was removed."""
++    def __init__(self, device_id: str):
++        super().__init__(f"device {device_id} not found")
++        self.device_id = device_id
+diff --git a/src/sdk/client.py b/src/sdk/client.py
+@@ -88,6 +88,12 @@ class Client:
+     def list_schedules(self, device_id: str) -> list[Schedule]:
+         resp = self._get(f"/v1/devices/{device_id}/schedules")
++        if resp.status_code == 404:
++            body = resp.json()
++            if body.get("error") == "device_not_found":
++                raise DeviceNotFound(device_id)
+         resp.raise_for_status()
+         return [Schedule(**s) for s in resp.json()["schedules"]]
+diff --git a/openapi.yaml b/openapi.yaml
+       responses:
+         "200":
+           description: Schedules for the device. Empty list when it has none.
++        "404":
++          description: The device does not exist.
++          content:
++            application/json:
++              schema: {$ref: "#/components/schemas/DeviceNotFound"}
+diff --git a/tests/api/test_schedules.py b/tests/api/test_schedules.py  (test bodies elided in this excerpt)
++def test_unknown_device_returns_404(client): ...
++def test_known_device_with_no_schedules_still_returns_200_empty(client): ...
+-def test_unknown_device_returns_empty_list(client): ...
+diff --git a/tests/sdk/test_client.py b/tests/sdk/test_client.py
++def test_list_schedules_raises_device_not_found_on_404(fake_http): ...
++def test_list_schedules_other_404_raises_http_error(fake_http): ...

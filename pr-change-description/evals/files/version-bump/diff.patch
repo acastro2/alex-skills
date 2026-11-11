@@ -1,0 +1,12 @@
+diff --git a/pyproject.toml b/pyproject.toml
+-version = "2.4.0"
++version = "2.4.1"
+diff --git a/src/sync/__init__.py b/src/sync/__init__.py
+-__version__ = "2.4.0"
++__version__ = "2.4.1"
+diff --git a/CHANGELOG.md b/CHANGELOG.md
++## 2.4.1 - 2026-11-09
++
++### Fixed
++- Sync retries a page on 502, 503 and 504 instead of failing the run (#318).
++

@@ -1,0 +1,87 @@
+{
+  "skill_name": "pr-change-description",
+  "evals": [
+    {
+      "id": 1,
+      "name": "small-retry",
+      "prompt": "Write the PR description for PR #318. I gathered the facts for you: {FIXTURES}/small-retry/facts.md and {FIXTURES}/small-retry/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
+      "expected_output": "Small shape: one or two sentences of why tied to SYNC-212, one before/after Mermaid diagram (or one with both) where the before shows a 503 failing the whole run, what changed in bullets, and the 6 passed test run. No template sections such as review path or behaviour-change table.",
+      "files": [
+        "evals/files/small-retry/facts.md",
+        "evals/files/small-retry/diff.patch"
+      ],
+      "expectations": [
+        "[code] Has 1 or 2 mermaid blocks",
+        "[code] Quotes the test run '6 passed'",
+        "[code] Has no review-path or behaviour-change section",
+        "[code] Body is at most 350 words",
+        "[code] Every number of 11 or more appears in the fixtures",
+        "[jev] The before diagram shows the transient 503 failing the whole sync run",
+        "[jev] Does not claim that it posted the PR or checked the diagram render",
+        "[code] Every mermaid block parses and its fence is a clean line"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "large-lease",
+      "prompt": "Write the PR description for PR #341. I gathered the facts for you: {FIXTURES}/large-lease/facts.md. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
+      "expected_output": "Full template: opener with size and fixture share, whole-change before/after diagrams with a size table, sections per area, a sequence diagram with an alt failure branch, a behaviour-change table of the four ADR-0031 changes with who notices, what stays unchanged, the deviation (leases table, not advisory lock, because of pgbouncer), the untested clock-skew gap, the safety proof (golden replay 42/42 byte-identical, 41/42 order with batch_017 explained, 412 passed vs 359), and a review path by commit.",
+      "files": [
+        "evals/files/large-lease/facts.md"
+      ],
+      "expectations": [
+        "[code] Has at least 4 mermaid blocks",
+        "[code] Has a sequenceDiagram with an alt block",
+        "[code] Has a subgraph in a mermaid block",
+        "[code] Names at least 5 of the 6 commit hashes",
+        "[code] Quotes 412 passed and 359 passed",
+        "[code] Quotes the worker.py line counts 1312 and 418",
+        "[code] Quotes the fixture count 6120 or 6,120",
+        "[code] Mentions pgbouncer",
+        "[code] Mentions clock skew",
+        "[code] Every number of 11 or more appears in the fixtures",
+        "[jev] Has a behaviour-change table that covers the lease skip, the retry, no publish of a failed batch, and the 30 s lease TTL",
+        "[jev] Says the record schema stays unchanged, and for the topic names and CLI flags either says they stay unchanged or marks them not verified",
+        "[jev] Explains why batch_017 publish order differs",
+        "[jev] Does not claim that it posted the PR or checked the diagram render",
+        "[code] Every mermaid block parses and its fence is a clean line"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "version-bump",
+      "prompt": "Write the PR description for PR #322. I gathered the facts for you: {FIXTURES}/version-bump/facts.md and {FIXTURES}/version-bump/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
+      "expected_output": "No diagram: the change has no structure. A few lines of why and what: release 2.4.1, which carries the retry fix from #318.",
+      "files": [
+        "evals/files/version-bump/facts.md",
+        "evals/files/version-bump/diff.patch"
+      ],
+      "expectations": [
+        "[code] Has no mermaid block",
+        "[code] Body is at most 150 words",
+        "[code] Names version 2.4.1",
+        "[code] Refers to #318"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "no-test-output",
+      "prompt": "Write the PR description for PR #329. I gathered the facts for you: {FIXTURES}/no-test-output/facts.md and {FIXTURES}/no-test-output/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
+      "expected_output": "Medium shape (a changed contract over API, SDK and docs): why from API-877, before/after diagram, a behaviour-change table that marks the 404 as a change client callers notice, the unchanged 200-empty for a known device, and a testing section that says the tests were not run or not verified, with no invented pass counts.",
+      "files": [
+        "evals/files/no-test-output/facts.md",
+        "evals/files/no-test-output/diff.patch"
+      ],
+      "expectations": [
+        "[code] Has no 'N passed' test count",
+        "[code] Has at least 1 mermaid block",
+        "[code] Has a markdown table that mentions 404",
+        "[code] Every number of 11 or more appears in the fixtures",
+        "[jev] Says the tests were not run or their result is not verified",
+        "[jev] States that a known device with no schedules still gets 200 with an empty list",
+        "[jev] Warns that clients that relied on 200 with an empty list for an unknown device now get a 404",
+        "[code] Every mermaid block parses and its fence is a clean line"
+      ]
+    }
+  ]
+}

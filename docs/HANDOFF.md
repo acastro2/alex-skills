@@ -1,8 +1,10 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-10 CST. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
+Updated: 2026-11-11 CST. Full session history lives in the git history of this file (`git log -p docs/HANDOFF.md`).
 
 ## Current state
+
+**pr-change-description has evals, 2026-11-11 (uncommitted).** 4 synthetic cases in `pr-change-description/evals/` (small retry, large lease refactor, version bump, missing test output), tooling in `pr-change-description/tests/`. Iteration 1, Opus 5.5, 1 run each: with skill 97% pass vs baseline 89% (baseline = `--disallowedTools "Skill(pr-change-description)"`, keeps alex-voice). The win is all in the large case: 8 diagrams with sequence/alt and subgraph vs 2 flat ones. Small and version-bump do not discriminate. Both small runs add a review path the small shape does not ask for. Results and static viewer: `~/.agents/skill-workspace/alex-skills/pr-change-description/iteration-1/` (`benchmark.md`, `review.html`, `overrides.json`). `check.sh` PASS 8/8, `pre-commit` PASS. **Iteration 2:** the small shape now says "Nothing else: no review path, no behaviour-change table, no watch-after-deploy" and "Stop there" (`SKILL.md` rows 27, 52). New vs v1 snapshot, 3 runs each: tie at about 95%. Small case: template headings in 1 of 3 new runs vs 2 of 3 old (noise level); the leftover is "## Behaviour changes". One old-skill run read the live SKILL.md from disk through the fixture path and was excluded (`excluded/`). The runner now copies fixtures to `<iteration>/fixtures/`. **Iteration 3:** added one rule to the small shape: a behaviour change in a small PR is one bullet under what changed, not a table (`SKILL.md` line 52). New vs v1, 3 runs each: small case 3/3 clean (v1: 0/3, all added Behaviour changes or Review path); other cases unchanged. Watch: large case missed the +6,120 fixture line count in 3 of 6 new runs (iter 2+3) vs 0 of 6 v1 runs; it still states 42 of 50 files are fixtures. Not significant at n=6.
 
 **browser-control is a pointer to the browse MCP, 2026-11-10 (PR #5).** The 3,334-word Playwright/CDP body is gone. The skill now says "use the `browse` MCP" and keeps only Alex's rules: inspect-act-verify, handoff for human-only steps, secrets allowlist, two-phase destructive UI, session cleanup. The name stays so the old trigger words still route here. `browse` was registered in Claude Code the same day (`claude mcp add -s user browse -- ~/.local/bin/browse mcp`); OpenCode already had it in `~/.config/opencode/opencode.jsonc`. `oreilly-answers` still calls the `browser-control` CLI (`scripts/ask.sh`), which is still installed through mise; not ported to browse. README no longer lists the deleted `ado-dashboards`. `check.sh` PASS 8/8, `pre-commit` PASS.
 
@@ -61,6 +63,7 @@ Updated: 2026-11-10 CST. Full session history lives in the git history of this f
 
 ## Top 3 next actions
 
+0. **Commit the pr-change-description evals:** `git add pr-change-description/tests && git add -f pr-change-description/evals`. The small-shape fix is proven (iteration 3).
 0. **This session's change is uncommitted.** Answer the browser-cookie-auth question below, then run `./scripts/check.sh` and `pre-commit run --all-files`, then commit. `git add skillcheck scripts tests` will not pick up the new package's tests, so check `git status` before committing.
 0. **Alex: sign in to Planner/To Do** (`tasks_login_begin`), then run `/bard` live and check the task-lane ledger and the Jev numbers in the report. Commit bard with `git add -f bard/evals`.
 1. **Check that skills auto-load.** Managed `syncClaudeAiPlugins: false` is live: the skill list dropped from 466 to 147 (checked 2026-10-07 with a `claude -p` init event). Still to check: in a fresh interactive session, "review this…" loads `reviewer` without being named. Before the change it triggered 0 of 24 times, because the list was too long for the descriptions to fit.

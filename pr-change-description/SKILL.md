@@ -24,7 +24,7 @@ Pick the size from the change, not from the line count alone. A 40-line change t
 
 | Size | When | What it gets |
 | --- | --- | --- |
-| Small | One area, one idea, no change in failure behaviour | One or two sentences of why, one before and after diagram (or one diagram with both), what changed in bullets, how it was tested |
+| Small | One area, one idea, no change in failure behaviour | One or two sentences of why, one before and after diagram (or one diagram with both), what changed in bullets, how it was tested. Nothing else: no review path, no behaviour-change table, no watch-after-deploy section |
 | Medium | Two or three areas, or a changed contract | The small shape per area, plus a behaviour-change table |
 | Large or risky | Several areas, moved code, a new seam, changed failure paths, or many fixture files | The full template in `references/template.md` |
 
@@ -49,7 +49,7 @@ A small PR needs only the rows it uses. If a fact cannot be checked, leave it ou
 
 ## 2. Write it
 
-For a small PR, write: why (one or two sentences), the before and after diagram, what changed (bullets), how it was tested (the run you saw).
+For a small PR, write: why (one or two sentences), the before and after diagram, what changed (bullets), how it was tested (the run you saw). Stop there. A small PR has one or two commits, and the reader reads them in order without a review path. If the small PR changes behaviour (a new default, a new status code), say it as one bullet under what changed, such as "An expired token now gets one refresh before the call fails". A table for one change is the medium shape.
 
 For a medium or large PR, follow `references/template.md`. The full order:
 
