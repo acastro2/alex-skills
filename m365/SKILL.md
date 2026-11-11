@@ -3,7 +3,7 @@ name: m365
 description: >-
   Read-only CLI for your own Microsoft 365 data on any host — mail, calendar, Teams chats
   and channels, and SharePoint. Use it when the Claude M365 connector is not available
-  (OpenCode, Pi, plain shell), when searching or summarising your mail, when finding a
+  (OpenCode, plain shell), when searching or summarising your mail, when finding a
   meeting's date or organiser, when reading or searching Teams conversations, or when
   locating a document across SharePoint sites. Also use it as the fallback path when
   `archeologist` reports the M365 store unavailable. Read-only: it has no command that can

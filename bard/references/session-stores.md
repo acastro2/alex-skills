@@ -6,17 +6,20 @@ already cost a sweep.
 
 - Claude Code: `~/.claude/history.jsonl` (`.timestamp` epoch-ms; `.sessionId`, `.project`).
 - Cortex: `~/.snowflake/cortex/conversations/<uuid>.json` → `.created_at`.
-- Pi: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl` — the filename
-  timestamp is the session start (UTC ISO). Pi dir names start with `--`, so
-  glob with a `./` prefix or absolute paths: bare `--...` paths are parsed as
-  options by `head`/`jq`/`ls`/`find` and silently return nothing. The record
-  shape is NOT the same as Claude Code's: a Pi turn is
-  `{"type":"message","message":{"role":"user","content":[{"type":"text","text":...}]}}`,
-  so the selector is `select(.type=="message" and .message.role=="user")` and the
-  text is under `.message.content[]`. A jq filter written against the Claude Code
-  shape returns an empty string per line, which looks exactly like "this session
-  had no user messages" — verify with `jq -r '.type' <file> | sort | uniq -c`
-  before concluding a session is empty.
+- Cursor (CLI and IDE, since 2026-11-11):
+  `~/.cursor/projects/<encoded-cwd>/agent-transcripts/<uuid>/<uuid>.jsonl`, one file per
+  chat for both clients. Session start: CLI `~/.cursor/chats/*/<uuid>/meta.json` →
+  `.createdAtMs`; IDE `composerHeaders.createdAt` in
+  `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` (open with
+  `sqlite3 -readonly`). Select files by mtime newer than `watermark`, then keep only user
+  turns whose `<timestamp>Weekday, Mon D, YYYY, H:MM AM (UTC-6)</timestamp>` tag is newer;
+  parse it with its own offset, never as local time. The shape is NOT Claude Code's: a turn
+  is `{"role":"user","message":{"content":[{"type":"text","text":...}]}}` with no `type`
+  key, and `{"type":"turn_ended"}` lines have no `role`, so select on `.role`. There are no
+  tool results in the file. Skip `private-tmp-*` project folders (scratch runs from other
+  agents) and any project folder or cwd that contains `slack-via-cursor`: that is the Slack
+  bridge, and every bridge run makes a chat. Full mechanics: archeologist
+  [Source H](../../archeologist/references/cursor.md).
 - **opencode (every sweep, since 2026-09-25)**: `~/.local/share/opencode/opencode.db`,
   opened read-only (`sqlite3 -readonly`). Live data is in `session_v2` (one row per
   session; `parent_id IS NULL` = main session, non-null = subagent) and

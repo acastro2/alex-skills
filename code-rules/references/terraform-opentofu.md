@@ -40,6 +40,10 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   }
   ```
 
+- **Never put `depends_on` on a module call to order it after a resource.** It defers every data source inside the module while the dependency has pending changes; a deferred lookup (for example `aws_subnet` → `vpc_id`) turns a ForceNew argument unknown and replaces live resources. Order through a value the module consumes instead, and keep that value stable: `join("", [real_value, substr(dep.id, 0, 0)])`. Check the module for its own internal `depends_on` too: any changing input that feeds it has the same effect.
+- **A just-created IAM service-linked role or role is not usable at once.** Put a `time_sleep` (hashicorp/time) between the role and its first consumer; `depends_on` orders the API calls but does not wait for IAM propagation.
+- **A module output that echoes an input carries no dependency.** If a resource takes a name from such an output (`repository_name = var.name`), add the dependency explicitly, or it can run before the module creates the object.
+- **Prove a root with a real sandbox apply, then a second plan.** A plan cannot catch ordering or propagation failures; the follow-up plan must show no replacement of what the apply created.
 - **Use `moved` blocks when resource addresses change.** Do not make OpenTofu destroy and recreate an object just because code moved.
 - **Use `terraform_data` instead of `null_resource`** when no real managed resource fits.
 

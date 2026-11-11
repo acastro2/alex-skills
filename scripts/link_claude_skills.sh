@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Link every skill in this repo into ~/.claude/skills, one symlink per skill.
 # Why per skill: claude.ai syncs personal skills into ~/.claude/skills/synced/. With one symlink
-# for the whole folder, that sync landed inside this repo, where OpenCode and Pi found stale copies.
+# for the whole folder, that sync landed inside this repo, where OpenCode found stale copies.
 # Run it after you add or remove a skill. Safe to run again.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"

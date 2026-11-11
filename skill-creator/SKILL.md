@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Create, edit, review, or improve agent skills and their SKILL.md files. Use when turning a workflow into a skill, fixing skill structure, testing skill behavior, comparing versions, or improving when a skill triggers. Routes to the pinned OpenAI creator for structure and the Anthropic creator for evaluation. Supports work in Pi, Claude, and Codex without assuming their tools are interchangeable. Not for subagents or their permissions; that is agent-creator.
+description: Create, edit, review, or improve agent skills and their SKILL.md files. Use when turning a workflow into a skill, fixing skill structure, testing skill behavior, comparing versions, or improving when a skill triggers. Routes to the pinned OpenAI creator for structure and the Anthropic creator for evaluation. Supports work in Claude, OpenCode, and Codex without assuming their tools are interchangeable. Not for subagents or their permissions; that is agent-creator.
 ---
 
 # Skill Creator
@@ -47,11 +47,11 @@ Both creators are bundled inside this skill. Prose work also requires the siblin
 
 1. Read the target skill and its repository rules before editing. Recover intent from the conversation first. Ask only for missing decisions: purpose, trigger boundaries, expected output, and target hosts. The current host supplies tools; the target hosts determine metadata and trigger tests. Choose the route by the requested work, not by which host is running this session.
 2. For a new skill or structural changes, use Codex's **Core Principles** and **Skill Creation Process**. Keep instructions short and put detailed material in linked resources. For prose-producing skills, follow `../alex-voice/SKILL.md` and reference it in the generated skill with a path that resolves from that skill.
-3. For a new skill with Codex among its targets, including shared Pi/Codex skills, use Codex's `scripts/init_skill.py`. Read `vendor/codex/references/openai_yaml.md` before generating UI metadata. If Codex is not a target, write the minimal directory directly: the initializer always creates `agents/openai.yaml`. Preserve existing skill names, metadata, and useful resources; do not reinitialize an existing skill.
+3. For a new skill with Codex among its targets, including skills shared with Codex, use Codex's `scripts/init_skill.py`. Read `vendor/codex/references/openai_yaml.md` before generating UI metadata. If Codex is not a target, write the minimal directory directly: the initializer always creates `agents/openai.yaml`. Preserve existing skill names, metadata, and useful resources; do not reinitialize an existing skill.
 4. For behavioral changes, use Claude's **Capture Intent**, **Test Cases**, and **Improving the skill**. Agree on realistic examples and checks. Use a basic execution check for small changes; use the full comparison loop when requested or when the behavior needs stronger proof.
 5. To grade yes-or-no expectations, prefer Jev over an LLM grader: follow `../jev/references/eval-grading.md`, and send only the unsure middle to the Claude grader.
 6. For an evaluation-only or comparison request, go directly to Claude's **Running and evaluating test cases**, its relevant `agents/` instructions, and `vendor/claude/references/schemas.md`. Skip creation and scaffolding. Leave the supplied skills unchanged; write test artifacts in the workspace and report findings without starting upstream's rewrite loop. Use the same prompts and host/model settings for both versions. Compare a new skill against no skill; compare an edit against a snapshot taken before editing. Do not call an inline self-review an independent benchmark.
-7. For trigger tuning, use Claude's **Description Optimization** only after checking the runner and target host. Its scripts use `claude -p`; they do not measure Pi or Codex triggering. On another host, test selection there or report it as unverified. Do not pass a non-Claude model ID to the Claude runner.
+7. For trigger tuning, use Claude's **Description Optimization** only after checking the runner and target host. Its scripts use `claude -p`; they do not measure OpenCode or Codex triggering. On another host, test selection there or report it as unverified. Do not pass a non-Claude model ID to the Claude runner.
 
 ## Apply local rules before upstream mechanics
 

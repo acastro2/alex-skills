@@ -8,7 +8,7 @@ Two ways in, and the host decides which:
 | Host | Path |
 |---|---|
 | Claude Code | the `claude_ai_Microsoft_365` MCP connector |
-| OpenCode, Pi, plain shell | the **`m365` CLI** (skill `m365`) |
+| OpenCode, plain shell | the **`m365` CLI** (skill `m365`) |
 
 ## Availability check (do this first, cheaply)
 

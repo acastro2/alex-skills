@@ -140,7 +140,7 @@ so it is derived from real work and ratified by Alex.
      contract). Treat its **summary as a lead, never as quotable text**; its
      **references are the payload** the next step reads: store, locator, session-start.
      This is the lane that reaches
-     mail, Teams, calendar, tenant SharePoint, and GitHub activity — stores the local
+     mail, Teams, Slack, calendar, tenant SharePoint, and GitHub activity — stores the local
      indexes below cannot see. An unavailable store in the briefing is missing data, not
      empty data: name it in the sweep report, never let it pass silently.
 
@@ -156,14 +156,14 @@ so it is derived from real work and ratified by Alex.
      swept: send the agent back or sweep it yourself. "All stores reachable" is a
      statement about the connection, not about the search.
 
-     **A zero from a comms store is a coverage failure until proven otherwise.** Teams,
-     mail and calendar are never actually silent across a working day. A window with no
+     **A zero from a comms store is a coverage failure until proven otherwise.** Slack,
+     Teams, mail and calendar are never actually silent across a working day. A window with no
      working day in it (a weekend or holiday only) is exempt. Verified
      2026-09-18: a sweep returned zero Teams items, the lane was accepted as quiet, and
      the week's biggest item — a production outage being worked in a channel — never
-     reached the notes or the board. If the ledger shows 0 for Teams or mail, run
-     targeted `chat_message_search` / `outlook_email_search` queries directly on this
-     window before you accept it: the topics already on the board, the people who owe
+     reached the notes or the board. If the ledger shows 0 for Slack, Teams or mail, run
+     targeted Slack searches (archeologist Source J) or `chat_message_search` /
+     `outlook_email_search` queries directly on this window before you accept it: the topics already on the board, the people who owe
      Alex something, and the systems that broke. Cheap, and it is the lane you cannot
      reconstruct later.
 
@@ -177,13 +177,13 @@ so it is derived from real work and ratified by Alex.
      exact, and the only ground truth for the watermark. These carry reliable
      session-start times. **A start time picks new sessions, not active ones:** a session
      that started before `watermark` and kept going is missed by a start filter, and with
-     daily sweeps that is the normal case. So for Pi and Cortex, also take every session
+     daily sweeps that is the normal case. So for Cursor and Cortex, also take every session
      file whose mtime is newer than `watermark` (these are local, append-only files, not
      vault-synced, so mtime is safe here), then keep only the messages newer than
      `watermark` (see the per-message pitfall below). opencode already selects by message
      time; Claude Code's `history.jsonl` has one line per prompt, so it needs nothing extra.
      **Read [Session stores](references/session-stores.md) for each store's path, start
-     field, and pitfalls** (Claude Code, Cortex, Pi, opencode, scribe meeting notes). scribe
+     field, and pitfalls** (Claude Code, Cursor, Cortex, opencode, scribe meeting notes). scribe
      notes use the `scribe_seen` set as their cursor, never `date` or mtime.
    - **Read raw every candidate you intend to distil**, from the locator the briefing
      gave you (Read/Bash on the `.jsonl` / SQLite, per the patterns in the archeologist
@@ -191,7 +191,7 @@ so it is derived from real work and ratified by Alex.
      points at a store this session cannot read raw (M365 mail or Teams), the briefing's
      verbatim excerpt is your only source — quote exactly that and never widen it into
      something it does not say. Two pitfalls: sessions can span the watermark — filter
-     entries by per-message timestamps (CC/Pi `.timestamp`, Cortex `user_sent_time`),
+     entries by per-message timestamps (CC `.timestamp`, Cursor's `<timestamp>` tag, Cortex `user_sent_time`),
      don't trust session-start alone; and a sweep will rediscover its own prior bard
      sessions (first user message = this skill's text) — skip them as mechanics, and
      expect Cortex sidecar files (`*.history.jsonl`) to be JSONL, one object per line,
@@ -200,8 +200,8 @@ so it is derived from real work and ratified by Alex.
      topic, so it finds knowledge and misses a plain "can you get me X" with no topic word.
      Run this lane in the main thread on every sweep. **Read
      [Task lane](references/task-lane.md) first**: it holds the tested calls, the ADO query,
-     and the code filters. Sources: Teams chats and mail sent to Alex (window from
-     `watermark`), mail with no reply from him, and the open items assigned to him now in
+     and the code filters. Sources: Slack DMs and threads, Teams chats, and mail sent to
+     Alex (window from `watermark`), mail with no reply from him, and the open items assigned to him now in
      Planner, To Do, Todoist, ADO, and GitHub review requests (snapshot, no watermark).
      Add each source to the coverage ledger. Every survivor of the code filters goes through
      Set A (is it an ask?) and Set R (did Alex already answer it?), then Set T; it never becomes a knowledge note on its own.

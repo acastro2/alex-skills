@@ -1,6 +1,6 @@
 # Exa Agent
 
-**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
+**The `curl` blocks below are for a host without the Exa MCP**, and for what each API field means. There, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/agent/runs` when one search is not enough: multi-hop research, list building, and row enrichment. A run is asynchronous. Create it, then poll or stream until it reaches a terminal status.
 

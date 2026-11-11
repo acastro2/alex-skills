@@ -136,8 +136,8 @@ def test_mentioning_a_host_path_is_not_a_finding(tmp_path: Path) -> None:
 def test_install_instruction_naming_every_tree_passes(tmp_path: Path) -> None:
     body = (
         CLEAN_SKILL
-        + "\nCopy the folder to `~/.claude/skills/demo/`, `~/.config/opencode/skills/demo/`, "
-        "or the Pi skills folder depending on the host.\n"
+        + "\nCopy the folder to `~/.claude/skills/demo/` or `~/.config/opencode/skills/demo/`, "
+        "depending on the host.\n"
     )
     assert check_skill(write_skill(tmp_path, body=body, guide="# Guide\n")) == []
 

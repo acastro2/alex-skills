@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-Self-contained skills for Claude Code, OpenCode, and Pi. Each top-level folder with a `SKILL.md` is one skill. The repo lives at `~/.agents/skills/`. OpenCode and Pi read it there; Claude Code reads per-skill symlinks in `~/.claude/skills/` (see `README.md`, Install).
+Self-contained skills for Claude Code and OpenCode. Each top-level folder with a `SKILL.md` is one skill. The repo lives at `~/.agents/skills/`. OpenCode reads it there; Claude Code reads per-skill symlinks in `~/.claude/skills/` (see `README.md`, Install).
 
 ## What belongs here
 

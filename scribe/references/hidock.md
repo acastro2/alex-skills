@@ -62,7 +62,7 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 4. Apply [Teams-first dedupe](../SKILL.md#teams-first-dedupe) before transcribing,
    as required in the core flow.
 5. Title and attendees for what is left: one calendar match → its subject as `--title` and its
-   attendee names as `--attendees`. No match, or Pi (no M365): read the transcript and pick a
+   attendee names as `--attendees`. No match, or no M365 on this host: read the transcript and pick a
    short factual title from content (`Call about <topic>`); if the content does not say what it
    is, `Untitled call`. Then name the speaker labels before summarizing. Work out who each one is
    from the transcript text — a self-introduction ("I'm Alex"), someone being addressed ("Thanks,

@@ -53,7 +53,7 @@ POLICY: dict[str, Policy] = {
         standalone=frozenset({"references/jev-gates.md"}),
     ),
     # the exa references are three separate API calls and each stands alone, so all three
-    # must carry the same wording about the curl blocks being for Pi.
+    # must carry the same wording about the curl blocks being for a host without the MCP.
     "search": Policy(
         standalone=frozenset(
             {

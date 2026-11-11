@@ -392,11 +392,11 @@ PLACEMENT = re.compile(
     r"\b(put|puts|copy|copies|install|installs|place|places|save|saves|drop|drops|move|moves)\b",
     re.I,
 )
-HOST_TREES = ("~/.config/opencode", "~/.pi")
+HOST_TREES = ("~/.config/opencode",)
 
 
 def check_tool_paths(ctx: SkillText) -> list[Finding]:
-    """A skill runs under Claude Code, OpenCode and Pi. An instruction that only works when
+    """A skill runs under Claude Code and OpenCode. An instruction that only works when
     the file sits in one host's tree is the bug this catches.
 
     It judges the instruction, not the mention: naming a real file under `~/.claude/` is a

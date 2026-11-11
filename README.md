@@ -1,6 +1,6 @@
 # alex-skills
 
-Skills for Claude Code, OpenCode, and Pi: instruction packs that teach an agent what it cannot know on its own.
+Skills for Claude Code and OpenCode: instruction packs that teach an agent what it cannot know on its own.
 
 ## What belongs here
 
@@ -34,7 +34,7 @@ git clone https://github.com/acastro2/alex-skills.git ~/.agents/skills
 ~/.agents/skills/scripts/link_claude_skills.sh
 ```
 
-OpenCode and Pi read `~/.agents/skills` directly. Claude Code reads `~/.claude/skills`, so the script links each skill there, one symlink per skill. Run it again after you add or remove a skill.
+OpenCode reads `~/.agents/skills` directly. Claude Code reads `~/.claude/skills`, so the script links each skill there, one symlink per skill. Run it again after you add or remove a skill.
 
 `ub-mode` is the one skill with a slash command. It ships at `ub-mode/commands/ub-mode.md`, linked into both hosts so `/ub-mode` works in each:
 
@@ -43,7 +43,7 @@ ln -sfn ~/.agents/skills/ub-mode/commands/ub-mode.md ~/.config/opencode/commands
 ln -sfn ~/.agents/skills/ub-mode/commands/ub-mode.md ~/.claude/commands/ub-mode.md
 ```
 
-Do not point `~/.claude/skills` at this repo with one symlink. Claude Code syncs personal claude.ai skills into `~/.claude/skills/synced/`, and with a whole-folder link those copies land inside the repo, where OpenCode and Pi load them as skills.
+Do not point `~/.claude/skills` at this repo with one symlink. Claude Code syncs personal claude.ai skills into `~/.claude/skills/synced/`, and with a whole-folder link those copies land inside the repo, where OpenCode loads them as skills.
 
 ## Skill anatomy
 

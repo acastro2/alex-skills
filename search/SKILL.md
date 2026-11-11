@@ -67,7 +67,7 @@ Walk it in order. The first match wins.
    - Each fact needs **its own citation**, or the output must match a schema.
    - It is a **follow-up** on earlier research: "find ten more", "now add their pricing". Continue the earlier run with `previousRunId`. If that is rejected (teams with Zero Data Retention cannot use it), start a new run and pass the earlier results in `input.exclusion` or `input.data`.
    - You would need to **open more than about three pages** to answer well.
-4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at the effort its tool lists (`ultra`; `low` exists on the API only, see [exa-agent.md](references/exa-agent.md)), because the MCP search has no `deep` type; in Pi, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
+4. **Otherwise**, use [Exa Search](references/exa-search.md): a fact, a page, recent news, or one synthesized answer. When that one answer needs several sources: through the MCP, use Exa Agent at the effort its tool lists (`ultra`; `low` exists on the API only, see [exa-agent.md](references/exa-agent.md)), because the MCP search has no `deep` type; through the raw API, use `type: "deep"`. The line between the two: `deep` search returns one answer in prose; Agent returns one record per item, with fields and citations you can check.
 5. **Escalate.** If you are about to run a third Exa Search for the same question, stop and start an Agent run with what you learned. A third search means the job has more than one step.
 
 ### Why an Exa Agent run beats a search loop
@@ -89,20 +89,20 @@ Do not use Agent for a single fact, one known page, library docs, or a call wher
 
 ## Which path: Exa MCP, Context7 CLI
 
-- **Exa: always the Exa MCP tools** in Claude Code and OpenCode. Alex has the Exa MCP installed in both. The `curl` blocks in the Exa references are for Pi, which has no MCP, and for reading what each API field means.
+- **Exa: always the Exa MCP tools** in Claude Code and OpenCode. Alex has the Exa MCP installed in both. The `curl` blocks in the Exa references are for a host without the Exa MCP, and for reading what each API field means.
 - **Context7: the CLI first** (`npx --yes ctx7@latest`), the Context7 MCP tools only when the CLI fails.
 - Do not use the built-in web search or fetch tools next to Exa by default; use them last.
 
 Why: in Claude Code the Bash sandbox blocks `api.exa.ai` (`curl` fails with "Could not resolve host"), while the MCP tools reach Exa. Do not try to bypass the sandbox. If an MCP call fails with a certificate, proxy, or blocked-site error, suspect the corporate network stack (Cisco Umbrella, Secure Access) before you debug the request.
 
-| Job | Claude Code and OpenCode | Pi (no MCP) | Watch out |
+| Job | Claude Code and OpenCode | No Exa MCP | Watch out |
 | --- | --- | --- | --- |
 | Library docs | `npx --yes ctx7@latest library`, then `docs`; MCP `resolve-library-id` and `query-docs` as fallback | same CLI | |
 | Web search | Exa `web_search_exa`, or `web_search_advanced_exa` for filters | `curl` `POST /search` | The MCP offers only `auto`, `fast`, and `instant` search types: no `deep`. When you need `deep`, use Exa Agent at `low` effort instead |
 | Read known URLs | Exa `web_fetch_exa` | `curl` `POST /contents` | |
 | Agent run | Exa `agent_run` | `curl` `POST /agent/runs` | The MCP defaults to `effort: low`, the API to `auto`: always set `effort`. Resume with `runId`; do not start a duplicate run |
 
-## Exa authentication (Pi and raw API only)
+## Exa authentication (raw API only)
 
 The MCP tools carry their own key. For `curl`, every Exa call needs the header `x-api-key: $EXA_API_KEY`. Use `EXA_API_KEY` from the environment first, then `~/.config/exa/key`. Get a key at https://dashboard.exa.ai/api-keys.
 

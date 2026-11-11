@@ -28,7 +28,7 @@ advisor knows the job:
 > to the team or to its executive, and give one cheap next step. Prefer three strong ideas
 > over ten weak ones. "Nothing new this week" is a valid answer.
 
-**Where there is no advisor** (OpenCode, Pi, or a Claude Code session without it), spawn one
+**Where there is no advisor** (OpenCode, or a Claude Code session without it), spawn one
 fresh-context subagent on the strongest model the host offers, with the same brief plus a short
 evidence summary: the live rows (title, stage, role, theme, milestone, sponsor), the epics and
 their states, the open forum items, and the comments and documents this run read. Scrub the summary

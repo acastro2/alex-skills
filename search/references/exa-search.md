@@ -1,6 +1,6 @@
 # Exa Search
 
-**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
+**The `curl` blocks below are for a host without the Exa MCP**, and for what each API field means. There, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results, and optional result-level extraction in one raw HTTP call. Start with `type: "auto"` for general retrieval, and add filters or deeper search types when needed. Route long, multi-step research to [Exa Agent](exa-agent.md). Route known-URL extraction to [Exa Contents](exa-contents.md).
 
@@ -18,7 +18,7 @@ Call the Exa MCP tools (the name prefix varies by host). Do not run `curl` there
 
 The MCP has no `deep` search type and no `outputSchema`. For one answer built from several sources, or for structured output, use [Exa Agent](exa-agent.md) at `low` effort.
 
-## Quick Start (cURL, for Pi)
+## Quick Start (cURL, no MCP)
 
 ### Basic search
 

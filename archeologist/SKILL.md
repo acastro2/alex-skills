@@ -34,21 +34,22 @@ scope. Use the tiers below for cross-store searches or when the named source is 
 | Source | Load when |
 | --- | --- |
 | [A: Claude Code](references/claude-code.md) | Tier 1: current coding sessions, prompt history, and delegated work. |
-| [H: Pi sessions](references/pi-sessions.md) | Tier 1: current Pi sessions, summaries, and delegated work; search alongside A for recent work. |
+| [H: Cursor](references/cursor.md) | Tier 1: current Cursor CLI and IDE agent chats; search alongside A for recent work. |
 | [C: Cortex](references/cortex.md) | Tier 1: current Snowflake/data CLI conversations and plans, alongside A. |
 | [D: Obsidian](references/obsidian.md) | Tier 1: personal decisions and session notes, plus the formal record in `Evidence/` (docx, pptx, pdf: always use the `--pre` flags); search Scribe meeting transcripts before M365 for who-said or meeting questions. |
 | [E: Developer docs](references/developer-docs.md) | Tier 2: project CONTEXT.md, ADRs, READMEs, and plans; markdown only, not source code. |
 | [F: OneDrive Architecture](references/onedrive-architecture.md) | Tier 2: formal ADRs, SADs, SIPs, briefs, and policy; includes docx extraction and path fallback. |
 | [G: Microsoft 365](references/microsoft-365.md) | Tier 2, promoted for communications: Teams, tenant SharePoint, Outlook mail/calendar; the `claude_ai_Microsoft_365` connector where the host has it, otherwise the `m365` CLI. |
+| [J: Slack](references/slack.md) | Tier 2, promoted for communications: DMs, channels, threads, canvases; the Slack MCP in Claude Code and Cursor, the `cursor-agent` bridge in OpenCode. |
 | [I: GitHub activity](references/github-activity.md) | Tier 2, promoted for shipped work: authored/reviewed PRs and commits across orgs via `gh`; a merged PR outranks transcript claims. |
 | [B: Legacy opencode](references/opencode.md) | Tier 3: frozen history before the Claude Code migration, or when other stores are empty. |
 
 Default search order:
-- **Tier 1** (always first): Claude Code + Pi + Cortex + Obsidian
-- **Tier 2** (secondary sweep): Developer repos + OneDrive Architecture + Microsoft 365 + GitHub
+- **Tier 1** (always first): Claude Code + Cursor + Cortex + Obsidian
+- **Tier 2** (secondary sweep): Developer repos + OneDrive Architecture + Microsoft 365 + Slack + GitHub
 - **Tier 3** (fallback): Legacy opencode database
 - **Exception**: when the question is about communications, meetings, or people ("who said",
-  "who sent", "when did we meet", "what did X agree to"), promote Source G into Tier 1 — the
+  "who sent", "when did we meet", "what did X agree to"), promote Sources G and J into Tier 1 — the
   local stores rarely hold that.
 - **Exception**: when the question is about shipped work or activity ("my PRs this week",
   "what did I commit", "which repos did I touch", performance/activity reviews), promote
@@ -64,7 +65,7 @@ treatment twice, and the confidence call carries a second opinion you can show t
 
 Question sets and copy-paste request bodies: [references/jev-gates.md](references/jev-gates.md).
 
-- **The tier rules above stay authoritative.** Promote G for comms questions and I for
+- **The tier rules above stay authoritative.** Promote G and J for comms questions and I for
   shipped-work questions because the rule says so. `ask_jev` adjudicates the mixed case, where
   two rules point at different source sets.
 - **An uncertain promotion is paid for with a query.** `promote_*` ≥ 0.80 → promote; ≤ 0.20 →
@@ -75,7 +76,7 @@ Question sets and copy-paste request bodies: [references/jev-gates.md](reference
   saying HIGH is not evidence that a file still exists.
 - **`ask_jev` is not a source.** It never returns evidence, never turns a 0-hit store into a
   hit, and never appears in the coverage ledger as a store that was searched.
-- **A sweep still covers all stores A–I**, whatever the gates suggest.
+- **A sweep still covers all stores A–J**, whatever the gates suggest.
 - **How to call Jev, read its answers, what may go in `state`, and what to do when it is
   unavailable:** follow [`../jev/SKILL.md`](../jev/SKILL.md). Here, `state` carries the question,
   its entities, and short findings lines, never raw transcript text or privileged content.
@@ -83,7 +84,7 @@ Question sets and copy-paste request bodies: [references/jev-gates.md](reference
 ## Coverage: a sweep is not a question
 
 The tier order above answers a question. A **sweep** — any request to enumerate what
-happened across a window rather than answer one question — covers **ALL stores (A–I)**.
+happened across a window rather than answer one question — covers **ALL stores (A–J)**.
 A skipped store is missing data, and missing data reported as silence is worse than a
 reported error. Name every store you could not reach, and why.
 
@@ -102,7 +103,8 @@ caller as "nothing happened there", which is a different claim and usually a fal
 
 **Break G down by substore.** Mail, calendar, Teams chats, Teams channels and SharePoint are
 five different searches behind one connector, so "G reachable" can hide the fact that no Teams
-query ever ran. List them separately.
+query ever ran. List them separately. Break J down the same way: DMs and group DMs,
+channels, threads, canvases.
 
 **Zero hits in a busy store is a coverage failure until proven otherwise.** Verified
 2026-09-18: a sweep reported both target stores reachable, returned zero Teams items, and had
@@ -125,7 +127,7 @@ Before touching any store, analyze the user's question:
 
 1. **Identify entities**: Extract key terms (projects, files, technologies, people, concepts)
 2. **Detect temporal markers**: "when did we", "what happened after", "recently", "last week".
-   Recent markers => favor Pi and Claude Code transcripts. "Originally / a while back / before" => also search opencode.
+   Recent markers => favor Claude Code and Cursor transcripts. "Originally / a while back / before" => also search opencode.
 3. **Classify question type**: Factual / Temporal / Causal / Decision-tracking / Error-Solution.
    Gate the mixed case with `ask_jev` (see **Typed gates** above).
 4. **Determine scope**: Single session, single project, or global across all history
@@ -140,8 +142,8 @@ Before touching any store, analyze the user's question:
 After gathering from all sources:
 1. Deduplicate by (source, path/sessionId, snippet)
 2. Rank by recency * relevance:
-   - **Tier 1** (current, primary): Pi + Claude Code transcripts + Cortex + Obsidian (+ M365 when the question is comms/meetings/people-shaped; + GitHub when the question is shipped-work/activity-shaped)
-   - **Tier 2** (secondary, knowledge base): Developer repos + OneDrive Architecture + Microsoft 365 + GitHub
+   - **Tier 1** (current, primary): Claude Code + Cursor transcripts + Cortex + Obsidian (+ M365 and Slack when the question is comms/meetings/people-shaped; + GitHub when the question is shipped-work/activity-shaped)
+   - **Tier 2** (secondary, knowledge base): Developer repos + OneDrive Architecture + Microsoft 365 + Slack + GitHub
    - **Tier 3** (historical fallback): Legacy opencode database
 3. Select the top 10-15 leads, then read full content for the strongest ones (A6 / C2 / D2 / E4 / F3 / direct read).
 4. Cross-reference bonus: if a transcript says "we decided X" and an ADR in OneDrive formalizes
@@ -190,8 +192,8 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
 ### Referenced Sessions
 **Claude Code** (resume with `claude --resume <uuid>`):
 - `<uuid>` - "AI title" (YYYY-MM-DD, project: /path)
-**Pi** (resume with `pi --session <uuid>`; file: `~/.pi/agent/sessions/--<path>--/<timestamp>_<uuid>.jsonl`):
-- `<uuid>` - (YYYY-MM-DD, cwd: /path)
+**Cursor** (resume CLI chats with `cursor-agent --resume <uuid>`; file: `~/.cursor/projects/<encoded-cwd>/agent-transcripts/<uuid>/<uuid>.jsonl`):
+- `<uuid>` - (YYYY-MM-DD, cwd: /path, CLI or IDE)
 **Cortex** (file: `~/.snowflake/cortex/conversations/<uuid>.history.jsonl`):
 - `<uuid>` - (YYYY-MM-DD, working_directory: /path)
 **opencode (legacy)**:
@@ -208,6 +210,8 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
 - `<org>/<repo>#<N>` / `<repo>@<sha7>` - relevant snippet (URL)
 **M365**:
 - `M365/Teams: "<chat>" (YYYY-MM-DD)` / `M365/SharePoint: <site>/<file>` / `M365/Mail: "<subject>" (YYYY-MM-DD)` - relevant snippet
+**Slack**:
+- `Slack: #channel "<first words>" (YYYY-MM-DD HH:MM, permalink)` / `Slack: DM with <person> (YYYY-MM-DD)` - relevant snippet
 
 > CRITICAL: always list every session ID referenced, labeled by source. The user needs these
 > to open the originals. No exceptions.
@@ -219,13 +223,14 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
 | Source | Session/File | Timestamp | Key Content |
 |--------|---------|-----------|-------------|
 | Claude Code | `<uuid>` | YYYY-MM-DD | "We decided to..." |
-| Pi | `<uuid>` | YYYY-MM-DD | "..." |
+| Cursor | `<uuid>` | YYYY-MM-DD | "..." |
 | Cortex | `<uuid>` | YYYY-MM-DD | "..." |
 | Obsidian | `<path>` | file mtime | "..." |
 | Developer | `<repo>/<path>:<line>` | git blame / mtime | "..." |
 | OneDrive/Arch | `<filename>` | file mtime | "..." |
 | GitHub | `<repo>#<N>` / `@<sha7>` | PR merged / commit date | "..." |
 | M365 | `Teams "<chat>"` / `Mail "<subj>"` / `SP <file>` | message/event date | "..." |
+| Slack | `#channel` / `DM <person>` + permalink | message date | "..." |
 | opencode | `sess_xxx` | YYYY-MM-DD | "..." |
 
 ### Coverage
@@ -235,9 +240,10 @@ read the raw source; a briefing that buries or omits them is unusable. Ground ru
 | G/Teams chats | `chat_message_search "<kw1>" / "<kw2>"`, <window> | 0 |
 | G/Teams channels | `chat_message_search "<kw>"`, <window> | 3 |
 | G/Mail | `outlook_email_search "<kw>"` | 6 |
+| J/Slack DMs | Slack search `<kw> after:<date>` | 2 |
 | I GitHub | `gh search prs --author @me --updated ">=<date>"` | 16 |
 
-One row per store touched, **including every zero**. A sweep lists all of A-I; a targeted
+One row per store touched, **including every zero**. A sweep lists all of A-J; a targeted
 question lists the tiers it ran. `unavailable` and `not searched` are valid Hits values and
 carry their reason.
 
@@ -276,9 +282,10 @@ diminishing returns.
 
 - **READ-ONLY**: never write/edit/modify any store. Strictly forbidden. For M365 this means
   search/list/read tools ONLY — never send/create/delete/update/forward, even though the
-  connector exposes them.
+  connector exposes them. The same holds for Slack: never send, schedule, draft, react,
+  create, update, or upload.
 - **SEARCH GLOBALLY FIRST**: always sweep all of `~/.claude/projects/` (rg recursive). Never scope to a guessed encoded project dir; resolve specific sessions by UUID or `.cwd`.
-- **PI ENTRIES CARRY NO `.cwd`/`.id`**: in Pi sessions the project lives only in the `--<path>--` dir name and the header line (line 1, `"type":"session"`) holds `cwd` + session `id` — extract them from there, never from entries. Start GLOBAL with `rg -l` over `~/.pi/agent/sessions/`; resume with `pi --session <uuid>`.
+- **CURSOR TRANSCRIPTS HAVE NO HEADER AND NO TOOL RESULTS**: the session id is the file name, the cwd comes from `meta.json` (CLI) or `composerHeaders` + `workspace.json` (IDE), and only user turns carry a time (`<timestamp>` tag). Start GLOBAL with `rg -l` over `~/.cursor/projects/*/agent-transcripts/`; skip `private-tmp-*` folders and any folder or cwd that contains `slack-via-cursor` (the Slack bridge).
 - **NEVER pipe an error-prone filter into `xargs jq`**: a single non-zero jq exit makes `xargs` ABORT and silently drop every remaining file. Keep jq filters TOTAL - guard `content` for string-vs-array (`if type=="array"`) and restrict inputs with `-g '*.jsonl'` so jq exits 0. If unsure, sanity-check with `2>/tmp/e; wc -l /tmp/e` (expect 0 errors).
 - **SESSION ID LIST**: always include every referenced session ID, labeled by source. Mandatory.
 - **SOURCE CITATION**: every claim cites its source store + session ID + timestamp.
@@ -297,7 +304,7 @@ diminishing returns.
 1. **Analyze**: entities Redis, caching; type decision-tracking; scope global; maps to architecture decision (flag OneDrive/Developer).
 2. **Search Tier 1**:
    - Source A (Claude Code): rg triage (`rg -l -i -g '*.jsonl' redis ~/.claude/projects/`), then A2 full-text, A3 titles, A4 prompt index.
-   - Source H (Pi): H1 triage + H2 full-text for "redis"/"cache".
+   - Source H (Cursor): H1 triage + H2 full-text for "redis"/"cache".
    - Source C (Cortex): C1 triage + C2 full-text for "redis"/"cache".
    - Source D (Obsidian): D1 triage for "redis"/"cache".
 3. **Search Tier 2**:
@@ -314,9 +321,7 @@ diminishing returns.
 ## Host tools and optional delegation
 
 Run in the current thread unless the current host's rules permit delegation and the gain
-justifies the handoff. In Pi, read `~/.pi/agent/rules/subagents.md` before delegating; it owns
-the current agents, tools, models, and context mechanics. On other hosts, use their own rules
-and available tools. Do not assume a skill is an agent or that hosts share a delegation API.
+justifies the handoff. Each host has its own rules and tools for delegation; use them. Do not assume a skill is an agent or that hosts share a delegation API.
 
 - **Scoped brief, if delegating:** include this skill's absolute path; require reading it and
   the references for selected stores; give the exact date window, questions, source scope,

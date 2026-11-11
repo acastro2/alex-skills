@@ -12,7 +12,7 @@ level (Phase 5). A typed answer returns a value **plus a confidence**, so a mixe
 gets the same treatment twice and the confidence call has a second, auditable opinion
 attached to it.
 
-**The tier rules in `SKILL.md` stay authoritative.** Promote G for comms questions and I for
+**The tier rules in `SKILL.md` stay authoritative.** Promote G and J for comms questions and I for
 shipped-work questions because the rule says so. `ask_jev` adjudicates the **mixed** case,
 where two rules point at different source sets, and it never replaces the coverage ledger.
 
@@ -23,7 +23,7 @@ One call, before the stores are touched.
 | ID | Type | Answers | Decides |
 |---|---|---|---|
 | `question_type` | choice | the five types + `Mixed` | Which source set the question wants |
-| `promote_comms` | noul | 0–1 | Whether G (mail, Teams, meetings) joins Tier 1 |
+| `promote_comms` | noul | 0–1 | Whether G (mail, Teams, meetings) and J (Slack) join Tier 1 |
 | `promote_shipped` | noul | 0–1 | Whether I (PRs, commits, reviews) joins Tier 1 |
 | `evidence_strength` | score | LOW / MEDIUM / HIGH | A second opinion on the rubric — never an override |
 
@@ -69,7 +69,7 @@ saying HIGH is not evidence that a file still exists.
     },
     "promote_comms": {
       "type": "noul",
-      "instructions": "Does answering this need communications evidence: who said or sent something, a meeting, or an agreement reached in chat or mail?"
+      "instructions": "Does answering this need communications evidence: who said or sent something, a meeting, or an agreement reached in chat, Slack, or mail?"
     },
     "promote_shipped": {
       "type": "noul",
@@ -99,7 +99,7 @@ saying HIGH is not evidence that a file still exists.
 - **`ask_jev` is not a source.** An answer carries no evidence, cannot turn a 0-hit store
   into a hit, and never enters the coverage ledger as a store that was searched.
 - **The ledger reports what actually ran.** A suggested source set is not a search. A sweep
-  still covers all stores A–I.
+  still covers all stores A–J.
 - **The rubric owns confidence.** "HONEST CONFIDENCE: if you cannot verify, say so. Do not
   inflate" outranks any model's score.
 - **Unavailable Jev:** see [`../../jev/SKILL.md`](../../jev/SKILL.md).

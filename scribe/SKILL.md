@@ -118,7 +118,7 @@ Argument decides the mode. With no argument, run both sources, each from its own
 Teams needs the Microsoft 365 connector. Claude Code reads it directly. OpenCode
 delegates the fetch to the `ask-claude` subagent and recovers the payload from that
 subagent's session logs — read [Source A in OpenCode](references/teams-opencode.md)
-first. Pi has neither: run `/scribe hidock` only there. HiDock is local scripts, so it
+first. A host with neither runs `/scribe hidock` only. HiDock is local scripts, so it
 runs on every host.
 
 ## Source routing
@@ -139,8 +139,8 @@ runs on every host.
 
 Run all shell commands from `~/.agents/skills/scribe/scripts/`, not from the
 reference directory; `claude_session_payloads.py` is the exception, because it
-derives the Claude Code project from the working directory. HiDock-only in Pi has
-no M365 connector: use the no-calendar fallback in Source B; do not assume Teams
+derives the Claude Code project from the working directory. A HiDock-only run on a host
+with no M365 connector: use the no-calendar fallback in Source B; do not assume Teams
 coverage.
 
 ### Teams-first dedupe
@@ -247,7 +247,7 @@ One meeting, or no subagents on this host: run all eight steps serially.
    source cursor only for a source that actually ran to completion: `teams_last_run` after the
    calendar search and every fetch finished, `hidock_last_run` after the device answered `list`
    and the batch finished. A run with the device unplugged (exit 2/3/4), a Teams-only run, or a
-   Pi run without M365 leaves the other cursor where it was. A shared cursor would let a missed
+   run on a host without M365 leaves the other cursor where it was. A shared cursor would let a missed
    day fall behind `--since` and never come back. When a source cursor is absent, use
    `last_run`.
 7. **Sync the vault**: Obsidian watches the filesystem, so new files show up on their own. Run
@@ -340,8 +340,8 @@ scribe_schema: scribe.transcript/1
 - Whisper still garbles names. The glossary fixes the known ones; the summary step catches the
   rest only when you check.
 - Teams needs the M365 connector: Claude Code reads it directly, OpenCode through the
-  `ask-claude` bridge ([Source A in OpenCode](references/teams-opencode.md)). Pi has
-  neither, so run `/scribe hidock` there.
+  `ask-claude` bridge ([Source A in OpenCode](references/teams-opencode.md)). A host with
+  neither runs `/scribe hidock` only.
 - In OpenCode, look for the payload in the subagent's session artifacts, never in its
   reply: it has no write tool and a long reply can be truncated without saying so.
 - `m365 calendar search` drops recurring instances, because its `$filter` on

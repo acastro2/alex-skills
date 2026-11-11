@@ -35,7 +35,7 @@ Review the same diff three times and report each axis under its own heading. Eac
 
 Then check tests against risk: critical paths, permissions, and error cases covered, and tests that assert behavior, not implementation.
 
-For a large diff, run Spec and Standards as two read-only subagents in parallel (`Explore` in Claude Code, `scout` in OpenCode or Pi) and keep Production risk in the main thread. Give each subagent the diff command, the commit list, and everything it needs, because it cannot see this conversation.
+For a large diff, run Spec and Standards as two read-only subagents in parallel (`Explore` in Claude Code, `scout` in OpenCode) and keep Production risk in the main thread. Give each subagent the diff command, the commit list, and everything it needs, because it cannot see this conversation.
 
 ## Verify before you assert
 

@@ -1,6 +1,6 @@
 # Exa Contents
 
-**The `curl` blocks below are for Pi**, which has no MCP, and for what each API field means. In Pi, set up the key first: see **Exa authentication** in `../SKILL.md`.
+**The `curl` blocks below are for a host without the Exa MCP**, and for what each API field means. There, set up the key first: see **Exa authentication** in `../SKILL.md`.
 
 Use `POST https://api.exa.ai/contents` when the agent already knows the URLs and needs clean, LLM-ready extraction without running a new search. Start with one content mode: `highlights` for compact agent context, `text` for broad page context, or `summary` for Exa-side compression.
 
@@ -10,7 +10,7 @@ Call the Exa MCP tool `web_fetch_exa` (the name prefix varies by host) with `url
 
 The MCP tool returns full text only. It has no highlights, summary, subpage, or per-URL status options. When you need highlights or a summary for known pages, use `web_search_advanced_exa` with `includeDomains` set to their site and a `highlightsQuery`, or read the full text and pick out what you need.
 
-## Quick Start (cURL, for Pi)
+## Quick Start (cURL, no MCP)
 
 ### Basic text extraction
 

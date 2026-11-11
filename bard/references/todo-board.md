@@ -59,7 +59,7 @@ open items and stopped being readable.
    the Bard note written from that session whenever one exists (see line format). When
    no note exists yet, the item may still go on the board with the session id alone, but
    the sweep report lists it under "board items without a note" and the NEXT sweep writes
-   that note. Hand-added items with no session id are exempt. Task-lane items (Teams, mail,
+   that note. Hand-added items with no session id are exempt. Task-lane items (Slack, Teams, mail,
    Planner, To Do, Todoist, ADO, GitHub) carry a source breadcrumb instead (see line format)
    and need no Bard note: the source item is the evidence. Never list them under "board
    items without a note".
@@ -151,7 +151,7 @@ priority emoji (the parser constraint still holds):
 | ADO work item | `(ado:900001)` |
 | GitHub PR review | `(pr:<repo>#<n>)` (repos in the work org only) |
 | Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
-| Teams chat / mail | `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
+| Slack / Teams chat / mail | `(slack:YYYY-MM-DD)` / `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
 | Ask inside a SharePoint doc (an `@alex` to-do in meeting notes) | `(sharepoint:YYYY-MM-DD)`, the doc's modified date |
 
 The line text names the action and a role or first name only. Never put a mail subject,

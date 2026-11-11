@@ -11,7 +11,7 @@ on a busy window, which a general background agent can carry (see **Volume** bel
 
 ## Two cursor kinds
 
-- **Window sources** (Teams, mail): only items newer than `watermark`.
+- **Window sources** (Slack, Teams, mail): only items newer than `watermark`.
 - **Snapshot sources** (Planner, To Do, Todoist, ADO, GitHub): every item open now, at any age.
   Never apply `watermark` to a snapshot source; the dedupe against the board stops repeats.
 
@@ -19,6 +19,9 @@ on a busy window, which a general background agent can carry (see **Volume** bel
 
 | Source | Kind | Call (Claude Code) | Busy? | Tested 2026-10-14 |
 |---|---|---|---|---|
+| Slack DMs and group DMs | window | Slack search per open DM: `in:@<person> after:<day before watermark>`; list DMs with the list-my-channels tool (type DMs, group DMs). Read each thread with a hit | yes | **not run** (Slack not connected) |
+| Slack threads and channels | window | Slack search `with:@<Alex> after:<day before watermark>` (threads and DMs with Alex), then read each thread | yes | **not run** |
+| Alex's own Slack posts | filter | Slack search `from:@<Alex> after:<day before watermark>` | — | **not run** |
 | Teams chats Alex is in | window | `chat_message_search` `query: "*"`, `recipient: <Alex's mail>`, `afterDateTime: <watermark>`; page with `nextOffset` | yes | run: hits; returns **every** message in his chats, not only asks |
 | Alex's own Teams posts | filter | `chat_message_search` `query: "*"`, `sender: <Alex's mail>`, same window | — | run: hits |
 | Mail to Alex | window | `outlook_email_search` `recipient: <Alex's mail>`, `afterDateTime: <watermark>`; page with `nextOffset` | yes | run: hits, mostly alerts and newsletters |
@@ -109,6 +112,31 @@ full bodies; page back with `chat_message_search` plus `beforeDateTime` until yo
 watermark. Run Set A on full bodies, never on summaries. Treat every question from them
 that Alex has not answered in the same chat as an open ask.
 
+## Slack
+
+Slack is the busiest comms store at Alex's current job, so run it first. Use archeologist
+[Source J](../../archeologist/references/slack.md) for access per host: the Slack MCP in
+Claude Code and Cursor, and the [`slack_via_cursor.py` bridge](../../archeologist/scripts/slack_via_cursor.py)
+in OpenCode. Search with `slack_search_public_and_private` (modifiers go in `filters`), then
+read each hit with `slack_read_thread` (`Channel` id + `Message_ts` from the result). Quote only the raw
+tool `content` from the bridge's `--out` file, never the bridge model's reply.
+
+- **Dates:** `after:` leaves out the date you type, so search from the day before the
+  watermark day and drop older messages in code by their timestamp.
+- **No `to:` modifier exists.** An ask to Alex is a DM, a group DM, a thread he is in
+  (`with:`), or a mention. Mentions have no documented modifier: search Alex's `@` handle
+  as a query term and verify on the first live run that it finds mentions.
+- **Read the whole thread** before Set A and Set R. Search returns a snippet, and the answer
+  to an ask is often a reply further down. Set R uses Alex's own posts in the same thread
+  or DM after the ask, the same way as Teams.
+- Breadcrumb on the board: `(slack:YYYY-MM-DD)`, the message date, like `(teams:…)`.
+- **Method that worked (2026-11-11):** get Alex's user id with `slack_search_users`; search DMs
+  (`channel_types: im,mpim`) and mentions (`keywords: "<@U…>"`) only to find the conversations;
+  then read each DM in full with `slack_read_channel` and each mentioned thread with
+  `slack_read_thread`. Alex answers fast, so most items are his own commitments ("will do",
+  "I will write an ADR"), not unanswered pings: read his posts, not only theirs. Booking or
+  attending a sync is meeting work (todo-board.md), so list it in the report only.
+
 ## Asks the recipient filter cannot see
 
 Some asks never arrive as a message to Alex: an `@alex` to-do written into SharePoint
@@ -129,7 +157,7 @@ every ask or commitment in the archeologist's briefing through Set T as well, wi
 
 ## Other hosts
 
-In OpenCode or Pi there is no Planner, To Do, or Todoist tool: write `unavailable — no tool on
+In OpenCode there is no Planner, To Do, or Todoist tool: write `unavailable — no tool on
 this host`. Claude Code can lack them too: on 2026-10-14 neither `tasks_login_status` nor a
 Todoist tool was in the session's tool list. Check the list (ToolSearch) before you write
 the ledger line, and use the same wording when they are absent.
@@ -140,11 +168,11 @@ On 2026-10-14 the `recipient` filter returned 662 Teams messages and Alex's own 
 returned about 778 over two working days. Paging both and running Set A and Set R on that
 volume fills the main thread. Give the Teams-and-mail part to one background agent with
 this file and `jev-gates.md` as its brief, and keep ADO, GitHub and Planner in the main
-thread. The agent returns the ledger, the open asks with their numbers, and the answered
+thread. A busy Slack window can go to a second background agent the same way. The agent returns the ledger, the open asks with their numbers, and the answered
 asks. Mail and Teams use the `m365` CLI (`../m365/SKILL.md`); ADO uses the `ado` agent.
 
 ## Coverage ledger
 
 One line per source, in the archeologist's three states (`unavailable — <reason>`,
-`searched, N hits`, `not searched — <why>`). A 0 from Teams or mail on a window with a working
+`searched, N hits`, `not searched — <why>`). A 0 from Slack, Teams or mail on a window with a working
 day is a coverage failure (SKILL.md step 3). A 0 from Planner, Todoist, or GitHub can be real.
