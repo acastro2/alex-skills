@@ -297,6 +297,12 @@ started with.
 
 - An item Alex checked himself is a REAL completion. Keep his `✅ <date>` and move it to
   `## Done`. Never revert it to `- [ ]`, and never restamp it with a different date.
+- **Alex's `Personal` heading** (for example `#### 👥 Personal`) is his own, the one
+  exception to "no topic sub-headings". Leave it and its open lines where they are. When a
+  line under it is checked, by bard or by Alex, add `#personal` right after the description,
+  before the wikilink or breadcrumb (the parser constraint still holds), then move it to
+  `## Done` as usual. Why: `## Done` and the archive are flat, so the move loses the
+  heading, and `weekly-report` drops `#personal` lines from the report to the manager.
 - An item Alex added by hand stays, even with no breadcrumb and no priority emoji. Grade
   and file it, do not delete it for failing the format.
 - An item Alex edited keeps his wording.
