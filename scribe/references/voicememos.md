@@ -29,7 +29,16 @@ deletes a memo.
 2. Skip every `id` already under `voicememos` or `skipped` in `.scribe-state.json`.
 3. Apply [Teams-first dedupe](../SKILL.md#teams-first-dedupe): a memo of a Teams meeting that
    already has a Teams note is skipped as `teams-covers`, by the same rule as HiDock.
-4. Transcribe each new local memo, reading the file in place (no copy):
+4. Transcribe each new local memo, reading the file in place (no copy). **Apple's transcript
+   first** (Alex, 2026-11-12): recent macOS writes one into the `.m4a` itself
+   (`moov/trak/udta/tsrp`, JSON of words with start and end times, no speaker labels).
+
+   ```bash
+   python3 voicememo_transcript.py "<audio>" -o ~/.scribe/transcripts/vm-<id>.json \
+     --voicememo-id <id> --start <start> [--title "<title>"]
+   ```
+
+   Exit 4 = the memo has no Apple transcript: fall back to whisper with the same output path:
 
    ```bash
    uv run --with mlx-whisper --with mlx-audio python transcribe.py "<audio>" \
@@ -37,10 +46,13 @@ deletes a memo.
      --start <start> [--title "<title>"]
    ```
 
-   The JSON keeps the file's sha256 in provenance and `source: voicememo`; the note gets the
-   `source/voicememo` tag. Speaker labels come from the same diarizer as HiDock. A memo is
-   often one person thinking aloud: a single label is normal here, not the diarizer miss it
-   is on a known multi-person call.
+   Both write `source: voicememo` and the file's sha256 in provenance; the Apple path also
+   writes `transcript_source: apple`, `word_count`, and `coverage` (last word end / memo
+   length). **Check `coverage`:** today's 28-minute memo ended its transcript at 78% (verified
+   2026-11-12); whether that was silence or a cut-off transcript is not known. Below 0.9, say so
+   in the note's footer. Apple's text has no speaker labels, so its turns carry `speaker: null`
+   and the summary refers to "the speaker" unless the text names people. Apple-vs-whisper
+   accuracy on Alex's voice is not measured yet.
 5. Title: the memo's own title when it has one, else a calendar match (a memo recorded in a
    meeting slot), else a short factual title from content (`Memo about <topic>`), else
    `Untitled memo`. Then name the speaker labels exactly as in the HiDock step 5 rules

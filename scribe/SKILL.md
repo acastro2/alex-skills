@@ -40,7 +40,7 @@ graph TD
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[hidock_batch.sh: transcribe pool, up to 3 at once]
   V[Voice Memos on the Mac] --> V2[voicememos.py list: read a copy of CloudRecordings.db]
-  V2 --> V3[transcribe.py --source voicememo, file read in place]
+  V2 --> V3[voicememo_transcript.py: Apple's own transcript; exit 4 → transcribe.py --source voicememo]
   V3 --> H4
   H3 --> H4[you: name the labels from the text, hedged]
   H4 --> C[you: full transcript, summary - one subagent per meeting in a batch]
