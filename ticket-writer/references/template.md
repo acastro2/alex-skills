@@ -1,8 +1,6 @@
 # Six-Section Ticket Template
 
-Complete template for writing spec-driven work items. Every story-level ticket contains these 6 sections. Azure DevOps rendering is in `ado.md`.
-
-See `html-examples.md` for the HTML rendering of every section below.
+Complete template for writing spec-driven items. Every story-level ticket contains these 6 sections. The Jira adapter is in `jira.md`. The sections render as Markdown `##` headings.
 
 ---
 
@@ -222,8 +220,8 @@ npm run test:integration
   - [PR #1](https://example.com/pullrequest/1)
   - [PR #2](https://example.com/pullrequest/2)
 - **Related Tickets**:
-  - [TICKET-123](https://example.com/workitem/123)
-  - [TICKET-124](https://example.com/workitem/124)
+  - [TICKET-123](https://example.com/browse/TICKET-123)
+  - [TICKET-124](https://example.com/browse/TICKET-124)
 
 ### Team & Support
 

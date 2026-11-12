@@ -60,7 +60,7 @@ open items and stopped being readable.
    no note exists yet, the item may still go on the board with the session id alone, but
    the sweep report lists it under "board items without a note" and the NEXT sweep writes
    that note. Hand-added items with no session id are exempt. Task-lane items (Slack, Teams, mail,
-   Planner, To Do, Todoist, ADO, GitHub) carry a source breadcrumb instead (see line format)
+   Planner, To Do, Todoist, Jira, GitHub) carry a source breadcrumb instead (see line format)
    and need no Bard note: the source item is the evidence. Never list them under "board
    items without a note".
 
@@ -148,7 +148,7 @@ priority emoji (the parser constraint still holds):
 
 | source | breadcrumb |
 |---|---|
-| ADO work item | `(ado:900001)` |
+| Jira issue | `(jira:PROJ-123)` (board lines written before 2026-11-12 keep `(ado:N)`; do not rewrite the vault) |
 | GitHub PR review | `(pr:<repo>#<n>)` (repos in the work org only) |
 | Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
 | Slack / Teams chat / mail | `(slack:YYYY-MM-DD)` / `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
@@ -218,7 +218,7 @@ Fixed map. Reuse these symbols. Never invent a new one:
 
 `☁️` AWS / cloud · `❄️` Snowflake · `🏗️` Terraform / IaC · `📊` Grafana /
 observability · `🔐` security / access / credentials · `🏛️` enterprise architecture /
-governance / docs · `🎫` Azure DevOps / process · `🐙` GitHub · `🧪` testing / QA · `🤖`
+governance / docs · `🎫` Jira / process · `🐙` GitHub · `🧪` testing / QA · `🤖`
 AI / agents / skills · `👥` people / hiring / comms · `💰` cost / licensing · `🗄️`
 databases / SQL Server · `📦` anything else.
 

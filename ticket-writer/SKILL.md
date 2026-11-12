@@ -1,6 +1,6 @@
 ---
 name: ticket-writer
-description: Write and update work items from real code changes, using a six-section spec template with Given/When/Then acceptance criteria. Use when creating a ticket, updating one from code changes, converting a PR or branch into a structured story, or backfilling tickets for merged work. Tool-agnostic core with per-tracker adapters; Azure DevOps is in references/ado.md. Not for filing GitHub issues by interview, that is the gh-issue-creator agent.
+description: Write and update tracker items from real code changes, using a six-section spec template with Given/When/Then acceptance criteria. Use when creating or updating a Jira issue or ticket, converting a PR or branch into a structured story, or backfilling tickets for merged work. Tool-agnostic core with per-tracker adapters; the Jira adapter (Atlassian MCP) is in references/jira.md. Not for filing GitHub issues by interview, that is the gh-issue-creator agent.
 license: MIT
 compatibility: opencode
 metadata:
@@ -19,7 +19,7 @@ plausible answer is not a question, so decide it and say why. Where this skill d
 own review or answer format, that format wins. If the host has no question tool, use
 `❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
 
-Write spec-driven work items that capture **what** changed and **why**, derived from actual code changes, not written in isolation. For prose, follow [Alex's voice](../alex-voice/SKILL.md).
+Write spec-driven items that capture **what** changed and **why**, derived from actual code changes, not written in isolation. For prose, follow [Alex's voice](../alex-voice/SKILL.md).
 
 ## Core Principle: Code-First Ticket Writing
 
@@ -34,7 +34,7 @@ Tickets should describe actual changes, not speculative requirements. Traverse b
 - **Updating existing items**: Sync the item with the actual implementation
 - **Writing spec-driven items**: Clear ACs based on real changes
 - **Converting PR descriptions**: Formalize ad-hoc work
-- **Backfilling documentation**: Code merged without proper work items
+- **Backfilling documentation**: Code merged without proper items
 
 ## Workflow Overview
 
@@ -113,14 +113,14 @@ Find out which tracker the team uses, then read its adapter before any write:
 
 | Tracker | Adapter |
 |---|---|
-| Azure DevOps | `references/ado.md` |
+| Jira | `references/jira.md` |
 | Anything else | No adapter yet. Render the six sections in the tracker's format, and confirm its fields and types first |
 
 A new tracker gets its own `references/<tracker>.md`. The core stays tool-free.
 
 ### Before any write
 
-- **Resolve the org, project and types live. Never memorize them.** A stale name files work where nobody looks.
+- **Resolve the site, project and types live. Never memorize them.** A stale name files work where nobody looks.
 - **Search for a duplicate** with the title you are about to use. Search again before you retry a failed create: the create may have landed.
 - **For an update, read the current item first**, so you merge instead of overwrite.
 
@@ -179,7 +179,7 @@ A PR adds Google login:
    - Section 5: Validation = Test login flow, verify profile data
    - Section 6: Resources = PR link, OAuth docs
 4. **Render and write** through the adapter.
-5. **Link the PR** to the item, and put the item's URL in the PR description.
+5. **Link the PR** to the item. Put the issue key (`PROJ-123`) in the branch name, a commit message, or the PR title, so the Jira GitHub integration links it. If no link shows, keep the PR URL in Section 6. Put the item's URL in the PR description.
 
 ## Common Patterns
 
@@ -190,9 +190,5 @@ A PR adds Google login:
 ## Resources
 
 - `references/template.md`: the full six-section template with examples
-- `references/ado.md`: the Azure DevOps adapter. Read it first for any ADO write
-- `references/ado-api-guide.md`: ADO REST calls, when the adapter is not enough
-- `references/html-examples.md`: HTML snippets for ADO descriptions
+- `references/jira.md`: the Jira adapter (Atlassian MCP). Read it first for any Jira write
 - `scripts/git_change_analyzer.py`: analyze git changes and extract intent
-- `scripts/html_builder.py`: build ADO HTML and the JSON Patch
-- `scripts/resolve_ado.py`: resolve the ADO org and its live projects

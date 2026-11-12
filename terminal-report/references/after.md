@@ -6,7 +6,7 @@ ledger path, and settlement is 72% done.
 ```
 
 - Incidents: 4 in September, all on the new ledger path. INC-2291, 2298, 2304, 2311
-- Settlement: 14 of 20 tasks closed; recon has not started. ADO #4412
+- Settlement: 14 of 20 tasks closed; recon has not started. PROJ-4412
 - Quarter end: the 21 Dec window lands inside the finance close freeze. FIN-88
 
 Next: approve 12 Jan, or name who carries the quarter-end risk.

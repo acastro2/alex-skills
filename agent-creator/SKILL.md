@@ -40,7 +40,7 @@ Prefer `snake_case` file names to match existing agents.
 ## Shared permission policy
 
 - All agents inherit global shell, read, and directory permissions. Keep shell rules in the global configuration; omit agent-level shell allowlists, wildcard defaults, and copied git/Vault rules. Agent rules run last, so even a local `shell: ask` can weaken a global deny.
-- Writers add only a `subagent` deny. Examples: ADO, SharePoint, blog writing, GitHub issue creation, and implementation workers.
+- Writers add only a `subagent` deny. Examples: Jira, SharePoint, blog writing, GitHub issue creation, and implementation workers.
 - Read-only agents add an `edit` deny and a `subagent` deny. Their body limits shell and remote operations to inspection. `edit: deny` controls the edit tools; it does not make shell commands read-only.
 - Workers return blockers to their parent rather than launching more workers.
 - Reuse the existing format for small edits. New definitions use native V2 `permissions` rules. Keep each definition in one format; supported legacy `permission` blocks need no migration just for style.

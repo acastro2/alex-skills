@@ -9,14 +9,14 @@ description: >-
   runs /bard, asks to capture/record what they've been working on into Obsidian,
   to sweep recent sessions, meetings, or comms into the knowledge base, to bootstrap the bard
   hubs, or to turn past decisions/lessons/patterns into notes, and to keep the
-  root-vault `Todo.md` board fed from Teams, mail, Planner, To Do, Todoist, ADO and
+  root-vault `Todo.md` board fed from Teams, mail, Planner, To Do, Todoist, Jira and
   GitHub, with every judgment typed through Jev.
   On-demand only. Reads sessions, meetings, and comms via the
   archeologist agent; writes
   OKF-envelope markdown notes. Never commits, never runs a server, never invents
   provenance. Not for raw transcripts, that is scribe, or history questions, that
   is archeologist.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Azure_DevOps__wit_query, mcp__claude_ai_Azure_DevOps__wit_work_item
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Atlassian__atlassianUserInfo, mcp__claude_ai_Atlassian__getAccessibleAtlassianResources, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
 ---
 
 # bard — session history → Obsidian knowledge base
@@ -75,8 +75,8 @@ Three frames govern it:
   pointer stub only; bard never writes it. Knowledge notes and hubs stay
   append-only/never-touched.
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
-  verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the `ado` agent
-  for a real work item, Exa for a public doc) and cite it. If retrieval finds
+  verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the Atlassian MCP
+  for a real Jira issue, Exa for a public doc) and cite it. If retrieval finds
   nothing → "not available". Retrieve, never fabricate.
 - Never emit a link to a note that does not already exist (a dead `[[link]]`
   silently creates a stray note). Link only to resolvable targets.
@@ -199,10 +199,10 @@ so it is derived from real work and ratified by Alex.
    - **Task lane — what is asked of Alex (since 2026-10-14).** The archeologist searches by
      topic, so it finds knowledge and misses a plain "can you get me X" with no topic word.
      Run this lane in the main thread on every sweep. **Read
-     [Task lane](references/task-lane.md) first**: it holds the tested calls, the ADO query,
+     [Task lane](references/task-lane.md) first**: it holds the tested calls, the Jira query,
      and the code filters. Sources: Slack DMs and threads, Teams chats, and mail sent to
      Alex (window from `watermark`), mail with no reply from him, and the open items assigned to him now in
-     Planner, To Do, Todoist, ADO, and GitHub review requests (snapshot, no watermark).
+     Planner, To Do, Todoist, Jira, and GitHub review requests (snapshot, no watermark).
      Add each source to the coverage ledger. Every survivor of the code filters goes through
      Set A (is it an ask?) and Set R (did Alex already answer it?), then Set T; it never becomes a knowledge note on its own.
    - **AI attention pass** — before distillation, explicitly scan every candidate for
@@ -338,8 +338,8 @@ external context — but only retrieve, never fabricate.
   (`gh pr view`, `gh pr list`, `gh search prs`, `gh issue view`). Cite the real URL
   in `resource` + body. If `gh` can't confirm it exists, write "not available" —
   never guess a PR number or sha.
-- **ADO** — if the work ties to an Azure DevOps work item, spawn the `ado` agent
-  to fetch the real item; cite its id/URL. Don't invent ticket numbers.
+- **Jira** — if the work ties to a Jira issue, call `getJiraIssue` (Atlassian MCP) in the
+  main thread; cite its key/URL. Don't invent ticket numbers.
 - **Exa** (`web_search_advanced_exa`) — for a PUBLIC concept/library/technique, you
   may research for accurate context and cite the source URL.
 
@@ -360,12 +360,12 @@ tags: [topic/x, bard/new] # coined freely BUT reuse-before-coin + convention. ~3
 timestamp: <ISO 8601>     # session-START time (reliable). NEVER a null assistant-turn time.
 source: <session_id>      # optional breadcrumb.
 repo: <repo>              # when known.
-resource: ""              # OKF. A REAL verified URL from STEP 2b (PR/issue/ADO/doc). Omit if none.
+resource: ""              # OKF. A REAL verified URL from STEP 2b (PR/issue/Jira/doc). Omit if none.
 aliases: []               # reserved. Optional — variant spellings for resolution.
 ```
 
 `resource` (OKF authoritative URL) is populated ONLY with a real URL verified in
-STEP 2b (a `gh`-confirmed PR/issue, an `ado` work item, an Exa-cited public doc).
+STEP 2b (a `gh`-confirmed PR/issue, a Jira issue, an Exa-cited public doc).
 Never fabricate one; omit the key if enrichment found nothing. Body is markdown only.
 
 ### STEP 4 — LINK (graph-native, resolvable-only)
@@ -404,7 +404,7 @@ Quote real session content; do not paraphrase into something unsaid. The verbati
 text comes from a raw read of the locator the briefing gave you, or — for a store
 this session cannot reach — from the briefing's verbatim excerpt. **A summary is never
 quotable.** Provenance
-not in the session and not confirmable via STEP 2b (`gh`/`ado`/Exa) → "not
+not in the session and not confirmable via STEP 2b (`gh`/Jira/Exa) → "not
 available," never invented. A `resource` URL must be one STEP 2b actually verified.
 
 ### OUTPUT
