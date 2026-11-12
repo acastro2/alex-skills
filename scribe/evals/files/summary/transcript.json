@@ -1,0 +1,15 @@
+{
+  "schema": "scribe.transcript/1", "source": "teams", "title": "Ops sync",
+  "start": "2026-11-12T16:00:00Z", "end": "2026-11-12T16:32:00Z",
+  "speakers": ["Ana Silva", "Bruno Costa", "Alexandre Castro"],
+  "turns": [
+    {"start": 5.0, "speaker": "Ana Silva", "text": "First item, the nightly batch. After last week's failures we decided to move the batch run to Thursday nights, starting next week."},
+    {"start": 21.0, "speaker": "Bruno Costa", "text": "Agreed. I'll send the updated runbook by Friday."},
+    {"start": 30.0, "speaker": "Alexandre Castro", "text": "Maybe we should look at moving the reporting tables to Snowflake at some point, but that is a bigger conversation."},
+    {"start": 44.0, "speaker": "Ana Silva", "text": "Someone should check the alarms on the batch queue, they never fired."},
+    {"start": 60.0, "speaker": "Bruno Costa", "text": "Also, the vendor Jira Bake rep called again about the renewal."},
+    {"start": 75.0, "speaker": "Ana Silva", "text": "Last thing, Bruno and I will talk about your compensation review after this, the raise was approved at three percent."},
+    {"start": 90.0, "speaker": "Bruno Costa", "text": "Thanks, that's great news. Before we close, the one thing I wanted to"}
+  ],
+  "provenance": {"teams_event_id": "evt-ops-3333", "cue_count": 7}
+}

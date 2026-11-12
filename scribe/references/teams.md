@@ -49,4 +49,4 @@ subagent's brief and the payload is recovered from disk afterwards: see
    the script refuses and you re-fetch. The note's `date`/`end` and its filename come from the
    `?start=&end=` calendar slot in the URI (so the note is `... 1500 ...`, not `1459`); the
    transcript's own first/last cue times land in provenance.
-6. Continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).
+6. Continue at [Summary and write](../SKILL.md#summary-and-write-every-source).

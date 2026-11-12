@@ -1,0 +1,16 @@
+{
+  "schema": "scribe.transcript/1", "source": "hidock", "title": null,
+  "start": "2026-11-10T19:00:00Z", "end": "2026-11-10T19:31:00Z",
+  "speakers": ["speaker 0", "speaker 1", "speaker 2"],
+  "turns": [
+    {"start": 2.0, "speaker": "speaker 1", "text": "Okay, let's start. For anyone new, I'm Ana, I run the platform team, and today is about the cluster upgrade."},
+    {"start": 11.5, "speaker": "speaker 0", "text": "Sounds good."},
+    {"start": 14.0, "speaker": "speaker 1", "text": "Thanks, Bruno. Can you walk us through the node pool plan?"},
+    {"start": 18.2, "speaker": "speaker 0", "text": "Sure. We roll one pool at a time, starting with the batch pool on Tuesday, and we keep the old pool for a day so we can roll back."},
+    {"start": 41.0, "speaker": "speaker 1", "text": "Chris, does that work for the data jobs?"},
+    {"start": 44.3, "speaker": "speaker 2", "text": "Yeah."},
+    {"start": 46.0, "speaker": "speaker 1", "text": "Great. Bruno, send the rollback steps before Monday."},
+    {"start": 49.0, "speaker": "speaker 0", "text": "Will do, I'll post them in the channel."}
+  ],
+  "provenance": {"hidock_file": "2026Nov10-130000-Rec05.hda", "diarization_status": "ok"}
+}

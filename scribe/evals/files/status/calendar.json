@@ -1,0 +1,4 @@
+[
+  {"id": "evt-design-1111", "subject": "Design Review", "start": "2026-11-11T20:00:00Z", "end": "2026-11-11T20:50:00Z", "attendees": ["Ana Silva", "Bruno Costa", "Alexandre Castro"]},
+  {"id": "evt-standup-2222", "subject": "Team standup", "start": "2026-11-12T15:00:00Z", "end": "2026-11-12T15:15:00Z", "attendees": ["Ana Silva", "Alexandre Castro"]}
+]

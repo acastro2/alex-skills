@@ -1,0 +1,6 @@
+[
+  {"id": "AAAA-1111", "start": "2026-11-10T15:00:00Z", "duration_s": 1800.0, "title": null, "audio": "/Users/demo/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings/20261110 090000.m4a", "local": true, "evicted": false},
+  {"id": "BBBB-2222", "start": "2026-11-11T20:01:00Z", "duration_s": 2940.0, "title": "Design review", "audio": "/Users/demo/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings/20261111 140100.m4a", "local": true, "evicted": false},
+  {"id": "CCCC-3333", "start": "2026-11-12T14:30:00Z", "duration_s": 420.0, "title": null, "audio": "/Users/demo/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings/20261112 083000.m4a", "local": true, "evicted": false},
+  {"id": "DDDD-4444", "start": "2026-11-12T16:00:00Z", "duration_s": 95.0, "title": "Idea for alerts", "audio": "/Users/demo/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings/20261112 100000.m4a", "local": false, "evicted": true}
+]

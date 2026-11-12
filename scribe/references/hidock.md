@@ -76,6 +76,6 @@ keeps every recording until HiNotes removes it; scribe never deletes.
    transcript supports it, otherwise leave the label alone. On 2026-09-24 this named 16 of 22
    recordings — most calls give no usable evidence, and an unnamed label is the normal outcome.
    In a batch, hand the naming and the summary to one subagent per recording (the batch rule in
-   [Summary and write](../SKILL.md#summary-and-write-both-sources)); this session does the
+   [Summary and write](../SKILL.md#summary-and-write-every-source)); this session does the
    calendar match, the notes, the glossary, and the state.
-6. Continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).
+6. Continue at [Summary and write](../SKILL.md#summary-and-write-every-source).

@@ -304,6 +304,11 @@ def main(
         help="Original HiDock filename, e.g. 2026Sep02-150056-Rec17.hda; recorded in provenance",
     )
     parser.add_argument(
+        "--source", choices=("hidock", "voicememo"), default="hidock",
+        help="Where the audio came from; sets the note's source and provenance",
+    )
+    parser.add_argument("--voicememo-id", default=None, help="Voice Memos ZUNIQUEID; recorded in provenance")
+    parser.add_argument(
         "--paragraph-gap", type=float, default=2.0,
         help="Seconds of silence between segments that starts a new turn",
     )
@@ -370,7 +375,7 @@ def main(
         end = (start_dt + timedelta(seconds=duration)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     provenance = {
-        "hidock_file": _resolve_hidock_file(args),
+        "hidock_file": _resolve_hidock_file(args) if args.source == "hidock" else None,
         "audio_sha256": _sha256_file(args.audio),
         "asr_model": args.model,
         "asr_language": language,
@@ -381,10 +386,12 @@ def main(
         "diarization_status": diarization_status,
         "diarization_spans": len(spans),
     }
+    if args.source == "voicememo":
+        provenance["voicememo_id"] = args.voicememo_id
 
     transcript = {
         "schema": common.SCHEMA_VERSION,
-        "source": "hidock",
+        "source": args.source,
         "title": args.title,
         "start": start,
         "end": end,

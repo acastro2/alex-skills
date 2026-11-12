@@ -85,7 +85,7 @@ the URI's own.
 - Keep the printed `state teams.<event_id> -> <note path>` lines for the state
   step of **Summary and write**.
 
-Then continue at [Summary and write](../SKILL.md#summary-and-write-both-sources).
+Then continue at [Summary and write](../SKILL.md#summary-and-write-every-source).
 
 ## Gotchas
 

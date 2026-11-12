@@ -1,0 +1,235 @@
+{
+  "skill_name": "scribe",
+  "evals": [
+    {
+      "id": 1,
+      "name": "memos-dry-run",
+      "prompt": "/scribe memos — dry run please. You can't run commands on this host, so here is what the scripts and connector returned: `voicememos.py list --json` → {FIXTURES}/memos/voicememos_list.json, `.scribe-state.json` → {FIXTURES}/memos/scribe_state.json, the calendar search for the window → {FIXTURES}/memos/calendar.json. For each memo, tell me what you would do and why, give the exact command you would run for anything you would transcribe, and the state changes you would make. Don't write anything.",
+      "expected_output": "AAAA skipped as already done; BBBB skipped as teams-covers (Teams note exists for the same slot); CCCC transcribed in place with --source voicememo --voicememo-id CCCC-3333 --start 2026-11-12T14:30:00Z; DDDD not transcribed because it is not on the Mac yet (open it in Voice Memos); no audio touched; state key voicememos.CCCC-3333.",
+      "files": [
+        "memos/voicememos_list.json",
+        "memos/scribe_state.json",
+        "memos/calendar.json"
+      ],
+      "checks": [
+        {
+          "type": "code",
+          "text": "Gives the transcribe command with --source voicememo",
+          "regex": "--source[ =]voicememo"
+        },
+        {
+          "type": "code",
+          "text": "Passes the memo id CCCC-3333 to the command",
+          "regex": "--voicememo-id[ =]\"?CCCC-3333"
+        },
+        {
+          "type": "code",
+          "text": "Passes the memo's start time 2026-11-12T14:30:00Z",
+          "regex": "2026-11-12T14:30:00Z"
+        },
+        {
+          "type": "code",
+          "text": "Names the state key voicememos.CCCC-3333",
+          "regex": "voicememos\\.?[\"' :]*CCCC-3333|\"CCCC-3333\""
+        },
+        {
+          "type": "jev",
+          "text": "Skips AAAA-1111 because state already has it",
+          "q": "Does `output` say memo AAAA-1111 is skipped because it is already in the state file?"
+        },
+        {
+          "type": "jev",
+          "text": "Skips BBBB-2222 because a Teams note already covers that meeting",
+          "q": "Does `output` skip memo BBBB-2222 because a Teams transcript note for the same meeting slot already exists (Teams-first dedupe, teams-covers)?"
+        },
+        {
+          "type": "jev",
+          "text": "Does not transcribe DDDD-4444 and asks Alex to download it in Voice Memos first",
+          "q": "Does `output` say memo DDDD-4444 cannot be transcribed now because its audio is not on the Mac, and that it must be opened or downloaded in Voice Memos first?"
+        },
+        {
+          "type": "jev",
+          "text": "Never moves, copies, renames or deletes memo audio",
+          "q": "Does `output` propose to move, copy, rename, or delete any memo audio file or the Voice Memos store?",
+          "invert": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "speaker-naming",
+      "prompt": "/scribe — I already pulled and transcribed this HiDock recording: {FIXTURES}/naming/transcript.json. Calendar attendees: Ana Silva, Bruno Costa, Chris Lee, Chris Park, Alexandre Castro. Name the speaker labels before the summary. You can't edit files here, so reply with the label mapping you would write into the JSON and the speaker_hints evidence for each.",
+      "expected_output": "speaker 1 → 'speaker 1 (likely Ana Silva)' from the self-introduction; speaker 0 → 'speaker 0 (likely Bruno Costa)' from 'Thanks, Bruno' plus a substantive reply; speaker 2 stays unnamed (one-word 'Yeah.' and two attendees named Chris).",
+      "files": [
+        "naming/transcript.json"
+      ],
+      "checks": [
+        {
+          "type": "code",
+          "text": "Uses the hedged label form '(likely …)'",
+          "regex": "\\(likely [A-Z]"
+        },
+        {
+          "type": "jev",
+          "text": "Names speaker 1 as Ana Silva from her self-introduction",
+          "q": "Does `output` map speaker 1 to Ana Silva, citing her self-introduction?"
+        },
+        {
+          "type": "jev",
+          "text": "Names speaker 0 as Bruno Costa from being addressed and answering",
+          "q": "Does `output` map speaker 0 to Bruno Costa, citing that he was addressed by name and gave a substantive reply?"
+        },
+        {
+          "type": "jev",
+          "text": "Leaves speaker 2 unnamed",
+          "q": "Does `output` assign any person's name (Chris Lee, Chris Park, or 'Chris') to speaker 2?",
+          "invert": true
+        },
+        {
+          "type": "jev",
+          "text": "Gives the reason speaker 2 stays unnamed: a one-word reply and/or a first name two attendees share",
+          "q": "Does `output` explain that speaker 2 stays unnamed because the reply was only 'Yeah.' or because two attendees are named Chris?"
+        },
+        {
+          "type": "jev",
+          "text": "Cites quotes with timestamps as the evidence",
+          "q": "Does `output` give a quote and its timestamp from the transcript as the evidence for each name it assigns?"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "summary-no-invention",
+      "prompt": "/scribe — write the summary file for this Teams transcript: {FIXTURES}/summary/transcript.json (meeting: Ops sync). You can't write files here, so reply with the full content of the summary file, then any note-level remarks.",
+      "expected_output": "Summary + Decisions (only the Thursday batch move) + Actions (Bruno → runbook by Friday; no owner invented for the alarms check). The compensation item is summarized, not withheld. 'Jira Bake' is described, not named as a confirmed vendor. Says the transcript ends mid-sentence.",
+      "files": [
+        "summary/transcript.json"
+      ],
+      "checks": [
+        {
+          "type": "code",
+          "text": "Has the ## Summary heading",
+          "regex": "(?m)^## Summary"
+        },
+        {
+          "type": "code",
+          "text": "Has the ## Decisions heading",
+          "regex": "(?m)^## Decisions"
+        },
+        {
+          "type": "code",
+          "text": "Has the ## Actions heading",
+          "regex": "(?m)^## Actions"
+        },
+        {
+          "type": "code",
+          "text": "Writes no '[Segment withheld' marker",
+          "regex": "Segment withheld",
+          "invert": true
+        },
+        {
+          "type": "jev",
+          "text": "Decisions lists the Thursday batch move and does not list the Snowflake idea as decided",
+          "q": "Does the Decisions section of `output` list the batch move to Thursday nights, without listing the idea of moving reporting tables to Snowflake as a decision?"
+        },
+        {
+          "type": "jev",
+          "text": "Actions has Bruno sending the runbook by Friday",
+          "q": "Does the Actions section of `output` list Bruno Costa sending the updated runbook by Friday?"
+        },
+        {
+          "type": "jev",
+          "text": "Does not invent an owner for the alarms check",
+          "q": "Does `output` name a specific person as the owner of checking the batch queue alarms?",
+          "invert": true
+        },
+        {
+          "type": "jev",
+          "text": "Covers the compensation item instead of withholding it",
+          "q": "Does `output` mention the compensation review or the approved raise?"
+        },
+        {
+          "type": "jev",
+          "text": "Does not present 'Jira Bake' as a confirmed name",
+          "q": "Does `output` state 'Jira Bake' as the vendor's confirmed name, without describing it as unclear, garbled, or unconfirmed?",
+          "invert": true
+        },
+        {
+          "type": "jev",
+          "text": "Says the transcript ends mid-sentence",
+          "q": "Does `output` say the transcript ends mid-sentence or is cut off?"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "status-mode",
+      "prompt": "/scribe status. Outputs from this host: `.scribe-state.json` → {FIXTURES}/status/scribe_state.json, `hidock_pull.py list --json` → {FIXTURES}/status/hidock_list.json, `voicememos.py list --json` → {FIXTURES}/status/voicememos_list.json, calendar events in the window → {FIXTURES}/status/calendar.json.",
+      "expected_output": "Four tables: device recordings not in state (Rec02), memos not in state (all four), Teams events not in state (design review, standup), and the skipped map (evt-old-9999). Proposes no writes.",
+      "files": [
+        "status/scribe_state.json",
+        "status/hidock_list.json",
+        "status/voicememos_list.json",
+        "status/calendar.json"
+      ],
+      "checks": [
+        {
+          "type": "code",
+          "text": "Lists the HiDock recording not in state (Rec02)",
+          "regex": "2026Nov12-093000-Rec02"
+        },
+        {
+          "type": "code",
+          "text": "Lists the memo ids",
+          "regex": "CCCC-3333"
+        },
+        {
+          "type": "code",
+          "text": "Shows the skipped entry",
+          "regex": "evt-old-9999"
+        },
+        {
+          "type": "jev",
+          "text": "Gives four separate tables: device recordings, memos, Teams events, skipped",
+          "q": "Does `output` show four separate tables or lists: HiDock recordings not yet in state, voice memos not yet in state, Teams events not yet in state, and the skipped map?"
+        },
+        {
+          "type": "jev",
+          "text": "Writes nothing and proposes no transcription or state change as done",
+          "q": "Does `output` say it transcribed, wrote a note, or changed the state file during this status run?",
+          "invert": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "cursor-rules",
+      "prompt": "/scribe ran just now as a combined run. Teams: the calendar search and every transcript fetch finished. HiDock: hidock_pull.py list exited 2 (device unplugged). Voice Memos: the list worked and both new memos were transcribed and their notes written. Which cursors in .scribe-state.json do you move, and to what? Answer briefly.",
+      "expected_output": "Move last_run, teams_last_run and voicememos_last_run to now; leave hidock_last_run unchanged because HiDock did not run to completion.",
+      "files": [],
+      "checks": [
+        {
+          "type": "jev",
+          "text": "Moves teams_last_run",
+          "q": "Does `output` say to move teams_last_run to now?"
+        },
+        {
+          "type": "jev",
+          "text": "Moves voicememos_last_run",
+          "q": "Does `output` say to move voicememos_last_run to now?"
+        },
+        {
+          "type": "jev",
+          "text": "Leaves hidock_last_run unchanged",
+          "q": "Does `output` say to set hidock_last_run to the current time or to any time newer than its old value?",
+          "invert": true
+        },
+        {
+          "type": "jev",
+          "text": "Gives the reason: a cursor moves only for a source that ran to completion",
+          "q": "Does `output` explain that a source's cursor moves only when that source ran to completion, so an unplugged device keeps its old cursor?"
+        }
+      ]
+    }
+  ]
+}

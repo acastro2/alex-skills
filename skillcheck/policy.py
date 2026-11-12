@@ -66,7 +66,7 @@ POLICY: dict[str, Policy] = {
     # the two source references are read alone, so each repeats the hand-off to the shared
     # Summary and write step.
     "scribe": Policy(
-        standalone=frozenset({"references/teams.md", "references/hidock.md"}),
+        standalone=frozenset({"references/teams.md", "references/hidock.md", "references/voicememos.md"}),
     ),
     # the skill is a symlink into the opencode-chart-tui repo, and the schema sits at that
     # repo's root, outside the linked folder.

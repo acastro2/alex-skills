@@ -1,0 +1,10 @@
+{
+  "last_run": "2026-11-11T22:00:00Z",
+  "teams_last_run": "2026-11-11T22:00:00Z",
+  "hidock_last_run": "2026-11-11T22:00:00Z",
+  "voicememos_last_run": "2026-11-11T22:00:00Z",
+  "teams": {},
+  "hidock": {"2026Nov11-100000-Rec01.hda": "<vault>/Scribe/Meetings/Transcripts/2026-11-11 1000 Platform sync.md"},
+  "voicememos": {},
+  "skipped": {"evt-old-9999": "no-transcript: 2026-11-10 1:1"}
+}

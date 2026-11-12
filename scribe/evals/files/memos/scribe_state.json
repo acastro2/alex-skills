@@ -1,0 +1,9 @@
+{
+  "last_run": "2026-11-10T18:00:00Z",
+  "teams_last_run": "2026-11-12T13:00:00Z",
+  "voicememos_last_run": "2026-11-10T18:00:00Z",
+  "teams": {"evt-design-1111": "<vault>/Scribe/Meetings/Transcripts/2026-11-11 1400 Design Review.md"},
+  "voicememos": {"AAAA-1111": "<vault>/Scribe/Meetings/Transcripts/2026-11-10 0900 Memo about the onboarding plan.md"},
+  "hidock": {},
+  "skipped": {}
+}

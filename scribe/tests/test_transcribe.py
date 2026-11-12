@@ -520,3 +520,24 @@ def test_speaker_labels_sort_naturally_beyond_nine(tmp_path):
     assert rc == 0
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["speakers"] == ["speaker 2", "speaker 10"]
+
+
+def test_voicememo_source_sets_source_and_memo_provenance(tmp_path):
+    audio = _dummy_audio(tmp_path, "20261112 094207.m4a")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out), "--source", "voicememo", "--voicememo-id", "6C80-AB",
+         "--start", "2026-11-12T15:42:07Z"],
+        asr=_fake_asr(segments),
+        probe_duration=_fake_probe(10.0),
+        diarize=_fake_spans([]),
+    )
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["source"] == "voicememo"
+    assert data["start"] == "2026-11-12T15:42:07Z"
+    assert data["provenance"]["voicememo_id"] == "6C80-AB"
+    assert data["provenance"]["hidock_file"] is None

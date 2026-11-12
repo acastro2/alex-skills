@@ -2,15 +2,16 @@
 name: scribe
 description: >-
   Turn Alex's meetings into cleaned transcript notes in the Obsidian vault at
-  Scribe/Meetings/Transcripts, from two sources: Microsoft Teams transcripts (via the
+  Scribe/Meetings/Transcripts, from three sources: Microsoft Teams transcripts (via the
   Microsoft 365 connector — directly in Claude Code, or through the ask-claude
-  subagent in OpenCode) and HiDock P1 call recordings (pulled over USB, transcribed
-  locally with mlx-whisper, speaker-diarized locally with mlx-audio). Use when the user
+  subagent in OpenCode), HiDock P1 call recordings (pulled over USB), and Apple Voice
+  Memos on the Mac (iPhone memos arrive through iCloud); recordings are transcribed
+  locally with mlx-whisper and speaker-diarized locally with mlx-audio. Use when the user
   runs /scribe, asks to fetch, pull, clean, transcribe or save meeting transcripts,
-  call recordings or one recording, to add speaker labels or diarize a call, to sync
-  the HiDock, or to prepare meeting notes for bard. Not for writing notes into
+  call recordings, voice memos or one recording, to add speaker labels or diarize a call,
+  to sync the HiDock, or to prepare meeting notes for bard. Not for writing notes into
   Obsidian, that is bard, or searching past sessions, that is archeologist.
-  On-demand only. Read-only on the device and on Microsoft 365.
+  On-demand only. Read-only on the device, Voice Memos, and Microsoft 365.
   Never commits, never runs a server.
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Task, ToolSearch, mcp__claude_ai_Microsoft_365__outlook_calendar_search, mcp__claude_ai_Microsoft_365__read_resource
 ---
@@ -38,6 +39,9 @@ graph TD
   S --> P1
   H[HiDock P1 on USB] --> H2[hidock_pull.py sync: .hda to ~/.scribe/audio/*.mp3]
   H2 --> H3[hidock_batch.sh: transcribe pool, up to 3 at once]
+  V[Voice Memos on the Mac] --> V2[voicememos.py list: read a copy of CloudRecordings.db]
+  V2 --> V3[transcribe.py --source voicememo, file read in place]
+  V3 --> H4
   H3 --> H4[you: name the labels from the text, hedged]
   H4 --> C[you: full transcript, summary - one subagent per meeting in a batch]
   P1 --> C
@@ -70,6 +74,8 @@ Mac both were already present on 2026-09-24.
 - **On-demand only.** No scheduler, no watcher, no autonomous run.
 - **Read-only on the device.** `hidock_pull.py` implements only list and download. Never add a
   delete, format, or settings command. HiNotes manages device storage, not scribe.
+- **Read-only on Voice Memos.** `voicememos.py` reads a temp copy of the database and the
+  audio in place. Never edit, move, rename, or delete a memo or the store.
 - **Read-only on Microsoft 365.** Calendar search and transcript read only.
 - **Local transcription.** Local whisper only. HiNotes cloud is not a
   source (no API, no export). A summary subagent must run this session's model; its only write
@@ -98,28 +104,31 @@ Mac both were already present on 2026-09-24.
 
 ## Modes
 
-Argument decides the mode. With no argument, run both sources, each from its own cursor.
+Argument decides the mode. With no argument, run every source, each from its own cursor.
 
-- `/scribe` — Teams + HiDock, everything new since each source's cursor (default 7 days back on
+- `/scribe` — Teams + HiDock + Voice Memos, everything new since each source's cursor (default 7 days back on
   a first run). **Teams window** starts 48 h before `teams_last_run`: a transcript is not ready
   until some minutes after the meeting ends, so a meeting that was running or just ended at the
   last run must stay in the next window. Events already under `teams` are skipped, so the
   overlap costs only a calendar page. Inside that lookback, retry events skipped as
   `no-transcript` or `not-ready`; older skips stay skipped. **HiDock window** starts at the date
-  of `hidock_last_run`.
+  of `hidock_last_run`. **Voice Memos window** starts at the date of `voicememos_last_run`.
 - `/scribe teams [YYYY-MM-DD | YYYY-MM-DD..YYYY-MM-DD]` — Teams only, for a day or a range.
 - `/scribe hidock` — HiDock only: sync the device, skip what Teams covers, transcribe the
   rest, write notes. Run Teams first in a combined run so the coverage check sees the notes.
-- `/scribe status` — writes nothing. Read `.scribe-state.json`, run `hidock_pull.py list --json`,
-  and list the calendar events in the window; report three tables: device recordings not yet in
-  state, Teams events not yet in state, and the skipped map. Use it before a big run or when a
+- `/scribe memos` — Voice Memos only: list new memos, skip what Teams covers, transcribe the
+  rest, write notes.
+- `/scribe status` — writes nothing. Read `.scribe-state.json`, run `hidock_pull.py list --json`
+  and `voicememos.py list --json`, and list the calendar events in the window; report four
+  tables: device recordings not yet in state, memos not yet in state, Teams events not yet in
+  state, and the skipped map. Use it before a big run or when a
   note seems missing.
 
 Teams needs the Microsoft 365 connector. Claude Code reads it directly. OpenCode
 delegates the fetch to the `ask-claude` subagent and recovers the payload from that
 subagent's session logs — read [Source A in OpenCode](references/teams-opencode.md)
-first. A host with neither runs `/scribe hidock` only. HiDock is local scripts, so it
-runs on every host.
+first. A host with neither runs `/scribe hidock` and `/scribe memos` only. HiDock and Voice
+Memos are local scripts, so they run on every host (Voice Memos on macOS only).
 
 ## Source routing
 
@@ -130,11 +139,13 @@ runs on every host.
   subagent's session logs on disk.
 - **HiDock intake:** for `/scribe hidock` or the HiDock part of `/scribe`, read
   [Source B: HiDock P1](references/hidock.md) before accessing the device.
+- **Voice Memos intake:** for `/scribe memos` or the Voice Memos part of `/scribe`, read
+  [Source C: Apple Voice Memos](references/voicememos.md) before reading the store.
 - **Combined run:** finish Teams notes through **Summary and write** first. Then
-  process HiDock so the coverage check sees the Teams notes.
-- **Status:** read both references, but use only Teams steps 1–2 for calendar
-  inventory and HiDock step 1 with `list --json` for device inventory. Report the
-  three tables in **Modes** and stop. Do not fetch transcripts, sync/download audio,
+  process HiDock and Voice Memos so the coverage check sees the Teams notes.
+- **Status:** read the source references, but use only Teams steps 1–2 for calendar
+  inventory, HiDock step 1 with `list --json` for device inventory, and Voice Memos step 1
+  for the memo inventory. Report the four tables in **Modes** and stop. Do not fetch transcripts, sync/download audio,
   transcribe, write summaries/notes, or update state.
 
 Run all shell commands from `~/.agents/skills/scribe/scripts/`, not from the
@@ -168,7 +179,7 @@ In OpenCode they run through [Source A in OpenCode](references/teams-opencode.md
 Use the HiDock intake route above. Apply **Teams-first dedupe** before any
 transcription, including a batch run. The source mechanics end at **Summary and write**.
 
-## Summary and write (both sources)
+## Summary and write (every source)
 
 Steps 1–3 are the slow part of a run: for each meeting they read a full transcript and write
 its summary. When a run cleans more than one meeting and the host has subagents, run them as
@@ -237,7 +248,8 @@ One meeting, or no subagents on this host: run all eight steps serially.
    note path.
 5. **Glossary upkeep**: when you confirmed a garble → real name during the summary, append a
    `- wrong => Right` line to `<vault>/Scribe/Glossary.md`. Only confirmed ones.
-6. **State**: add the item to `.scribe-state.json` (`teams.<eventId>` or `hidock.<deviceFile>` →
+6. **State**: add the item to `.scribe-state.json` (`teams.<eventId>`, `hidock.<deviceFile>`, or
+   `voicememos.<memo id>` →
    note path, plus `skipped.<id>` → reason). On an OpenCode Teams run,
    `claude_session_payloads.py` prints the `state teams.<eventId> -> <note path>` line to copy.
    When Alex asks to recover a previously skipped
@@ -246,7 +258,8 @@ One meeting, or no subagents on this host: run all eight steps serially.
    historical skips unless requested. At the end, set `last_run` to now (ISO), and move a
    source cursor only for a source that actually ran to completion: `teams_last_run` after the
    calendar search and every fetch finished, `hidock_last_run` after the device answered `list`
-   and the batch finished. A run with the device unplugged (exit 2/3/4), a Teams-only run, or a
+   and the batch finished, `voicememos_last_run` after `voicememos.py list` and every memo's
+   transcription finished. A run with the device unplugged (exit 2/3/4), a Teams-only run, or a
    run on a host without M365 leaves the other cursor where it was. A shared cursor would let a missed
    day fall behind `--since` and never come back. When a source cursor is absent, use
    `last_run`.
@@ -270,13 +283,16 @@ One meeting, or no subagents on this host: run all eight steps serially.
   "last_run": "2026-09-03T16:40:12Z",
   "teams_last_run": "2026-09-03T16:40:12Z",
   "hidock_last_run": "2026-09-03T16:35:02Z",
+  "voicememos_last_run": "2026-11-12T16:20:00Z",
   "teams": { "<eventId>": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1500 Weekly Design Review.md" },
   "hidock": { "2026Sep02-113150-Rec13.hda": "<vault>/Scribe/Meetings/Transcripts/2026-09-02 1131 EKSKubernetesBackstage Discussion.md" },
+  "voicememos": { "6C806FB3-8905-46CA-8988-9071EB286299": "<vault>/Scribe/Meetings/Transcripts/2026-11-12 0942 Memo about the QE agent.md" },
   "skipped": { "2026Sep02-150056-Rec17.hda": "teams-covers: 2026-09-02 1500 Weekly Design Review" }
 }
 ```
 
-Keys are the Teams event id and the device filename, so a re-run recognises both sources without
+Keys are the Teams event id, the device filename, and the memo's `ZUNIQUEID`, so a re-run
+recognises every source without
 re-fetching. `skipped` values start with the reason, then a short why.
 
 ## Note shape (what bard reads)
@@ -342,6 +358,10 @@ scribe_schema: scribe.transcript/1
 - Teams needs the M365 connector: Claude Code reads it directly, OpenCode through the
   `ask-claude` bridge ([Source A in OpenCode](references/teams-opencode.md)). A host with
   neither runs `/scribe hidock` only.
+- Voice Memos: iPhone memos reach the Mac only through iCloud. Alex's work Mac blocks iCloud
+  Drive by MDM; whether Voice Memos sync still works there is not verified. A memo iCloud has
+  not downloaded lists as `local: false` and cannot be transcribed until it is opened in the
+  app. Folder names are stored encrypted (`ZENCRYPTEDNAME`), so scribe cannot filter by folder.
 - In OpenCode, look for the payload in the subagent's session artifacts, never in its
   reply: it has no write tool and a long reply can be truncated without saying so.
 - `m365 calendar search` drops recurring instances, because its `$filter` on
