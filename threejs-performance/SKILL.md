@@ -184,7 +184,7 @@ scene.add(lod);
 
 ## GPU Memory
 
-`info.memory.textures` counts textures; the byte math is yours. An RGBA8 texture costs 4 bytes per pixel, and with the default mip chain WebGPURenderer's byte estimate multiplies by 1.333 — a 2048 by 2048 color map is about 22 MB of VRAM. Three levers:
+`info.memory.textures` counts textures; the byte math is yours. An RGBA8 texture costs 4 bytes per pixel, and with the default mip chain WebGPURenderer's byte estimate multiplies by 1.333 — a 2048 by 2048 color map is about 22 MB of VRAM. The levers:
 
 - **Compressed KTX2.** A Basis Universal KTX2 texture (ETC1S or UASTC) is transcoded to a block-compressed format the GPU supports (ASTC, BC7, BC1 or BC3, ETC2, ETC1 or PVRTC) and stays compressed in VRAM, instead of expanding to 4 bytes per pixel like a PNG or JPEG does; when none of them fits the file (ASTC takes UASTC files only, ETC1 has no alpha, PVRTC needs power-of-two sizes), KTX2Loader falls back to uncompressed RGBA. Load it with KTX2Loader:
 
