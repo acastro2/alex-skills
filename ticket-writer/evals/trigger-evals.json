@@ -1,0 +1,50 @@
+[
+  {
+    "query": "create a Jira story from my branch",
+    "should_trigger": true
+  },
+  {
+    "query": "update PROJ-123 from the PR",
+    "should_trigger": true
+  },
+  {
+    "query": "backfill tickets for last week's merged PRs",
+    "should_trigger": true
+  },
+  {
+    "query": "turn this PR into a structured Jira ticket",
+    "should_trigger": true
+  },
+  {
+    "query": "write ACs in Given/When/Then for the ticket for this diff",
+    "should_trigger": true
+  },
+  {
+    "query": "which issue type should this branch's ticket be",
+    "should_trigger": true
+  },
+  {
+    "query": "file a GitHub issue for the flaky login test, interview me for the details",
+    "should_trigger": false
+  },
+  {
+    "query": "review this PR",
+    "should_trigger": false
+  },
+  {
+    "query": "write the PR description for this branch",
+    "should_trigger": false
+  },
+  {
+    "query": "what did we decide about the gateway ticket last month",
+    "should_trigger": false
+  },
+  {
+    "query": "transition PROJ-9 to Done",
+    "should_trigger": false
+  },
+  {
+    "query": "summarize my open Jira items",
+    "should_trigger": false
+  }
+]

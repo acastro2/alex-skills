@@ -1,0 +1,27 @@
+commit 2fa6c13b7e90d41c5a8e6f0b3d2917a4c85e0b66
+Author: Dana Reyes <dana.reyes@example.com>
+Date:   Tue Nov 10 16:41:08 2026 +0000
+
+    test(gateway): cover limit, refill and reject paths
+
+    Adds table tests for the bucket: burst up to the limit, refill over time,
+    and 429 once the bucket is empty.
+
+commit 9e08b5f1a4c37d62e0b8f5a19c4d7e32b6a05d18
+Author: Dana Reyes <dana.reyes@example.com>
+Date:   Tue Nov 10 14:12:55 2026 +0000
+
+    feat(gateway): read per-client limits from config
+
+    Default limit is 50 requests per second with a burst of 100.
+    A client can have its own limit under rate_limit.clients.<client_id>.
+
+commit c41d7a2e85b09f3d6a1c7e4b20d8f5936ae1c074
+Author: Dana Reyes <dana.reyes@example.com>
+Date:   Mon Nov  9 10:27:31 2026 +0000
+
+    feat(gateway): add per-client token bucket
+
+    One bucket per client id, read from the X-Client-Id request header.
+    A request with no X-Client-Id header uses the shared "anonymous" bucket.
+    An empty bucket returns 429 and the request is not forwarded upstream.

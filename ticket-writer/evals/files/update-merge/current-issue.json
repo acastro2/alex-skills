@@ -1,0 +1,13 @@
+{
+  "id": "10412",
+  "key": "PROJ-412",
+  "self": "https://<site>.atlassian.net/rest/api/3/issue/10412",
+  "fields": {
+    "summary": "[API-GATEWAY] Add per-client rate limiting",
+    "issuetype": {"id": "10005", "name": "Story"},
+    "status": {"name": "In Progress"},
+    "labels": ["gateway"],
+    "updated": "2026-11-10T16:52:19.482+0000",
+    "description": "## Intent & Success Criteria\n\nObjective: every API client is limited to its own request rate, so one noisy client cannot starve the others.\n\n- AC-001: Given a client with at least one token in its bucket, When it sends a request, Then the gateway forwards the request and removes one token\n- AC-002: Given a client with an empty bucket, When it sends a request, Then the gateway answers 429 and does not forward the request\n\n## Constraints & Guardrails\n\n- **DO NOT**: apply limits to the /healthz endpoint\n- Limits are per client id, read from the X-Client-Id header.\n\n## Technical Interface\n\n- Config keys: rate_limit.default_rps (50), rate_limit.burst (100), rate_limit.clients.<client_id>\n- Rejected request: HTTP 429, empty body.\n\n## Logic & Implementation Flow\n\n1. Read the client id from X-Client-Id.\n2. Take one token from that client's bucket.\n3. Forward the request, or answer 429 if the bucket is empty.\n\n## Validation Steps\n\n- Run the bucket table tests: go test ./gateway/ratelimit/...\n- Send 101 requests in one second from one client id and check that the 101st gets 429.\n\n## Resources & Team Context\n\n- Source: gateway/ratelimit/\n- Related PRs: example-org/api-gateway#212\n- Support channel: #api-gateway"
+  }
+}

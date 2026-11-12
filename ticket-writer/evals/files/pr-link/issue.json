@@ -1,0 +1,12 @@
+{
+  "id": "10088",
+  "key": "PROJ-88",
+  "self": "https://<site>.atlassian.net/rest/api/3/issue/10088",
+  "fields": {
+    "summary": "[BILLING-API] Add invoice CSV export",
+    "issuetype": {"id": "10005", "name": "Story"},
+    "status": {"name": "In Progress"},
+    "updated": "2026-11-09T08:15:42.310+0000",
+    "description": "## Intent & Success Criteria\n\nObjective: finance users can download a month of invoices as one CSV file.\n\n- AC-001: Given a month with invoices, When the user requests the export, Then the API returns one CSV row per invoice"
+  }
+}

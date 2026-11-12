@@ -1,0 +1,16 @@
+commit e60a4c8d12f7b3950a6e1c48d7f2b09a35c8e7d1
+Author: Dana Reyes <dana.reyes@example.com>
+Date:   Wed Nov 11 11:03:47 2026 +0000
+
+    test(gateway): assert Retry-After value matches bucket refill time
+
+    The header value is the whole seconds until the next token, minimum 1.
+
+commit 7d2b9e1f4a60c85d3b1e7f92a04c6d8e15b3a7f0
+Author: Dana Reyes <dana.reyes@example.com>
+Date:   Wed Nov 11 09:38:20 2026 +0000
+
+    feat(gateway): send Retry-After header on 429 responses
+
+    A rejected request now carries Retry-After: <seconds> so clients can back off.
+    Accepted requests are unchanged.

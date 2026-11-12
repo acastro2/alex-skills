@@ -1,0 +1,78 @@
+{
+  "skill_name": "ticket-writer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "create-story",
+      "prompt": "Create a Jira ticket for this branch. There is no shell or Jira access here. Read the fixture files under {FIXTURES}/create-story/ (git log, diff stat, and the issue types and Story field metadata of the project as the tools returned them). Reply with (a) the exact Atlassian MCP tool calls you would make, in order, with their key arguments (list the read calls too, even where a fixture already holds a result), and (b) the issue title and body, if the task needs one. I will run the calls myself.",
+      "expected_output": "A Story title like [API-GATEWAY] Add per-client rate limiting (80 characters or fewer) and a body with the six ## sections. Acceptance criteria in Given/When/Then, mirrored into customfield_10234. Calls in order: getAccessibleAtlassianResources, a PROJ type lookup, searchJiraIssuesUsingJql for a duplicate, then createJiraIssue with contentFormat markdown and the Story type from the project's own list. It asks for the project to be confirmed before the create and does not claim the issue exists.",
+      "files": [
+        "evals/files/create-story/git-log.txt",
+        "evals/files/create-story/diff-stat.txt",
+        "evals/files/create-story/issue-types.json",
+        "evals/files/create-story/story-fields.json"
+      ],
+      "expectations": [
+        "[code] Title matches `\\[[A-Z][A-Z0-9-]+\\] \\S` and is at most 80 characters",
+        "[code] Body has the six sections as `##` headings (Intent, Constraints, Technical Interface, Logic, Validation, Resources; match by keyword)",
+        "[code] Body has Given, When and Then",
+        "[code] Calls list `getAccessibleAtlassianResources`, then `searchJiraIssuesUsingJql` before `createJiraIssue`",
+        "[code] Mirrors the ACs into `customfield_10234`",
+        "[code] Uses `contentFormat` markdown",
+        "[jev] Picks the Story type from the project's own type list",
+        "[jev] Asks Alex to confirm the project before the create",
+        "[jev] Does not claim it created the issue"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "update-merge",
+      "prompt": "Update PROJ-412 from these new commits. There is no shell or Jira access here. Read the fixture files under {FIXTURES}/update-merge/ (current-issue.json is what getJiraIssue returned for PROJ-412, and git-log.txt holds the new commits). Reply with (a) the exact Atlassian MCP tool calls you would make, in order, with their key arguments (list the read calls too, even where a fixture already holds a result), and (b) the issue title and body, if the task needs one. I will run the calls myself.",
+      "expected_output": "A merged body: both existing ACs and the DO NOT line stay word for word, a new AC covers the Retry-After header on 429, and Technical Interface and Validation get the new detail. The calls use editJiraIssue, not createJiraIssue. It says it re-reads updated right before the edit and merges again if it changed, and it does not claim the edit happened.",
+      "files": [
+        "evals/files/update-merge/current-issue.json",
+        "evals/files/update-merge/git-log.txt"
+      ],
+      "expectations": [
+        "[code] Keeps both existing AC lines word for word",
+        "[code] Keeps the existing `DO NOT:` line word for word",
+        "[code] Proposes `editJiraIssue` and no `createJiraIssue`",
+        "[jev] Adds a new AC for the new behaviour",
+        "[jev] Says it re-reads the issue's `updated` value right before the edit, and merges again if it changed",
+        "[jev] Does not claim it edited the issue"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "missing-type",
+      "prompt": "File a ticket in PROJ for a 2-day spike comparing two vector stores. There is no shell or Jira access here. Read the fixture files under {FIXTURES}/missing-type/ (the issue types of PROJ as the tool returned them). Reply with (a) the exact Atlassian MCP tool calls you would make, in order, with their key arguments (list the read calls too, even where a fixture already holds a result), and (b) the issue title and body, if the task needs one. I will run the calls myself.",
+      "expected_output": "It sees that PROJ has no Spike type, says so, and asks which type to use instead (for example Task). It does not create the ticket as a Spike, and does not fake one with a label or a title prefix.",
+      "files": [
+        "evals/files/missing-type/issue-types.json"
+      ],
+      "expectations": [
+        "[jev] Says the project has no Spike type",
+        "[jev] Asks Alex which type to use instead of choosing one itself",
+        "[jev] Does not fake the spike with a label or a title prefix",
+        "[code] Proposes no `createJiraIssue` with `issueTypeName` \"Spike\""
+      ]
+    },
+    {
+      "id": 4,
+      "name": "pr-link",
+      "prompt": "Link PR #57 to PROJ-88. There is no shell or Jira access here. Read the fixture files under {FIXTURES}/pr-link/ (issue.json is what getJiraIssue returned for PROJ-88, and pr.txt holds the PR's title and branch name). Reply with (a) the exact Atlassian MCP tool calls you would make, in order, with their key arguments (list the read calls too, even where a fixture already holds a result), and (b) the issue title and body, if the task needs one. I will run the calls myself.",
+      "expected_output": "It says no Atlassian MCP tool writes a remote link, so the link comes from the GitHub integration: put PROJ-88 in the PR title, the branch name or a commit message. Then it checks with getJiraIssueRemoteIssueLinks or getTeamworkGraphContext. It names no remote-link write call and does not claim the link exists.",
+      "files": [
+        "evals/files/pr-link/issue.json",
+        "evals/files/pr-link/pr.txt"
+      ],
+      "expectations": [
+        "[jev] Says no Atlassian MCP tool writes a remote link",
+        "[jev] Says to put PROJ-88 in the PR title, branch name or a commit message",
+        "[code] Names `getJiraIssueRemoteIssueLinks` or `getTeamworkGraphContext` to check the link",
+        "[code] Does not name a remote-link write call (`remotelink`, `createRemote`)",
+        "[jev] Does not claim the link exists now"
+      ]
+    }
+  ]
+}

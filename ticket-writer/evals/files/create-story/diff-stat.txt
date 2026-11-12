@@ -1,0 +1,6 @@
+ config/gateway.example.yaml       |   9 ++++
+ gateway/middleware/ratelimit.go   |  58 ++++++++++++++++++++++
+ gateway/ratelimit/bucket.go       |  96 ++++++++++++++++++++++++++++++++
+ gateway/ratelimit/bucket_test.go  | 124 ++++++++++++++++++++++++++++++++++++++++++
+ gateway/ratelimit/config.go       |  41 +++++++++++++
+ 5 files changed, 328 insertions(+)

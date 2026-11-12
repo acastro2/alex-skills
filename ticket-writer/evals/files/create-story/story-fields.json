@@ -1,0 +1,17 @@
+{
+  "startAt": 0,
+  "maxResults": 50,
+  "total": 7,
+  "fields": [
+    {"fieldId": "summary", "name": "Summary", "required": true, "schema": {"type": "string", "system": "summary"}},
+    {"fieldId": "issuetype", "name": "Issue Type", "required": true, "schema": {"type": "issuetype", "system": "issuetype"}},
+    {"fieldId": "description", "name": "Description", "required": false, "schema": {"type": "string", "system": "description"}},
+    {"fieldId": "priority", "name": "Priority", "required": false, "schema": {"type": "priority", "system": "priority"},
+     "allowedValues": [{"id": "2", "name": "High"}, {"id": "3", "name": "Medium"}, {"id": "4", "name": "Low"}]},
+    {"fieldId": "labels", "name": "Labels", "required": false, "schema": {"type": "array", "items": "string", "system": "labels"}},
+    {"fieldId": "customfield_10234", "name": "Acceptance Criteria", "required": false,
+     "schema": {"type": "string", "custom": "com.atlassian.jira.plugin.system.customfieldtypes:textarea", "customId": 10234}},
+    {"fieldId": "customfield_10301", "name": "Story Points", "required": false,
+     "schema": {"type": "number", "custom": "com.atlassian.jira.plugin.system.customfieldtypes:float", "customId": 10301}}
+  ]
+}

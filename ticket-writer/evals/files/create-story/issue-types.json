@@ -1,0 +1,12 @@
+{
+  "startAt": 0,
+  "maxResults": 50,
+  "total": 5,
+  "issueTypes": [
+    {"id": "10001", "name": "Task", "description": "A small, distinct piece of work.", "subtask": false, "hierarchyLevel": 0},
+    {"id": "10002", "name": "Epic", "description": "A big user story that needs to be broken down.", "subtask": false, "hierarchyLevel": 1},
+    {"id": "10003", "name": "Subtask", "description": "A small piece of work that is part of a larger task.", "subtask": true, "hierarchyLevel": -1},
+    {"id": "10004", "name": "Bug", "description": "A problem or error.", "subtask": false, "hierarchyLevel": 0},
+    {"id": "10005", "name": "Story", "description": "Functionality or a feature expressed as a user goal.", "subtask": false, "hierarchyLevel": 0}
+  ]
+}
