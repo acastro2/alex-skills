@@ -27,14 +27,12 @@ keeps every recording until HiNotes removes it; scribe never deletes.
 
    It runs `hidock_pull.py sync` (skips files already present with the same size, already
    transcribed in `--done-dir`, shorter than 120 s, or older than the date), then
-   `transcribe.py` on up to `jobs` (default 3, cap 4) new MP3s **at once** (whisper
+   `transcribe.py` on each new MP3 (default 1 at a time, because Hex is one app; Hex
    transcription plus local speaker diarization in one run), and deletes each MP3 once its
    JSON exists. One JSON line per file from the sync (`downloaded` or `skipped` + reason),
    then one `=== transcribing <stem> ===` per file on stderr, plus a
    `=== done|failed <stem> rc=N wall=Ns ===` line per file. A failed file keeps its MP3 and the
-   script exits 1; the next run retries it. Measured 2026-10-01 on 6 recordings: serial
-   transcribe 112 s, 3-wide pool 66 s; per-file wall grows ~1.4x under the pool, and the fixed
-   per-run model load overlaps. ~7 MB/s download; a 40-minute call downloads in a few seconds.
+   script exits 1; the next run retries it. ~7 MB/s download; a 40-minute call downloads in a few seconds.
    Every download is size- and magic-byte-checked. `--done-dir` is what stops re-downloads once
    the local audio is gone: a recording is done when `<stem>.json` exists there.
 3. If you need the steps apart (one file, a re-run), the pieces are:
@@ -42,20 +40,19 @@ keeps every recording until HiNotes removes it; scribe never deletes.
    ```bash
    uv run --with pyusb python hidock_pull.py sync -o ~/.scribe/audio \
      --done-dir ~/.scribe/transcripts --since <YYYY-MM-DD> --min-seconds 120
-   uv run --with mlx-whisper --with mlx-audio python transcribe.py ~/.scribe/audio/<stem>.mp3 \
+   uv run --with mlx-audio python transcribe.py ~/.scribe/audio/<stem>.mp3 \
      -o ~/.scribe/transcripts/<stem>.json
    ```
 
-   Runs offline with the cached `mlx-community/whisper-large-v3-turbo` (~95× realtime on the
-   M5 Max, so a 40-minute call takes ~30 s; 18 recordings, 8.7 hours of audio, took 6 minutes on
-   2026-09-03). Start time comes from the filename. Speaker labels come from
+   Runs offline through Hex's Parakeet v3 (see **ASR is Hex** in `../SKILL.md`; 60 s of audio
+   took about 1 s on 2026-11-13). Start time comes from the filename. Speaker labels come from
    `mlx-community/Nemotron-3-Diarization` via mlx-audio: each ASR segment takes the label of the
    span it overlaps most, turns split on 2 s pauses, on speaker change, and at 90 s, and spans
    with no overlap stay unlabeled. The diarizer adds seconds, not minutes (72-minute call: 1.96 s,
    1.08 GB peak, 2026-09-24). If diarization cannot run, the note is still written unlabeled and
    provenance says `diarization_status: skipped` or `failed`. First download needs
-   `--allow-download` once; `transcribe.py` sets `HF_HUB_DISABLE_XET=1` itself. The script drops
-   the repeated-line hallucinations whisper produces on silence. **Then delete the MP3**
+   `--allow-download` once (diarizer only); `transcribe.py` sets `HF_HUB_DISABLE_XET=1` itself.
+   The script still drops repeated-line hallucinations on silence. **Then delete the MP3**
    (`rm ~/.scribe/audio/<stem>.mp3`)
    once the JSON exists: Alex wants no local audio copies, the device keeps the recording. The
    JSON carries the file's sha256 in provenance, so the source stays verifiable.

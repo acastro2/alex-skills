@@ -304,7 +304,7 @@ def test_output_matches_transcript_contract_and_schema_version(tmp_path, capsys)
     for turn in data["turns"]:
         assert set(turn.keys()) == {"start", "speaker", "text"}
     provenance_keys = {
-        "hidock_file", "audio_sha256", "asr_model", "asr_language",
+        "hidock_file", "audio_sha256", "asr_engine", "asr_model", "asr_language",
         "duration_s", "segment_count", "dropped_repeats",
         "diarization_model", "diarization_status", "diarization_spans",
     }

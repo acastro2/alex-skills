@@ -38,10 +38,10 @@ deletes a memo.
      --voicememo-id <id> --start <start> [--title "<title>"]
    ```
 
-   Exit 4 = the memo has no Apple transcript: fall back to whisper with the same output path:
+   Exit 4 = the memo has no Apple transcript: fall back to Hex (Parakeet v3) with the same output path:
 
    ```bash
-   uv run --with mlx-whisper --with mlx-audio python transcribe.py "<audio>" \
+   uv run --with mlx-audio python transcribe.py "<audio>" \
      -o ~/.scribe/transcripts/vm-<id>.json --source voicememo --voicememo-id <id> \
      --start <start> [--title "<title>"]
    ```
@@ -51,7 +51,7 @@ deletes a memo.
    length). **Check `coverage`:** today's 28-minute memo ended its transcript at 78% (verified
    2026-11-12); whether that was silence or a cut-off transcript is not known. Below 0.9, say so
    in the note's footer. Apple's text has no speaker labels, so its turns carry `speaker: null`
-   and the summary refers to "the speaker" unless the text names people. Apple-vs-whisper
+   and the summary refers to "the speaker" unless the text names people. Apple-vs-Parakeet
    accuracy on Alex's voice is not measured yet.
 5. Title: the memo's own title when it has one, else a calendar match (a memo recorded in a
    meeting slot), else a short factual title from content (`Memo about <topic>`), else

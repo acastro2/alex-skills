@@ -6,7 +6,7 @@ description: >-
   Microsoft 365 connector — directly in Claude Code, or through the ask-claude
   subagent in OpenCode), HiDock P1 call recordings (pulled over USB), and Apple Voice
   Memos on the Mac (iPhone memos arrive through iCloud); recordings are transcribed
-  locally with mlx-whisper and speaker-diarized locally with mlx-audio. Use when the user
+  locally with Hex (Parakeet v3) and speaker-diarized locally with mlx-audio. Use when the user
   runs /scribe, asks to fetch, pull, clean, transcribe or save meeting transcripts,
   call recordings, voice memos or one recording, to add speaker labels or diarize a call,
   to sync the HiDock, or to prepare meeting notes for bard. Not for writing notes into
@@ -60,14 +60,22 @@ graph TD
   deleted after transcription; the device keeps the only copy), `~/.scribe/transcripts/`
   (normalized JSON, kept), `~/.scribe/raw/` (raw M365 payloads)
 - Scripts: `~/.agents/skills/scribe/scripts/` — run from that directory with
-  `uv run --with pyusb --with mlx-whisper --with mlx-audio python <script>` (uv caches the env; first run ~45 s)
+  `uv run --with pyusb --with mlx-audio python <script>` (uv caches the env; first run ~45 s)
 
-**First run on a new Mac**: `brew install libusb ffmpeg` (pyusb needs libusb; whisper, ffprobe
-and the diarizer need ffmpeg), then run `transcribe.py` once with `--allow-download` so the
-`mlx-community/whisper-large-v3-turbo` (1.5 GB) and `mlx-community/Nemotron-3-Diarization`
-(~200 MB) weights land in the Hugging Face cache; every later run stays offline. The diarizer
-download hits a Hugging Face Xet bug; `transcribe.py` sets `HF_HUB_DISABLE_XET=1` for it. On this
-Mac both were already present on 2026-09-24.
+**ASR is Hex** (Alex, 2026-11-13; it replaced mlx-whisper). `transcribe.py` drives the running
+Hex app (`~/Applications/Hex.app`, override with `SCRIBE_HEX_BIN`): it cuts the audio into 30 s
+WAV chunks with ffmpeg, runs `hex transcribe --json --model parakeet_v3` per chunk, and stamps
+each chunk's text with the chunk start, so turn times are 30 s coarse. It turns Hex's Labs
+`transcribe-files` on for the run and back off after if it was off. Hex must be running
+(`hex start`); one Hex means one transcription at a time.
+
+**First run on a new Mac**: `brew install libusb ffmpeg`, install Hex
+(`brew install --cask anomalyco/tap/hex`), and put its models in the Hugging Face cache:
+`handy-computer/parakeet-tdt-0.6b-v3-gguf` and `handy-computer/silero-vad-v6.2-gguf`. Then
+`hex model use parakeet_v3` (Hex finds cached models but may keep another one selected). The
+diarizer `mlx-community/Nemotron-3-Diarization` (~200 MB) also goes in the cache. The corporate
+network blocks huggingface.co on every network (Prisma), so models arrive by AirDrop of the cache
+folders, zipped with `ditto -c -k --keepParent` to keep the snapshot symlinks.
 
 ## Hard constraints (never violate)
 
@@ -77,7 +85,7 @@ Mac both were already present on 2026-09-24.
 - **Read-only on Voice Memos.** `voicememos.py` reads a temp copy of the database and the
   audio in place. Never edit, move, rename, or delete a memo or the store.
 - **Read-only on Microsoft 365.** Calendar search and transcript read only.
-- **Local transcription.** Local whisper only. HiNotes cloud is not a
+- **Local transcription.** Hex on this Mac or Apple's on-device memo transcript only. HiNotes cloud is not a
   source (no API, no export). A summary subagent must run this session's model; its only write
   targets are the meeting's JSON and its summary file.
 - **Nothing is held and nothing is withheld.** Every work recording and every Teams transcript
@@ -348,12 +356,13 @@ scribe_schema: scribe.transcript/1
 - The diarizer sometimes collapses a call to one label: a 63-minute, three-person call on
   2026-09-24 came back with a single voice and 5 labelled turns. A single-label result on a
   known multi-person call is a miss, not a quiet meeting.
-- Re-transcribing does not reliably reproduce the text: of 15 recordings re-run on 2026-09-24,
-  11 came back byte-identical and 4 differed by 1-115 words (mlx-whisper's temperature fallback
-  plus the unpinned `uv run --with` versions). Check the text before overwriting an existing note.
+- Re-transcribing may not reproduce the text exactly (seen with mlx-whisper, 2026-09-24; not
+  measured with Hex). Check the text before overwriting an existing note.
+- Hex turn times are 30 s chunks, not word times, and a word cut at a chunk edge can be lost
+  or garbled. Parakeet accuracy on long multi-speaker calls is not measured yet.
 - Diarization failure degrades to the old unlabeled note and says why on stderr; provenance
   records `diarization_status` (ok / skipped / failed).
-- Whisper still garbles names. The glossary fixes the known ones; the summary step catches the
+- The speech model still garbles names. The glossary fixes the known ones; the summary step catches the
   rest only when you check.
 - Teams needs the M365 connector: Claude Code reads it directly, OpenCode through the
   `ask-claude` bridge ([Source A in OpenCode](references/teams-opencode.md)). A host with

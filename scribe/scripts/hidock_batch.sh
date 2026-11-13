@@ -6,7 +6,8 @@
 set -euo pipefail
 SINCE="${1:?usage: hidock_batch.sh <since YYYY-MM-DD> [min-seconds] [jobs]}"
 MIN_SECONDS="${2:-120}"
-JOBS="${3:-3}"
+# Default 1 job: Hex is one app, so parallel ASR calls only queue behind each other.
+JOBS="${3:-1}"
 AUDIO="$HOME/.scribe/audio"
 DONE="$HOME/.scribe/transcripts"
 cd "$(dirname "$0")"
@@ -27,7 +28,7 @@ uv run --with pyusb python hidock_pull.py sync -o "$AUDIO" \
   --done-dir "$DONE" --since "$SINCE" --min-seconds "$MIN_SECONDS"
 
 # Build the transcription env once so parallel jobs do not race to create it.
-uv run --with mlx-whisper --with mlx-audio python -c "pass"
+uv run --with mlx-audio python -c "pass"
 
 running=()
 failed=0
@@ -38,7 +39,7 @@ for f in "$AUDIO"/*.mp3; do
   echo "=== transcribing $stem ===" >&2
   (
     start=$SECONDS
-    if uv run --with mlx-whisper --with mlx-audio python transcribe.py "$f" -o "$DONE/$stem.json"; then
+    if uv run --with mlx-audio python transcribe.py "$f" -o "$DONE/$stem.json"; then
       rm -f "$f"
       echo "=== done $stem rc=0 wall=$((SECONDS - start))s ===" >&2
       exit 0

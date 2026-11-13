@@ -2,12 +2,12 @@
 """Transcribe a local HiDock call recording into scribe.transcript/1 JSON.
 
 Input is a mono 48 kHz MP3 saved from a HiDock P1 as `<stem>.mp3`. ASR runs
-via mlx-whisper (Apple Silicon); mlx_whisper decodes audio itself through
-ffmpeg (Homebrew, must be on PATH), and duration comes from ffprobe.
+through the running Hex app (Parakeet v3) in 30 s chunks cut with ffmpeg
+(Homebrew, must be on PATH); duration comes from ffprobe.
 
 Usage:
     python3 transcribe.py <audio> -o <out.json> \\
-        [--model mlx-community/whisper-large-v3-turbo] [--language en] \\
+        [--model parakeet_v3] [--language en] \\
         [--diarization-model mlx-community/Nemotron-3-Diarization] \\
         [--start ISO8601] [--tz America/Chicago] [--title TEXT] \\
         [--hidock-name 2026Sep02-150056-Rec17.hda] [--paragraph-gap 2.0] \\
@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -49,7 +50,18 @@ from zoneinfo import ZoneInfo
 
 import scribe_common as common
 
-DEFAULT_MODEL = "mlx-community/whisper-large-v3-turbo"
+DEFAULT_MODEL = "parakeet_v3"
+
+
+def _default_hex_bin() -> str:
+    env = os.environ.get("SCRIBE_HEX_BIN")
+    if env:
+        return os.path.expanduser(env)
+    user = os.path.expanduser("~/Applications/Hex.app/Contents/MacOS/hex")
+    return user if os.path.exists(user) else "/Applications/Hex.app/Contents/MacOS/hex"
+
+
+HEX_BIN = _default_hex_bin()
 DEFAULT_DIARIZATION_MODEL = "mlx-community/Nemotron-3-Diarization"
 DEFAULT_LANGUAGE = "en"
 MAX_TURN_SECONDS = 90.0
@@ -72,17 +84,80 @@ _SPEAKER_LABEL_PATTERN = re.compile(r"^speaker (\d+)$")
 
 # --- seams: real ASR and subprocess boundaries ------------------------------
 
-def asr(audio_path: str, model: str, language: str) -> dict:
-    """Default ASR: mlx_whisper. Imported lazily so tests never import mlx."""
-    import mlx_whisper
-
-    return mlx_whisper.transcribe(
-        audio_path,
-        path_or_hf_repo=model,
-        language=language,
-        condition_on_previous_text=False,
-        word_timestamps=False,
+def split_audio(audio_path: str, out_dir: str, chunk_seconds: float) -> list[str]:
+    """Cut audio into fixed 16 kHz mono WAV chunks (c0000.wav, ...) with ffmpeg."""
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", audio_path, "-f", "segment",
+         "-segment_time", str(chunk_seconds), "-ac", "1", "-ar", "16000",
+         "-c:a", "pcm_s16le", os.path.join(out_dir, "c%04d.wav")],
+        check=True,
+        capture_output=True,
     )
+    return sorted(str(p) for p in Path(out_dir).glob("c*.wav"))
+
+
+def _is_no_speech(stdout: str) -> bool:
+    try:
+        return json.loads(stdout).get("code") == "no-speech"
+    except (ValueError, AttributeError):
+        return False
+
+
+def hex_asr(
+    audio_path: str,
+    model: str,
+    language: str,
+    *,
+    run=subprocess.run,
+    split=split_audio,
+    chunk_seconds: float = 30,
+    hex_bin: str | None = None,
+) -> dict:
+    """ASR through the running Hex app. Hex's CLI returns text only, so each fixed
+    chunk's text takes the chunk's start time."""
+    hex_bin = hex_bin or HEX_BIN
+
+    def hex_run(*args: str):
+        return run([hex_bin, *args], capture_output=True, text=True)
+
+    listing = hex_run("labs", "list")
+    if listing.returncode == 3:
+        raise RuntimeError("Hex is not running; run `hex start` and retry")
+    if listing.returncode != 0:
+        raise RuntimeError(f"Hex `labs list` failed: {listing.stderr.strip()}")
+    line = next((ln for ln in listing.stdout.splitlines() if ln.startswith("transcribe-files")), "")
+    was_off = line.split()[1:2] == ["off"]
+    if was_off:
+        hex_run("labs", "on", "transcribe-files")
+    try:
+        segments: list[dict] = []
+        with tempfile.TemporaryDirectory(prefix="scribe-hex-") as tmp:
+            for i, chunk in enumerate(split(audio_path, tmp, chunk_seconds)):
+                proc = hex_run("transcribe", "--json", "--model", model, "--language", language, chunk)
+                if proc.returncode == 4 and _is_no_speech(proc.stdout):
+                    continue  # Hex 3.4: silent chunk is exit 4, code "no-speech"; same as empty text
+                if proc.returncode != 0:
+                    raise RuntimeError(
+                        f"Hex transcribe failed on {Path(chunk).name}: {proc.stderr.strip()}"
+                    )
+                text = str(json.loads(proc.stdout).get("text") or "").strip()
+                if not text:
+                    continue
+                segments.append({
+                    "id": i,
+                    "start": float(i * chunk_seconds),
+                    "end": float((i + 1) * chunk_seconds),
+                    "text": text,
+                })
+    finally:
+        if was_off:
+            hex_run("labs", "off", "transcribe-files")
+    return {"segments": segments, "language": language}
+
+
+def asr(audio_path: str, model: str, language: str) -> dict:
+    """Default ASR: the running Hex app."""
+    return hex_asr(audio_path, model, language)
 
 
 def probe_duration(audio_path: str) -> float | None:
@@ -290,7 +365,7 @@ def main(
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("audio", help="Path to the local audio file (mp3)")
     parser.add_argument("-o", "--out", required=True, help="Path to write the normalized transcript JSON")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="mlx-whisper model repo")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Hex model id from `hex model list`")
     parser.add_argument("--language", default=DEFAULT_LANGUAGE, help="Language code for ASR")
     parser.add_argument(
         "--diarization-model", default=DEFAULT_DIARIZATION_MODEL,
@@ -377,6 +452,7 @@ def main(
     provenance = {
         "hidock_file": _resolve_hidock_file(args) if args.source == "hidock" else None,
         "audio_sha256": _sha256_file(args.audio),
+        "asr_engine": "hex",
         "asr_model": args.model,
         "asr_language": language,
         "duration_s": duration,
