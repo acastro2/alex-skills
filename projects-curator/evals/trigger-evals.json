@@ -10,5 +10,8 @@
   {"query": "create a Jira story from my current branch", "should_trigger": false},
   {"query": "sweep today's sessions into my Obsidian notes", "should_trigger": false},
   {"query": "what did we decide about the board layout last month?", "should_trigger": false},
-  {"query": "pull my latest Teams chats and mail into the raw store", "should_trigger": false}
+  {"query": "pull my latest Teams chats and mail into the raw store", "should_trigger": false},
+  {"query": "check our team's Confluence status pages against Jira and fix whatever is stale", "should_trigger": true},
+  {"query": "the readiness page on our wiki still says prod is not started; make the wiki match Jira", "should_trigger": true},
+  {"query": "summarize the platform overview page from our Confluence space for me", "should_trigger": false}
 ]

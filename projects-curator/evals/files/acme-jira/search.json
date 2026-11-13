@@ -1,0 +1,1 @@
+{"jql": "parent = ACME-80", "issues": [{"key": "ACME-78", "fields": {"summary": "Older child", "status": {"name": "Done"}}}], "isLast": true}

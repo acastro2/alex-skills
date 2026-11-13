@@ -1,0 +1,6 @@
+{"issues": [
+ {"key": "ACME-90", "fields": {"summary": "Preprod smoke tests", "status": {"name": "To Do"}, "assignee": {"displayName": "dev-b"},
+   "description": "Done when:\n- smoke suite runs on every preprod deploy\n- preprod smoke failures page the on-call\n- preprod smoke dashboard exists"}},
+ {"key": "ACME-91", "fields": {"summary": "Search service hardening", "status": {"name": "In Progress"}, "assignee": {"displayName": "dev-c"},
+   "description": "Done when:\n- p95 latency under 300 ms on prod\n- load test passes on preprod\n- runbook for search-down published"}}
+]}

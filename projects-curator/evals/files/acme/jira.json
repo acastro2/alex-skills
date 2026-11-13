@@ -1,0 +1,17 @@
+{"issues": [
+ {"key": "ACME-40", "fields": {"summary": "Self-service data access", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "duedate": "2026-12-04", "labels": ["theme-data"],
+   "description": "Objective: let analysts request and get data access without a ticket queue.",
+   "issuelinks": [],
+   "comment": {"comments": [{"author": "Head of Data", "created": "2026-11-09", "body": "Approved. Go ahead and build the access request API."}]}}},
+ {"key": "ACME-41", "fields": {"summary": "Access request API", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-40"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-10"}},
+ {"key": "ACME-55", "fields": {"summary": "Unified deploy pipeline", "issuetype": {"name": "Epic"},
+   "status": {"name": "To Do"}, "duedate": "2026-12-01", "labels": ["theme-platform", "parked"], "issuelinks": [],
+   "description": "Objective: one deploy path for every service. Parked until the platform team has capacity."}},
+ {"key": "ACME-60", "fields": {"summary": "Data access audit logging", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "labels": ["theme-data"], "issuelinks": [],
+   "description": "Objective: log every data access grant so audits can trace who got what. Supports self-service data access."}},
+ {"key": "ACME-20", "fields": {"summary": "Faster incident response", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "duedate": "2026-12-15", "labels": ["theme-platform"], "issuelinks": []}}
+]}

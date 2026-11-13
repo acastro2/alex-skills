@@ -1,0 +1,14 @@
+{"config": {"scope": "team",
+  "board": {"tool": "Confluence database", "database_id": "900001", "scratch_database_id": "900002",
+    "fields": ["Row ID","Title","Theme","Stage","Role","Sponsor","Impact","Milestone","Milestone date","Key Artifact","Execution Link","Decisions"],
+    "read_only_pages": ["700009"]},
+  "tracker": {"tool": "Jira", "project": "ACME", "areas": "project = ACME", "anchor_link_type": "Implements",
+    "parked_label": "parked", "label_contract": null},
+  "forum": null, "themes": ["theme-platform", "theme-data"], "audience": "VP Engineering",
+  "week": "America/Chicago, Mon-Fri", "evidence": {"team_facts": "none this week"},
+  "wiki": {"pages": [
+    {"id": "700001", "title": "Platform Home", "bucket": "status", "scope": "status table only"},
+    {"id": "700002", "title": "Runbooks", "bucket": "check"},
+    {"id": "700003", "title": "Release Notes", "bucket": "retire"},
+    {"id": "700004", "title": "Tools Overview", "bucket": "mirror"}]}},
+ "rows": {}, "tracker": {}, "wiki": {}, "ideas": {}, "open_items": [], "not_doing": []}

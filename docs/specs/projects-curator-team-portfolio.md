@@ -81,3 +81,26 @@ byte-identical; one approved cell change changes only that cell; an unknown colu
 - Whether the overnight agents still run on the contract (affects how strict rule 1 must be: it stays
   strict regardless).
 - P3 (other surfaces, a generated exec view) is out of scope.
+
+## Revision 2026-11-13: database board
+
+- The board is one Confluence database, one row per initiative, all stages (1. Exploring to 5. Stopped).
+- From 2. Committed on, a row links exactly one anchor epic in Jira. Other epics link to the anchor with `tracker.anchor_link_type`.
+- One owner per field. Row: Title, Theme, Stage, Role, Sponsor, Impact, Milestone, Milestone date, Key Artifact, Decisions. Anchor epic: status, due date, child epics. The epic's theme label (a `config.themes` value) echoes Theme. A mismatch fixes the side that does not own the fact.
+- Stage to anchor status: Committed = To Do; Delivering = In Progress; Delivered = Done; Stopped = Done plus a "won't do" comment. Exploring has no epic.
+- Promotion to 2. Committed: pick or propose an anchor epic (Needs-you lines), set the row's Jira work item field, add the row URL as a remote link on the epic. The row is never deleted.
+- New hard rule, all modes: never write board fields into a Jira description (no version check, so it races other editors).
+- Rows are edited by position, so the database has a `Row ID` field (`R-<n>`). Every write matches Row ID on a fresh CSV read, then reads back. Whether `snapshotToken` guards database writes is unverified; Row ID plus read-back is the real guard.
+- Never `delete_entry`; a row leaves only through 5. Stopped. The first write goes to a scratch database until Alex approves the real one.
+- `board_table.py` and its tests are deleted. Which wiki content may be written is SKILL.md hard rule 2 (database board, roll-up draft, and the `wiki.pages` buckets that allow writes).
+
+## Revision 2026-11-13: wiki pass
+
+- Pages come from config `wiki.pages` (id, title, bucket, scope). Buckets: portfolio (curator owns; Alex lifted read-only), status, mirror (GitHub wins; never edit GitHub), check (broken-link fixes only), retire (listed once; Alex archives by hand).
+- The wiki pass runs in the weekly session after the project pass and board lines, with the same review gate. Lines are `P#`; order R, F, W, B, P. Team mode answers go through the `question` tool.
+- Evidence order: live Jira (`getJiraIssue`, view full, never a search), canonical GitHub doc at its default branch, then the facts file. No live evidence: leave alone, report UNVERIFIED.
+- Cross-page contradiction: live evidence decides; fix every stale page and quote both lines in the Why. "Last reviewed" changes only with an approved edit on that page.
+- Every page edit passes the full exclusion screen: plain text, no @-mentions, vendor-neutral names.
+- Write path: no whole-body writes. Read html, keep the snapshotToken, use `edits` on the full `data-local-id`, dry run first, write with the latest token, re-read on `snapshot_stale`, read back and check only target nodes changed.
+- Seen 2026-11-13: the space has no space instructions; databases are off, so the board waits for a space admin and the scratch database lives in Alex's personal space.
+- Ledger: page writes go under `wiki.<pageId>.updates` (date, node, old, new), so a rerun posts nothing twice.

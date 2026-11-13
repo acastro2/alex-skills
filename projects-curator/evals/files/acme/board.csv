@@ -1,0 +1,5 @@
+Row ID,Title,Theme,Stage,Role,Sponsor,Impact,Milestone,Milestone date,Key Artifact,Execution Link,Decisions
+R-2,Faster incident response,theme-platform,3. Delivering,Builds,VP Engineering,Target: halve time to page,Pager rollout to all teams,2026-12-15,https://wiki.acme.test/adr-12,ACME-20,
+R-9,Unified deploy pipeline,theme-platform,2. Committed,Builds,VP Engineering,Target: one deploy path for every service,Pipeline design accepted,2026-12-01,https://wiki.acme.test/rfc-31,ACME-55,
+R-7,Self-service data access,theme-data,2. Committed,Builds,Head of Data,Target: access requests in hours not weeks,Access request API live,2026-11-20,https://wiki.acme.test/adr-19,ACME-40,
+R-4,Cost visibility for teams,theme-data,1. Exploring,Influences,,,Options paper,2026-12-10,,,

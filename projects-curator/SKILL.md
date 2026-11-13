@@ -4,7 +4,8 @@ description: >
   Turn scattered evidence of what a team did (AI sessions, decision records, tickets, PRs) into a
   small, executive-legible board of initiatives, and keep it true week after week. Use for board
   population, row updates and comments, weekly maintenance, full audits, ticket and epic upkeep
-  against the board, decision-forum close-outs, and a weekly roll-up. Works with any board, tracker
+  against the board, decision-forum close-outs, a weekly roll-up, and keeping the team's wiki
+  pages (roadmap, status, catalog) true against the tracker. Works with any board, tracker
   or forum; org facts live in the local ledger. Org-visible writes need a numbered user review,
   decisions first. Not for writing one ticket, that is ticket-writer, or for personal notes, that
   is bard.
@@ -50,8 +51,10 @@ This skill holds no org facts. Before the first run, ask Alex for these and stor
 | `audience` | Who reads the board, and which executive it must make sense to |
 | `week` | The time zone and the week boundaries |
 | `scope` | `personal` (Alex's own record, the default) or `team` (the team's portfolio; see Team mode) |
-| `board.columns`, `board.page_id`, `board.scratch_page_id`, `board.read_only_pages` | For a wiki-page board: the table's exact header row, the one page the run may write, a private copy for the first write, and pages it must never write (a vision page, a hand-kept hub) |
+| `board.database_id`, `board.scratch_database_id`, `board.fields`, `board.read_only_pages` | The database that is the board; a private scratch database for the first write; the exact database field names, including `Row ID`; pages never written (a vision page, a hand-kept hub) |
+| `tracker.anchor_link_type`, `tracker.parked_label` | The issue link type that ties a child epic to its anchor epic; the label that marks an epic as parked (read only) |
 | `tracker.label_contract` | Where a tracker's label contract lives (repo, path, ref), when agents or automation act on labels |
+| `wiki.pages` | Pages the wiki pass keeps true: id, title, bucket (portfolio, status, mirror, check, retire), scope. Ids live only in the ledger |
 | `evidence.team_facts` | The `weekly-report` facts file that already holds the team's PRs and tracker tickets |
 
 A `config` key that is missing is a question for Alex, never a guess. Read the live field names and allowed values before the first write: a board drifts, and a stale column name fails the request.
@@ -63,21 +66,25 @@ Use this rule to place every item before you write it anywhere: **the tracker ho
 | Surface | Holds | Row or item |
 |---|---|---|
 | **Tracker** | Hands-on work | Epic, story, spike, request |
-| **Board** | Bets and value | One row per initiative, at a stage: `1. Exploring` → `2. Committed` → `3. Delivering` → `4. Delivered`, or `5. Stopped` |
+| **Board** | Bets and value | One database row per initiative, at a stage: `1. Exploring` → `2. Committed` → `3. Delivering` → `4. Delivered`, or `5. Stopped` |
 | **Forum** | Decisions | One item per topic |
 
 **Roll-up rules:**
 
-1. **Every epic in the team's areas rolls up to exactly one board row.** Use a plain link on the epic. One row can hold many epics. Add no new field and no process change.
+1. **Every epic in the team's areas is an anchor epic or links to one.** An anchor epic is linked from exactly one row. Any other epic links to one anchor with `tracker.anchor_link_type`.
 2. **Run work rolls up too.** The team has one operations epic and one operations row for keep-the-lights-on work, so everything shows without one row per epic.
-3. **Each fact is typed once.** Why, sponsor, impact, theme and stage live on the row. Decisions live in the forum, linked from the row. Who does the work, state, dates and progress live in the tracker.
+3. **Each fact has one owner, never typed on both sides.** The row owns Title, Theme, Stage, Role, Sponsor, Impact, Milestone, Key Artifact, Decisions, and Milestone date until `2. Committed`. The anchor epic owns status, due date (from `2. Committed`, the row's Milestone date follows it), child epics. The epic's theme label (a `config.themes` value) echoes the row's Theme. A mismatch is a Needs-you line; it fixes the side that does not own the fact.
 4. **The board is complete, the roll-up is selective.** Every initiative keeps its row. The weekly roll-up leads with what mattered most, chosen from evidence.
+
+**Stage and anchor status** (from `2. Committed`, one anchor): `2. Committed` = To Do; `3. Delivering` = In Progress; `4. Delivered` = Done; `5. Stopped` = Done plus a "won't do" comment (no won't-do resolution exists). `1. Exploring`: no epic. An epic with the parked label (`tracker.parked_label`) is not committed, whatever its status. One epic holds one bet.
+
+**Promotion** (row to `2. Committed`): pick an existing epic as anchor or propose a new one (Needs-you). Set the row's Jira work item field to it; add the row URL as a remote link on the epic.
 
 **Stage flow:**
 
 ```
 1. Exploring --(trigger hit)--> forum item
-forum item decided --> propose 2. Committed     parked or deflected --> propose 5. Stopped
+forum item decided --> propose 2. Committed     forum item parked or deflected --> propose 5. Stopped
 2. Committed --(building, piloting or rollout starts)--> propose 3. Delivering
 3. Delivering --(outcome live, work finished)--> propose 4. Delivered
 ```
@@ -117,7 +124,7 @@ forum item decided --> propose 2. Committed     parked or deflected --> propose 
 - **Decisions** — link every forum item that decides or advises the row.
 - **Impact** — **lead with the outcome the work unlocks, not the metric or the money.** Pattern: *outcome first, evidence metric in parens*. **Documented impact** (no prefix) traces to a decision record, costed analysis, or stated metric: no estimates, no "up to". **Target impact** (`Target:` prefix) is the forward-looking claim a row is funded for; it loses the prefix only when evidence exists. Never mix the two in one cell. **Progress number:** when the outcome is countable and a live source counts it, append `(now X <unit>; baseline Y on YYYY-MM-DD)`, same unit every week. Set the baseline once, from evidence; never estimate. Blank beats soft. **Effect-side only:** never publish current-weakness specifics (a raw count of open vulnerabilities is an admission; publish the drop since baseline) or commercial posture.
 - **Key Artifact** — one canonical link: the document itself, not the folder. Flag links to personal storage: they fail for the org audience.
-- **Execution Link** — the main epic or repo. Omit if none, and never create a ticket only to fill the column.
+- **Execution Link** — the anchor epic, in the row's Jira work item field. Required from `2. Committed`; before that, omit it.
 - **Milestone + Milestone date** — on an open row, the next outcome a non-technical reader can parse, with its date. When a row closes, the same pair records the close.
 - **Sponsor** — the leader who owns the outcome and answers for it. Never the team lead, a delegate, or a working-level contact; only from evidence. A name mentioned in a meeting is not a sponsor. Blank beats a guess. Expected from `2. Committed` on: a blank is a maintenance finding.
 
@@ -132,15 +139,16 @@ Rows carry the *state*; comments carry the *story*. A comment fits a signal that
 - **Append-only.** A correction is a new comment.
 - **Read existing comments first**, and record posted ones in the ledger, so re-runs don't repost.
 
-## Team mode and wiki boards
+## Team mode and the database board
 
-When `scope` is `team`, or the board is a wiki page, read [references/team-board.md](references/team-board.md) first: what changes in Team mode, and the only safe way to write a wiki-page board.
+When `scope` is `team`, or the board is a Confluence database, read [references/team-board.md](references/team-board.md) first: what changes in Team mode, and the only safe way to write the database board. In Team mode, also read [references/project-pass.md](references/project-pass.md) (the weekly pass over the whole tracker project, the review as questions, the tracker write facts) and [references/wiki-pass.md](references/wiki-pass.md) (the pages it keeps true).
 
-**Hard rules.** They are rules, not gates: Jev never passes them. Rule 1 holds in every mode whenever `tracker.label_contract` is set; rules 2 and 3 hold in Team mode.
+**Hard rules.** They are rules, not gates: Jev never passes them. Rules 1 and 4 hold in every mode (1 when `tracker.label_contract` is set); 2 and 3 in Team mode.
 
 1. **Never add or remove a label named in `tracker.label_contract`.** Read the contract every run. Agents or automation act on those labels, so one label change can start or stop work. A line that would touch one is dropped and reported under Also found.
-2. **Never write a page in `board.read_only_pages`,** and write no page other than `board.page_id` or `board.scratch_page_id`.
-3. **Tracker writes cover the whole project in `config.tracker.areas`, on any assignee's item (Alex, 2026-11-13: "curate the entire builder tools project, consider that as my project"):** comments, links, a one-step state move, field edits, and new items. Each state move, field edit, and new item is its own Needs-you line; nothing lands without his yes on that line. Contract labels stay under rule 1.
+2. **Never write a page in `board.read_only_pages`.** On the wiki, write only `board.database_id` or `board.scratch_database_id`, the weekly roll-up draft, and pages in `wiki.pages` with bucket portfolio, status or mirror (check pages: broken-link fixes only). Never write any other page.
+3. **Tracker writes cover the whole project in `config.tracker.areas`, on any assignee's item (Alex, 2026-11-13: he treats the whole project as his own):** comments, links, a one-step state move, field edits, and new items. Each state move, field edit, and new item is its own Needs-you line; nothing lands without his yes on that line. Contract labels stay under rule 1.
+4. **Never write board fields into a Jira description.** Jira writes the whole description with no version check, so it races other editors.
 
 ## Retrieval and typed gates
 
@@ -153,7 +161,7 @@ The judgments that repeat every run (does it qualify, which stage, which theme, 
 This is the point of the skill. The board is org-visible and the user must own what's published, so **you recommend and the human decides.** Alex reads the review in the terminal between other work: numbered lines he answers by number, split by surface, items named and never bare IDs, decisions first, no wide tables.
 
 1. **Build the candidate set internally.** Cluster signals into initiatives; apply granularity, inclusion and the exclusion screen; run the typed gates; match against live rows (NEW or UPDATE); attach provenance and a recommended value for every field. Do ALL the deciding before the review.
-2. **Number every proposed change by surface:** roll-up `R#`, forum `F#`, tracker `W#`, board `B#`. One line per field change; a comment is a line; a NEW row is one line that shows the full row. Keep that surface order: the tracker comes before the board, because the board truth-checks against the state the tracker lines fix.
+2. **Number every proposed change by surface:** roll-up `R#`, forum `F#`, tracker `W#`, board `B#`, wiki pages `P#`. One line per field change; a comment is a line; a NEW row is one line that shows the full row. Keep the order R, F, W, B, P: each surface truth-checks against the state the earlier lines fix.
 3. **Sort every line into exactly one group:**
    - **Needs you:** every stage or state move, each on its own line; every NEW row or item; every pick between options; every fact only Alex knows; every line where the evidence ran out or a gate was unsure.
    - **Check the words:** every line whose value is new org-visible text. Show the exact text in a `>` quote.
@@ -188,7 +196,7 @@ This is the point of the skill. The board is org-visible and the user must own w
 
    The `Why` line leads with the reason: it is what he reads. The Answer line is a ready-to-edit default.
 
-5. **He answers in one line.** Group words take `all`, `none` or IDs; a line takes `y`, `n`, a letter, or `edit: <text>`. Apply exactly what he approved. A line he did not answer is not written; a skipped Needs-you line goes on `open_items`. Never fill a gap with a guess.
+5. **He answers in one line.** In Team mode he answers through the `question` tool instead, one question per group, as [references/project-pass.md](references/project-pass.md) says. Group words take `all`, `none` or IDs; a line takes `y`, `n`, a letter, or `edit: <text>`. Apply exactly what he approved. A line he did not answer is not written; a skipped Needs-you line goes on `open_items`. Never fill a gap with a guess.
 6. **Re-screen anything he edits.** An edited title or comment can quietly reintroduce a vendor name or a privileged reference. Then, and only then, write.
 
 ## Connections pass — ideas after the review
@@ -197,7 +205,7 @@ The run checks rules. This pass runs last and looks across everything gathered f
 
 ## Writing
 
-Write only approved lines, through the tool named in `config`. For a Jira tracker, follow `../ticket-writer/references/jira.md`. For a wiki-page board, follow the four steps in [references/team-board.md](references/team-board.md); never rewrite the page by hand. **Verify every write by reading it back:** a write is done only once verified. Never change permissions, areas, or process rules, and never delete a row or item. If a batch dies midway, save the unwritten changes as a re-runnable script in the scratchpad, tell Alex exactly what landed and what is pending, and re-run when the connection returns.
+Write only approved lines, through the tool named in `config`. For a Jira tracker, follow `../ticket-writer/references/jira.md`. For the database board, follow the steps in [references/team-board.md](references/team-board.md). **Verify every write by reading it back:** a write is done only once verified. Never change permissions, areas, or process rules, and never delete a row or item. Page writes follow [references/wiki-pass.md](references/wiki-pass.md). If a batch dies midway, save the unwritten changes as a re-runnable script in the scratchpad, tell Alex exactly what landed and what is pending, and re-run when the connection returns.
 
 ## Idempotency & the ledger
 
@@ -245,7 +253,7 @@ Run in this order, reporting one line per check as `PASS` / `ALERT` / `UNVERIFIE
 
 **Tracker control:**
 
-1. **Roll-up link.** Every epic carries exactly one link to a board row. Two or more: flag it, never pick one yourself.
+1. **Anchor link.** Every epic is an anchor or links to exactly one. Two: flag, never pick. None: propose from evidence only. Then compare each anchor's status, due date and theme label with its row. An epic whose description lists several outcomes is a split candidate: flag it, never split it.
 2. **Parent link.** A child item with no parent epic gets a proposed parent, from evidence only. No clear parent: flag it, because a guessed parent rolls work into the wrong row.
 3. **Weekly epic update, on every active epic.** One short comment: **Done this week** (by name), **Next**, and **Blocked or at risk** only when it is real. A week with no movement still gets a comment, because silence reads as a dead epic. At most one per epic per week.
 4. **State truth-ups.** Propose a state move only when evidence contradicts the state, and only to the next state. In Team mode this covers every item in the team's areas, whoever is assigned; name the assignee in the Why line. In personal mode, only Alex's items: an item assigned to someone else is theirs, so report the mismatch.
@@ -257,7 +265,8 @@ Run in this order, reporting one line per check as `PASS` / `ALERT` / `UNVERIFIE
 
 Skip discovery of new initiatives. True up what exists, and gate every change through the review:
 
-1. Run the weekly controls, forum first.
+1. Run the weekly controls, forum first. In Team mode, the tracker control is the full project pass in [references/project-pass.md](references/project-pass.md), run after `weekly-report` so its facts file is fresh.
+1a. After the project pass, run the wiki pass ([references/wiki-pass.md](references/wiki-pass.md)).
 2. Diff stage and milestone against fresh evidence; propose moves.
 3. Flag a milestone date more than 7 days past due: a stale board is evidence against you.
 4. Flag a `4. Delivered` row whose Impact still carries `Target:`, and a blank Sponsor from `2. Committed` on.

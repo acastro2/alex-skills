@@ -1,0 +1,71 @@
+{
+  "skill_name": "projects-curator",
+  "evals": [
+    {
+      "id": 1,
+      "name": "board-db-maintain",
+      "prompt": "Today is 2026-11-13. Use the projects-curator skill to run the weekly maintenance for our team board, in Team mode, dry run. You have no live tools, so work only from the exports in {FIXTURES}/acme/: board.csv is the board database as returned by getConfluenceContent with content_format csv, jira.json holds the epics and stories as returned by getJiraIssue view full, and facts.json is this week's weekly-report facts file. Use {FIXTURES}/acme/curated.json as the ledger and do not read any other ledger. Write nothing. Show the review exactly as you would show it to me. After the review, for each board line, show the exact database edit you would send once I approve it.",
+      "expected_output": "A review with a separate Needs-you line moving Self-service data access to 3. Delivering, the row's Milestone date fixed to the epic due date, the parked epic treated as not committed, ACME-60 flagged for its missing anchor link, and a CSV edit envelope that targets R-7 by its position 3.",
+      "files": [
+        "acme/board.csv",
+        "acme/jira.json",
+        "acme/facts.json",
+        "acme/curated.json"
+      ],
+      "expectations": [
+        "Proposes moving Self-service data access (R-7) from 2. Committed to 3. Delivering, as its own line in the group of lines that need Alex's decision.",
+        "The database edit for the Self-service data access row uses entry_index 3 (its position in board.csv), not 7.",
+        "For the Milestone date mismatch on Self-service data access (row 2026-11-20, epic due date 2026-12-04), proposes changing the row's Milestone date to 2026-12-04, and does not propose changing the epic's due date.",
+        "Does not propose writing Stage, Sponsor, Impact or any other board field into a Jira epic description.",
+        "Treats Unified deploy pipeline (ACME-55) as not committed because its epic carries the parked label: it flags the row or proposes a stage change, and does not report it as healthy committed work.",
+        "Flags Data access audit logging (ACME-60) as an epic with no link to an anchor epic, or proposes such a link from the evidence."
+      ]
+    },
+    {
+      "id": 2,
+      "name": "wiki-pass",
+      "prompt": "Today is 2026-11-13. Use the projects-curator skill to run only the wiki pass for our team space, Team mode, dry run. You have no live tools. Pages are in {FIXTURES}/acme-wiki/pages/<id>.html, as returned by getConfluenceContent with content_format html. Jira exports are in {FIXTURES}/acme-wiki/jira.json (getJiraIssue view full). The canonical repo doc for Tools Overview is {FIXTURES}/acme-wiki/github-docs-tools.md. Use {FIXTURES}/acme-wiki/curated.json as the ledger and do not read any other ledger. Also: the Vision page (700009) still says search is planned, so fix that page too. Write nothing. Show the review, and for each page line, the exact edit you would send once I approve it.",
+      "expected_output": "P# lines: Platform Home ACME-70 status to Done from Jira; Runbooks only the broken ./08-orr.md link; Release Notes listed for Alex to archive; Tools Overview 30 s to 60 s to match the repo doc; no edit to the read-only Vision page; node-level edits by data-local-id with a dry run.",
+      "files": [
+        "acme-wiki/pages/700001.html",
+        "acme-wiki/pages/700002.html",
+        "acme-wiki/pages/700003.html",
+        "acme-wiki/pages/700004.html",
+        "acme-wiki/pages/700009.html",
+        "acme-wiki/jira.json",
+        "acme-wiki/github-docs-tools.md",
+        "acme-wiki/curated.json"
+      ],
+      "expectations": [
+        "The review numbers page changes with P-prefixed line IDs (P1, P2, ...).",
+        "Proposes changing the Search service beta status on Platform Home from In progress to Done, citing the Jira state of ACME-70.",
+        "For Runbooks, flags the broken ./08-orr.md link as the only problem (a fix line, or a request for the real URL), and proposes no other content change on that page.",
+        "Lists Release Notes as a page for Alex to retire or archive by hand, and does not propose that the curator archive, move or delete it.",
+        "For Tools Overview, proposes changing the 30 s timeout to 60 s to match the repo doc, and does not propose editing the repo doc.",
+        "Does not propose an edit to the Vision page (700009); it says the page is read-only or not writable instead.",
+        "The edits it would send target specific nodes by their data-local-id (node-level edits such as replaceNode), with a dry run first, not a whole-page body replacement.",
+        "Does not propose editing Platform Home outside its scope (the status table), such as its Last reviewed line."
+      ]
+    },
+    {
+      "id": 3,
+      "name": "jira-learnings",
+      "prompt": "Today is 2026-11-13. Use the projects-curator skill, Team mode, dry run, no live tools. Read {FIXTURES}/acme-jira/session-note.md and {FIXTURES}/acme-jira/search.json first: did my Jira writes fail, and what do you do next? Then apply the decision in {FIXTURES}/acme-jira/decision.md to the items in {FIXTURES}/acme-jira/items.json and show the review lines you would propose. Use {FIXTURES}/acme-jira/curated.json as the ledger and do not read any other ledger. Write nothing.",
+      "expected_output": "Says the search result does not prove the writes failed (JQL lags fresh writes) and reads back ACME-81..83 and ACME-77 one key at a time with getJiraIssue view full; proposes closing ACME-90 as won't do in its own question; proposes a comment on ACME-91, not a close; never rewrites ACME-90's criteria.",
+      "files": [
+        "acme-jira/session-note.md",
+        "acme-jira/search.json",
+        "acme-jira/decision.md",
+        "acme-jira/items.json",
+        "acme-jira/curated.json"
+      ],
+      "expectations": [
+        "Says the empty search result does not show that the writes failed, because a search can lag fresh writes.",
+        "Says the next step is to read back each touched key (ACME-81, ACME-82, ACME-83, ACME-77) one at a time with getJiraIssue view full, not with another search.",
+        "Proposes closing ACME-90 as won't do (or Done with a won't-do comment), as its own decision for Alex.",
+        "For ACME-91, proposes a comment or a narrow change to the one preprod criterion, and does not propose closing ACME-91.",
+        "Does not propose rewriting ACME-90's done-when criteria to remove preprod."
+      ]
+    }
+  ]
+}

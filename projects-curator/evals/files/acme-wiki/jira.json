@@ -1,0 +1,6 @@
+{"issues": [
+ {"key": "ACME-70", "fields": {"summary": "Search service beta", "issuetype": {"name": "Epic"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-01", "labels": ["theme-platform"]}},
+ {"key": "ACME-20", "fields": {"summary": "Pager rollout", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "labels": ["theme-platform"]}}
+]}

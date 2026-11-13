@@ -1,6 +1,6 @@
-# Team mode and the wiki-page board
+# Team mode and the database board
 
-Read this when `config.scope` is `team`, or when `config.board` is a wiki page. The hard rules
+Read this when `config.scope` is `team`, or when `config.board` is a Confluence database. The hard rules
 stay in `SKILL.md`, because they must load on every run.
 
 ## Team mode (`scope: team`)
@@ -18,25 +18,48 @@ The board holds the team's bets, not Alex's record. What changes:
 - **Sponsor and stage come from the owners.** With no forum, a stage move needs the owner's
   written yes, quoted in the Why line.
 
-## Writing a wiki-page board
+## Writing the database board
 
-Never rewrite the page by hand:
+The board is one Confluence database, one row per initiative, all stages. Which other wiki
+content may be written is SKILL.md hard rule 2; page writes follow `wiki-pass.md`.
 
-1. Read the page as HTML, note its version number, and save the body to a file.
-2. Run `python3 ~/.agents/skills/projects-curator/scripts/board_table.py apply <page.html> <changes.json> --columns "<board.columns>"`
-   and show the diff. The script changes only approved cells, so text and ids people added
-   elsewhere on the page survive.
-3. Right before the write, read the version again. If it moved, someone edited the page: start
-   again at step 1 on the fresh copy, or their edit is lost.
-4. Write the output file as the page body. The body is copied by hand into the write call, so a
-   dropped character outside the table corrupts the page. Keep the page short around the board
-   for that reason. Then read it back as markdown and check every approved cell, plus the text
-   before and after the table, against the output file. Any difference is a failed write: report
-   it and restore from page history. A byte-level check needs a write path that reads the file
-   itself (an API token); until one exists, this check is by reading.
+Not yet tried live on a database: row comments and restore from history. Test both on the
+scratch database before the first real write; until then, a row comment goes on the anchor
+epic, and a failed write is fixed by a second approved edit.
 
-The first write to a new board goes to `board.scratch_page_id`, a private copy.
+Database rows are edited by 1-based position (`entry_index`), not by a stable id. So the
+database has a `Row ID` text field (`R-<n>`; a new row takes the next free integer). Every
+write finds its row by Row ID in a fresh CSV read taken right before the write, then reads
+back. Whether `snapshotToken` guards database writes is UNVERIFIED: the tool doc says it is not
+used for csv, the format guide says to pass it. Pass it, but the Row ID match plus the
+read-back is the real guard.
 
-Seen live on 2026-11-13: the connector's HTML read-back keeps `thead` and `tbody` and writes an
-empty cell as `<p></p>`, which is the shape the script expects. The adapter has no delete on
-purpose: a row leaves the board through `5. Stopped`, never by removal.
+A row never leaves by `delete_entry`; it leaves only through `5. Stopped`. The first write
+goes to `board.scratch_database_id`, a private scratch database, until Alex approves the real
+one.
+
+1. **Read the rules.** Once per run, read the space's instructions with `getConfluenceSpace`
+   before authoring. Call `getContentFormatGuide` with `toolName: "updateConfluenceDatabase"`,
+   then with `reference: "references/database/database-csv/references/update-format-reference.md"`.
+   Read `.../values.md` before writing cell values (not yet read live: say so, and read it
+   first).
+2. **Read the database fresh** with `getConfluenceContent`, `content_format: csv`. Keep the
+   `snapshotToken`. Find each target row by Row ID, and note its position.
+3. **Build the edit envelope.** `<metadata>` with header `operation_type,target,property,value`,
+   then `<data>` with header `operation_type,entry_index,<field_1>,...,<field_N>`. No prose, no
+   fences. Cells: `""` leaves unchanged, `NULL` clears, a literal sets. `add_entry` appends at
+   the end with all fields. `edit_entry` has exactly the header's cell count. Touch only
+   approved cells.
+4. **Write** with `updateConfluenceContent`: `contentId`, the `snapshotToken` from step 2,
+   `body.format: "csv"`, and the envelope in `body.value`, unwrapped.
+5. **Read back** with `getConfluenceContent`, `content_format: csv`. Check every approved cell,
+   and that no other row changed. Any difference is a failed write: report it, and fix it as the
+   note above says.
+6. **Anchor link.** The database has a `jira-work-item` field for the anchor epic (the
+   Execution Link column). Create it with
+   `add_field,<field>,jira-work-item,"cloud_id:<cloud_id>"`. Take the cloud id from the
+   connector at run time; never write it into this repo.
+
+Before the first write, check that the space allows databases (`getConfluenceSpace`,
+`enabledContentTypes.isDatabasesEnabled`). If not, the board waits for a space admin; record that in
+the ledger under `config.wiki.space_notes`, not here.

@@ -1,0 +1,3 @@
+{"week": "2026-11-09 to 2026-11-13",
+ "team_prs": [{"title": "ACME-41 add access request API", "state": "merged", "merged_at": "2026-11-10", "author": "dev-a"}],
+ "jira": {"resolved": [{"key": "ACME-41", "summary": "Access request API", "bulk": false}], "created": []}}

@@ -1,0 +1,9 @@
+{"config": {"scope": "team",
+  "board": {"tool": "Confluence database", "database_id": "900001", "scratch_database_id": "900002",
+    "fields": ["Row ID","Title","Theme","Stage","Role","Sponsor","Impact","Milestone","Milestone date","Key Artifact","Execution Link","Decisions"],
+    "read_only_pages": []},
+  "tracker": {"tool": "Jira", "project": "ACME", "areas": "project = ACME", "anchor_link_type": "Implements",
+    "parked_label": "parked", "label_contract": null},
+  "forum": null, "themes": ["theme-platform", "theme-data"], "audience": "VP Engineering",
+  "week": "America/Chicago, Mon-Fri", "evidence": {"team_facts": "facts.json in this folder"}},
+ "rows": {}, "tracker": {}, "ideas": {}, "open_items": [], "not_doing": []}
