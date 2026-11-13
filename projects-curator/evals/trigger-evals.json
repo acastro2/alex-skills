@@ -1,0 +1,14 @@
+[
+  {"query": "run the weekly maintenance on our team's initiative board", "should_trigger": true},
+  {"query": "update the team portfolio page in Confluence from this week's Jira epics", "should_trigger": true},
+  {"query": "audit the board: is it missing or misrepresenting any initiative?", "should_trigger": true},
+  {"query": "add a board row for the self-healing agent initiative, sponsor is the CTO", "should_trigger": true},
+  {"query": "which of our active epics have no row on the portfolio board?", "should_trigger": true},
+  {"query": "write this week's roll-up of our initiatives for the exec", "should_trigger": true},
+  {"query": "what did my team ship this week?", "should_trigger": false},
+  {"query": "write my weekly update for my manager", "should_trigger": false},
+  {"query": "create a Jira story from my current branch", "should_trigger": false},
+  {"query": "sweep today's sessions into my Obsidian notes", "should_trigger": false},
+  {"query": "what did we decide about the board layout last month?", "should_trigger": false},
+  {"query": "pull my latest Teams chats and mail into the raw store", "should_trigger": false}
+]

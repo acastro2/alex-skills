@@ -49,6 +49,10 @@ This skill holds no org facts. Before the first run, ask Alex for these and stor
 | `themes` | The allowed Theme values, and any tie-break rule |
 | `audience` | Who reads the board, and which executive it must make sense to |
 | `week` | The time zone and the week boundaries |
+| `scope` | `personal` (Alex's own record, the default) or `team` (the team's portfolio; see Team mode) |
+| `board.columns`, `board.page_id`, `board.scratch_page_id`, `board.read_only_pages` | For a wiki-page board: the table's exact header row, the one page the run may write, a private copy for the first write, and pages it must never write (a vision page, a hand-kept hub) |
+| `tracker.label_contract` | Where a tracker's label contract lives (repo, path, ref), when agents or automation act on labels |
+| `evidence.team_facts` | The `weekly-report` facts file that already holds the team's PRs and tracker tickets |
 
 A `config` key that is missing is a question for Alex, never a guess. Read the live field names and allowed values before the first write: a board drifts, and a stale column name fails the request.
 
@@ -94,7 +98,7 @@ forum item decided --> propose 2. Committed     parked or deflected --> propose 
 
 1. **Delivery or influence, not attendance.** For a delivery row, the verb must be authored / executed / shipped / decided / established / migrated / secured / consolidated. For an influence row, the team advised or reviewed **with a recorded outcome**: a decided forum item, an adopted standard, or written advice the owning team acted on. Attended / joined / participated is excluded unless folded into an initiative.
 2. **Initiative-scale.** Has a decision path or a milestone, not a one-off favor or a single meeting outcome.
-3. **Owner-of-record.** You drove it or own the decision; a contribution qualifies only if it is itself an artifact. For an influence row, the team owns the advice, not the delivery.
+3. **Owner-of-record.** You drove it or own the decision; a contribution qualifies only if it is itself an artifact. For an influence row, the team owns the advice, not the delivery. In Team mode, the team is the owner (see [references/team-board.md](references/team-board.md)).
 4. **Org-shareable.** Passes the exclusion screen below.
 
 ## Exclusion screen — hard gates, run on EVERY candidate (and on every user-edited title)
@@ -127,6 +131,16 @@ Rows carry the *state*; comments carry the *story*. A comment fits a signal that
 - **Plain text only, no @-mentions.** A mention notifies someone; that is a human's call.
 - **Append-only.** A correction is a new comment.
 - **Read existing comments first**, and record posted ones in the ledger, so re-runs don't repost.
+
+## Team mode and wiki boards
+
+When `scope` is `team`, or the board is a wiki page, read [references/team-board.md](references/team-board.md) first: what changes in Team mode, and the only safe way to write a wiki-page board.
+
+**Hard rules.** They are rules, not gates: Jev never passes them. Rule 1 holds in every mode whenever `tracker.label_contract` is set; rules 2 and 3 hold in Team mode.
+
+1. **Never add or remove a label named in `tracker.label_contract`.** Read the contract every run. Agents or automation act on those labels, so one label change can start or stop work. A line that would touch one is dropped and reported under Also found.
+2. **Never write a page in `board.read_only_pages`,** and write no page other than `board.page_id` or `board.scratch_page_id`.
+3. **Tracker writes are comments and links only:** the weekly epic comment, the row link, and the parent link. No label, state, or field change, and no new item without its own Needs-you line.
 
 ## Retrieval and typed gates
 
@@ -183,7 +197,7 @@ The run checks rules. This pass runs last and looks across everything gathered f
 
 ## Writing
 
-Write only approved lines, through the tool named in `config`. **Verify every write by reading it back:** a write is done only once verified. Never change permissions, areas, or process rules, and never delete a row or item. If a batch dies midway, save the unwritten changes as a re-runnable script in the scratchpad, tell Alex exactly what landed and what is pending, and re-run when the connection returns.
+Write only approved lines, through the tool named in `config`. For a Jira tracker, follow `../ticket-writer/references/jira.md`. For a wiki-page board, follow the four steps in [references/team-board.md](references/team-board.md); never rewrite the page by hand. **Verify every write by reading it back:** a write is done only once verified. Never change permissions, areas, or process rules, and never delete a row or item. If a batch dies midway, save the unwritten changes as a re-runnable script in the scratchpad, tell Alex exactly what landed and what is pending, and re-run when the connection returns.
 
 ## Idempotency & the ledger
 
