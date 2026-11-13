@@ -32,6 +32,3 @@ synced/
 !.env.*.example
 .scratch/*
 .archify/*
-
-# Third-party, no open license ("Private. (c) Cintelis"). Never commit or push.
-isoscene/

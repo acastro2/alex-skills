@@ -18,7 +18,7 @@ The exceptions are skills that carry facts, not only method: `ub-mode`, plus the
 
 | Kind | Skills |
 | --- | --- |
-| Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control` (rules on top of the browse MCP), `browser-apple-events`, `archify`, `mesh-measure`, `printed-part-modeling`, `find-skills` (installs skills from the open ecosystem) |
+| Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control` (rules on top of the browse MCP), `browser-apple-events`, `archify`, `isoscene` (isometric SVG scenes), `mesh-measure`, `printed-part-modeling`, `find-skills` (installs skills from the open ecosystem) |
 | Library guides | `threejs-*` (13: fundamentals, geometry, materials, textures, lighting, loaders, asset-pipeline, animation, interaction, shaders, postprocessing, performance, react-three-fiber) |
 | Alex's systems | `scribe`, `bard`, `gather` (fetch-only intake of comms into `~/.gather` for bard), `archeologist`, `projects-curator`, `ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator`, `git-pull-acastro2`, `weekly-report`, `design-system` (points at a work repo's `DESIGN.md` through `~/.config/design-system.json`, holds no brand values) |
 | Alex's taste and process | `alex-voice`, `code-rules`, `reviewer`, `implement`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode`, `terminal-report`, `pr-change-description` |
