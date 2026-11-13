@@ -140,7 +140,7 @@ so it is derived from real work and ratified by Alex.
      | `fallback`, or `available: false` | Run the old lane for those sources (all comms sources when unavailable). Map: `teams_*` to Teams; `mail`; `calendar`; `sharepoint`; `jira`, `github` to the task lane. `slack` is always here. A source is also here when its fetch is older than 24 h, its history starts after the watermark, or it has 0 items on a working day. |
      | `unseen` | Read each file. `content` is the verbatim tool result: quotable. For a busy Teams or mail window, delegate per task-lane "Volume". |
      | `superseded` | Older snapshot runs. Mark them seen, never read them. |
-     
+
      - Copy every `ledger` line into the coverage ledger.
      - Gather items use `gather_seen` as their cursor, NEVER the watermark: a message gather stores after a sweep must still be read next sweep.
      - Provenance is the file path and `tool` only, never `args`: they hold Alex's address.
