@@ -2,8 +2,8 @@
 name: bard
 description: >-
   Mine AI-coding session history, scribe meeting transcript notes
-  (Scribe/Meetings/Transcripts), and the comms (Outlook mail, Teams, calendar) that
-  the archeologist surfaces during a sweep, and distill them into durable,
+  (Scribe/Meetings/Transcripts), and the comms (Outlook mail, Teams, calendar) from
+  ~/.gather or the archeologist, and distill them into durable,
   graph-native notes in the Obsidian vault at obsidian/Alex/Bard, and copy authored
   deliverable files into the Evidence vault (Evidence/). Use when the user
   runs /bard, asks to capture/record what they've been working on into Obsidian,
@@ -134,6 +134,19 @@ so it is derived from real work and ratified by Alex.
    because the quote rule (see **PROVENANCE**) needs VERBATIM content, and the
    archeologist returns a *summarized* briefing (distilling a distillation would break
    the quote rule).
+   - **Gather lane (comms, since 2026-11-13).** Run
+     `python3 ~/.agents/skills/bard/scripts/gather_inbox.py list --state <vault>/Bard/.bard-state.json`.
+     Read every file under `unseen`. Its `content` is the verbatim tool result: quotable.
+     Provenance is the file path under `~/.gather` plus its `tool` and `args`. A file in
+     `model_copied` may be summarised, never quoted as verbatim. Copy every `ledger` line into the coverage ledger. A source fetched
+     longer ago than `--max-age-hours` (default 24, see `fetched_at`) is a gap too: it is in
+     `fallback`. The script reads the `watermark` from the same state file: a window source
+     whose gather history (`covered_from`) starts after the watermark is a gap too, and is in `fallback`. For each source in `fallback`, and for every comms source when `available` is false, run that source's old
+     lane as today. Map sources to lanes: `teams_chats`, `teams_mine`, `teams_channels` →
+     Teams; `mail`; `calendar`; `sharepoint`; `jira` and `github` → task lane snapshot
+     sources. gather does not fetch Slack, so `slack` is always in `fallback`: run the Slack
+     lane (native in OpenCode since 2026-11-13). The `/gather` skill runs gather, separately and from any host.
+     Bard never runs it.
    - **Discover — one archeologist sweep, all stores.** Spawn the **archeologist** agent
      (read-only) with the window `watermark` → now. It sweeps every store by its own
      **Coverage** rule and answers with summary and references first (its **Phase 5**
@@ -141,7 +154,9 @@ so it is derived from real work and ratified by Alex.
      **references are the payload** the next step reads: store, locator, session-start.
      This is the lane that reaches
      mail, Teams, Slack, calendar, tenant SharePoint, and GitHub activity — stores the local
-     indexes below cannot see. An unavailable store in the briefing is missing data, not
+     indexes below cannot see. When the gather lane covered a source with `fetched`, do not
+     fetch it again here; the archeologist still runs for session stores, Obsidian,
+     Developer, and OneDrive. An unavailable store in the briefing is missing data, not
      empty data: name it in the sweep report, never let it pass silently.
 
      **Run it on every sweep, short windows included.** On 2026-10-14 two back-to-back
@@ -203,7 +218,8 @@ so it is derived from real work and ratified by Alex.
      and the code filters. Sources: Slack DMs and threads, Teams chats, and mail sent to
      Alex (window from `watermark`), mail with no reply from him, and the open items assigned to him now in
      Planner, To Do, Todoist, Jira, and GitHub review requests (snapshot, no watermark).
-     Add each source to the coverage ledger. Every survivor of the code filters goes through
+     Add each source to the coverage ledger. When the gather lane covered a source with
+     `fetched`, do not fetch it again here. Every survivor of the code filters goes through
      Set A (is it an ask?) and Set R (did Alex already answer it?), then Set T; it never becomes a knowledge note on its own.
    - **AI attention pass** — before distillation, explicitly scan every candidate for
      durable AI work even when AI was not the session's main topic: model or tool
@@ -256,8 +272,11 @@ so it is derived from real work and ratified by Alex.
    ```
    python3 scripts/state.py record <vault>/Bard/.bard-state.json \
      --watermark <newest real session-start swept> \
-     --seen <scribe note path> [--seen ...]
+     --seen <scribe note path> [--seen ...] \
+     --gather-seen <raw path> [--gather-seen ...]
    ```
+
+   Pass every gather file read this sweep as `--gather-seen`.
 
    It sets `last_run` to now, adds the notes to `scribe_seen`, and refuses the two values
    that silently re-sweep: a watermark older than the stored one, and a rounded day

@@ -1,0 +1,14 @@
+[
+  {"query": "pull my comms into ~/.gather", "should_trigger": true},
+  {"query": "refresh the raw Teams and mail data that bard reads", "should_trigger": true},
+  {"query": "fetch my Jira and GitHub items so bard can use them later", "should_trigger": true},
+  {"query": "what did gather fetch last time?", "should_trigger": true},
+  {"query": "gather everything since yesterday", "should_trigger": true},
+  {"query": "before I run bard from opencode, pull the latest Teams chats and Outlook mail into the local store", "should_trigger": true},
+  {"query": "sweep this week's sessions and meetings into Obsidian", "should_trigger": false},
+  {"query": "find the email from my manager about the monitor order", "should_trigger": false},
+  {"query": "what did we decide about the Cortex index last week?", "should_trigger": false},
+  {"query": "transcribe my HiDock recordings", "should_trigger": false},
+  {"query": "write my weekly report for my manager", "should_trigger": false},
+  {"query": "search Slack for what was said about the outage yesterday", "should_trigger": false}
+]

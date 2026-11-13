@@ -42,7 +42,7 @@ run "$UV" run --with pyyaml python -m skillcheck
 run "$UV" run --with pytest --with pyyaml --with requests python -m pytest scripts/tests -q
 run "$UV" run --with pytest --with requests python -m pytest browser-cookie-auth/tests -q
 run "$UV" run --with pytest python -m pytest bard/tests -q
-run "$UV" run --with pytest python -m pytest archeologist/tests -q
+run "$UV" run --with pytest python -m pytest gather/tests -q
 run "$UV" run --with pytest python -m pytest weekly-report/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
 # Apple Events exist only on macOS and the suite raises by design elsewhere, so skip it

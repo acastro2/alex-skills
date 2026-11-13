@@ -9,6 +9,9 @@ Run this lane in the main thread, not inside the archeologist: the archeologist 
 Planner, To Do, Todoist, Jira, or `gh` tools. The one exception is the Teams-and-mail paging
 on a busy window, which a general background agent can carry (see **Volume** below).
 
+Teams, mail, Jira, and GitHub come from the gather lane first (see `SKILL.md` step 3). The
+calls below are the fallback, for a source that gather did not fetch.
+
 ## Two cursor kinds
 
 - **Window sources** (Slack, Teams, mail): only items newer than `watermark`.
@@ -19,9 +22,9 @@ on a busy window, which a general background agent can carry (see **Volume** bel
 
 | Source | Kind | Call (Claude Code) | Busy? | Tested (2026-10-14 unless dated) |
 |---|---|---|---|---|
-| Slack DMs and group DMs | window | Slack search per open DM: `in:@<person> after:<day before watermark>`; list DMs with the list-my-channels tool (type DMs, group DMs). Read each thread with a hit | yes | **not run** (Slack not connected) |
-| Slack threads and channels | window | Slack search `with:@<Alex> after:<day before watermark>` (threads and DMs with Alex), then read each thread | yes | **not run** |
-| Alex's own Slack posts | filter | Slack search `from:@<Alex> after:<day before watermark>` | — | **not run** |
+| Slack DMs and group DMs | window | Slack search per open DM: `in:@<person> after:<day before watermark>`; list DMs with the list-my-channels tool (type DMs, group DMs). Read each thread with a hit | yes | run 2026-11-11 through Cursor: DM search (`channel_types: im,mpim`), then `slack_read_channel` per DM; see **Slack** below. Claude Code needs its own Slack sign-in (`/mcp`) |
+| Slack threads and channels | window | Slack search `with:@<Alex> after:<day before watermark>` (threads and DMs with Alex), then read each thread | yes | run 2026-11-11 through Cursor, by mention search (`keywords: "<@U…>"`) then `slack_read_thread`; the `with:` search itself **not run** |
+| Alex's own Slack posts | filter | Slack search `from:@<Alex> after:<day before watermark>` | — | **not run** as a search; on 2026-11-11 Alex's posts were read inside each DM and thread |
 | Teams chats Alex is in | window | `chat_message_search` `query: "*"`, `recipient: <Alex's mail>`, `afterDateTime: <watermark>`; page with `nextOffset` | yes | run: hits; returns **every** message in his chats, not only asks |
 | Alex's own Teams posts | filter | `chat_message_search` `query: "*"`, `sender: <Alex's mail>`, same window | — | run: hits |
 | Mail to Alex | window | `outlook_email_search` `recipient: <Alex's mail>`, `afterDateTime: <watermark>`; page with `nextOffset` | yes | run: hits, mostly alerts and newsletters |
@@ -116,11 +119,10 @@ that Alex has not answered in the same chat as an open ask.
 ## Slack
 
 Slack is the busiest comms store at Alex's current job, so run it first. Use archeologist
-[Source J](../../archeologist/references/slack.md) for access per host: the Slack MCP in
-Claude Code and Cursor, and the [`slack_via_cursor.py` bridge](../../archeologist/scripts/slack_via_cursor.py)
-in OpenCode. Search with `slack_search_public_and_private` (modifiers go in `filters`), then
-read each hit with `slack_read_thread` (`Channel` id + `Message_ts` from the result). Quote only the raw
-tool `content` from the bridge's `--out` file, never the bridge model's reply.
+[Source J](../../archeologist/references/slack.md) for access per host: OpenCode reaches Slack
+natively through its own `slack_*` tools. Search with `slack_search_public_and_private` (modifiers
+go in `filters`), then read each hit with `slack_read_thread` (`Channel` id + `Message_ts` from
+the result). Quote the tool's own markdown result verbatim.
 
 - **Dates:** `after:` leaves out the date you type, so search from the day before the
   watermark day and drop older messages in code by their timestamp.

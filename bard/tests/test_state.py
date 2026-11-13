@@ -153,3 +153,31 @@ def test_cli_reports_a_refusal_with_exit_one(tmp_path: Path, capsys) -> None:
     assert code == 1
     assert "STATE FAILED" in capsys.readouterr().err
     assert not path.exists(), "a refused first run must not create the file"
+
+
+def test_gather_seen_grows_and_is_kept_across_runs(tmp_path: Path) -> None:
+    path = tmp_path / "state.json"
+    state_module.record_run(path, "2026-11-13T15:00:00Z", gather_seen=["raw/mail/2026-11-13/a-1.json"])
+    state = state_module.record_run(path, "2026-11-13T16:00:00Z",
+                                    gather_seen=["raw/mail/2026-11-13/a-1.json", "raw/jira/2026-11-13/b-1.json"])
+    assert state["gather_seen"] == ["raw/mail/2026-11-13/a-1.json", "raw/jira/2026-11-13/b-1.json"]
+    state = state_module.record_run(path, "2026-11-13T17:00:00Z")
+    assert state["gather_seen"] == ["raw/mail/2026-11-13/a-1.json", "raw/jira/2026-11-13/b-1.json"]
+
+
+def test_record_cli_takes_gather_seen(tmp_path: Path) -> None:
+    path = tmp_path / "state.json"
+    code = state_module.main(["record", str(path), "--watermark", "2026-11-13T15:00:00Z",
+                              "--gather-seen", "raw/teams_chats/2026-11-13/c-1.json"])
+    assert code == 0
+    assert json.loads(path.read_text())["gather_seen"] == ["raw/teams_chats/2026-11-13/c-1.json"]
+
+
+def test_a_non_list_gather_seen_is_refused_not_split_into_characters(tmp_path: Path) -> None:
+    path = tmp_path / "state.json"
+    path.write_text(json.dumps({"last_run": None, "watermark": None, "scribe_seen": [],
+                                "gather_seen": "raw/mail/2026-11-13/a-1.json"}))
+    before = path.read_text()
+    with pytest.raises(StateError, match="gather_seen"):
+        state_module.record_run(path, "2026-11-13T15:00:00Z", gather_seen=["raw/x.json"])
+    assert path.read_text() == before

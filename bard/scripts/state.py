@@ -13,7 +13,7 @@ reads the file back before it reports success.
     python3 scripts/state.py record <path> --watermark 2026-10-25T15:00:00Z \
         --seen Scribe/Meetings/Transcripts/2026-10-25-team-sync.md
 
-Four facts it enforces:
+Five facts it enforces:
 
 - `watermark` moves forward. A value older than the stored one is a bug, not a decision.
 - `watermark` carries a real time. A rounded day boundary (`...T00:00:00Z`) re-sweeps that
@@ -21,8 +21,10 @@ Four facts it enforces:
 - `watermark` is not in the future. A typo in the year would skip every sweep until that
   date, silently, and the backwards check cannot see it.
 - `scribe_seen` only grows. Notes are a set, and a repeat is free because dedupe absorbs it.
+- `gather_seen` only grows the same way. It holds the `~/.gather` raw files already swept, and
+  a run that does not pass it carries it untouched.
 
-Any other key in the file is carried through the write untouched: this module owns three
+Any other key in the file is carried through the write untouched: this module owns five
 facts, not the whole file.
 """
 from __future__ import annotations
@@ -124,11 +126,15 @@ def record_run(
     watermark: str,
     seen: list[str] | tuple[str, ...] = (),
     now: str | None = None,
+    gather_seen: list[str] | tuple[str, ...] = (),
 ) -> dict:
     """Record one sweep. Returns the state that was written and verified."""
     path = Path(path)
     state = load(path)
     _check_watermark(watermark, state.get("watermark"))
+    stored_gather = state.get("gather_seen", [])
+    if not isinstance(stored_gather, list) or not all(isinstance(item, str) for item in stored_gather):
+        raise StateError(f"{path} has a gather_seen that is not a list of strings; fix it by hand")
 
     merged = list(state["scribe_seen"])
     for note in seen:
@@ -139,6 +145,14 @@ def record_run(
     _when(stamp, "last_run")
     updated = dict(state)
     updated.update(last_run=stamp, watermark=watermark, scribe_seen=merged)
+    if gather_seen:
+        grown = list(state.get("gather_seen", []))
+        known = set(grown)
+        for item in dict.fromkeys(gather_seen):
+            if item not in known:
+                grown.append(item)
+                known.add(item)
+        updated["gather_seen"] = grown
 
     _write_atomic(path, updated)
 
@@ -164,13 +178,15 @@ def main(argv: list[str] | None = None) -> int:
     record.add_argument("--watermark", required=True)
     record.add_argument("--seen", action="append", default=[], help="repeat per note swept")
     record.add_argument("--now", default=None, help="override last_run, for a re-run")
+    record.add_argument("--gather-seen", action="append", default=[],
+                        help="repeat per ~/.gather raw file swept")
 
     args = parser.parse_args(argv)
     try:
         if args.command == "show":
             print(json.dumps(load(args.path), indent=2))
             return 0
-        state = record_run(args.path, args.watermark, args.seen, args.now)
+        state = record_run(args.path, args.watermark, args.seen, args.now, args.gather_seen)
     except StateError as error:
         print(f"STATE FAILED: {error}", file=sys.stderr)
         return 1
