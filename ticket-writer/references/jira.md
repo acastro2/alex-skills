@@ -2,7 +2,7 @@
 
 Read this before any Jira write. The core workflow is in `../SKILL.md`. This file holds what only Jira needs. It uses the Atlassian MCP connector and nothing else.
 
-Why this file is careful: write calls here were never run. Treat every UNVERIFIED line as a question to check on the first real call.
+Why this file is careful: the write path was proven once, on one throwaway issue (2026-11-13). Treat every UNVERIFIED line as a question to check on the first real call.
 
 ## Tools and hosts
 
@@ -11,7 +11,8 @@ Tools are `mcp__claude_ai_Atlassian__<name>` in Claude Code. OpenCode has no Atl
 ## Run status
 
 - Read calls RUN on 2026-11-12: `getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `getJiraProjectIssueTypesMetadata`, `searchJiraIssuesUsingJql`, `getJiraIssue` (with `expand: "changelog"`).
-- Every write call below is NOT RUN. Only the tool schema was read: `createJiraIssue`, `editJiraIssue`, `transitionJiraIssue`, `createIssueLink`, `addCommentToJiraIssue`.
+- Write calls RUN on 2026-11-13, on one throwaway Task: `createJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`, `getTransitionsForJiraIssue`, `transitionJiraIssue` (to Done). Also `getJiraIssueTypeMetaWithFields` and `getJiraIssueRemoteIssueLinks` (returns `[]` when there are no links).
+- Still NOT RUN: `createIssueLink`, setting `parent`, changing `issuetype`.
 
 ## Resolve first, never memorize
 
@@ -28,7 +29,7 @@ The six sections go in the description as Markdown `##` headings. Use `contentFo
 
 Read back with `responseContentFormat: "markdown"`.
 
-UNVERIFIED: how Markdown tables and nested lists survive a write and a read-back. Read the item back after the first write and check. If a table breaks, rewrite it as a list.
+Measured 2026-11-13: headings, bold, inline code and a pipe table survive a write and a Markdown read-back. Lists come back with `*` for `-`, and a nested list gains blank lines; the content is the same. Sending the read-back text again in an edit did not drift. Still read the item back after each write.
 
 ### Acceptance criteria and repro steps
 
@@ -42,12 +43,12 @@ Other fields go in `additional_fields`:
 {"labels": ["a", "b"], "priority": {"name": "..."}, "components": [{"name": "..."}]}
 ```
 
-Read the allowed priority and component values from the field metadata first.
+Read the allowed priority and component values from the field metadata first. The metadata can leave out a field the site still sets: on 2026-11-13 a Task's create metadata had no priority field, and the new issue got the site's default priority. Check the created issue, not only the metadata.
 
 ## Create
 
 1. Resolve the site, project, and type (above). Alex confirms the project.
-2. Duplicate check: `searchJiraIssuesUsingJql` in the project with `summary ~ "<title words>"`. The JQL text-search shape is NOT RUN. Run the same check again before you retry a failed create, because the create may have landed.
+2. Duplicate check: `searchJiraIssuesUsingJql` in the project with `summary ~ "\"<title words>\""` (the inner quotes make it a phrase). Run 2026-11-13: 0 hits before the create, 1 hit after. Run the same check again before you retry a failed create, because the create may have landed.
 3. `createJiraIssue` with the title, the six sections, and `additional_fields`.
 4. Read the item back and check the render. Return the item URL (`https://<site>.atlassian.net/browse/PROJ-123`).
 
@@ -62,7 +63,7 @@ Type change: UNVERIFIED through the MCP. If `editJiraIssue` rejects `issuetype`,
 
 ## State
 
-Call `getTransitionsForJiraIssue`, then `transitionJiraIssue` with the transition id. Never set status as a field.
+Call `getTransitionsForJiraIssue`, then `transitionJiraIssue` with the transition id. Never set status as a field. Transition ids differ per project workflow, so never reuse one. `hasScreen: false` means the transition needs no fields.
 
 ## Links and comments
 
@@ -76,4 +77,4 @@ The claude.ai Atlassian connector on this machine uses the deprecated `/v1/mcp` 
 
 ## Errors
 
-No Jira errors recorded yet. Record the first real ones here, with the call, the message, and the fix.
+No Jira errors yet (the 2026-11-13 write test had none). Record the first real ones here, with the call, the message, and the fix.
