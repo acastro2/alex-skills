@@ -1,6 +1,6 @@
 # Task lane — what is asked of Alex
 
-Reference for sweep step 3c in `SKILL.md`. The archeologist searches by topic, which finds
+Reference for the task lane bullet of sweep step 3 in `SKILL.md`. The archeologist searches by topic, which finds
 knowledge. This lane searches by **who the ask is addressed to**, which finds tasks. Run both.
 The `Tested` column says which calls were run for real on 2026-10-14 (Jira rows: 2026-11-12) and what came back.
 A row marked **not run** is the documented call shape only: check it on the first live sweep.
@@ -16,14 +16,16 @@ calls below are the fallback, for a source that gather did not fetch.
 
 - **Window sources** (Slack, Teams, mail): only items newer than `watermark`.
 - **Snapshot sources** (Planner, To Do, Todoist, Jira, GitHub): every item open now, at any age.
-  Never apply `watermark` to a snapshot source; the dedupe against the board stops repeats.
+  Never apply `watermark` to the fetch; the dedupe against the board stops repeats. Jira is the one
+  exception after the fetch: it is a snapshot fetch, then filtered by changelog after the
+  watermark (see **Jira JQL**), so Alex's own edits do not count as asks.
 
 ## Sources and calls
 
-| Source | Kind | Call (Claude Code) | Busy? | Tested (2026-10-14 unless dated) |
+| Source | Kind | Call | Busy? | Tested (2026-10-14 unless dated) |
 |---|---|---|---|---|
-| Slack DMs and group DMs | window | Slack search per open DM: `in:@<person> after:<day before watermark>`; list DMs with the list-my-channels tool (type DMs, group DMs). Read each thread with a hit | yes | run 2026-11-11 through Cursor: DM search (`channel_types: im,mpim`), then `slack_read_channel` per DM; see **Slack** below. Claude Code needs its own Slack sign-in (`/mcp`) |
-| Slack threads and channels | window | Slack search `with:@<Alex> after:<day before watermark>` (threads and DMs with Alex), then read each thread | yes | run 2026-11-11 through Cursor, by mention search (`keywords: "<@U…>"`) then `slack_read_thread`; the `with:` search itself **not run** |
+| Slack DMs and group DMs | window | Slack search per open DM: `in:@<person> after:<day before watermark>`; list DMs with the list-my-channels tool (type DMs, group DMs). Read each thread with a hit | yes | run 2026-11-11 with OpenCode's native Slack tools: DM search (`channel_types: im,mpim`), then `slack_read_channel` per DM; see **Slack** below. Claude Code needs its own Slack sign-in (`/mcp`) |
+| Slack threads and channels | window | Slack search `with:@<Alex> after:<day before watermark>` (threads and DMs with Alex), then read each thread | yes | run 2026-11-11 with OpenCode's native Slack tools, by mention search (`keywords: "<@U…>"`) then `slack_read_thread`; the `with:` search itself **not run** |
 | Alex's own Slack posts | filter | Slack search `from:@<Alex> after:<day before watermark>` | — | **not run** as a search; on 2026-11-11 Alex's posts were read inside each DM and thread |
 | Teams chats Alex is in | window | `chat_message_search` `query: "*"`, `recipient: <Alex's mail>`, `afterDateTime: <watermark>`; page with `nextOffset` | yes | run: hits; returns **every** message in his chats, not only asks |
 | Alex's own Teams posts | filter | `chat_message_search` `query: "*"`, `sender: <Alex's mail>`, same window | — | run: hits |
@@ -167,8 +169,8 @@ a second search; a link kept now is free.
 
 ## Other hosts
 
-In OpenCode there is no Planner, To Do, Todoist, or Atlassian (Jira) tool: write `unavailable — no tool on
-this host`. Claude Code can lack them too: on 2026-10-14 neither `tasks_login_status` nor a
+OpenCode has native Slack and Jira tools (since 2026-11-13) but no Planner, To Do, or Todoist tool, and no M365 connector:
+for a missing tool write `unavailable — no tool on this host`. Claude Code can lack them too: on 2026-10-14 neither `tasks_login_status` nor a
 Todoist tool was in the session's tool list. Check the list (ToolSearch) before you write
 the ledger line, and use the same wording when they are absent.
 
@@ -179,7 +181,7 @@ returned about 778 over two working days. Paging both and running Set A and Set 
 volume fills the main thread. Give the Teams-and-mail part to one background agent with
 this file and `jev-gates.md` as its brief, and keep Jira, GitHub and Planner in the main
 thread. A busy Slack window can go to a second background agent the same way. The agent returns the ledger, the open asks with their numbers, and the answered
-asks. Mail and Teams use the `m365` CLI (`../m365/SKILL.md`); Jira uses the Atlassian MCP (`searchJiraIssuesUsingJql`, `getJiraIssue`) in the main thread.
+asks. Mail and Teams use the MCP calls in the table above, or the gather files. Use the `m365` CLI (`../m365/SKILL.md`) only when the host has no M365 connector. Jira uses the Atlassian MCP (`searchJiraIssuesUsingJql`, `getJiraIssue`) in the main thread.
 
 ## Coverage ledger
 

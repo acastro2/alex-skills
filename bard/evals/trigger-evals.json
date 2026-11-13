@@ -1,0 +1,50 @@
+[
+ {
+  "query": "run a bard sweep since my last one",
+  "should_trigger": true
+ },
+ {
+  "query": "sweep this week's sessions and meetings into Obsidian",
+  "should_trigger": true
+ },
+ {
+  "query": "capture what I worked on today into my knowledge base",
+  "should_trigger": true
+ },
+ {
+  "query": "update my Todo board from Teams, mail and Jira",
+  "should_trigger": true
+ },
+ {
+  "query": "turn the decisions from yesterday's sessions into notes",
+  "should_trigger": true
+ },
+ {
+  "query": "read the new gather files and update the board",
+  "should_trigger": true
+ },
+ {
+  "query": "pull my comms into ~/.gather",
+  "should_trigger": false
+ },
+ {
+  "query": "transcribe my HiDock recordings",
+  "should_trigger": false
+ },
+ {
+  "query": "what did we decide about the Cortex index last week?",
+  "should_trigger": false
+ },
+ {
+  "query": "write my weekly report for my manager",
+  "should_trigger": false
+ },
+ {
+  "query": "find the email from my manager about the monitor order",
+  "should_trigger": false
+ },
+ {
+  "query": "create a Jira story from my branch",
+  "should_trigger": false
+ }
+]

@@ -1,4 +1,4 @@
-"""Behaviour tests for gather: the contracts in docs/specs/gather.md.
+"""Behaviour tests for gather: the contracts in gather/references/spec.md.
 
 The `claude` subprocess is the boundary. A fake runner turns the requested calls into
 stream-json with the same line shapes as real `claude -p --output-format stream-json`
@@ -460,7 +460,7 @@ def test_github_uses_its_last_good_run_minus_a_day_not_a_fixed_seven_days(tmp_pa
 def test_a_full_gh_page_is_capped(tmp_path):
     full = json.dumps([{"number": i} for i in range(100)])
     ledger = gather.run(["github"], root=tmp_path, now=NOW, runner=None, me=ME, gh=lambda argv: full)
-    assert ledger["github"].startswith("capped")
+    assert ledger["github"] == "capped at gh limit 100"
 
 
 def test_cli_writes_a_ledger_even_when_get_me_fails(tmp_path, monkeypatch):
@@ -606,7 +606,9 @@ def test_one_jira_issue_error_does_not_throw_away_the_rest(tmp_path):
         return base(tool, args)
 
     ledger = gather.run(["jira"], root=tmp_path, now=NOW, runner=FakeRunner(respond), me=ME)
-    assert ledger["jira"] == "fetched 5 calls, 3 items, 1 issue errors"
+    assert ledger["jira"] == "partial: 5 calls, 3 items, 1 issue errors"
+    assert gather.exit_code(ledger) == 1
+    assert "jira" not in read_state(tmp_path).get("last_ok", {})
     keys = [r["args"].get("issueIdOrKey") for r in raw_records(tmp_path, "jira")]
     assert "P-1" in keys and "P-3" in keys and "P-2" not in keys
 
@@ -627,3 +629,119 @@ def test_a_corrupt_state_file_still_writes_a_ledger(tmp_path):
     assert ledger == {"teams_mine": "error: state unreadable"}
     assert list((tmp_path / "ledger").glob("*.json"))
     assert (tmp_path / "state.json").read_text() == "{trunc", "never overwrite a state file it could not read"
+
+
+# --- from /reviewer + third /code-review 2026-11-13 ------------------------------------------
+DAY = timedelta(days=1)
+
+
+def windows(runner):
+    out = []
+    for calls, _ in runner.rounds:
+        a = calls[0]["args"]
+        out.append((a.get("afterDateTime"), a.get("beforeDateTime"), a.get("offset")))
+    return out
+
+
+def z(dt):
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_a_window_is_fetched_in_day_chunks_oldest_first(tmp_path):
+    runner = FakeRunner(lambda tool, args: (EMPTY, False))
+    ledger = gather.run(["teams_mine"], root=tmp_path, now=NOW, runner=runner, me=ME, chunk=DAY)
+    start = NOW - timedelta(days=7)
+    assert windows(runner) == [(z(start + k * DAY), z(min(start + (k + 1) * DAY, NOW)), 0) for k in range(7)]
+    assert ledger["teams_mine"] == "fetched 7 calls, 0 items"
+
+
+def test_a_capped_chunk_keeps_the_days_before_it_and_the_next_run_resumes_there(tmp_path):
+    start = NOW - timedelta(days=7)
+    third = z(start + 2 * DAY)
+
+    def respond(tool, args):
+        if args["afterDateTime"] == third:
+            off = args.get("offset", 0)
+            return chat_page(25, off, more=off + 25), False
+        return EMPTY, False
+
+    ledger = gather.run(["teams_mine"], root=tmp_path, now=NOW, runner=FakeRunner(respond), me=ME, chunk=DAY, max_pages=2)
+    assert ledger["teams_mine"] == "capped at 2 pages"
+    state = read_state(tmp_path)
+    assert state["cursors"]["teams_mine"] == (start + 2 * DAY).isoformat()
+    assert state["covered_from"]["teams_mine"] == start.isoformat()
+    runner2 = FakeRunner(lambda tool, args: (EMPTY, False))
+    gather.run(["teams_mine"], root=tmp_path, now=NOW + timedelta(hours=1), runner=runner2, me=ME, chunk=DAY)
+    assert windows(runner2)[0][0] == third
+
+
+def test_the_cli_fetches_in_one_day_chunks(tmp_path, monkeypatch):
+    seen = FakeRunner(lambda tool, args: (EMPTY, False))
+    monkeypatch.setattr(gather, "claude_runner", lambda root: seen)
+    gather.main(["run", "--sources", "teams_mine", "--me", ME, "--me-name", "X", "--since", "3d", "--root", str(tmp_path)])
+    spans = [(datetime.fromisoformat(b.replace("Z", "+00:00")) - datetime.fromisoformat(a.replace("Z", "+00:00")))
+             for a, b, _ in windows(seen)]
+    assert len(spans) == 3 and all(sp <= DAY for sp in spans)
+
+
+def test_calendar_reaches_two_weeks_ahead_in_one_chain(tmp_path):
+    runner = FakeRunner(lambda tool, args: (EMPTY, False))
+    gather.run(["calendar"], root=tmp_path, now=NOW, runner=runner, me=ME, chunk=DAY)
+    assert len(runner.rounds) == 1
+    assert runner.rounds[0][0][0]["args"]["beforeDateTime"] == z(NOW + timedelta(days=14))
+
+
+def test_more_results_false_ends_paging_even_with_a_next_offset():
+    page = chat_page(3) + json.dumps({"moreResults": False, "nextOffset": 25})
+    assert gather.next_args({"offset": 0}, page) is None
+
+
+def test_a_jira_search_without_the_issues_envelope_is_an_unexpected_result(tmp_path):
+    def respond(tool, args):
+        if tool.endswith("searchJiraIssuesUsingJql"):
+            return json.dumps({"data": {"issues": {"nodes": [{"key": "P-1"}]}}}), False
+        return jira_responder([])(tool, args)
+
+    ledger = gather.run(["jira"], root=tmp_path, now=NOW, runner=FakeRunner(respond), me=ME)
+    assert ledger["jira"] == "error: unexpected result"
+
+
+def test_a_bare_json_error_body_is_an_unexpected_result(tmp_path):
+    body = json.dumps({"error": "InvalidAuthenticationToken", "message": "Access token has expired."})
+    ledger = gather.run(["teams_mine"], root=tmp_path, now=NOW, runner=FakeRunner(lambda t, a: (body, False)), me=ME)
+    assert ledger["teams_mine"] == "error: unexpected result"
+
+
+@pytest.mark.parametrize("bad", [{"cursors": None}, {"last_ok": []}, {"covered_from": "x"}])
+def test_a_state_file_with_a_wrong_shaped_key_is_unreadable(tmp_path, bad):
+    (tmp_path / "state.json").write_text(json.dumps(bad))
+    ledger = gather.run(["teams_mine"], root=tmp_path, now=NOW, runner=FakeRunner(lambda t, a: (EMPTY, False)), me=ME)
+    assert ledger == {"teams_mine": "error: state unreadable"}
+
+
+def test_state_and_ledger_are_saved_after_each_source_so_a_crash_keeps_finished_work(tmp_path):
+    def runner(calls, allowed):
+        if calls[0]["args"].get("recipient"):
+            raise KeyboardInterrupt
+        return stream([(c["tool"], c["args"], EMPTY, False) for c in calls])
+
+    with pytest.raises(KeyboardInterrupt):
+        gather.run(["teams_mine", "teams_chats"], root=tmp_path, now=NOW, runner=runner, me=ME)
+    assert "teams_mine" in read_state(tmp_path)["cursors"]
+    (ledger,) = list((tmp_path / "ledger").glob("*.json"))
+    assert json.loads(ledger.read_text())["sources"]["teams_mine"].startswith("fetched")
+
+
+def test_prune_removes_raw_days_and_logs_older_than_the_limit(tmp_path):
+    old_day, new_day = (NOW - timedelta(days=40)).strftime("%Y-%m-%d"), NOW.strftime("%Y-%m-%d")
+    for d in (old_day, new_day):
+        (tmp_path / "raw" / "mail" / d).mkdir(parents=True)
+        (tmp_path / "raw" / "mail" / d / "r-1.json").write_text("{}")
+    (tmp_path / "logs").mkdir()
+    old_log = tmp_path / "logs" / f"{(NOW - timedelta(days=40)):%Y%m%dT%H%M%S}-aaaaaa.log"
+    new_log = tmp_path / "logs" / f"{NOW:%Y%m%dT%H%M%S}-bbbbbb.log"
+    old_log.write_text("x"); new_log.write_text("y")
+    removed = gather.prune(tmp_path, older_than=timedelta(days=30), now=NOW)
+    assert not (tmp_path / "raw" / "mail" / old_day).exists() and (tmp_path / "raw" / "mail" / new_day).exists()
+    assert not old_log.exists() and new_log.exists()
+    assert removed == 2

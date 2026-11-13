@@ -1,6 +1,6 @@
 # Spec: gather — fetch-only intake for bard
 
-Status: agreed design, build started 2026-11-13. Owner: Alex.
+Status: built 2026-11-13; contracts below match `scripts/gather.py`. Owner: Alex.
 
 ## Why
 
@@ -53,11 +53,11 @@ and the calls that are proven.
 
 | Source | Kind | Calls |
 |---|---|---|
-| `teams_chats` | window | `chat_message_search` `query:"*"`, `recipient:<me>`, `afterDateTime:<cursor>`, page by `nextOffset` |
+| `teams_chats` | window | `chat_message_search` `query:"*"`, `recipient:<me>`, `afterDateTime:<cursor>`, page by `nextOffset`; in day chunks (contract 4) |
 | `teams_mine` | window | same with `sender:<me>`; its channel hits name the channels Alex posted in |
 | `teams_channels` | window | for each channel found in `teams_mine`: `teams_list_channel_messages` (roots), then replies per root (`parentMessageId`); keep only items with activity after the cursor |
 | `mail` | window | `outlook_email_search` `recipient:<me>` and `sender:<me>`, `afterDateTime:<cursor>` |
-| `calendar` | window | `outlook_calendar_search` over cursor → now |
+| `calendar` | window | `outlook_calendar_search` over cursor → now + 14 days (upcoming deadlines), one chain |
 | `sharepoint` | window | `sharepoint_search` `query:"*"`, `author:<display name>` (the mail matches nothing), `afterDateTime:<cursor>` (docs Alex authored or changed; docs he only opened are out of reach) |
 | `jira` | snapshot | `searchJiraIssuesUsingJql` `assignee = currentUser() AND statusCategory != Done` (no date: bard filters by changelog), then `getJiraIssue` `expand: changelog` per hit, in batches of up to 10 per round |
 | `github` | snapshot | `gh search prs --review-requested=@me --state=open` and `gh search prs --involves=@me --updated=>=<cursor date>` |
@@ -69,24 +69,39 @@ To Do, Todoist (no host has the tools), Graph `insights/used`.
 ## Contracts
 
 1. **Raw record.** One JSON file per tool call:
-   `{source, tool, args, run_id, fetched_at, provenance: "verbatim"|"model-copied", content}`.
-   `content` is the tool result text, byte-for-byte, never the model's reply.
+   `{source, tool, args, run_id, fetched_at, provenance: "verbatim", content}`.
+   `content` is the tool result text, byte-for-byte, never the model's reply. `args` hold Alex's
+   address and display name, so a record never leaves `~/.gather`.
 2. **Guard.** Any `tool_use` whose name is not in the round's allowlist, or any built-in tool
    use, aborts the source: exit 3, no raw files from that round, ledger `aborted: guard`.
 3. **Ledger.** Every source in the run gets exactly one line:
-   `fetched N calls, M items` | `error: <reason>` | `capped at <pages>` | `aborted: guard <tool>` |
-   `not fetched: <why>`. An empty result is `fetched 0`, never a missing line. The reason is
-   fixed text (`claude failed`, `gh failed`, `tool error`, `spill`, `unexpected result`,
-   `get_me failed`); exception and tool text go to `logs/<run_id>.log` (0600), never the
-   ledger. A guard abort stops the run; later sources get
+   `fetched N calls, M items` | `partial: N calls, M items, K issue errors` | `error: <reason>` |
+   `capped at N pages` | `capped at gh limit 100` | `aborted: guard <tool>` | `not fetched: <why>`.
+   An empty result is `fetched 1 calls, 0 items`, never a missing line. `partial` is a `jira`
+   run where K `getJiraIssue` calls failed: the records read are stored, `last_ok` stays, exit 1.
+   The reason is fixed text (`claude failed`, `gh failed`, `tool error`, `spill`,
+   `unexpected result`, `call mismatch`, `paging`, `no jira site`, `unknown source`,
+   `get_me failed`, `state unreadable`); exception and tool text go to `logs/<run_id>.log`
+   (0600), never the ledger. One ledger file is written per run and rewritten after each
+   source, together with `state.json`, so a crash keeps the finished sources. A corrupt
+   `state.json` (not an object, or `cursors`, `last_ok`, `covered_from` not an object) gives every
+   source `error: state unreadable`, and the file is left as it was. A guard abort stops the run; later sources get
    `not fetched: run stopped after a guard abort`. A `get_me` failure marks only the window sources `error: get_me failed`; `jira` and `github` still run, and one ledger holds all lines.
-4. **Cursor.** A window source's cursor moves to the run start time only when the source
-   ended `fetched`. Error, cap, or abort leave it where it was. It never moves backwards.
-   A `--since` later than the cursor, or with no cursor, leaves it where it was.
-   Snapshot sources have no cursor; they keep `last_ok` in `state.json`, and `github` asks
-   for PRs updated since `last_ok` minus one day. First run with no cursor: 7 days back.
-   A page with as many items as its `limit` and no end hint, or a `gh` result with 100
-   items, ends the source `capped`. `state.json` is written atomically.
+4. **Cursor and chunks.** A window source's cursor moves to the run start minus 15 minutes
+   (overlap: Teams and mail search can index a message late) only when the source ended
+   `fetched`. Error or abort leave it where it was. It never moves backwards. A `--since` later
+   than the cursor, or with no cursor, leaves it where it was. Snapshot sources have no cursor;
+   they keep `last_ok` in `state.json`, and `github` asks for PRs updated since `last_ok` minus
+   one day. First run with no cursor: 7 days back.
+   The CLI fetches a window source other than `calendar` in one-day chunks, oldest first. Each
+   chunk is a full paging chain with `afterDateTime` = chunk start and `beforeDateTime` = chunk
+   end. A page with as many items as its `limit` and no end hint, `--max-pages` reached in a
+   chunk, or a `gh` result with 100 items, ends the source `capped`. On a capped chunk the pages
+   read are stored, later chunks are not fetched, and the cursor moves to the start of the capped
+   chunk (never backwards, and not with a `--since` later than the cursor). `covered_from` moves
+   to the window start only if a chunk before the capped one finished. The next run resumes at the
+   capped day. `moreResults: false` ends paging even when a `nextOffset` is present.
+   `state.json` is written atomically.
    A window source that ends `fetched` also records `covered_from[source]`: the start of the
    window it fetched. It is kept only when absent or earlier than the stored value, so it never
    moves later. Snapshot sources have none.
@@ -99,29 +114,34 @@ To Do, Todoist (no host has the tools), Graph `insights/used`.
    `--permission-mode dontAsk` (without it an unlisted MCP tool ran, live 2026-11-13). The
    runner removes its empty project folder on any exit, and on a timeout also the spilled
    `tool-results` files. A non-error result must be JSON or the connector's empty text
-   `(<tool> completed with no output)`; anything else is `error: unexpected result`.
+   `(<tool> completed with no output)`; anything else is `error: unexpected result`. So is a JSON
+   body whose only keys are `error`, `message`, `code`, `status`, `statusCode`, and a Jira search
+   result that is not `{"issues": {"nodes": [...]}}`.
 7. **Slack.** Removed 2026-11-13. bard reads Slack natively in OpenCode.
 
-8. **bard reads.** bard sweeps every raw file not in `gather_seen`, marks
-   `model-copied` text as not quotable verbatim, and copies the gather ledger lines into its
-   coverage ledger. A source fetched more than `--max-age-hours` (default 24) ago is a gap.
+8. **bard reads.** bard sweeps every raw file not in `gather_seen` and copies the gather ledger
+   lines into its coverage ledger. A source fetched more than `--max-age-hours` (default 24) ago is a gap.
    Recorded through `bard/scripts/state.py`.
+
+9. **Retention.** `gather.py prune --older-than 30d` deletes `raw/<source>/<YYYY-MM-DD>/` day
+   folders and `logs/<run_id>.log` files older than the limit (by the date in the name), and
+   returns how many. It never touches `state.json` or `ledger/`. Run it weekly.
 
 ## Seams under test
 
 - `claude` subprocess (boundary): an injected runner. Unit tests feed it stream-json
   shaped like the real captured runs (synthetic message text, no real data). One opt-in
-  integration test (`GATHER_LIVE=1`) runs real `claude -p` for `teams_mine` over 1 day.
+  integration test (`GATHER_LIVE=1`) runs real `claude -p` for `teams_mine` over 7 days.
 - Filesystem: the store root is a parameter (`--root`, default `~/.gather`). Tests use a
   temp dir.
 - Clock: run start time is a parameter in the core functions.
 
 ## Acceptance
 
-- `python3 -m pytest gather/tests -q` passes (guard, ledger, cursor, spill,
-  pairing tool_use → tool_result by id).
-- `uv run --with pyyaml python scripts/validate_skill_graph.py` → PASS.
-- `GATHER_LIVE=1 python3 gather/scripts/gather.py run --sources teams_mine --since 1d --root <tmp>`
+- `uv run --with pytest python -m pytest gather/tests -q` passes (guard, ledger, cursor, chunks,
+  spill, prune, pairing tool_use → tool_result by id).
+- `uv run --with pyyaml python -m skillcheck` → PASS.
+- `GATHER_LIVE=1 python3 gather/scripts/gather.py run --sources teams_mine --since 7d --root <tmp>`
   writes ≥1 raw file whose `content` equals the stream's tool_result text, plus a ledger.
 - No new files under `~/.claude/projects/` from that run.
 

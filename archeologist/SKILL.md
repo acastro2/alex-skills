@@ -40,7 +40,7 @@ scope. Use the tiers below for cross-store searches or when the named source is 
 | [E: Developer docs](references/developer-docs.md) | Tier 2: project CONTEXT.md, ADRs, READMEs, and plans; markdown only, not source code. |
 | [F: OneDrive Architecture](references/onedrive-architecture.md) | Tier 2: formal ADRs, SADs, SIPs, briefs, and policy; includes docx extraction and path fallback. |
 | [G: Microsoft 365](references/microsoft-365.md) | Tier 2, promoted for communications: Teams, tenant SharePoint, Outlook mail/calendar; the `claude_ai_Microsoft_365` connector where the host has it, otherwise the `m365` CLI. |
-| [J: Slack](references/slack.md) | Tier 2, promoted for communications: DMs, channels, threads, canvases; the Slack MCP in Claude Code and Cursor, the `cursor-agent` bridge in OpenCode. |
+| [J: Slack](references/slack.md) | Tier 2, promoted for communications: DMs, channels, threads, canvases; the Slack MCP in Claude Code and Cursor, OpenCode's native Slack tools. |
 | [I: GitHub activity](references/github-activity.md) | Tier 2, promoted for shipped work: authored/reviewed PRs and commits across orgs via `gh`; a merged PR outranks transcript claims. |
 | [B: Legacy opencode](references/opencode.md) | Tier 3: frozen history before the Claude Code migration, or when other stores are empty. |
 

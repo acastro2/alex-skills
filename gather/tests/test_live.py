@@ -16,7 +16,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "gather.py"
 pytestmark = pytest.mark.skipif(os.environ.get("GATHER_LIVE") != "1", reason="set GATHER_LIVE=1 to run live")
 
 
-def test_teams_mine_one_day_live_writes_raw_and_leaves_no_session(tmp_path):
+def test_teams_mine_seven_days_live_writes_raw_and_leaves_no_session(tmp_path):
     root = tmp_path / "store"
     proc = subprocess.run(
         [sys.executable, str(SCRIPT), "run", "--sources", "teams_mine", "--since", "7d", "--root", str(root)],

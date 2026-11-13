@@ -26,7 +26,7 @@ def make_store(root: Path) -> None:
     raw(root, "raw/mail/2026-11-12/20261112T100000-aaaaaa-1.json")
     raw(root, "raw/mail/2026-11-13/20261113T100000-bbbbbb-1.json")
     raw(root, "raw/jira/2026-11-13/20261113T100000-bbbbbb-1.json")
-    raw(root, "raw/slack/2026-11-13/20261113T110000-cccccc-1.json", provenance="model-copied")
+    raw(root, "raw/slack/2026-11-13/20261113T110000-cccccc-1.json")
     write(root / "ledger/20261112T100000-aaaaaa.json",
           {"run_id": "20261112T100000-aaaaaa", "sources": {"mail": "fetched 1 calls, 3 items", "jira": "fetched 6 calls, 4 items"}})
     write(root / "ledger/20261113T100000-bbbbbb.json",
@@ -67,15 +67,11 @@ def test_a_source_gather_never_ran_is_a_gap_not_silence(tmp_path: Path) -> None:
     assert {"teams_chats", "jira", "slack"} <= set(out["fallback"])
 
 
-def test_model_copied_files_are_flagged_as_not_quotable(tmp_path: Path) -> None:
-    make_store(tmp_path)
-    out = inbox.listing(tmp_path, seen=set())
-    assert out["model_copied"] == ["raw/slack/2026-11-13/20261113T110000-cccccc-1.json"]
 
 
 def test_no_store_means_every_lane_falls_back(tmp_path: Path) -> None:
     out = inbox.listing(tmp_path / "missing", seen=set())
-    assert out == {"available": False, "unseen": {}, "ledger": {}, "fallback": [], "model_copied": [],
+    assert out == {"available": False, "unseen": {}, "ledger": {}, "fallback": [], "superseded": [],
                    "fetched_at": {}, "covered_from": {}}
 
 
@@ -132,3 +128,34 @@ def test_cli_takes_the_watermark_from_the_bard_state(tmp_path: Path, capsys) -> 
     state.write_text(json.dumps({"watermark": "2026-10-30T09:00:00+00:00", "gather_seen": []}))
     inbox.main(["list", "--root", str(store), "--state", str(state), "--max-age-hours", "100000"])
     assert "mail" in json.loads(capsys.readouterr().out)["fallback"]
+
+
+def test_snapshot_sources_list_only_the_newest_run_and_supersede_older_ones(tmp_path: Path) -> None:
+    raw(tmp_path, "raw/jira/2026-11-12/20261112T100000-aaaaaa-1.json")
+    raw(tmp_path, "raw/jira/2026-11-12/20261112T100000-aaaaaa-2.json")
+    raw(tmp_path, "raw/jira/2026-11-13/20261113T100000-bbbbbb-1.json")
+    raw(tmp_path, "raw/mail/2026-11-12/20261112T100000-aaaaaa-1.json")
+    out = inbox.listing(tmp_path, seen=set())
+    assert out["unseen"]["jira"] == ["raw/jira/2026-11-13/20261113T100000-bbbbbb-1.json"]
+    assert out["superseded"] == ["raw/jira/2026-11-12/20261112T100000-aaaaaa-1.json",
+                                 "raw/jira/2026-11-12/20261112T100000-aaaaaa-2.json"]
+    assert out["unseen"]["mail"] == ["raw/mail/2026-11-12/20261112T100000-aaaaaa-1.json"], "window sources keep every run"
+
+
+def test_a_partial_line_is_a_gap(tmp_path: Path) -> None:
+    write(tmp_path / "ledger/20261113T090000-aaaaaa.json",
+          {"started_at": "2026-11-13T09:00:00+00:00", "sources": {"jira": "partial: 5 calls, 3 items, 1 issue errors"}})
+    assert "jira" in inbox.listing(tmp_path, seen=set())["fallback"]
+
+
+def test_zero_teams_or_mail_items_on_a_working_day_is_a_gap_but_not_on_a_weekend(tmp_path: Path) -> None:
+    # bard: a zero from a comms store on a working day is a coverage failure until proven otherwise
+    write(tmp_path / "ledger/20261111T090000-aaaaaa.json",  # a Wednesday
+          {"started_at": "2026-11-11T09:00:00+00:00",
+           "sources": {"mail": "fetched 6 calls, 0 items", "calendar": "fetched 1 calls, 0 items"}})
+    out = inbox.listing(tmp_path, seen=set())
+    assert "mail" in out["fallback"] and "calendar" not in out["fallback"]
+    weekend = tmp_path / "w"
+    write(weekend / "ledger/20261115T090000-aaaaaa.json",  # a Sunday
+          {"started_at": "2026-11-15T09:00:00+00:00", "sources": {"mail": "fetched 6 calls, 0 items"}})
+    assert "mail" not in inbox.listing(weekend, seen=set())["fallback"]

@@ -17,8 +17,8 @@ already cost a sweep.
   is `{"role":"user","message":{"content":[{"type":"text","text":...}]}}` with no `type`
   key, and `{"type":"turn_ended"}` lines have no `role`, so select on `.role`. There are no
   tool results in the file. Skip `private-tmp-*` project folders (scratch runs from other
-  agents) and any project folder or cwd that contains `slack-via-cursor`: that is the Slack
-  bridge, and every bridge run makes a chat. Full mechanics: archeologist
+  agents) and any project folder or cwd that contains `slack-via-cursor`: that is the old Slack
+  bridge (deleted 2026-11-13; its old chats stay on disk). Full mechanics: archeologist
   [Source H](../../archeologist/references/cursor.md).
 - **opencode (every sweep, since 2026-09-25)**: `~/.local/share/opencode/opencode.db`,
   opened read-only (`sqlite3 -readonly`). Live data is in `session_v2` (one row per

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """gather: fetch-only intake. Writes raw, verbatim tool results to a local store.
 
-Contracts: docs/specs/gather.md. The `claude` and `gh` subprocesses are injected, so the
+Contracts: references/spec.md (next to SKILL.md). The `claude` and `gh` subprocesses are injected, so the
 core (`run`) is testable without a network.
 """
 import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -22,6 +23,11 @@ HINT_KEYS = ("moreResults", "nextOffset", "nextCursor")
 FIRST_RUN_DAYS = 7
 # Teams and mail search can index a message after it was sent (Alex chose 15 min, 2026-11-13)
 CURSOR_OVERLAP = timedelta(minutes=15)
+# One chain per day keeps a busy week from hitting the page cap in its first days
+CHUNK = timedelta(days=1)
+# Upcoming deadlines: the calendar reaches this far past the run start
+CALENDAR_AHEAD = timedelta(days=14)
+RETENTION = "30d"
 # Alex's personal GitHub account: never gather from it (Alex, 2026-11-13)
 PERSONAL_GH = "acastro2"
 CLAUDE_TIMEOUT_S = 300
@@ -30,6 +36,9 @@ MCP_OUTPUT_TOKENS = "200000"
 PREVIEW_MARK = "<persisted-output>"
 CAP_ERROR = re.compile(r"Error: result \([\d,]+ characters\) exceeds maximum allowed tokens")
 DEFAULT_ROOT = Path.home() / ".gather"
+_SPACE = re.compile(r"\s*")
+# a JSON body with only these keys is an error reply, not data
+ERROR_KEYS = {"error", "message", "code", "status", "statusCode"}
 
 # window sources, the calls each one makes. `me` fills the "ME" marker.
 # (tool, fixed args, max page size)
@@ -147,23 +156,33 @@ def resolve_spill(content):
     return content
 
 
+def json_values(text):
+    """Every JSON value at the start of `text`, back to back. Stops at the first thing that is not
+    JSON: mail search ends its JSON with a plain-text note (seen live)."""
+    dec, i, out = json.JSONDecoder(), 0, []
+    while True:
+        i = _SPACE.match(text, i).end()
+        if i >= len(text):
+            return out
+        try:
+            value, i = dec.raw_decode(text, i)
+        except ValueError:
+            return out
+        out.append(value)
+
+
+def _error_body(value):
+    return isinstance(value, dict) and bool(value) and set(value) <= ERROR_KEYS
+
+
 def _valid_result(tool, text):
     """Non-error text is data only when it starts with JSON or is the connector's empty text. Auth pages
-    and other prose come back with is_error unset, and must not be stored as a result."""
+    and other prose come back with is_error unset, and a bare error body can come back as JSON; none
+    of these may be stored as a result."""
     if text == f"({tool} completed with no output)":
         return True
-    dec, i, n = json.JSONDecoder(), 0, 0
-    while True:
-        while i < len(text) and text[i].isspace():
-            i += 1
-        if i >= len(text):
-            return n > 0
-        try:
-            _, i = dec.raw_decode(text, i)
-        except ValueError:
-            # mail search ends its JSON with a plain-text note (seen live); prose alone is not data
-            return n > 0
-        n += 1
+    values = json_values(text)
+    return bool(values) and not all(_error_body(v) for v in values)
 
 
 def run_round(runner, calls, tolerate_errors=False):
@@ -194,18 +213,7 @@ def run_round(runner, calls, tolerate_errors=False):
 # --- items and paging --------------------------------------------------------------------
 
 def top_level_values(text):
-    dec, i, out = json.JSONDecoder(), 0, []
-    while True:
-        while i < len(text) and text[i].isspace():
-            i += 1
-        if i >= len(text):
-            return out
-        try:
-            value, i = dec.raw_decode(text, i)
-        except ValueError:
-            return out
-        if isinstance(value, (dict, list)):
-            out.append(value)
+    return [v for v in json_values(text) if isinstance(v, (dict, list))]
 
 
 def count_items(content):
@@ -222,6 +230,8 @@ def next_args(args, content):
     """Args for the next page, or None on the last page."""
     values = top_level_values(content)
     last = values[-1] if values and isinstance(values[-1], dict) else {}
+    if last.get("moreResults") is False:
+        return None
     nxt = dict(args)
     if last.get("nextOffset") is not None:
         nxt.pop("cursor", None)
@@ -266,8 +276,20 @@ class Ctx:
     me: str
     me_name: object
     now: datetime
-    after: datetime
     max_pages: int
+    chunk: object = None
+    after: object = None
+
+
+@dataclass
+class Fetched:
+    """What one source read. `capped` is the ledger line when it stopped early; `resume_from` is
+    where the next run must start then, and `clean_before` says a chunk before that point finished."""
+    records: list
+    items: int
+    capped: str = ""
+    resume_from: object = None
+    clean_before: bool = False
     issue_errors: int = 0
     notes: list = field(default_factory=list)
 
@@ -276,19 +298,37 @@ def iso_z(dt):
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def spans(source, ctx):
+    """(start, end) windows for one source, oldest first. `end` None means no upper bound."""
+    if source == "calendar":
+        return [(ctx.after, ctx.now + CALENDAR_AHEAD)]
+    if ctx.chunk is None:
+        return [(ctx.after, None)]
+    out, start = [], ctx.after
+    while start < ctx.now:
+        out.append((start, min(start + ctx.chunk, ctx.now)))
+        start = out[-1][1]
+    return out
+
+
 def fetch_window(source, ctx):
-    records, items, capped = [], 0, 0
-    for name, fixed, size in WINDOW[source]:
-        marks = {"ME": ctx.me, "ME_NAME": ctx.me_name}
-        args = {k: marks.get(v, v) for k, v in fixed.items()}
-        args.update(afterDateTime=iso_z(ctx.after), limit=size, offset=0)
-        if source == "calendar":
-            args["beforeDateTime"] = iso_z(ctx.now)
-        recs, n, cap = fetch_pages(ctx.runner, M365 + name, args, ctx.max_pages)
-        records += recs
-        items += n
-        capped = capped or cap
-    return records, items, capped
+    got = Fetched([], 0)
+    marks = {"ME": ctx.me, "ME_NAME": ctx.me_name}
+    for done, (start, end) in enumerate(spans(source, ctx)):
+        capped = 0
+        for name, fixed, size in WINDOW[source]:
+            args = {k: marks.get(v, v) for k, v in fixed.items()}
+            args.update(afterDateTime=iso_z(start), limit=size, offset=0)
+            if end:
+                args["beforeDateTime"] = iso_z(end)
+            recs, n, cap = fetch_pages(ctx.runner, M365 + name, args, ctx.max_pages)
+            got.records += recs
+            got.items += n
+            capped = capped or cap
+        if capped:
+            got.capped, got.resume_from, got.clean_before = f"capped at {capped} pages", start, done > 0
+            break
+    return got
 
 
 def fetch_github(ctx):
@@ -300,16 +340,29 @@ def fetch_github(ctx):
         ["--review-requested=@me", "--state=open"],
         ["--involves=@me", f"--updated=>={since}"],
     ]
-    records, items, capped = [], 0, 0
+    got = Fetched([], 0)
     for q in queries:
         argv = ["search", "prs", *q, "--limit", str(GH_LIMIT), "--json", GH_FIELDS]
         out = ctx.gh(argv)
-        records.append({"tool": "gh", "args": {"argv": argv, "login": login}, "content": out})
+        got.records.append({"tool": "gh", "args": {"argv": argv, "login": login}, "content": out})
         n = count_items(out)
-        items += n
+        got.items += n
         if n == GH_LIMIT:
-            capped = 1
-    return records, items, capped
+            got.capped = f"capped at gh limit {GH_LIMIT}"
+    return got
+
+
+def jira_page(content):
+    """(issue keys, pageInfo) of one search result. The shape is {"issues": {"nodes": [...]}}."""
+    try:
+        issues = json.loads(content)["issues"]
+        nodes, info = issues["nodes"], issues.get("pageInfo") or {}
+        if not isinstance(nodes, list) or not isinstance(info, dict):
+            raise TypeError("wrong shape")
+        keys = [n["key"] for n in nodes]
+    except (ValueError, AttributeError, KeyError, TypeError):
+        raise ToolError("unexpected result", content[:200]) from None
+    return keys, info
 
 
 def fetch_jira(ctx):
@@ -318,36 +371,34 @@ def fetch_jira(ctx):
     cloud = next((v["id"] for v in sites if "read:jira-work" in v.get("scopes", [])), None)
     if not cloud:
         raise ToolError("no jira site")
-    records, keys = [site], []
+    got, keys = Fetched([site], 0), []
     args = {"cloudId": cloud, "jql": JIRA_JQL, "fields": JIRA_FIELDS, "maxResults": 50}
     for _ in range(ctx.max_pages):
         (page,) = run_round(ctx.runner, [{"tool": ATL + "searchJiraIssuesUsingJql", "args": args}])
-        records.append(page)
-        try:
-            issues = json.loads(page["content"]).get("issues") or {}
-            keys += [n["key"] for n in issues.get("nodes", [])]
-            info = issues.get("pageInfo") or {}
-        except (ValueError, AttributeError, KeyError, TypeError):
-            raise ToolError("unexpected result", page["content"][:200]) from None
+        got.records.append(page)
+        page_keys, info = jira_page(page["content"])
+        keys += page_keys
         if not info.get("hasNextPage"):
             break
         if not info.get("endCursor"):
             raise ToolError("unexpected result", "page has a next page but no endCursor")
         args = {**args, "nextPageToken": info["endCursor"]}
     else:
-        return records, len(keys), ctx.max_pages
+        got.items, got.capped = len(keys), f"capped at {ctx.max_pages} pages"
+        return got
+    got.items = len(keys)
     for i in range(0, len(keys), JIRA_BATCH):
-        got = run_round(ctx.runner, [{"tool": ATL + "getJiraIssue", "args": {
+        calls = run_round(ctx.runner, [{"tool": ATL + "getJiraIssue", "args": {
             "cloudId": cloud, "issueIdOrKey": key, "expand": "changelog",
             "fields": JIRA_FIELDS + ["comment"], "responseContentFormat": "markdown"}}
             for key in keys[i:i + JIRA_BATCH]], tolerate_errors=True)
-        for c in got:
+        for c in calls:
             if c["is_error"]:
-                ctx.issue_errors += 1
-                ctx.notes.append(f"jira {c['args'].get('issueIdOrKey')}: tool error: {c['content'][:200]}")
+                got.issue_errors += 1
+                got.notes.append(f"jira {c['args'].get('issueIdOrKey')}: tool error: {c['content'][:200]}")
             else:
-                records.append(c)
-    return records, len(keys), 0
+                got.records.append(c)
+    return got
 
 
 def fetch_source(source, ctx):
@@ -365,9 +416,9 @@ def read_state(root):
     state = json.loads(p.read_text()) if p.exists() else {}
     if not isinstance(state, dict):
         raise ValueError("state.json is not a JSON object")
-    state.setdefault("cursors", {})
-    state.setdefault("last_ok", {})
-    state.setdefault("covered_from", {})
+    for key in ("cursors", "last_ok", "covered_from"):
+        if not isinstance(state.setdefault(key, {}), dict):
+            raise ValueError(f"state.json {key} is not a JSON object")
     return state
 
 
@@ -418,10 +469,33 @@ def store_records(root, source, run_id, now, records, provenance):
         })
 
 
-def move_forward(marks, source, when):
+def move_mark(marks, source, when, pick):
+    """`pick` is max to move a mark later, min to move it earlier: a mark never goes the other way."""
     old = marks.get(source)
-    if old is None or datetime.fromisoformat(old) < when:
-        marks[source] = when.isoformat()
+    marks[source] = (when if old is None else pick(datetime.fromisoformat(old), when)).isoformat()
+
+
+def prune(root, *, older_than, now):
+    """Delete raw day folders and run logs whose date is older than now - older_than. Never
+    touches state.json or ledger/. Returns the number removed."""
+    cutoff, removed = now - older_than, 0
+    for day in Path(root).glob("raw/*/*"):
+        try:
+            end = datetime.strptime(day.name, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
+        except ValueError:
+            continue
+        if end <= cutoff and day.is_dir() and not day.is_symlink():
+            shutil.rmtree(day)
+            removed += 1
+    for log in Path(root).glob("logs/*.log"):
+        try:
+            when = datetime.strptime(log.name[:15], "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if when < cutoff and log.is_file():
+            log.unlink()
+            removed += 1
+    return removed
 
 
 def new_run_id(now):
@@ -446,19 +520,64 @@ def window_start(source, anchor, since, now):
     return start - timedelta(days=1) if source == "github" else start
 
 
-def move_back(marks, source, when):
-    old = marks.get(source)
-    if old is None or when < datetime.fromisoformat(old):
-        marks[source] = when.isoformat()
+def skip_line(source, me_name, stopped):
+    """The ledger line of a source that is not fetched at all, else None."""
+    if stopped:
+        return "not fetched: run stopped after a guard abort"
+    if source in NOT_FETCHED:
+        return f"not fetched: {NOT_FETCHED[source]}"
+    if source not in WINDOW and source not in ("github", "jira"):
+        return "error: unknown source"
+    if not me_name and any(v == "ME_NAME" for _, fixed, _ in WINDOW.get(source, []) for v in fixed.values()):
+        return "not fetched: no display name from get_me"
+    return None
+
+
+def fetch_one(source, base, state, root, run_id, since, details):
+    """Fetch one source, store what it read, and move its marks. Returns (ledger line, guard abort)."""
+    # window sources keep a cursor; snapshot sources keep only the time of the last good run
+    marks = state["cursors"] if source in WINDOW else state["last_ok"]
+    anchor = marks.get(source)
+    anchor_dt = datetime.fromisoformat(anchor) if anchor else None
+    ctx = replace(base, after=window_start(source, anchor, since, base.now))
+    try:
+        got = fetch_source(source, ctx)
+    except GuardError as e:
+        return f"aborted: guard {e.tool}", True
+    except PersonalAccount:
+        return "not fetched: active gh account is the personal one", False
+    except Exception as e:
+        details.append(f"{source}: {type(e).__name__}: {e}")
+        return f"error: {failure_reason(source, e)}", False
+    details.extend(got.notes)
+    # A capped source keeps what it read, so the pages are not paid for twice. Its cursor moves to
+    # the start of the capped chunk, so the next run resumes there and never skips it. A --since
+    # later than the cursor leaves it where it was.
+    store_records(root, source, run_id, ctx.now, got.records, "verbatim")
+    if got.capped:
+        if source in WINDOW and not (since and anchor_dt and since > anchor_dt):
+            move_mark(marks, source, got.resume_from or ctx.after, max)
+        if got.clean_before:
+            move_mark(state["covered_from"], source, ctx.after, min)
+        return got.capped, False
+    if got.issue_errors:
+        return f"partial: {len(got.records)} calls, {got.items} items, {got.issue_errors} issue errors", False
+    # a --since later than the mark, or with no mark at all, leaves an unfetched gap
+    if not (since and (anchor_dt is None or since > anchor_dt)):
+        move_mark(marks, source, ctx.now - CURSOR_OVERLAP if source in WINDOW else ctx.now, max)
+    if source in WINDOW:
+        move_mark(state["covered_from"], source, ctx.after, min)
+    return f"fetched {len(got.records)} calls, {got.items} items", False
 
 
 def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me_name=None,
-        preset=None, notes=()):
+        preset=None, notes=(), chunk=None):
     """Fetch each source once. Returns {source: ledger line}. `preset` maps a source to a ledger
-    line the caller already knows, so it is not fetched; `notes` go to the run log."""
+    line the caller already knows, so it is not fetched; `notes` go to the run log. `chunk` splits
+    a window source's window into spans of that length, oldest first. State and ledger are saved
+    after each source, so a crash keeps the finished ones."""
     root = Path(root)
     run_id = new_run_id(now)
-    gh = gh or real_gh
     preset = preset or {}
     ledger, details, stopped = {}, list(notes), False
     try:
@@ -468,60 +587,15 @@ def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me
         ledger = {s: "error: state unreadable" for s in sources}
         write_ledger(root, run_id, now, ledger, [*details, f"state.json: {type(e).__name__}: {e}"])
         return ledger
+    base = Ctx(runner, gh or real_gh, me, me_name, now, max_pages, chunk)
     for source in sources:
-        if source in preset:
-            ledger[source] = preset[source]
-            continue
-        if stopped:
-            ledger[source] = "not fetched: run stopped after a guard abort"
-            continue
-        if source in NOT_FETCHED:
-            ledger[source] = f"not fetched: {NOT_FETCHED[source]}"
-            continue
-        if source not in WINDOW and source not in ("github", "jira"):
-            ledger[source] = "error: unknown source"
-            continue
-        if not me_name and any(v == "ME_NAME" for _, fixed, _ in WINDOW.get(source, []) for v in fixed.values()):
-            ledger[source] = "not fetched: no display name from get_me"
-            continue
-        # window sources keep a cursor; snapshot sources keep only the time of the last good run
-        marks = state["cursors"] if source in WINDOW else state["last_ok"]
-        anchor = marks.get(source)
-        ctx = Ctx(runner, gh, me, me_name, now, window_start(source, anchor, since, now), max_pages)
-        try:
-            records, items, capped = fetch_source(source, ctx)
-        except GuardError as e:
-            ledger[source] = f"aborted: guard {e.tool}"
-            stopped = True
-            continue
-        except PersonalAccount:
-            ledger[source] = "not fetched: active gh account is the personal one"
-            continue
-        except Exception as e:
-            ledger[source] = f"error: {failure_reason(source, e)}"
-            details.append(f"{source}: {type(e).__name__}: {e}")
-            continue
-        finally:
-            details.extend(ctx.notes)
-        # A capped source keeps what it read, so the pages are not paid for twice. With a cursor
-        # it stays, so the next run starts at the same place and may repeat items. With none,
-        # the cursor pins to this window's start, so the next run does not slide forward.
-        store_records(root, source, run_id, now, records, "verbatim")
-        if capped:
-            ledger[source] = f"capped at {capped} pages"
-            if source in WINDOW and anchor is None:
-                marks[source] = ctx.after.isoformat()
-        else:
-            ledger[source] = f"fetched {len(records)} calls, {items} items"
-            if ctx.issue_errors:
-                ledger[source] += f", {ctx.issue_errors} issue errors"
-            # a --since later than the mark, or with no mark at all, leaves an unfetched gap
-            if not (since and (anchor is None or since > datetime.fromisoformat(anchor))):
-                move_forward(marks, source, now - CURSOR_OVERLAP if source in WINDOW else now)
-            if source in WINDOW:
-                move_back(state["covered_from"], source, ctx.after)
-    write_json(root / "state.json", state)
-    write_ledger(root, run_id, now, ledger, details)
+        line = preset.get(source) or skip_line(source, me_name, stopped)
+        if line is None:
+            line, aborted = fetch_one(source, base, state, root, run_id, since, details)
+            stopped = stopped or aborted
+        ledger[source] = line
+        write_json(root / "state.json", state)
+        write_ledger(root, run_id, now, ledger, details)
     return ledger
 
 
@@ -607,11 +681,16 @@ def lookup_me(runner):
 
 # --- CLI ---------------------------------------------------------------------------------
 
-def parse_since(text, now):
+def parse_age(text):
     m = re.fullmatch(r"(\d+)([dh])", text)
-    if m:
-        n = int(m.group(1))
-        return now - (timedelta(days=n) if m.group(2) == "d" else timedelta(hours=n))
+    if not m:
+        raise ValueError(f"bad age: {text}")
+    return timedelta(**{"days" if m.group(2) == "d" else "hours": int(m.group(1))})
+
+
+def parse_since(text, now):
+    if re.fullmatch(r"\d+[dh]", text):
+        return now - parse_age(text)
     dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
@@ -651,15 +730,30 @@ def cmd_run(a):
             preset = {s: "error: get_me failed" for s in names if s in WINDOW}
             notes = [f"get_me: {type(e).__name__}: {e}"]
     ledger = run(names, root=root, now=now, runner=runner, me=me, max_pages=a.max_pages, since=since,
-                 me_name=me_name, preset=preset, notes=notes)
+                 me_name=me_name, preset=preset, notes=notes, chunk=CHUNK)
     for s, line in ledger.items():
         print(f"{s}: {line}")
     return exit_code(ledger)
 
 
+def cmd_prune(a):
+    try:
+        age = parse_age(a.older_than)
+    except ValueError:
+        print(f"bad --older-than: {a.older_than}", file=sys.stderr)
+        return 2
+    removed = prune(Path(a.root).expanduser(), older_than=age, now=datetime.now(timezone.utc))
+    print(f"pruned {removed}")
+    return 0
+
+
 def cmd_status(a):
     root = Path(a.root).expanduser()
-    state = read_state(root)
+    try:
+        state = read_state(root)
+    except (ValueError, OSError) as e:
+        print(f"state unreadable: {root / 'state.json'}: {type(e).__name__}", file=sys.stderr)
+        return 1
     for s, c in sorted(state["cursors"].items()):
         print(f"cursor {s}: {c}")
     for s, c in sorted(state["last_ok"].items()):
@@ -686,13 +780,13 @@ def main(argv=None):
     r.add_argument("--me")
     r.add_argument("--me-name")
     sub.add_parser("status")
+    sub.add_parser("prune").add_argument("--older-than", default=RETENTION)
     # `--root` after the subcommand reads naturally too
     for p in sub.choices.values():
         p.add_argument("--root", default=argparse.SUPPRESS)
     a = ap.parse_args(argv)
-    if a.cmd == "run":
-        return cmd_run(a)
-    return cmd_status(a)
+    return {"run": cmd_run, "prune": cmd_prune, "status": cmd_status}[a.cmd](a)
+
 
 if __name__ == "__main__":
     sys.exit(main())

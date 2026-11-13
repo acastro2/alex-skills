@@ -1,21 +1,18 @@
 ---
 name: bard
 description: >-
-  Mine AI-coding session history, scribe meeting transcript notes
-  (Scribe/Meetings/Transcripts), and the comms (Outlook mail, Teams, calendar) from
-  ~/.gather or the archeologist, and distill them into durable,
-  graph-native notes in the Obsidian vault at obsidian/Alex/Bard, and copy authored
-  deliverable files into the Evidence vault (Evidence/). Use when the user
-  runs /bard, asks to capture/record what they've been working on into Obsidian,
-  to sweep recent sessions, meetings, or comms into the knowledge base, to bootstrap the bard
-  hubs, or to turn past decisions/lessons/patterns into notes, and to keep the
-  root-vault `Todo.md` board fed from Teams, mail, Planner, To Do, Todoist, Jira and
-  GitHub, with every judgment typed through Jev.
-  On-demand only. Reads sessions, meetings, and comms via the
-  archeologist agent; writes
-  OKF-envelope markdown notes. Never commits, never runs a server, never invents
-  provenance. Not for raw transcripts, that is scribe, or history questions, that
-  is archeologist.
+  Mine AI-coding session history, scribe meeting notes (Scribe/Meetings/Transcripts),
+  and comms (Outlook mail, Teams, calendar) read from ~/.gather (the gather skill) or the
+  archeologist, and distill them into durable, graph-native notes in the Obsidian vault
+  at obsidian/Alex/Bard, and copy authored deliverable files into the Evidence vault
+  (Evidence/). Use when the user runs /bard, asks to capture/record what they've been
+  working on into Obsidian, to sweep recent sessions, meetings, or comms into the
+  knowledge base, to bootstrap the bard hubs, or to turn past decisions/lessons/patterns
+  into notes, and to keep the root-vault `Todo.md` board fed from Slack, Teams, mail,
+  Planner, To Do, Todoist, Jira and GitHub, with every judgment typed through Jev.
+  On-demand only. Writes OKF-envelope markdown notes. Never commits, never runs a server,
+  never invents provenance. Not for raw transcripts (scribe), fetching raw comms
+  (gather), or history questions (archeologist).
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Atlassian__atlassianUserInfo, mcp__claude_ai_Atlassian__getAccessibleAtlassianResources, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
 ---
 
@@ -135,36 +132,37 @@ so it is derived from real work and ratified by Alex.
    archeologist returns a *summarized* briefing (distilling a distillation would break
    the quote rule).
    - **Gather lane (comms, since 2026-11-13).** Run
-     `python3 ~/.agents/skills/bard/scripts/gather_inbox.py list --state <vault>/Bard/.bard-state.json`.
-     Read every file under `unseen`. Its `content` is the verbatim tool result: quotable.
-     Provenance is the file path under `~/.gather` plus its `tool` and `args`. Keep each
-     item's `webUrl` (Teams) or `webLink` (mail): the board breadcrumb links to it. A file in
-     `model_copied` may be summarised, never quoted as verbatim. Copy every `ledger` line into the coverage ledger. A source fetched
-     longer ago than `--max-age-hours` (default 24, see `fetched_at`) is a gap too: it is in
-     `fallback`. The script reads the `watermark` from the same state file: a window source
-     whose gather history (`covered_from`) starts after the watermark is a gap too, and is in `fallback`. For each source in `fallback`, and for every comms source when `available` is false, run that source's old
-     lane as today. Map sources to lanes: `teams_chats`, `teams_mine`, `teams_channels` →
-     Teams; `mail`; `calendar`; `sharepoint`; `jira` and `github` → task lane snapshot
-     sources. gather does not fetch Slack, so `slack` is always in `fallback`: run the Slack
-     lane (native in OpenCode since 2026-11-13). The `/gather` skill runs gather, separately and from any host.
-     Bard never runs it.
+     `python3 ~/.agents/skills/bard/scripts/gather_inbox.py list --state <vault>/Bard/.bard-state.json`
+     (bard never runs gather; `/gather` does):
+
+     | Key | What you do |
+     |---|---|
+     | `fallback`, or `available: false` | Run the old lane for those sources (all comms sources when unavailable). Map: `teams_*` to Teams; `mail`; `calendar`; `sharepoint`; `jira`, `github` to the task lane. `slack` is always here. A source is also here when its fetch is older than 24 h, its history starts after the watermark, or it has 0 items on a working day. |
+     | `unseen` | Read each file. `content` is the verbatim tool result: quotable. For a busy Teams or mail window, delegate per task-lane "Volume". |
+     | `superseded` | Older snapshot runs. Mark them seen, never read them. |
+     
+     - Copy every `ledger` line into the coverage ledger.
+     - Gather items use `gather_seen` as their cursor, NEVER the watermark: a message gather stores after a sweep must still be read next sweep.
+     - Provenance is the file path and `tool` only, never `args`: they hold Alex's address.
+     - Keep each item's `webUrl` (Teams) or `webLink` (mail) for the breadcrumb.
+     - `jira` files are a full snapshot: apply task-lane.md's changelog-after-watermark filter.
+     - `sharepoint` covers only docs Alex authored or changed: the archeologist's SharePoint lane (asks in other people's docs, 2026-10-14) always runs. `calendar` reaches 14 days ahead.
    - **Discover — one archeologist sweep, all stores.** Spawn the **archeologist** agent
      (read-only) with the window `watermark` → now. It sweeps every store by its own
      **Coverage** rule and answers with summary and references first (its **Phase 5**
      contract). Treat its **summary as a lead, never as quotable text**; its
      **references are the payload** the next step reads: store, locator, session-start.
-     This is the lane that reaches
-     mail, Teams, Slack, calendar, tenant SharePoint, and GitHub activity — stores the local
-     indexes below cannot see. When the gather lane covered a source with `fetched`, do not
-     fetch it again here; the archeologist still runs for session stores, Obsidian,
-     Developer, and OneDrive. An unavailable store in the briefing is missing data, not
-     empty data: name it in the sweep report, never let it pass silently.
+     This is the lane that reaches mail, Teams, Slack, calendar, tenant SharePoint, and
+     GitHub activity: stores the local indexes below cannot see. When the gather lane
+     covered a source with `fetched`, do not fetch it again here. Pass the archeologist the
+     stores to sweep without them, and tell it to mark them "covered by gather" (not
+     missing) in its coverage ledger. An unavailable store in the briefing is missing data,
+     not empty data: name it in the sweep report, never let it pass silently.
 
      **Run it on every sweep, short windows included.** On 2026-10-14 two back-to-back
      sweeps of 30-40 minutes skipped it and searched Teams and mail directly. The re-run
-     over that window found a live P1 batch incident in a channel, three risk-register
-     to-dos assigned to Alex in a SharePoint doc, and two chat commitments — none of
-     them visible to a `recipient` search.
+     found a live P1 batch incident in a channel, three risk-register to-dos assigned to
+     Alex in a SharePoint doc, and two chat commitments: none visible to a `recipient` search.
 
      **Demand the coverage ledger, and check it before you trust the briefing.** The
      archeologist owes one line per store — what it ran and how many hits (its
@@ -173,15 +171,15 @@ so it is derived from real work and ratified by Alex.
      statement about the connection, not about the search.
 
      **A zero from a comms store is a coverage failure until proven otherwise.** Slack,
-     Teams, mail and calendar are never actually silent across a working day. A window with no
-     working day in it (a weekend or holiday only) is exempt. Verified
-     2026-09-18: a sweep returned zero Teams items, the lane was accepted as quiet, and
-     the week's biggest item — a production outage being worked in a channel — never
-     reached the notes or the board. If the ledger shows 0 for Slack, Teams or mail, run
-     targeted Slack searches (archeologist Source J) or `chat_message_search` /
-     `outlook_email_search` queries directly on this window before you accept it: the topics already on the board, the people who owe
-     Alex something, and the systems that broke. Cheap, and it is the lane you cannot
-     reconstruct later.
+     Teams, mail and calendar are never silent across a working day. A window with no working
+     day (weekend or holiday only) is exempt. Gather agrees: `fetched ... 0 items` for
+     `teams_chats`, `teams_mine`, or `mail` on a working day comes back in `fallback`.
+     Verified 2026-09-18: a sweep returned zero Teams items, the lane was accepted as quiet,
+     and a production outage worked in a channel never reached the notes or the board. If the
+     ledger shows 0 for Slack, Teams or mail, run targeted Slack searches (archeologist
+     Source J) or `chat_message_search` / `outlook_email_search` queries directly on this
+     window before you accept it: the topics on the board, the people who owe Alex something,
+     and the systems that broke. Cheap, and the lane you cannot reconstruct later.
 
      Comms mostly dies at the half-life filter (STEP 1) — expect to drop standups, 1:1s,
      and routine threads; what survives is usually a commitment ("I'll send X by
@@ -271,13 +269,13 @@ so it is derived from real work and ratified by Alex.
 8. **Update `.bard-state.json` with the script, not a heredoc.** One call per run:
 
    ```
-   python3 scripts/state.py record <vault>/Bard/.bard-state.json \
+   python3 ~/.agents/skills/bard/scripts/state.py record <vault>/Bard/.bard-state.json \
      --watermark <newest real session-start swept> \
      --seen <scribe note path> [--seen ...] \
      --gather-seen <raw path> [--gather-seen ...]
    ```
 
-   Pass every gather file read this sweep as `--gather-seen`.
+   Pass every gather file read or superseded this sweep as `--gather-seen`.
 
    It sets `last_run` to now, adds the notes to `scribe_seen`, and refuses the two values
    that silently re-sweep: a watermark older than the stored one, and a rounded day
@@ -285,7 +283,7 @@ so it is derived from real work and ratified by Alex.
    from the index scan or the newest timestamp the briefing observed, not a rounded value
    the script happens to accept. It writes atomically and reads the file back, so the
    `noclobber` trap that once left an old watermark in place cannot happen (2026-09-04).
-   `python3 scripts/state.py show <path>` prints the current state.
+   `python3 ~/.agents/skills/bard/scripts/state.py show <path>` prints the current state.
 9. **Sync the vault** — Obsidian watches the filesystem, so on-disk writes are picked
    up on their own. Run ONLY `obsidian sync:status vault=Alex` (see **Vault sync**
    below) and report the status line. Do NOT run `obsidian reload`: it prints
