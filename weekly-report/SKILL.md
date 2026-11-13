@@ -48,11 +48,13 @@ graph LR
 ## Steps
 
 1. **Config.** Read `~/.config/weekly-report.json` (`manager`, `exclude_headings`,
-   `github_orgs`, `team`). It lives outside this public repo on purpose: names and orgs never land
+   `github_orgs`, `team`, `start_week`, `week_tag_until`). It lives outside this public repo on purpose: names and orgs never land
    here. No `manager` → ask Alex for the first name and write the file (mode 600).
    `team` is `{name, org, repos, jira_project, slack_channels}`. No `team` → skip every team
    step; the facts carry `team: null`. `team.org` must also be in `github_orgs`: Alex's own
    PRs are flagged `mine` from that search, and without it they are counted twice.
+   With `start_week` and `week_tag_until` set, the email subject reads
+   `<team>: <Wnn> (<from> week <N>) Recap` until `week_tag_until`, then `<team>: <Wnn> Recap`.
 2. **Team inputs** (only with `team`). These come before the collector because the script
    cannot call MCP tools.
    - **Jira.** Follow [references/team-jira.md](references/team-jira.md): count first, then
@@ -167,6 +169,9 @@ graph LR
     `python3 ~/.agents/skills/weekly-report/scripts/render_email.py --report <that file> --facts <facts file> --out <vault>/Reports/Weekly/<week>.email.html --draft`.
     It computes every number and chart from the facts, so never put a count in the report
     file. `--draft` opens an Outlook draft on the Mac as the end of the run; Alex sends it.
+    **Never send the email** (Alex, 2026-11-13): no `send` command, no connector send or reply
+    tool, no recipient filled in for him. The run ends with the draft open for Alex to review;
+    sending is always his click.
     Exit 2 names what is wrong: a `report:` or field error means fix the report file, a
     `facts:` error means run the collector again, never edit the script. Not at the Mac
     (no Outlook to drive): drop `--draft` and say the HTML file is waiting.

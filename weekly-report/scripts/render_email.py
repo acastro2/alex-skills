@@ -285,6 +285,23 @@ def render(report: dict, facts: dict, template: str = "light") -> str:
     return out.encode("ascii", "xmlcharrefreplace").decode("ascii")
 
 
+def subject(report: dict, facts: dict) -> str:
+    """`<team>: <Wnn> (<from> week <N>) Recap`, or without the week tag once the window ends
+    after `week_tag_until`. N counts the weeks from `start_week`, starting at 1."""
+    wk = facts["week"].split("-")[-1]
+    team = (facts.get("team") or {}).get("name")
+    prefix = f"{team}: " if team else ""
+    tag = ""
+    if facts.get("start_week") and facts.get("week_tag_until"):
+        last = dt.date.fromisoformat(facts["window"][1])
+        if last <= dt.date.fromisoformat(facts["week_tag_until"]):
+            start_year, start_week = (int(n) for n in facts["start_week"].split("-W"))
+            year, week = (int(n) for n in facts["week"].split("-W"))
+            gap = dt.date.fromisocalendar(year, week, 1) - dt.date.fromisocalendar(start_year, start_week, 1)
+            tag = f" ({report['from']} week {gap.days // 7 + 1})"
+    return f"{prefix}{wk}{tag} Recap"
+
+
 def open_draft(path: Path, subject: str) -> None:
     result = subprocess.run(["osascript", "-", str(path), subject], input=DRAFT_SCRIPT,
                             capture_output=True, text=True, check=False)
@@ -317,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.draft:
         try:
-            open_draft(args.out, f"{facts['week'].split('-')[-1]} status")
+            open_draft(args.out, subject(report, facts))
         except (RuntimeError, OSError) as exc:
             print(f"render_email: Outlook draft failed: {exc}", file=sys.stderr)
             return 1

@@ -7,8 +7,9 @@ this script only gathers what can be counted, so two runs over the same week agr
 Usage:
   collect.py --vault <vault> [--date YYYY-MM-DD] [--no-github] [--jira FILE ...] [--slack FILE] > facts.json
 Config (optional): ~/.config/weekly-report.json
-  {"manager": "<first name>", "exclude_headings": ["Personal"], "github_orgs": ["org", ...],
-   "team": {"name": "<team name>", "org": "<github org>", "repos": ["<repo>", ...]}}
+    {"manager": "<first name>", "exclude_headings": ["Personal"], "github_orgs": ["org", ...],
+   "team": {"name": "<team name>", "org": "<github org>", "repos": ["<repo>", ...]},
+   "start_week": "2026-W46", "week_tag_until": "2026-12-31"}
 """
 from __future__ import annotations
 
@@ -332,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
         "week": iso_week_label(window[0]),
         "window": [window[0].isoformat(), window[1].isoformat()],
         "manager": config.get("manager"),
+        "start_week": config.get("start_week"),
+        "week_tag_until": config.get("week_tag_until"),
         "collected_at": dt.datetime.now(TZ).isoformat(timespec="seconds"),
         "bard_last_run": state.get("last_run"),
         "bard_fresh": bool(state.get("last_run")) and note_day(state["last_run"]) == today,

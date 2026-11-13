@@ -234,3 +234,44 @@ def test_cli_creates_the_output_folder(tmp_path: Path) -> None:
     assert render_email.main(["--report", str(FIX / "report.json"), "--facts", str(FIX / "facts.json"),
                               "--out", str(out)]) == 0
     assert out.exists()
+
+
+def subject_facts(week: str, window: list[str], **extra: object) -> dict:
+    facts = copy.deepcopy(FACTS)
+    facts["week"], facts["window"] = week, window
+    facts["team"] = {**(facts.get("team") or {}), "name": "Platform Integrations"}
+    facts.update(extra)
+    return facts
+
+
+def test_subject_names_the_team_the_week_and_the_authors_week_number() -> None:
+    facts = subject_facts("2026-W46", ["2026-11-09", "2026-11-13"],
+                          start_week="2026-W46", week_tag_until="2026-12-31")
+    assert render_email.subject(REPORT, facts) == "Platform Integrations: W46 (Alex week 1) Recap"
+
+
+def test_subject_counts_weeks_from_the_start_week() -> None:
+    facts = subject_facts("2026-W52", ["2026-12-21", "2026-12-25"],
+                          start_week="2026-W46", week_tag_until="2026-12-31")
+    assert render_email.subject(REPORT, facts) == "Platform Integrations: W52 (Alex week 7) Recap"
+
+
+def test_subject_drops_the_week_number_after_the_tag_end_date() -> None:
+    facts = subject_facts("2027-W01", ["2027-01-04", "2027-01-08"],
+                          start_week="2026-W46", week_tag_until="2026-12-31")
+    assert render_email.subject(REPORT, facts) == "Platform Integrations: W01 Recap"
+
+
+def test_subject_has_no_week_number_without_a_start_week() -> None:
+    assert render_email.subject(REPORT, subject_facts("2026-W46", ["2026-11-09", "2026-11-13"])) \
+        == "Platform Integrations: W46 Recap"
+
+
+def test_subject_without_a_team_is_the_week_alone() -> None:
+    facts = subject_facts("2026-W46", ["2026-11-09", "2026-11-13"])
+    facts["team"] = None
+    assert render_email.subject(REPORT, facts) == "W46 Recap"
+
+
+def test_the_draft_step_never_sends() -> None:
+    assert "send" not in render_email.DRAFT_SCRIPT.lower()
