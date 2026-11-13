@@ -137,7 +137,8 @@ so it is derived from real work and ratified by Alex.
    - **Gather lane (comms, since 2026-11-13).** Run
      `python3 ~/.agents/skills/bard/scripts/gather_inbox.py list --state <vault>/Bard/.bard-state.json`.
      Read every file under `unseen`. Its `content` is the verbatim tool result: quotable.
-     Provenance is the file path under `~/.gather` plus its `tool` and `args`. A file in
+     Provenance is the file path under `~/.gather` plus its `tool` and `args`. Keep each
+     item's `webUrl` (Teams) or `webLink` (mail): the board breadcrumb links to it. A file in
      `model_copied` may be summarised, never quoted as verbatim. Copy every `ledger` line into the coverage ledger. A source fetched
      longer ago than `--max-age-hours` (default 24, see `fetched_at`) is a gap too: it is in
      `fallback`. The script reads the `watermark` from the same state file: a window source

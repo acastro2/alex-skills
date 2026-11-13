@@ -151,7 +151,9 @@ priority emoji (the parser constraint still holds):
 | Jira issue | `(jira:PROJ-123)` (board lines written before 2026-11-12 keep `(ado:N)`; do not rewrite the vault) |
 | GitHub PR review | `(pr:<repo>#<n>)` (repos in the work org only) |
 | Planner / To Do / Todoist | `(planner)` / `(todo)` / `(todoist)` |
-| Slack / Teams chat / mail | `(slack:YYYY-MM-DD)` / `(teams:YYYY-MM-DD)` / `(mail:YYYY-MM-DD)`, the message date |
+| Slack | `([slack:YYYY-MM-DD](https://<workspace>.slack.com/archives/<channel>/p<ts>))`, the message date linked to the message's `Permalink` from the Slack search result, not backticked (a link inside backticks does not render). Link the ask itself, or the thread root if the ask is a reply. With no permalink, fall back to `` `(slack:YYYY-MM-DD)` `` |
+| Teams chat | `([teams:YYYY-MM-DD](https://teams.microsoft.com/l/message/<chat>/<id>))`, the message date linked to the message's `webUrl` (a `teams.microsoft.com` link in every `chat_message_search` result and in every gather `teams_*` record), not backticked. With no `webUrl`, fall back to `` `(teams:YYYY-MM-DD)` `` |
+| Mail | `([mail:YYYY-MM-DD](https://outlook.office365.com/owa/?ItemID=<id>))`, the message date linked to the message's `webLink` (an `outlook.office365.com` link in every `outlook_email_search` result and in every gather `mail` record), not backticked. With no `webLink`, fall back to `` `(mail:YYYY-MM-DD)` `` |
 | Ask inside a SharePoint doc (an `@alex` to-do in meeting notes) | `(sharepoint:YYYY-MM-DD)`, the doc's modified date |
 
 The line text names the action and a role or first name only. Never put a mail subject,

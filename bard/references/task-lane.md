@@ -132,7 +132,9 @@ the result). Quote the tool's own markdown result verbatim.
 - **Read the whole thread** before Set A and Set R. Search returns a snippet, and the answer
   to an ask is often a reply further down. Set R uses Alex's own posts in the same thread
   or DM after the ask, the same way as Teams.
-- Breadcrumb on the board: `(slack:YYYY-MM-DD)`, the message date, like `(teams:…)`.
+- Breadcrumb on the board: `([slack:YYYY-MM-DD](https://<workspace>.slack.com/archives/<channel>/p<ts>))`, the message date linked to the
+  ask's `Permalink` from the search result (todo-board.md, Source breadcrumb). Keep the
+  permalink when you read the hit, so the board line can link it.
 - **Method that worked (2026-11-11):** get Alex's user id with `slack_search_users`; search DMs
   (`channel_types: im,mpim`) and mentions (`keywords: "<@U…>"`) only to find the conversations;
   then read each DM in full with `slack_read_channel` and each mentioned thread with
@@ -148,6 +150,11 @@ archeologist's SharePoint and channel lanes found three risk-register to-dos ass
 Alex and two commitments he made in chats, all missed by the `recipient` searches. Take
 every ask or commitment in the archeologist's briefing through Set T as well, with the
 `(sharepoint:…)` or `(teams:…)` breadcrumb.
+
+**Keep the link with each kept ask.** A Teams hit carries `webUrl` and a mail hit carries
+`webLink`, in the search result and in the gather record alike. Copy it with the ask, so the
+board line can link its breadcrumb (todo-board.md, Source breadcrumb). A link found later is
+a second search; a link kept now is free.
 
 ## What was not verified
 
