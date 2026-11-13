@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Collect the facts for one weekly report: the Mon-Fri window, the bard board, the Bard
-notes written that week, and the user's GitHub pull requests. Judgment stays with the model;
+notes written that week, the user's GitHub pull requests, and, when configured, how the team's
+product moved (team PRs, saved Jira pages, saved Slack reads). Judgment stays with the model;
 this script only gathers what can be counted, so two runs over the same week agree.
 
 Usage:
-  collect.py --vault <vault> [--date YYYY-MM-DD] [--no-github] > facts.json
+  collect.py --vault <vault> [--date YYYY-MM-DD] [--no-github] [--jira FILE ...] [--slack FILE] > facts.json
 Config (optional): ~/.config/weekly-report.json
-  {"manager": "<first name>", "exclude_headings": ["Personal"], "github_orgs": ["org", ...]}
+  {"manager": "<first name>", "exclude_headings": ["Personal"], "github_orgs": ["org", ...],
+   "team": {"name": "<team name>", "org": "<github org>", "repos": ["<repo>", ...]}}
 """
 from __future__ import annotations
 
@@ -25,6 +27,9 @@ PRIORITY = re.compile(r"(🔺|⏫|🔼|🔽|⏬)")
 DONE_DATE = re.compile(r"✅ (\d{4}-\d{2}-\d{2})\s*$")
 MARKER = "<!-- BARD:START"
 PR_LIMIT = 200
+# A backlog cleanup closes many tickets within seconds of each other; that is not a week of work.
+BULK_MIN = 10
+BULK_GAP = dt.timedelta(seconds=60)
 # bard tags a Personal line when it moves to the flat Done list, where the heading is lost.
 PERSONAL_TAG = re.compile(r"(?<!\S)#personal(?!\S)", re.IGNORECASE)
 
@@ -164,11 +169,145 @@ def github_prs(window: tuple[dt.date, dt.date], orgs: list[str], run=subprocess.
             "truncated": truncated}
 
 
+def team_prs(window: tuple[dt.date, dt.date], team: dict, mine_urls: set[str], run=subprocess.run) -> dict:
+    """The team's merged and open PRs. Searches the whole org and filters to the team repos
+    here: a long `--repo` list makes GitHub search return 0 rows with exit 0."""
+    span = f"{window[0].isoformat()}..{window[1].isoformat()}"
+    repos = set(team["repos"])
+    truncated = []
+    def search(name: str, *flags: str) -> list[dict]:
+        cmd = ["gh", "search", "prs", "--owner", team["org"], *flags, "--limit", str(PR_LIMIT),
+               "--json", "repository,number,title,author,closedAt,url,isDraft,state"]
+        proc = run(cmd, capture_output=True, text=True, timeout=60)
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.strip()[:300])
+        page = json.loads(proc.stdout or "[]")
+        if len(page) >= PR_LIMIT:
+            truncated.append(f"team {name}")
+        rows = []
+        for p in page:
+            if p["repository"]["name"] not in repos:
+                continue
+            stamp = p.get("closedAt") or ""
+            rows.append({"repo": p["repository"]["name"], "number": p["number"], "title": p["title"],
+                         "author": (p.get("author") or {}).get("login"), "url": p["url"],
+                         "closed": stamp[:10] if stamp and not stamp.startswith("0001") else None,
+                         "draft": bool(p.get("isDraft")), "mine": p["url"] in mine_urls})
+        return rows
+    merged = search("merged", f"--merged-at={span}")
+    open_ = search("open", "--state", "open", f"--updated={span}")
+    return {"merged": merged, "open": open_, "truncated": truncated}
+
+
+def chicago_day(stamp: str | None) -> dt.date | None:
+    """Jira stamps look like 2026-11-13T09:19:03.024-0600; the report day is Chicago time."""
+    return dt.datetime.fromisoformat(stamp).astimezone(TZ).date() if stamp else None
+
+
+def find_bulk_runs(resolutions: list[tuple[str, dt.datetime]]) -> list[list[tuple[str, dt.datetime]]]:
+    """Runs of at least BULK_MIN resolutions, each within BULK_GAP of the one before, in time order."""
+    runs: list[list[tuple[str, dt.datetime]]] = []
+    for item in sorted(resolutions, key=lambda r: r[1]):
+        if runs and item[1] - runs[-1][-1][1] <= BULK_GAP:
+            runs[-1].append(item)
+        else:
+            runs.append([item])
+    return [run for run in runs if len(run) >= BULK_MIN]
+
+
+def parse_jira(pages: list[str], window: tuple[dt.date, dt.date]) -> dict:
+    """Merge saved `searchJiraIssuesUsingJql` pages into resolved, created and bug lists. `missing`
+    counts issues the search reported but the pages did not carry, so a skipped page shows."""
+    issues: dict[str, dict] = {}
+    moments: dict[str, dt.datetime] = {}
+    total = 0
+    for text in pages:
+        data = json.loads(text)
+        me = data.get("context", {}).get("atlassianAccountId")
+        total = max(total, data["issues"].get("totalCount", 0))  # only the first page has it
+        for node in data["issues"]["nodes"]:
+            f = node["fields"]
+            assignee = f.get("assignee")
+            if f.get("resolutiondate"):
+                moments.setdefault(node["key"], dt.datetime.fromisoformat(f["resolutiondate"]))
+            issues.setdefault(node["key"], {
+                "key": node["key"], "summary": f["summary"], "type": f["issuetype"]["name"],
+                "status": f["status"]["name"], "assignee": assignee["displayName"] if assignee else None,
+                "url": node["webUrl"], "created": chicago_day(f["created"]),
+                "resolved": chicago_day(f.get("resolutiondate")),
+                "mine": bool(assignee) and bool(me) and assignee.get("accountId") == me})
+    def inside(day: dt.date | None) -> bool:
+        return day is not None and in_window(day, window)
+    items = list(issues.values())
+    bulk_runs = find_bulk_runs([(k, m) for k, m in moments.items() if inside(issues[k]["resolved"])])
+    bulk_keys = {k for run in bulk_runs for k, _ in run}
+    for i in items:
+        i["bulk"] = i["key"] in bulk_keys
+    out = {"resolved": [i for i in items if inside(i["resolved"])],
+           "created": [i for i in items if inside(i["created"])],
+           "bugs": [i for i in items if i["type"] == "Bug" and (inside(i["created"]) or inside(i["resolved"]))]}
+    for i in items:
+        i["created"] = i["created"].isoformat()
+        i["resolved"] = i["resolved"].isoformat() if i["resolved"] else None
+    return {**out, "bulk_runs": [{"start": run[0][1].isoformat(), "count": len(run)} for run in bulk_runs],
+            "total": total, "missing": max(0, total - len(items))}
+
+
+def parse_slack(text: str) -> dict:
+    """A saved paste of Slack reads: {"calls": [{"tool", "args", "content"}]}. Content stays verbatim."""
+    calls = json.loads(text).get("calls")
+    if not isinstance(calls, list) or not calls:
+        raise ValueError("slack file needs a non-empty 'calls' list")
+    for c in calls:
+        if not (isinstance(c, dict) and isinstance(c.get("tool"), str)
+                and isinstance(c.get("args"), dict) and isinstance(c.get("content"), str)):
+            raise ValueError("each slack call needs tool (str), args (object), content (str)")
+    return {"calls": len(calls), "items": [{k: c[k] for k in ("tool", "args", "content")} for c in calls]}
+
+
+def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: argparse.Namespace) -> dict:
+    """The team block and its gaps, in the order github, jira, slack, datadog."""
+    gaps = []
+    prs, prs_error = None, None
+    if args.no_github:
+        gaps.append("github: not fetched (--no-github)")
+    else:
+        mine = {p["url"] for p in (facts["github"] or {}).get("authored", [])}
+        try:
+            prs = team_prs(window, team, mine)
+        except (RuntimeError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+            prs_error = str(exc)
+            gaps.append(f"github: {prs_error}")
+    # A broken paste file must cost only its own source, never Alex's own facts.
+    jira = slack = None
+    if not args.jira:
+        gaps.append("jira: not fetched")
+    else:
+        try:
+            jira = parse_jira([p.read_text() for p in args.jira], window)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            gaps.append(f"jira: unreadable page ({type(exc).__name__}: {exc})"[:300])
+        else:
+            if jira["missing"] > 0:
+                gaps.append(f"jira: {jira['missing']} issues missing (pass every page; bulk flags are unreliable)")
+    if not args.slack:
+        gaps.append("slack: not fetched")
+    else:
+        try:
+            slack = parse_slack(args.slack.read_text())
+        except (OSError, ValueError, AttributeError) as exc:
+            gaps.append(f"slack: unreadable file ({exc})"[:300])
+    gaps.append("datadog: not fetched")
+    return {"name": team.get("name"), "prs": prs, "prs_error": prs_error, "jira": jira, "slack": slack, "gaps": gaps}
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--vault", type=Path, required=True)
     ap.add_argument("--date", type=dt.date.fromisoformat, default=None, help="any day in the week; default today")
     ap.add_argument("--no-github", action="store_true")
+    ap.add_argument("--jira", type=Path, action="append", help="saved Jira search page; repeat per page")
+    ap.add_argument("--slack", type=Path, help="saved Slack reads, JSON")
     args = ap.parse_args(argv)
 
     config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
@@ -194,6 +333,7 @@ def main(argv: list[str] | None = None) -> int:
         "notes": bard_notes(bard_dir, window),
         "github": None,
         "github_error": None,
+        "team": None,
         "report_path": str(args.vault / "Reports" / "Weekly" / f"{iso_week_label(window[0])}.md"),
     }
     if not args.no_github:
@@ -201,6 +341,8 @@ def main(argv: list[str] | None = None) -> int:
             facts["github"] = github_prs(window, config.get("github_orgs", []))
         except (RuntimeError, OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
             facts["github_error"] = str(exc)
+    if config.get("team"):
+        facts["team"] = team_facts(config["team"], window, facts, args)
     json.dump(facts, sys.stdout, indent=2, ensure_ascii=False)
     print()
     return 0
