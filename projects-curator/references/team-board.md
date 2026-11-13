@@ -12,8 +12,9 @@ The board holds the team's bets, not Alex's record. What changes:
 - **Evidence.** Read `evidence.team_facts` first: team PRs merged and open, tracker tickets
   resolved and created, and `bulk` flags. A ticket closed in a bulk run is not delivery evidence
   on its own; judge it as `weekly-report` step 5 says.
-- **State truth-ups stay Alex's only.** A teammate's item is theirs to move: report the mismatch,
-  never propose the move.
+- **State truth-ups cover the whole project.** Alex treats the team's areas as his project
+  (2026-11-13), so a state move or field edit on a teammate's item is proposed like his own:
+  one Needs-you line each, with the assignee named in the Why line.
 - **Sponsor and stage come from the owners.** With no forum, a stage move needs the owner's
   written yes, quoted in the Why line.
 

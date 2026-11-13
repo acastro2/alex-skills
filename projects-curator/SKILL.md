@@ -140,7 +140,7 @@ When `scope` is `team`, or the board is a wiki page, read [references/team-board
 
 1. **Never add or remove a label named in `tracker.label_contract`.** Read the contract every run. Agents or automation act on those labels, so one label change can start or stop work. A line that would touch one is dropped and reported under Also found.
 2. **Never write a page in `board.read_only_pages`,** and write no page other than `board.page_id` or `board.scratch_page_id`.
-3. **Tracker writes are comments and links only:** the weekly epic comment, the row link, and the parent link. No label, state, or field change, and no new item without its own Needs-you line.
+3. **Tracker writes cover the whole project in `config.tracker.areas`, on any assignee's item (Alex, 2026-11-13: "curate the entire builder tools project, consider that as my project"):** comments, links, a one-step state move, field edits, and new items. Each state move, field edit, and new item is its own Needs-you line; nothing lands without his yes on that line. Contract labels stay under rule 1.
 
 ## Retrieval and typed gates
 
@@ -248,7 +248,7 @@ Run in this order, reporting one line per check as `PASS` / `ALERT` / `UNVERIFIE
 1. **Roll-up link.** Every epic carries exactly one link to a board row. Two or more: flag it, never pick one yourself.
 2. **Parent link.** A child item with no parent epic gets a proposed parent, from evidence only. No clear parent: flag it, because a guessed parent rolls work into the wrong row.
 3. **Weekly epic update, on every active epic.** One short comment: **Done this week** (by name), **Next**, and **Blocked or at risk** only when it is real. A week with no movement still gets a comment, because silence reads as a dead epic. At most one per epic per week.
-4. **State truth-ups.** Propose a state move only on an item assigned to Alex, only when evidence contradicts the state, and only to the next state. An item assigned to someone else is theirs: report the mismatch, never propose the move.
+4. **State truth-ups.** Propose a state move only when evidence contradicts the state, and only to the next state. In Team mode this covers every item in the team's areas, whoever is assigned; name the assignee in the Why line. In personal mode, only Alex's items: an item assigned to someone else is theirs, so report the mismatch.
 5. **Missing items.** Hands-on work with no tracker item gets a proposed item. Never for attendance, and never only to fill a link column.
 
 **Weekly roll-up** (when Alex wants one): a short page with an executive summary of 3 to 4 points, what shipped, and every stage move. It is a roll-up with nothing new, each item passes the exclusion screen, and the summary is a reviewed line. Stage it as a draft: publishing is Alex's click.
@@ -285,4 +285,4 @@ After the write, emit four tables so the run is auditable:
 
 ## Safety recap
 
-The review is the mandatory gate. Never invent initiatives or impact figures: empty beats soft. Never write an unconfirmed line; never move a stage without an explicit yes on that line. Screen every candidate, every edited title, and every comment. Comments are plain text, no @-mentions, append-only. Check `not_doing` first. Never touch permissions. Never move state on an item assigned to someone else. Ideas never leave the run report and the ledger. Meeting notes carry one more risk: a room speaks freely about live gaps, vendors and people, so quote nothing the exclusion screen would block, and never promote uncontested discussion into a decision.
+The review is the mandatory gate. Never invent initiatives or impact figures: empty beats soft. Never write an unconfirmed line; never move a stage without an explicit yes on that line. Screen every candidate, every edited title, and every comment. Comments are plain text, no @-mentions, append-only. Check `not_doing` first. Never touch permissions. Never move state on an item outside the team's areas, and in personal mode never on an item assigned to someone else. Ideas never leave the run report and the ledger. Meeting notes carry one more risk: a room speaks freely about live gaps, vendors and people, so quote nothing the exclusion screen would block, and never promote uncontested discussion into a decision.
