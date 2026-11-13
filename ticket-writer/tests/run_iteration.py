@@ -21,6 +21,7 @@ DENY = ["--disallowedTools", "Skill(ticket-writer)",
 ap = argparse.ArgumentParser()
 ap.add_argument("iteration")
 ap.add_argument("--runs", type=int, default=1)
+ap.add_argument("--cases", default="", help="comma list of eval names; default all")
 ap.add_argument("--configs", default="with_skill,without_skill", help="comma list; use to rerun one config")
 a = ap.parse_args()
 IT = pathlib.Path(a.iteration).expanduser().resolve()
@@ -87,7 +88,7 @@ def run(ev, cfg, k):
     return f"{ev['name']}/{cfg}/run-{k}: exit={p.returncode} {round(wall)}s skills={skills} blocked={len(blocked)}"
 
 
-jobs = [(e, c, k) for e in EV for c in a.configs.split(",") for k in range(1, a.runs + 1)]
+jobs = [(e, c, k) for e in EV if not a.cases or e["name"] in a.cases.split(",") for c in a.configs.split(",") for k in range(1, a.runs + 1)]
 with cf.ThreadPoolExecutor(8) as ex:
     for r in cf.as_completed([ex.submit(run, *j) for j in jobs]):
         print(r.result(), flush=True)

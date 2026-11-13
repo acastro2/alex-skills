@@ -1,6 +1,6 @@
 ---
 name: ticket-writer
-description: Write and update tracker items from real code changes, using a six-section spec template with Given/When/Then acceptance criteria. Use when creating or updating a Jira issue or ticket, converting a PR or branch into a structured story, or backfilling tickets for merged work. Tool-agnostic core with per-tracker adapters; the Jira adapter (Atlassian MCP) is in references/jira.md. Not for filing GitHub issues by interview, that is the gh-issue-creator agent.
+description: Write and update tracker items from real code changes, using a six-section spec template with Given/When/Then acceptance criteria. Use when creating or updating a Jira issue or ticket, converting a PR or branch into a structured story, or backfilling tickets for merged work. Tool-agnostic core with per-tracker adapters; the Jira adapter (Atlassian MCP) is in references/jira.md. Not for a status change, assignment or other quick field edit alone, and not for filing GitHub issues by interview, that is the gh-issue-creator agent.
 license: MIT
 compatibility: opencode
 metadata:

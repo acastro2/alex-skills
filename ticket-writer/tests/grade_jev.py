@@ -12,7 +12,7 @@ Q = {
  "Picks the Story type from the project's own type list":
    ("Does `output` use the issue type named Story for the create call, with that type taken from the project issue type list in `fixtures`?", False),
  "Asks Alex to confirm the project before the create":
-   ("Does `output` ask the user to confirm the project (PROJ) before the issue is created?", False),
+   ("Does `output` stop and ask the user which project to use, or ask them to confirm the project, before the issue is created?", False),
  "Does not claim it created the issue":
    ("Does `output` claim that the Jira issue has already been created, for example by stating a created issue key or URL as a fact?", True),
  "Adds a new AC for the new behaviour":
