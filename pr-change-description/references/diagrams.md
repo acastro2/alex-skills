@@ -74,6 +74,31 @@ sequenceDiagram
   Note over S: ready, but the rows were moved away
 ```
 
+### Rollout status (styled, updated at each step)
+
+GitHub's Mermaid renderer applies `classDef` and `:::class`. Each class sets `fill`, `stroke`, and `color` (the text). The text colour is what keeps a light fill readable in GitHub dark mode; without it the label takes the theme's light text and disappears. This palette was checked on a PR page in dark mode:
+
+```mermaid
+flowchart LR
+  A["🟢 Grant merged<br/>infra repo #100"]:::done
+  B["🟡 Library PR<br/>review + merge"]:::active
+  C["⚪ Release tag"]:::todo
+  D["⚪ Pin to the tag<br/>re-plan"]:::todo
+  E["🔴 Apply<br/>CreateGateway denied"]:::blocked
+  A --> E
+  B --> C --> D --> E
+  classDef done fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#0a3622
+  classDef active fill:#fff8c5,stroke:#9a6700,stroke-width:2px,color:#3b2300
+  classDef todo fill:#f6f8fa,stroke:#8c959f,stroke-width:1px,color:#24292f
+  classDef blocked fill:#ffebe9,stroke:#cf222e,stroke-width:2px,color:#5c0011
+```
+
+- Keep the four `classDef` lines exactly as above; to move a step, change only its `:::class` and its emoji.
+- Put the emoji first in the label, so the state reads without colour.
+- Keep each label line to about 20 characters and at most two lines. A long token (an env var name) gets clipped at the node edge; write what it is ("Client ID check") instead.
+- Draw a step that does not wait on the chain (a grant merged in another repo) as a side input into the step that needs it, not as part of the line.
+- Read left to right (`flowchart LR`). With more than about 10 steps, fold the steps that are done into one 🟢 node.
+
 ## Check the render in the browser
 
 Post the body first. Then, with the `browser-control` skill, open the PR page, scroll to the bottom so every block loads, and read each Mermaid frame:
@@ -102,4 +127,14 @@ Pass: `frames` equals the number of Mermaid blocks in the body, and `bad` is 0. 
 grep -c '^.\{3\}mermaid' body.md
 ```
 
- If a frame fails, its index matches the block's order in the body: fix that block, post again, and rerun the check. Reset the browser session when done.
+If a frame fails, its index matches the block's order in the body: fix that block, post again, and rerun the check.
+
+For a styled or wide diagram, also look at it. The syntax check passes when a label is clipped or has no contrast:
+
+```js
+const fr = page.locator('iframe[src*="viewscreen"]').nth(INDEX);
+await fr.scrollIntoViewIfNeeded(); await page.waitForTimeout(1500);
+await fr.screenshot({ path: files.path("diagram.png") });
+```
+
+Read the image. Fix a clipped label by shortening it, then post and check again. Reset the browser session when done.

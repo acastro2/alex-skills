@@ -7,6 +7,21 @@ This PR <does what, in one sentence>. It is <N> files, but <M> of those are <fix
 
 This description has one section per area. Each section gives the reason for the change, a before and after diagram, and what to check. The plan and decisions are in `<path to spec or ADR>`.
 
+<!-- rollout:start -->
+## Rollout status
+
+<Only when the PR is one step of several; else delete this section. Pattern and palette: diagrams.md, "Rollout status".> Updated at each step. 🟢 done · 🟡 in progress · ⚪ not started · 🔴 blocked. Last update: <YYYY-MM-DD>.
+
+```mermaid
+flowchart LR
+  <one node per step, "<emoji> <step><br/><short detail>":::done|active|todo|blocked, the four classDef lines>
+```
+
+| Step | Status | What it looks like when it is done |
+| --- | --- | --- |
+| <step> | <emoji> <a few words> | <a checkable fact; for a risky step, the failure signal that turns it 🔴> |
+<!-- rollout:end -->
+
 ## The whole change
 
 ### Before

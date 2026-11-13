@@ -74,11 +74,21 @@ Rules at every size:
 
 Diagram syntax that renders on GitHub, and patterns per kind of change: `references/diagrams.md`.
 
+### Rollout status, when the PR is one step of several
+
+Add it when the PR cannot ship alone: it waits on other PRs, a release tag, an approval, an apply, or a follow-up. Put it right after the opener, so a reader sees at once where the rollout is and what blocks it.
+
+- **One flowchart of every step**, each node coloured by its state: done, in progress, not started, blocked. Use the four-colour palette and the pattern in `references/diagrams.md`. Steps in other repos and manual steps belong in it too, because those are the ones a reader cannot see from the PR.
+- **Every label starts with a status emoji** (🟢 🟡 ⚪ 🔴), so the state does not depend on colour alone.
+- **A table under the diagram** with one row per step: the step, its status in a few words, and **what it looks like when it is done**, as a fact you can check (a tag exists, a plan reads "24 to add", a URL returns the tools). Give the failure signal for a risky step and say it turns the step 🔴.
+- **Wrap the section in `<!-- rollout:start -->` and `<!-- rollout:end -->`** and put a "Last update" date in it. At each step, rewrite only that section: move the node's class and emoji, update the row, and post it again with the render check. A step goes 🟢 only on evidence you saw, never on a claim.
+- **Do not automate it with an Action** when the steps cross repos or need people (merges, approvals): an Action cannot see them. Update it yourself when a step lands.
+
 ## 3. Publish and verify
 
 1. Write the body to a file outside the repo and post it with `gh pr edit <n> --body-file <file>` (or `gh pr create --body-file`). GitHub caps a body at 65,536 characters; check with `wc -c`.
 2. Run `python3 ../alex-voice/scripts/voice_check.py <file> --register docs` and fix every blocker.
-3. **Check that every diagram renders.** A Mermaid syntax error shows as an error box only on the PR page. Open the PR with the `browser-control` skill and run the check in `references/diagrams.md`. The number of rendered frames must equal the number of `mermaid` blocks, and no frame may contain a syntax error.
-4. When the PR changes, update the description: the size table, the test counts, the review path, and any diagram whose flow changed. A stale description is worse than none.
+3. **Check that every diagram renders.** A Mermaid syntax error shows as an error box only on the PR page. Open the PR with the `browser-control` skill and run the check in `references/diagrams.md`. The number of rendered frames must equal the number of `mermaid` blocks, and no frame may contain a syntax error. Then screenshot any styled or wide diagram (a rollout status, a long flowchart) and look at it: the syntax check passes even when a label is clipped or the text has no contrast in dark mode.
+4. When the PR changes, update the description: the size table, the test counts, the review path, the rollout status, and any diagram whose flow changed. A stale description is worse than none.
 
 Report the PR link, the number of diagrams, and the render check result.
