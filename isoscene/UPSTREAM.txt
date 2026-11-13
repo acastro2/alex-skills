@@ -1,0 +1,4 @@
+source: https://github.com/cintelis/isoscene
+commit: e9243171e278f8f4958085c0371e262f58d5b411 (2026-10-19)
+installed: 2026-11-13, copied from the tested clone
+license: README says "Private. (c) Cintelis" - no open license granted

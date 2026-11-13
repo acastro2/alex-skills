@@ -68,6 +68,7 @@ compare the local file with the GitHub copy and say which one you used.
 | HTML page or Artifact | Put the colors on `:root` as CSS variables named after the tokens. Use the font stacks the file gives. The Artifact page contract still comes from `artifact-design`; the design file wins only on color, type, and shape. |
 | Chart | Use the palette from the design file instead of the placeholder palette in `dataviz`. Brand colors for series, status colors only for status. |
 | Diagram (`archify`) | Neutrals and the primary brand color for structure, status colors only for state. |
+| Isometric scene (`isoscene`) | Its built-in palettes are tuned for a dark backdrop; do not use them as-is. Build each block palette as a 7-tuple from the file's ramps: top light/dark, left light/dark, right light/dark, glow, from lightest to darkest step of one hue. Neutrals for most blocks, the primary brand ramp for the one block the scene is about. Use `render(bg=False)` on a light page, and put labels in HTML beside the picture. |
 | Slides | Neutrals carry the slide, the primary brand color marks the one point. Keep the restraint the file describes. |
 
 ## Step 4: check before you hand it over

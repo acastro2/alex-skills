@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "isoscene"
+version = "0.1.0"
+description = "Polished isometric scenes as self-contained SVG"
+requires-python = ">=3.10"
+authors = [{ name = "Nick Forshteyn", email = "nick@cintelis.ai" }]
+
+[tool.setuptools]
+packages = ["isoscene"]
+
+[tool.setuptools.package-data]
+isoscene = ["logos/*"]
