@@ -745,3 +745,167 @@ def test_prune_removes_raw_days_and_logs_older_than_the_limit(tmp_path):
     assert not (tmp_path / "raw" / "mail" / old_day).exists() and (tmp_path / "raw" / "mail" / new_day).exists()
     assert not old_log.exists() and new_log.exists()
     assert removed == 2
+
+
+# --- github_activity: what Alex said and did on GitHub (Alex, 2026-11-13) ------------------
+# `gh search prs` keeps only PR metadata and its index missed every PR Alex commented on or
+# closed in the 25 minutes before a live check. The events API is real time and carries comment
+# bodies; a PR timeline carries closes and reviews the events API drops.
+
+def ev(kind, repo, number, at, **payload):
+    p = {"IssueCommentEvent": {"issue": {"number": number, "pull_request": {}}, "comment": {"body": "synthetic"}},
+         "PullRequestEvent": {"number": number, "action": "closed"},
+         "PullRequestReviewEvent": {"pull_request": {"number": number}},
+         "IssuesEvent": {"issue": {"number": number}, "action": "closed"},
+         "PushEvent": {"ref": "refs/heads/x"}}[kind]
+    p.update(payload)
+    return {"type": kind, "repo": {"name": repo}, "created_at": at, "payload": p}
+
+
+class FakeGh:
+    """Answers `gh` argv the way the real CLI does. `events` is the newest-first event list the
+    API pages through; `search` is the involves search result; timelines answer any PR."""
+
+    def __init__(self, events=(), search=(), login="work-login"):
+        self.events, self.search, self.login, self.calls = list(events), list(search), login, []
+
+    def __call__(self, argv):
+        self.calls.append(argv)
+        if argv[:2] == ["api", "user"]:
+            return self.login + "\n"
+        if argv[0] == "search":
+            return json.dumps(self.search)
+        path = argv[1]
+        if "/events" in path:
+            page = int(path.split("&page=")[1].split("&")[0])
+            return json.dumps(self.events[(page - 1) * 100: page * 100])
+        if path.endswith("/timeline?per_page=100"):
+            return json.dumps([[{"event": "commented", "body": "synthetic"}]])
+        raise AssertionError(f"unexpected gh call {argv}")
+
+    def timelines(self):
+        return sorted(a[1] for a in self.calls if a[0] == "api" and "/timeline" in a[1])
+
+
+def at(minutes_ago):
+    return gather.iso_z(NOW - timedelta(minutes=minutes_ago))
+
+
+def test_activity_reads_events_and_the_timeline_of_each_item_touched_in_the_window(tmp_path):
+    gh = FakeGh(events=[
+        ev("IssueCommentEvent", "org/a", 7, at(5)),
+        ev("PullRequestEvent", "org/a", 7, at(6)),
+        ev("PullRequestReviewEvent", "org/b", 3, at(7)),
+        ev("PushEvent", "org/a", None, at(8)),
+        ev("IssueCommentEvent", "org/old", 1, gather.iso_z(NOW - timedelta(days=30))),
+    ])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"].startswith("fetched")
+    assert gh.timelines() == ["repos/org/a/issues/7/timeline?per_page=100", "repos/org/b/issues/3/timeline?per_page=100"]
+    # newest first: org/a#7 was touched 5 minutes ago, org/b#3 7 minutes ago
+    assert [a[1] for a in gh.calls if "/timeline" in a[1]][0].startswith("repos/org/a/issues/7/")
+    timeline_argv = next(a for a in gh.calls if "/timeline" in a[1])
+    assert "--paginate" in timeline_argv and "--slurp" in timeline_argv
+    recs = raw_records(tmp_path, "github_activity")
+    assert all(r["provenance"] == "verbatim" and r["args"]["login"] == "work-login" for r in recs)
+    assert any("users/work-login/events" in r["args"]["argv"][1] for r in recs)
+
+
+def test_a_pr_from_the_involves_search_gets_a_timeline_even_with_no_event(tmp_path):
+    # a close with no comment left no event in the live check; the timeline holds it
+    gh = FakeGh(search=[{"number": 13, "repository": {"nameWithOwner": "org/c"}}])
+    gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert gh.timelines() == ["repos/org/c/issues/13/timeline?per_page=100"]
+    search = next(a for a in gh.calls if a[0] == "search")
+    assert "updatedAt" in search[search.index("--json") + 1]
+    assert "--involves=@me" in search and f"--updated=>={(NOW - timedelta(days=7)):%Y-%m-%d}" in search
+
+
+def test_activity_stops_paging_events_once_a_page_reaches_past_the_window(tmp_path):
+    events = [ev("PushEvent", "org/a", None, at(i)) for i in range(100)]
+    events += [ev("PushEvent", "org/a", None, gather.iso_z(NOW - timedelta(days=20)))] * 100
+    gh = FakeGh(events=events)
+    gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    pages = [a[1] for a in gh.calls if "/events" in a[1]]
+    assert len(pages) == 2
+
+
+def test_three_full_pages_still_inside_the_window_are_capped(tmp_path):
+    gh = FakeGh(events=[ev("PushEvent", "org/a", None, at(1)) for _ in range(300)])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "capped at events limit 300"
+    assert raw_records(tmp_path, "github_activity")
+    # a stream cap cannot be fetched again (the API keeps only 300 events), so the gap is reported
+    # once and last_ok moves; a stuck mark would grow the window and cap every run after
+    assert read_state(tmp_path)["last_ok"]["github_activity"] == NOW.isoformat()
+
+
+def test_more_than_two_hundred_touched_items_are_capped_and_the_newest_are_kept(tmp_path):
+    # live 2026-11-13: one busy day touched more than 50 items, so the first cap never cleared
+    events = [ev("IssueCommentEvent", "org/a", n, at(n)) for n in range(1, 100)]
+    gh = FakeGh(events=events, search=[{"number": 1000 + n, "repository": {"nameWithOwner": "org/b"},
+                                        "updatedAt": at(150 + n)} for n in range(150)])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "capped at 200 timelines"
+    fetched = [a[1] for a in gh.calls if "/timeline" in a[1]]
+    assert len(fetched) == 200
+    # newest activity first: the events (1-99 min ago), then search hits from 150 min ago on
+    assert fetched[0] == "repos/org/a/issues/1/timeline?per_page=100"
+    assert "repos/org/b/issues/1149/timeline?per_page=100" not in fetched
+    assert "repos/org/b/issues/1000/timeline?per_page=100" in fetched
+
+
+def test_activity_moves_last_ok_and_uses_it_minus_a_day_next_time(tmp_path):
+    gh = FakeGh()
+    gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert read_state(tmp_path)["last_ok"]["github_activity"] == NOW.isoformat()
+    gh2 = FakeGh(search=[])
+    gather.run(["github_activity"], root=tmp_path, now=NOW + timedelta(days=3), runner=None, me=ME, gh=gh2)
+    search = next(a for a in gh2.calls if a[0] == "search")
+    assert f"--updated=>={(NOW - timedelta(days=1)):%Y-%m-%d}" in search
+
+
+def test_activity_is_never_fetched_as_the_personal_account(tmp_path):
+    gh = FakeGh(login="acastro2")
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "not fetched: active gh account is the personal one"
+    assert [a for a in gh.calls if a[:2] != ["api", "user"]] == []
+    assert raw_records(tmp_path, "github_activity") == []
+
+
+def test_a_failing_gh_call_is_a_gh_failed_line(tmp_path):
+    def gh(argv):
+        if argv[:2] == ["api", "user"]:
+            return "work-login\n"
+        raise RuntimeError("gh exited 1: boom")
+
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "error: gh failed"
+    assert raw_records(tmp_path, "github_activity") == []
+
+
+def test_github_activity_is_a_default_source():
+    assert "github_activity" in gather.SOURCES
+
+
+def test_a_plain_issue_opened_or_closed_gets_a_timeline(tmp_path):
+    gh = FakeGh(events=[ev("IssuesEvent", "org/a", 5, at(2))])
+    gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert gh.timelines() == ["repos/org/a/issues/5/timeline?per_page=100"]
+
+
+def test_a_full_involves_search_is_capped_not_silent(tmp_path):
+    gh = FakeGh(search=[{"number": n, "repository": {"nameWithOwner": "org/a"}, "updatedAt": at(1)}
+                        for n in range(100)])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "capped at gh limit 100"
+
+
+def test_a_timeline_cap_still_moves_last_ok(tmp_path):
+    # 105 event items + 99 search items = 204 touched, over the 200 cap, under the search cap
+    gh = FakeGh(events=[ev("IssueCommentEvent", "org/a", n, at(1)) for n in range(1, 106)],
+                search=[{"number": n, "repository": {"nameWithOwner": "org/b"}, "updatedAt": at(5)}
+                        for n in range(99)])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github_activity"] == "capped at 200 timelines"
+    assert read_state(tmp_path)["last_ok"]["github_activity"] == NOW.isoformat()

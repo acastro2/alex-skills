@@ -61,10 +61,20 @@ and the calls that are proven.
 | `sharepoint` | window | `sharepoint_search` `query:"*"`, `author:<display name>` (the mail matches nothing), `afterDateTime:<cursor>` (docs Alex authored or changed; docs he only opened are out of reach) |
 | `jira` | snapshot | `searchJiraIssuesUsingJql` `assignee = currentUser() AND statusCategory != Done` (no date: bard filters by changelog), then `getJiraIssue` `expand: changelog` per hit, in batches of up to 10 per round |
 | `github` | snapshot | `gh search prs --review-requested=@me --state=open` and `gh search prs --involves=@me --updated=>=<cursor date>` |
+| `github_activity` | stream | `gh api users/<login>/events?per_page=100&page=1..3`, `gh search prs --involves=@me --updated=>=<date> --json number,repository,updatedAt`, then `gh api repos/<repo>/issues/<n>/timeline?per_page=100 --paginate --slurp` per touched item, newest activity first, max 200 |
 
 `<me>` comes from `get_me` at run start, never from a file in the repo.
 Out of scope: AI session stores and scribe notes (already local files bard reads), Planner,
 To Do, Todoist (no host has the tools), Graph `insights/used`.
+
+`github_activity` exists because `github` keeps only PR metadata, and its search missed every PR
+commented on or closed in the 25 minutes before a live check (2026-11-13). The events API is
+real time and carries comment bodies, but in that check it dropped 3 of 21 comments and all 11
+closes; the timelines hold them. `IssuesEvent` covers plain issues, which search does not return.
+A full involves search is `capped at gh limit 100`. On any cap `last_ok` still moves: the events
+API keeps only 300 events, so a retry cannot fetch more, and a stuck mark widens every later
+window. `M items` is in-window events plus timelines fetched. Known gap: inline review comments
+are in the events (when not dropped) but not in the timelines.
 
 ## Contracts
 
@@ -76,7 +86,7 @@ To Do, Todoist (no host has the tools), Graph `insights/used`.
    use, aborts the source: exit 3, no raw files from that round, ledger `aborted: guard`.
 3. **Ledger.** Every source in the run gets exactly one line:
    `fetched N calls, M items` | `partial: N calls, M items, K issue errors` | `error: <reason>` |
-   `capped at N pages` | `capped at gh limit 100` | `aborted: guard <tool>` | `not fetched: <why>`.
+   `capped at N pages` | `capped at gh limit 100` | `capped at events limit 300` | `capped at 200 timelines` | `aborted: guard <tool>` | `not fetched: <why>`.
    An empty result is `fetched 1 calls, 0 items`, never a missing line. `partial` is a `jira`
    run where K `getJiraIssue` calls failed: the records read are stored, `last_ok` stays, exit 1.
    The reason is fixed text (`claude failed`, `gh failed`, `tool error`, `spill`,
@@ -86,7 +96,7 @@ To Do, Todoist (no host has the tools), Graph `insights/used`.
    source, together with `state.json`, so a crash keeps the finished sources. A corrupt
    `state.json` (not an object, or `cursors`, `last_ok`, `covered_from` not an object) gives every
    source `error: state unreadable`, and the file is left as it was. A guard abort stops the run; later sources get
-   `not fetched: run stopped after a guard abort`. A `get_me` failure marks only the window sources `error: get_me failed`; `jira` and `github` still run, and one ledger holds all lines.
+   `not fetched: run stopped after a guard abort`. A `get_me` failure marks only the window sources `error: get_me failed`; `jira`, `github`, and `github_activity` still run, and one ledger holds all lines.
 4. **Cursor and chunks.** A window source's cursor moves to the run start minus 15 minutes
    (overlap: Teams and mail search can index a message late) only when the source ended
    `fetched`. Error or abort leave it where it was. It never moves backwards. A `--since` later

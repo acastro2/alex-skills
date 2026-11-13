@@ -12,7 +12,7 @@ Read-only. It prints one JSON object:
 - `available`: false when the store folder is missing; every comms lane then falls back.
 - `unseen`: {source: [relative paths]} for raw files not in the state's `gather_seen`. A snapshot
   source (jira, github) lists only the files of its newest run; each file has the name
-  `<run_id>-<n>.json`.
+  `<run_id>-<n>.json`. github_activity is a stream: every unseen run is listed.
 - `superseded`: unseen files of older snapshot runs, sorted. A newer full snapshot replaces
   them, so bard marks them seen without reading.
 - `ledger`: {source: line} from the newest ledger file that mentions the source.
@@ -22,7 +22,7 @@ Read-only. It prints one JSON object:
 - `fallback`: sources whose latest line does not start with `fetched`, whose latest fetch is
   older than `--max-age-hours` (default 24; a ledger with no `started_at` counts as old), or
   that have no line at all: a coverage gap. With `--state`, a window source (every source but
-  jira and github, which hold every open item) whose `covered_from` is missing or later than the
+  jira, github, and github_activity, which gather tracks by last_ok) whose `covered_from` is missing or later than the
   bard watermark is a gap too: gather never fetched the days before it. A `partial:` line is a
   gap. So is a `fetched ... 0 items` line for teams_chats, teams_mine, or mail when the run
   started on a Monday to Friday (UTC): a working day is never silent.
@@ -40,9 +40,12 @@ DEFAULT_ROOT = "~/.gather"
 DEFAULT_MAX_AGE_HOURS = 24
 # Every comms source gather can fill. One with no ledger line was never fetched: a gap.
 SOURCES = ("teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint",
-           "jira", "github", "slack")
+           "jira", "github", "github_activity", "slack")
 # Snapshot sources hold every open item, so they have no history window to cover.
 SNAPSHOT = ("jira", "github")
+# Sources gather tracks by last_ok, not covered_from. github_activity is a stream, so unlike a
+# snapshot its older runs are never superseded.
+NO_HISTORY = SNAPSHOT + ("github_activity",)
 # A zero from these on a working day is a coverage failure, not a quiet day.
 BUSY = ("teams_chats", "teams_mine", "mail")
 _ITEMS = re.compile(r"\b(\d+) items\b")
@@ -139,7 +142,7 @@ def listing(root: Path, seen: set[str], now: datetime | None = None,
     floor = _instant(watermark)
     if floor is not None:
         short = {name for name, line in ledger.items()
-                 if line.startswith("fetched") and name not in SNAPSHOT
+                 if line.startswith("fetched") and name not in NO_HISTORY
                  and _starts_after(covered_from.get(name), floor)}
     empty = {name for name in BUSY if name in ledger and ledger[name].startswith("fetched")
              and _empty_on_a_working_day(ledger[name], fetched_at[name])}

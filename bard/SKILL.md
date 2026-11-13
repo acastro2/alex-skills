@@ -137,7 +137,7 @@ so it is derived from real work and ratified by Alex.
 
      | Key | What you do |
      |---|---|
-     | `fallback`, or `available: false` | Run the old lane for those sources (all comms sources when unavailable). Map: `teams_*` to Teams; `mail`; `calendar`; `sharepoint`; `jira`, `github` to the task lane. `slack` is always here. A source is also here when its fetch is older than 24 h, its history starts after the watermark, or it has 0 items on a working day. |
+     | `fallback`, or `available: false` | Run the old lane for those sources (all comms sources when unavailable). Map: `teams_*` to Teams; `mail`; `calendar`; `sharepoint`; `jira`, `github`, `github_activity` to the task lane. `slack` is always here. A source is also here when its fetch is older than 24 h, its history starts after the watermark, or it has 0 items on a working day. |
      | `unseen` | Read each file. `content` is the verbatim tool result: quotable. For a busy Teams or mail window, delegate per task-lane "Volume". |
      | `superseded` | Older snapshot runs. Mark them seen, never read them. |
 
@@ -146,6 +146,7 @@ so it is derived from real work and ratified by Alex.
      - Provenance is the file path and `tool` only, never `args`: they hold Alex's address.
      - Keep each item's `webUrl` (Teams) or `webLink` (mail) for the breadcrumb.
      - `jira` files are a full snapshot: apply task-lane.md's changelog-after-watermark filter.
+     - `github_activity` holds Alex's own GitHub events (comment bodies, reviews, merges) and the timeline of each PR or issue he touched. Keep only entries dated after the watermark: the window overlaps one day. Timelines carry closes and other people's replies. `github` is only the PR list.
      - `sharepoint` covers only docs Alex authored or changed: the archeologist's SharePoint lane (asks in other people's docs, 2026-10-14) always runs. `calendar` reaches 14 days ahead.
    - **Discover — one archeologist sweep, all stores.** Spawn the **archeologist** agent
      (read-only) with the window `watermark` → now. It sweeps every store by its own

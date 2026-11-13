@@ -10,5 +10,7 @@
   {"query": "what did we decide about the Cortex index last week?", "should_trigger": false},
   {"query": "transcribe my HiDock recordings", "should_trigger": false},
   {"query": "write my weekly report for my manager", "should_trigger": false},
-  {"query": "search Slack for what was said about the outage yesterday", "should_trigger": false}
+  {"query": "search Slack for what was said about the outage yesterday", "should_trigger": false},
+  {"query": "fetch my GitHub comments and PR closes from today so bard can read them", "should_trigger": true},
+  {"query": "what did I comment on builder-hub PR 438?", "should_trigger": false}
 ]

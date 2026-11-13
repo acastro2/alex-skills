@@ -43,7 +43,7 @@ gather.py prune [--older-than 30d]   # delete old raw day folders and logs
 Exit: 0 every source fetched (a source not built yet, such as `teams_channels`, is reported
 but does not fail the run); 1 any error, cap, or other gap; 3 any guard abort; 2 usage.
 `<me>` (mail) and the display name come from `get_me` at run start unless `--me` / `--me-name` are given. Never write an address outside `~/.gather`: the raw `args` hold Alex's address and display name, so keep them out of the vault, this repo, tickets, and commits.
-If `get_me` fails, each requested window source gets `error: get_me failed`. `jira` and `github` do not need `me`, so they still run. One ledger file is written per run. `state.json` and the ledger are saved after each source, so a crash or Ctrl-C keeps the finished sources. Exit 1.
+If `get_me` fails, each requested window source gets `error: get_me failed`. `jira`, `github`, and `github_activity` do not need `me`, so they still run. One ledger file is written per run. `state.json` and the ledger are saved after each source, so a crash or Ctrl-C keeps the finished sources. Exit 1.
 A guard abort stops the run: later sources get `not fetched: run stopped after a guard abort`.
 
 ## Sources
@@ -56,12 +56,13 @@ A guard abort stops the run: later sources get `not fetched: run stopped after a
 | `calendar` | window | `outlook_calendar_search`, cursor to now plus 14 days (upcoming deadlines); one chain, not chunked | real, live 2026-11-13 |
 | `sharepoint` | window | `sharepoint_search`, `author` = my display name (the mail matches nothing, seen live) | real, live 2026-11-13; docs only opened are out of reach |
 | `github` | snapshot | `gh search prs`: review requested (open), and involves me, updated since the last good run minus 1 day (`last_ok` in `state.json`), else 7 days or `--since`. Never as `acastro2` (personal): that account gives `not fetched: active gh account is the personal one`. Each record carries the login | real, live 2026-11-13 |
+| `github_activity` | stream | My own GitHub events (`gh api users/<login>/events`, 3 pages of 100), then the timeline of each issue or PR they touch or `gh search prs --involves=@me` finds: comments, reviews, closes. Newest activity first, up to 200 timelines. Same window and personal-account rule as `github`. Why and limits: `references/spec.md` | real, live 2026-11-13 |
 | `teams_channels` | window | channel reads, from channels found in `teams_mine` | `not fetched`: no channel hit seen yet, shape unverified |
 | `jira` | snapshot | Atlassian MCP: every open issue assigned to me (`assignee = currentUser() AND statusCategory != Done`), then `getJiraIssue` with `expand=changelog` per issue, up to 10 per `claude -p` round; bard filters by changelog date | real, live 2026-11-13 |
 
 A window source other than `calendar` is fetched in day chunks: its window (cursor to now) is cut into one-day spans, oldest first. Each chunk is a full paging chain with `afterDateTime` = chunk start and `beforeDateTime` = chunk end. `--max-pages` counts per chunk, so a busy week no longer hits the cap in its first days.
 
-Proven live 2026-11-13: teams_chats, teams_mine, mail, calendar, sharepoint, github, jira (including two spilled issues of 61 KB and 92 KB). A page cap has not happened live yet. `beforeDateTime` was verified live 2026-11-13 on `chat_message_search` and `outlook_email_search`.
+Proven live 2026-11-13: teams_chats, teams_mine, mail, calendar, sharepoint, github, github_activity, jira (including two spilled issues of 61 KB and 92 KB). A page cap has not happened live yet. `beforeDateTime` was verified live 2026-11-13 on `chat_message_search` and `outlook_email_search`.
 
 ## Store (`~/.gather`)
 
@@ -109,6 +110,8 @@ Every source in a run gets exactly one line:
   To get past a very busy day, raise `--max-pages` for that run.
 - `capped at gh limit 100`: a `gh search prs` query returned 100 items, the limit. `gh` has no
   paging here, so older items are cut. The records are stored; narrow the window with `--since`.
+- `capped at events limit 300`: `github_activity` read 3 full pages of events, all inside the window. Older events are cut, and the events API keeps no more, so `last_ok` still moves: the gap is reported once.
+- `capped at 200 timelines`: `github_activity` touched more than 200 items. It fetched the 200 with the newest activity. `last_ok` still moves, so a busy day does not cap every later run.
 - `aborted: guard <tool>`: the model called a tool outside the allowlist (all 135 MCP tools,
   write tools included, stay visible to haiku). Nothing stored, cursor stays, exit 3.
 - `not fetched: <why>`: the source is not built yet (`teams_channels`), the run stopped after a guard abort, the active `gh` account is the personal one, or the source needs the display name and `get_me` gave none (`not fetched: no display name from get_me`).
@@ -116,7 +119,7 @@ Every source in a run gets exactly one line:
 A window source's cursor moves to the run start minus 15 minutes, only on `fetched`, and
 never backwards (after a cap, see `capped at N pages`). The 15 minutes catch a message that Teams or mail search indexed late. First
 run: 7 days back. A `--since` later than the cursor, or with no cursor, does not move it: the
-gap behind it was not fetched. A window source also records `covered_from`: the start of the earliest window it fetched. It only moves earlier, and bard reads it to find a gap before its own watermark. A snapshot source (`github`, `jira`) records `last_ok` the same way and has no `covered_from`. Treat any line that is not `fetched` as a coverage gap, never as "nothing there".
+gap behind it was not fetched. A window source also records `covered_from`: the start of the earliest window it fetched. It only moves earlier, and bard reads it to find a gap before its own watermark. A snapshot source (`github`, `jira`) records `last_ok` the same way and has no `covered_from`. `github_activity` also keeps `last_ok`, and it moves even after a cap. Treat any line that is not `fetched` as a coverage gap, never as "nothing there".
 
 ## Retention
 

@@ -59,7 +59,12 @@ NOT_FETCHED = {
     "teams_channels": "channel hit shape and reply activity fields not verified live",
 }
 
-SOURCES = ["teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint", "jira", "github"]
+SOURCES = ["teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint", "jira", "github", "github_activity"]
+ACTIVITY_PAGES = 3
+# snapshot sources whose mark moves even after a cap: see fetch_one
+STREAM = ("github_activity",)
+# one busy day touched more than 50 items live (2026-11-13); a cap that binds daily never clears
+ACTIVITY_TIMELINES = 200
 
 # Snapshot: every open item assigned to Alex. bard filters by changelog date, so no Jira
 # time-zone watermark is needed here.
@@ -352,6 +357,69 @@ def fetch_github(ctx):
     return got
 
 
+def _when(text):
+    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def event_number(event):
+    p = event.get("payload") or {}
+    kind = event.get("type")
+    if kind in ("IssueCommentEvent", "IssuesEvent"):
+        return (p.get("issue") or {}).get("number")
+    if kind == "PullRequestEvent":
+        return p.get("number") or (p.get("pull_request") or {}).get("number")
+    if kind in ("PullRequestReviewEvent", "PullRequestReviewCommentEvent"):
+        return (p.get("pull_request") or {}).get("number")
+    return None
+
+
+def fetch_github_activity(ctx):
+    login = ctx.gh(["api", "user", "--jq", ".login"]).strip()
+    if login == PERSONAL_GH:
+        raise PersonalAccount(login)
+    got = Fetched([], 0)
+
+    def call(argv):
+        out = ctx.gh(argv)
+        got.records.append({"tool": "gh", "args": {"argv": argv, "login": login}, "content": out})
+        return out
+
+    # (repo, number) -> newest activity time, so a cap drops the oldest items, not the highest numbers
+    touched, in_window, full_window = {}, 0, False
+
+    def touch(key, when):
+        touched[key] = max(touched.get(key, when), when)
+
+    for page in range(1, ACTIVITY_PAGES + 1):
+        events = json.loads(call(["api", f"users/{login}/events?per_page=100&page={page}"]))
+        recent = [e for e in events if _when(e["created_at"]) >= ctx.after]
+        in_window += len(recent)
+        for e in recent:
+            n = event_number(e)
+            if n:
+                touch((e["repo"]["name"], n), _when(e["created_at"]))
+        if len(events) < 100 or len(recent) < len(events):
+            break
+        full_window = page == ACTIVITY_PAGES
+    since = ctx.after.strftime("%Y-%m-%d")
+    out = call(["search", "prs", "--involves=@me", f"--updated=>={since}", "--limit", str(GH_LIMIT),
+                "--json", "number,repository,updatedAt"])
+    found = json.loads(out)
+    for item in found:
+        touch((item["repository"]["nameWithOwner"], item["number"]), _when(item.get("updatedAt") or iso_z(ctx.after)))
+    items = sorted(touched, key=lambda k: (-touched[k].timestamp(), k))
+    for repo, number in items[:ACTIVITY_TIMELINES]:
+        call(["api", f"repos/{repo}/issues/{number}/timeline?per_page=100", "--paginate", "--slurp"])
+    got.items = in_window + min(len(items), ACTIVITY_TIMELINES)
+    if full_window:
+        got.capped = f"capped at events limit {ACTIVITY_PAGES * 100}"
+    elif len(found) == GH_LIMIT:
+        got.capped = f"capped at gh limit {GH_LIMIT}"
+    elif len(items) > ACTIVITY_TIMELINES:
+        got.capped = f"capped at {ACTIVITY_TIMELINES} timelines"
+    return got
+
+
 def jira_page(content):
     """(issue keys, pageInfo) of one search result. The shape is {"issues": {"nodes": [...]}}."""
     try:
@@ -404,6 +472,8 @@ def fetch_jira(ctx):
 def fetch_source(source, ctx):
     if source == "github":
         return fetch_github(ctx)
+    if source == "github_activity":
+        return fetch_github_activity(ctx)
     if source == "jira":
         return fetch_jira(ctx)
     return fetch_window(source, ctx)
@@ -507,7 +577,7 @@ def failure_reason(source, e):
         return e.reason
     if isinstance(e, SpillError):
         return "spill"
-    return "gh failed" if source == "github" else "claude failed"
+    return "gh failed" if source in ("github", "github_activity") else "claude failed"
 
 
 def window_start(source, anchor, since, now):
@@ -517,7 +587,7 @@ def window_start(source, anchor, since, now):
         return now - timedelta(days=FIRST_RUN_DAYS)
     start = datetime.fromisoformat(anchor)
     # gh's `updated` filter is a date, and a PR can change after the last run's own start time
-    return start - timedelta(days=1) if source == "github" else start
+    return start - timedelta(days=1) if source in ("github", "github_activity") else start
 
 
 def skip_line(source, me_name, stopped):
@@ -526,7 +596,7 @@ def skip_line(source, me_name, stopped):
         return "not fetched: run stopped after a guard abort"
     if source in NOT_FETCHED:
         return f"not fetched: {NOT_FETCHED[source]}"
-    if source not in WINDOW and source not in ("github", "jira"):
+    if source not in WINDOW and source not in ("github", "github_activity", "jira"):
         return "error: unknown source"
     if not me_name and any(v == "ME_NAME" for _, fixed, _ in WINDOW.get(source, []) for v in fixed.values()):
         return "not fetched: no display name from get_me"
@@ -559,6 +629,10 @@ def fetch_one(source, base, state, root, run_id, since, details):
             move_mark(marks, source, got.resume_from or ctx.after, max)
         if got.clean_before:
             move_mark(state["covered_from"], source, ctx.after, min)
+        # a stream cap is not fetchable later (the events API keeps 300), and a stuck mark would
+        # widen every later window and cap it again, so the gap is reported once and the mark moves
+        if source in STREAM and not (since and (anchor_dt is None or since > anchor_dt)):
+            move_mark(marks, source, ctx.now, max)
         return got.capped, False
     if got.issue_errors:
         return f"partial: {len(got.records)} calls, {got.items} items, {got.issue_errors} issue errors", False

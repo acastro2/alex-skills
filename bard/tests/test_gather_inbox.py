@@ -56,8 +56,8 @@ def test_the_latest_ledger_line_per_source_wins_so_a_failed_last_fetch_shows(tmp
         "slack": "fetched 1 calls, 2 items",
     }
     # mail failed last, teams_channels was not built, and the rest never ran: all are gaps
-    assert sorted(out["fallback"]) == ["calendar", "github", "mail", "sharepoint", "teams_channels",
-                                       "teams_chats", "teams_mine"]
+    assert sorted(out["fallback"]) == ["calendar", "github", "github_activity", "mail", "sharepoint",
+                                       "teams_channels", "teams_chats", "teams_mine"]
 
 
 def test_a_source_gather_never_ran_is_a_gap_not_silence(tmp_path: Path) -> None:
@@ -159,3 +159,16 @@ def test_zero_teams_or_mail_items_on_a_working_day_is_a_gap_but_not_on_a_weekend
     write(weekend / "ledger/20261115T090000-aaaaaa.json",  # a Sunday
           {"started_at": "2026-11-15T09:00:00+00:00", "sources": {"mail": "fetched 6 calls, 0 items"}})
     assert "mail" not in inbox.listing(weekend, seen=set())["fallback"]
+
+
+def test_github_activity_keeps_every_run_and_needs_no_covered_from(tmp_path: Path) -> None:
+    # events are a stream: an older run holds events a newer one may not, so nothing is superseded,
+    # and gather keeps last_ok for it, not covered_from, so a watermark must not flag it
+    raw(tmp_path, "raw/github_activity/2026-11-12/20261112T100000-aaaaaa-1.json")
+    raw(tmp_path, "raw/github_activity/2026-11-13/20261113T100000-bbbbbb-1.json")
+    write(tmp_path / "ledger/20261113T100000-bbbbbb.json",
+          {"started_at": "2026-11-13T10:00:00+00:00", "sources": {"github_activity": "fetched 3 calls, 9 items"}})
+    out = inbox.listing(tmp_path, seen=set(), watermark="2026-11-01T00:00:00+00:00")
+    assert len(out["unseen"]["github_activity"]) == 2
+    assert out["superseded"] == []
+    assert "github_activity" not in out["fallback"]
