@@ -1,0 +1,280 @@
+{
+  "name": "briefing",
+  "version": "1.3.0",
+  "note_white": "Use #FFFFFE for white in HTML. Apple Mail ignores #FFFFFF inside prefers-color-scheme blocks.",
+  "description": "Email theme for the weekly status report. One accent, square corners, system fonts, Outlook first.",
+  "color": {
+    "ink": {
+      "900": "#15202B",
+      "text.strong": "#FFFFFF",
+      "text.soft": "#D5DCE3",
+      "text.muted": "#A9B4BF"
+    },
+    "signal": {
+      "700": "#0B6E5A",
+      "400": "#3F9C84",
+      "100": "#E3F4EF",
+      "on-ink": "#6FE0C2"
+    },
+    "text": {
+      "primary": "#1A2430",
+      "secondary": "#3D4752",
+      "muted": "#5A6570"
+    },
+    "line": {
+      "axis": "#C3CAD2",
+      "card": "#D5DBE1",
+      "rule": "#E2E6EA"
+    },
+    "surface": {
+      "page": "#EEF0F3",
+      "card": "#FFFFFF",
+      "panel": "#F6F7F9"
+    },
+    "warn": {
+      "stale": "#F2B84B"
+    }
+  },
+  "status": {
+    "rule": "Semantic only, never decoration. Always glyph + word with the color (red and green have near-equal lightness, 1.06:1). success reuses signal on purpose: no second green.",
+    "danger": {
+      "glyph": "✕",
+      "fg": "#B42318",
+      "tint": "#FDECEA",
+      "line": "#F3B8B2",
+      "solid": "#B42318",
+      "on-solid": "#FFFFFE",
+      "dark": {
+        "fg": "#FF8A80",
+        "tint": "#3A1A1D"
+      }
+    },
+    "warning": {
+      "glyph": "!",
+      "fg": "#8A5300",
+      "tint": "#FDF3DC",
+      "line": "#EDD39A",
+      "solid": "#F2B84B",
+      "on-solid": "#1A2430",
+      "dark": {
+        "fg": "#F2B84B",
+        "tint": "#33280F"
+      }
+    },
+    "info": {
+      "glyph": "i",
+      "fg": "#1F5FAD",
+      "tint": "#E7F0FB",
+      "line": "#B5CFEF",
+      "solid": "#1F5FAD",
+      "on-solid": "#FFFFFE",
+      "dark": {
+        "fg": "#7DB4F5",
+        "tint": "#14263B"
+      }
+    },
+    "success": {
+      "glyph": "✓",
+      "fg": "#0B6E5A",
+      "tint": "#E3F4EF",
+      "line": "#A9D9CB",
+      "solid": "#0B6E5A",
+      "on-solid": "#FFFFFE",
+      "dark": {
+        "fg": "#5FD3B3",
+        "tint": "#173A32"
+      }
+    }
+  },
+  "contrast_checked_status": {
+    "danger.fg on card / tint / panel": [
+      6.57,
+      5.75,
+      6.13
+    ],
+    "danger.on-solid": 6.57,
+    "danger.dark.fg on dark card / dark tint": [
+      7.51,
+      6.84
+    ],
+    "warning.fg on card / tint / panel": [
+      6.33,
+      5.74,
+      5.9
+    ],
+    "warning.on-solid": 8.76,
+    "warning.dark.fg on dark card / dark tint": [
+      9.58,
+      8.09
+    ],
+    "info.fg on card / tint / panel": [
+      6.36,
+      5.53,
+      5.94
+    ],
+    "info.on-solid": 6.36,
+    "info.dark.fg on dark card / dark tint": [
+      7.94,
+      7.09
+    ],
+    "success.fg on card / tint / panel": [
+      6.19,
+      5.44,
+      5.78
+    ],
+    "success.on-solid": 6.19,
+    "success.dark.fg on dark card / dark tint": [
+      9.36,
+      6.79
+    ]
+  },
+  "color_dark": {
+    "ink": {
+      "900": "#050505",
+      "accent_bar": "3px #5FD3B3 top border",
+      "text.strong": "#F1F4F6",
+      "text.soft": "#CFE0DA",
+      "text.muted": "#9DBAB1",
+      "num.bg": "#050505",
+      "num.border": "#66727E"
+    },
+    "signal": {
+      "700": "#5FD3B3",
+      "bar.outline": "#4FB39A",
+      "pick": "transparent + 1px #5FD3B3 border",
+      "on-ink": "#7FE8CB"
+    },
+    "text": {
+      "primary": "#E8ECEF",
+      "secondary": "#B9C2CB",
+      "muted": "#95A0AB"
+    },
+    "line": {
+      "axis": "#66727E",
+      "card": "#66727E",
+      "rule": "#3A4550"
+    },
+    "surface": {
+      "page": "transparent",
+      "card": "transparent (1px #66727E border)",
+      "panel": "transparent",
+      "client_pane_mac": "#1E1E1E"
+    },
+    "chart": {
+      "busiest_fill": "#5FD3B3",
+      "other_bars": "outline #4FB39A",
+      "bugs": "outline #8C98A4"
+    },
+    "warn": {
+      "stale": "#F2B84B"
+    }
+  },
+  "contrast_checked_dark": {
+    "text.primary on #1E1E1E": 14.03,
+    "text.secondary on #1E1E1E": 9.24,
+    "text.muted on #1E1E1E": 6.27,
+    "signal.700 on #1E1E1E": 9.09,
+    "header text.strong on #050505": 18.45,
+    "header text.muted on #050505": 9.79,
+    "signal.on-ink on #050505": 13.89,
+    "card border #66727E on #1E1E1E (graphic)": 3.4,
+    "bar outline #4FB39A on #1E1E1E (graphic)": 6.55,
+    "bug outline #8C98A4 on #1E1E1E (graphic)": 5.67
+  },
+  "contrast_checked": {
+    "text.primary on surface.card": 15.68,
+    "text.secondary on surface.card": 9.45,
+    "text.muted on surface.card": 5.95,
+    "text.muted on surface.panel": 5.55,
+    "text.muted on surface.page": 5.21,
+    "signal.700 on surface.card": 6.19,
+    "signal.700 on signal.100": 5.44,
+    "ink.text.strong on ink.900": 16.49,
+    "ink.text.soft on ink.900": 11.92,
+    "ink.text.muted on ink.900": 7.83,
+    "signal.on-ink on ink.900": 10.3,
+    "warn.stale on ink.900": 9.21,
+    "signal.400 on surface.panel (graphic)": 3.11
+  },
+  "font": {
+    "stack": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    "outlook": "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif (in the main <style>, no mso block)",
+    "mono": "Consolas, Menlo, monospace"
+  },
+  "type": {
+    "display": {
+      "size": 44,
+      "line": 44,
+      "weight": 800,
+      "tracking": -1
+    },
+    "kpi": {
+      "size": 30,
+      "line": 34,
+      "weight": 800
+    },
+    "section": {
+      "size": 18,
+      "line": 24,
+      "weight": 700
+    },
+    "ask": {
+      "size": 16,
+      "line": 22,
+      "weight": 700
+    },
+    "body": {
+      "size": 15,
+      "line": 22,
+      "weight": 400
+    },
+    "small": {
+      "size": 14,
+      "line": 21,
+      "weight": 400
+    },
+    "caption": {
+      "size": 13,
+      "line": 18,
+      "weight": 400
+    },
+    "label": {
+      "size": 12,
+      "line": 16,
+      "weight": 700,
+      "case": "upper"
+    }
+  },
+  "space": {
+    "container": 640,
+    "gutter": 28,
+    "card_gap": 12,
+    "section_gap": [
+      24,
+      28
+    ],
+    "card_pad": [
+      14,
+      16
+    ],
+    "row_pad": [
+      9,
+      12
+    ]
+  },
+  "radius": 0,
+  "chart": {
+    "day_bar_max_px": 72,
+    "flow_bar_px": 14,
+    "busiest": "signal.700",
+    "other": "signal.400",
+    "bugs": "text.secondary"
+  },
+  "rules": [
+    "signal is the only hue: picks, bullets, data. Never decoration.",
+    "signal.400 is for graphics only, never text.",
+    "warn.stale only when bard_fresh is false.",
+    "Every chart has a headline that states its point."
+  ],
+  "note_dark_outlook_mac": "Outlook for Mac (16.115) forces painted dark backgrounds to one mid-dark level; only #050505 and transparent survive. Dark surfaces are transparent, structure comes from borders."
+}

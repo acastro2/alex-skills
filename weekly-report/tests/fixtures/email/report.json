@@ -1,0 +1,121 @@
+{
+ "from": "Alex",
+ "preview": "3 decisions need you: scheduler move, log retention, gateway on-call.",
+ "decisions": [
+  {
+   "ask": "Move the nightly sync jobs to the managed scheduler before the December freeze?",
+   "options": [
+    {
+     "label": "Move now.",
+     "detail": "Two days of work, done by Nov 20.",
+     "picked": true
+    },
+    {
+     "label": "Wait until January.",
+     "picked": false
+    }
+   ],
+   "why": "the old cron host loses support on Dec 31, in the middle of the freeze."
+  },
+  {
+   "ask": "Keep vendor log retention at 30 days, or cut it to 14?",
+   "options": [
+    {
+     "label": "Keep 30 days.",
+     "picked": false
+    },
+    {
+     "label": "Cut to 14 days.",
+     "picked": true
+    }
+   ],
+   "why": "no incident this year needed logs older than 7 days."
+  },
+  {
+   "ask": "Who owns API gateway on-call after Ravi changes teams on Dec 1?",
+   "options": [
+    {
+     "label": "Priya’s team.",
+     "picked": true
+    }
+   ],
+   "why": "they already own most of the gateway routes."
+  }
+ ],
+ "done": [
+  {
+   "theme": "Architecture",
+   "items": [
+    {
+     "text": "Event bus ADR approved. Teams can build on it now.",
+     "ref": "arch-docs#42",
+     "url": "https://example.com/pr/42"
+    },
+    {
+     "text": "Tenant isolation reference design published.",
+     "ref": "PLAT-512",
+     "url": "https://example.com/browse/PLAT-512"
+    },
+    {
+     "text": "Billing split reviewed. Two risks sent back.",
+     "ref": "billing#118",
+     "url": "https://example.com/pr/118"
+    }
+   ]
+  },
+  {
+   "theme": "Security",
+   "items": [
+    {
+     "text": "Secrets moved out of three pipelines into the vault.",
+     "ref": "infra#77",
+     "url": "https://example.com/pr/77"
+    },
+    {
+     "text": "Pen-test triaged: 0 critical, 2 medium with owners.",
+     "ref": "SEC-88",
+     "url": "https://example.com/browse/SEC-88"
+    }
+   ]
+  },
+  {
+   "theme": "Team",
+   "items": [
+    {
+     "text": "Q1 roadmap draft out to leads for comment.",
+     "ref": "PLAT-530",
+     "url": "https://example.com/browse/PLAT-530"
+    }
+   ]
+  }
+ ],
+ "next": [
+  "Start the scheduler move, if you pick 1A.",
+  "Final Q1 roadmap by Nov 19.",
+  "Fix the two medium pen-test findings.",
+  "Write the gateway on-call handover."
+ ],
+ "blocked": [
+  {
+   "text": "Partner portal SSO: no SAML certificate yet.",
+   "waiting_on": "Marco"
+  }
+ ],
+ "team": [
+  {
+   "text": "Webhook retries shipped. Failed deliveries now retry 3 times.",
+   "ref": "hooks#203",
+   "url": "https://example.com/pr/203"
+  },
+  {
+   "text": "Partner API v2 is in review, not merged.",
+   "ref": "api#211",
+   "url": "https://example.com/pr/211"
+  },
+  {
+   "text": "Sam fixed the device sync timeout.",
+   "ref": "INT-341",
+   "url": "https://example.com/browse/INT-341"
+  }
+ ]
+}

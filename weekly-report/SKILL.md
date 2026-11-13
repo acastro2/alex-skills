@@ -3,11 +3,12 @@ name: weekly-report
 description: >-
   Write Alex's weekly update to his manager from what bard already knows: decisions the
   manager needs to make first, then what shipped, what is next, and what is blocked, for the
-  Mon-Fri week. Saves a dated note in the vault and prints a copy to paste into the 1:1 doc.
+  Mon-Fri week. Saves a dated note in the vault, prints a copy to paste into the 1:1 doc,
+  and opens the same report as a designed Outlook email draft for Alex to send.
   Use when Alex asks for his weekly report, weekly update, status for his manager, what he did
-  this week, or prep for his 1:1. Also gathers, second and separate, how his team's product
-  moved that week: team PRs merged and in review, tracker tickets done and new, bugs, and
-  team Slack threads. Not for the team's initiative board or its roll-up, that is
+  this week, or prep for his 1:1. Also gathers, second and separate, what his team shipped
+  this week: team PRs merged and in review, tracker tickets done and new, bugs, and team
+  Slack threads. Not for the team's initiative board or its roll-up, that is
   projects-curator, and not for sweeping sessions into notes, that is bard.
 ---
 
@@ -41,6 +42,7 @@ graph LR
   J --> C[collect.py: facts for Mon-Fri, me + team]
   C --> D[draft: Decisions · Done · Next · Blocked · Team]
   D --> E[vault Reports/Weekly/YYYY-Www.md + chat copy]
+  E --> M[render_email.py: designed email, Outlook draft]
 ```
 
 ## Steps
@@ -160,6 +162,14 @@ graph LR
 9. **Write** `report_path` from the facts (`<vault>/Reports/Weekly/<week>.md`). If the file
    exists, show what changed and ask before you overwrite it. Then print the report body in
    chat for Alex to paste. Never post it anywhere: sending it is Alex's click.
+10. **Email draft.** Write the same words as `~/.weekly-report/report-<week>.json` (schema in
+    [references/email.md](references/email.md)), then run
+    `python3 ~/.agents/skills/weekly-report/scripts/render_email.py --report <that file> --facts <facts file> --out <vault>/Reports/Weekly/<week>.email.html --draft`.
+    It computes every number and chart from the facts, so never put a count in the report
+    file. `--draft` opens an Outlook draft on the Mac as the end of the run; Alex sends it.
+    Exit 2 names what is wrong: a `report:` or field error means fix the report file, a
+    `facts:` error means run the collector again, never edit the script. Not at the Mac
+    (no Outlook to drive): drop `--draft` and say the HTML file is waiting.
 
 ## Limits
 

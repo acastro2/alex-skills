@@ -129,3 +129,12 @@ def test_bard_notes_in_window_skip_hubs(tmp_path: Path) -> None:
     notes = collect.bard_notes(tmp_path, WINDOW)
     assert [n["title"] for n in notes] == ["In"]
     assert notes[0]["up"] == "[[Hub]]"
+
+
+def test_facts_carry_when_they_were_collected(tmp_path: Path, capsys) -> None:
+    (tmp_path / "Bard").mkdir()
+    (tmp_path / "Todo.md").write_text(BOARD)
+    assert collect.main(["--vault", str(tmp_path), "--date", "2026-10-28", "--no-github"]) == 0
+    stamp = dt.datetime.fromisoformat(json.loads(capsys.readouterr().out)["collected_at"])
+    assert stamp.utcoffset() == dt.datetime.now(collect.TZ).utcoffset()
+    assert abs((dt.datetime.now(collect.TZ) - stamp).total_seconds()) < 120

@@ -1,0 +1,298 @@
+<!--
+  WEEKLY STATUS EMAIL - BRIEFING CARD, LIGHT. Theme tokens: theme-briefing.json.
+  render_email.py reads this file as named blocks. A block starts at "@block <name>" in a comment
+  and ends at the next one. $slot names are filled by string.Template. Comments are stripped from
+  the output: Outlook's AppleScript drops the whole body when it finds them.
+  Every color lives here. Another template with the same blocks can replace this file.
+
+  Dark mode: every colored element carries a bt-* class. Inline styles are the light palette; the
+  dark_style block holds the dark palette (prefers-color-scheme, plus [data-ogsb] for Outlook.com
+  and new Outlook). White is #FFFFFE, never #FFFFFF (Apple Mail bug). The renderer puts dark_style
+  in <head>, because a <style> inside the body shows up as visible text.
+
+  Numbers (all from the facts JSON; words come from the report JSON):
+    Header counts: decisions, done items, blocked items of the report.
+    Day bar height = round(72 * merged_that_day / max_day); 0 merges -> 2 (Outlook minimum).
+    Busiest day (first max) gets the busy bar and label. All zero -> no busy day.
+    PRs in review = team.prs.open where draft == false.
+    Ticket flow: resolved = team.jira.resolved where bulk == false; created, bugs = list lengths.
+      M = max(resolved, created); width = round(100 * x / M); the rest cell holds 100 - width.
+    Cleanup note = sum(team.jira.bulk_runs[].count), shown only when above 0.
+    Footer: fresh dot + "Fresh data" when bard_fresh, else the stale block with the last run time.
+-->
+
+<!-- @block frame -->
+<html><head><meta charset="utf-8">$style</head><body class="bt-page" style="margin:0;padding:0;background-color:#EEF0F3;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;">$preview</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#EEF0F3" class="bt-page" style="background-color:#EEF0F3;">
+<tr><td align="center" class="bt-page" bgcolor="#EEF0F3" style="padding:24px 12px;background-color:#EEF0F3;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#FFFFFE" class="bt-card" style="width:640px;max-width:100%;background-color:#FFFFFE;">
+$content
+</table>
+</td></tr>
+</table>
+</body></html>
+
+<!-- @block dark_style -->
+<style>
+:root{color-scheme:light dark;supported-color-schemes:light dark;}
+table,td,p,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;}
+@media (prefers-color-scheme: dark){
+[class~="bt-page"]{background-color:transparent !important;background-image:none !important;}
+[class~="bt-card"]{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;}
+[class~="bt-head"]{background-color:#050505 !important;background-image:none !important;border-color:#050505 !important;border-top:3px solid #5FD3B3 !important;}
+[class~="bt-hs"]{color:#F1F4F6 !important;}
+[class~="bt-hsoft"]{color:#CFE0DA !important;}
+[class~="bt-hm"]{color:#9DBAB1 !important;}
+[class~="bt-hsig"]{color:#7FE8CB !important;}
+[class~="bt-tp"]{color:#E8ECEF !important;}
+[class~="bt-ts"]{color:#B9C2CB !important;}
+[class~="bt-tm"]{color:#95A0AB !important;}
+[class~="bt-sig"]{color:#5FD3B3 !important;}
+[class~="bt-box"]{border-color:#66727E !important;}
+[class~="bt-rule"]{border-color:#3A4550 !important;}
+[class~="bt-num"]{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;color:#F1F4F6 !important;}
+[class~="bt-pick"]{background-color:transparent !important;background-image:none !important;border:1px solid #5FD3B3 !important;}
+[class~="bt-panel"]{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
+[class~="bt-bar-hi"]{background-color:#5FD3B3 !important;background-image:none !important;}
+[class~="bt-bar"]{background-color:transparent !important;background-image:none !important;border:1px solid #4FB39A !important;}
+[class~="bt-bar-bug"]{background-color:transparent !important;background-image:none !important;border:1px solid #8C98A4 !important;}
+[class~="bt-axis"]{border-color:#66727E !important;}
+}
+.bt-page[data-ogsb]{background-color:transparent !important;background-image:none !important;}
+.bt-page[data-ogab]{background-color:transparent !important;background-image:none !important;}
+.bt-card[data-ogsb]{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;}
+.bt-card[data-ogab]{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;}
+.bt-head[data-ogsb]{background-color:#050505 !important;background-image:none !important;border-color:#050505 !important;border-top:3px solid #5FD3B3 !important;}
+.bt-head[data-ogab]{background-color:#050505 !important;background-image:none !important;border-color:#050505 !important;border-top:3px solid #5FD3B3 !important;}
+.bt-panel[data-ogsb]{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
+.bt-panel[data-ogab]{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
+[data-ogsb] .bt-card{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;}
+[data-ogsb] .bt-head{background-color:#050505 !important;background-image:none !important;border-color:#050505 !important;border-top:3px solid #5FD3B3 !important;}
+[data-ogsb] .bt-hs{color:#F1F4F6 !important;}
+[data-ogsb] .bt-hsoft{color:#CFE0DA !important;}
+[data-ogsb] .bt-hm{color:#9DBAB1 !important;}
+[data-ogsb] .bt-hsig{color:#7FE8CB !important;}
+[data-ogsb] .bt-tp{color:#E8ECEF !important;}
+[data-ogsb] .bt-ts{color:#B9C2CB !important;}
+[data-ogsb] .bt-tm{color:#95A0AB !important;}
+[data-ogsb] .bt-sig{color:#5FD3B3 !important;}
+[data-ogsb] .bt-box{border-color:#66727E !important;}
+[data-ogsb] .bt-rule{border-color:#3A4550 !important;}
+[data-ogsb] .bt-num{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;color:#F1F4F6 !important;}
+[data-ogsb] .bt-pick{background-color:transparent !important;background-image:none !important;border:1px solid #5FD3B3 !important;}
+[data-ogsb] .bt-panel{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
+[data-ogsb] .bt-bar-hi{background-color:#5FD3B3 !important;background-image:none !important;}
+[data-ogsb] .bt-bar{background-color:transparent !important;background-image:none !important;border:1px solid #4FB39A !important;}
+[data-ogsb] .bt-bar-bug{background-color:transparent !important;background-image:none !important;border:1px solid #8C98A4 !important;}
+[data-ogsb] .bt-axis{border-color:#66727E !important;}
+</style>
+
+<!-- @block header -->
+<tr><td bgcolor="#15202B" class="bt-head" style="background-color:#15202B;border-bottom:1px solid #15202B;padding:24px 28px 22px 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td valign="bottom" class="bt-hs" style="font-size:44px;line-height:44px;font-weight:800;color:#FFFFFE;letter-spacing:-1px;">$week_short</td>
+<td valign="bottom" align="right" class="bt-hm" style="font-size:13px;line-height:19px;color:#A9B4BF;">$range, $year<br><span class="bt-hs" style="color:#FFFFFE;">$from_name &rarr; $manager</span></td>
+</tr>
+</table>
+<p class="bt-hsoft" style="margin:16px 0 0 0;font-size:15px;line-height:22px;color:#D5DCE3;"><strong class="bt-hsig" style="color:#6FE0C2;font-size:18px;">$n_decisions</strong> decisions need you &nbsp;&middot;&nbsp; <strong class="bt-hs" style="color:#FFFFFE;font-size:18px;">$n_done</strong> done &nbsp;&middot;&nbsp; <strong class="bt-hs" style="color:#FFFFFE;font-size:18px;">$n_blocked</strong> blocked</p>
+</td></tr>
+
+<!-- @block decisions_head -->
+<tr><td style="padding:24px 28px 4px 28px;">
+<p class="bt-tp" style="margin:0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Decisions needed</p>
+$intro
+</td></tr>
+
+<!-- @block decisions_codes -->
+<p class="bt-tm" style="margin:2px 0 0 0;font-size:13px;line-height:19px;color:#5A6570;">Reply with the codes, for example <strong class="bt-tp" style="color:#1A2430;">$codes</strong>. The shaded option is my pick.</p>
+
+<!-- @block decisions_none -->
+<p class="bt-ts" style="margin:2px 0 0 0;font-size:15px;line-height:22px;color:#3D4752;">None this week.</p>
+
+<!-- @block decision -->
+<tr><td style="padding:12px 28px 0 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bt-box" style="border:1px solid #D5DBE1;">
+<tr><td style="padding:14px 16px 10px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="28" height="28" align="center" valign="middle" bgcolor="#15202B" class="bt-num" style="background-color:#15202B;width:28px;height:28px;font-size:14px;line-height:28px;font-weight:700;color:#FFFFFE;">$n</td>
+<td valign="middle" class="bt-tp" style="padding-left:12px;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">$ask</td>
+</tr></table>
+</td></tr>
+<tr><td style="padding:0 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+$options
+</table>
+</td></tr>
+<tr><td class="bt-ts" style="padding:10px 16px 14px 16px;font-size:14px;line-height:21px;color:#3D4752;"><strong class="bt-tp" style="color:#1A2430;">Why:</strong> $why</td></tr>
+</table>
+</td></tr>
+
+<!-- @block option_picked -->
+<tr><td bgcolor="#E3F4EF" class="bt-pick" style="background-color:#E3F4EF;padding:9px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="36" valign="top" class="bt-sig" style="font-size:14px;line-height:21px;font-weight:800;color:#0B6E5A;">$code</td>
+<td valign="top" class="bt-tp" style="font-size:15px;line-height:21px;color:#1A2430;"><strong>$label</strong>$detail<br><span class="bt-sig" style="font-size:12px;line-height:18px;font-weight:700;color:#0B6E5A;">MY PICK</span></td>
+</tr></table>
+</td></tr>
+
+<!-- @block option_detail -->
+ $detail
+
+<!-- @block option_other -->
+<tr><td class="bt-rule" style="padding:9px 12px;border-bottom:1px solid #EEF0F3;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="36" valign="top" class="bt-tm" style="font-size:14px;line-height:21px;font-weight:800;color:#5A6570;">$code</td>
+<td valign="top" class="bt-ts" style="font-size:15px;line-height:21px;color:#3D4752;">$label</td>
+</tr></table>
+</td></tr>
+
+<!-- @block done -->
+<tr><td style="padding:28px 28px 0 28px;">
+<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Done <span class="bt-tm" style="font-size:14px;font-weight:400;color:#5A6570;">&nbsp;$count</span></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+$rows
+</table>
+</td></tr>
+
+<!-- @block done_theme_first -->
+<tr><td colspan="2" class="bt-tm" style="padding:6px 0 2px 0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">$theme</td></tr>
+
+<!-- @block done_theme -->
+<tr><td colspan="2" class="bt-tm" style="padding:10px 0 2px 0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">$theme</td></tr>
+
+<!-- @block done_item -->
+<tr><td width="18" valign="top" class="bt-sig" style="padding:3px 0;font-size:15px;line-height:22px;color:#0B6E5A;">&#9679;</td><td valign="top" class="bt-tp" style="padding:3px 0;font-size:15px;line-height:22px;color:#1A2430;">$text$link</td></tr>
+
+<!-- @block link -->
+ <a href="$url" class="bt-tm" style="color:#5A6570;text-decoration:underline;white-space:nowrap;">$ref</a>
+
+<!-- @block next -->
+<tr><td style="padding:24px 28px 0 28px;">
+<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Next</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+$rows
+</table>
+</td></tr>
+
+<!-- @block next_item -->
+<tr><td width="18" valign="top" class="bt-sig" style="padding:3px 0;font-size:15px;line-height:22px;color:#0B6E5A;">&#9675;</td><td valign="top" class="bt-tp" style="padding:3px 0;font-size:15px;line-height:22px;color:#1A2430;">$text</td></tr>
+
+<!-- @block blocked -->
+<tr><td style="padding:24px 28px 0 28px;">
+<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Blocked</p>
+$rows
+</td></tr>
+
+<!-- @block blocked_item -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bt-box" style="border:1px solid #D5DBE1;">
+<tr><td class="bt-tp" style="padding:10px 14px;font-size:15px;line-height:22px;color:#1A2430;">$text$waiting</td></tr>
+</table>
+
+<!-- @block blocked_waiting -->
+<br><span class="bt-tm" style="font-size:12px;line-height:18px;font-weight:700;color:#5A6570;">WAITING ON</span> <strong>$name</strong>
+
+<!-- @block team -->
+<tr><td style="padding:28px 0 0 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F7F9" class="bt-panel" style="background-color:#F6F7F9;border-top:1px solid #E2E6EA;">
+<tr><td style="padding:22px 28px 6px 28px;">
+<p class="bt-tm" style="margin:0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">TEAM &middot; $team_name</p>
+<p class="bt-tp" style="margin:4px 0 0 0;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">$chart_takeaway</p>
+</td></tr>
+
+<tr><td style="padding:10px 28px 0 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="58%" valign="bottom">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+$day_bars
+</tr>
+<tr>
+$day_labels
+</tr></table>
+<p class="bt-tm" style="margin:6px 0 0 0;font-size:12px;line-height:16px;color:#5A6570;">PRs merged per day</p>
+</td>
+<td width="42%" valign="bottom" style="padding-left:20px;">
+<p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$prs_merged</p>
+<p class="bt-tm" style="margin:0 0 10px 0;font-size:13px;line-height:18px;color:#5A6570;">PRs merged</p>
+<p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$prs_in_review</p>
+<p class="bt-tm" style="margin:0;font-size:13px;line-height:18px;color:#5A6570;">in review, no drafts</p>
+</td>
+</tr></table>
+</td></tr>
+
+<tr><td style="padding:22px 28px 0 28px;">
+<p class="bt-tp" style="margin:0 0 8px 0;font-size:14px;line-height:20px;font-weight:700;color:#1A2430;">$flow_takeaway</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+$flow_rows
+</table>$bulk_note
+</td></tr>
+
+<tr><td style="padding:16px 28px 22px 28px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+$lines
+</table>
+</td></tr>
+</table>
+</td></tr>
+
+<!-- @block day_bar -->
+<td width="20%" align="center" valign="bottom" style="padding:0 4px;"><p class="bt-tm" style="margin:0 0 2px 0;font-size:12px;line-height:16px;color:#5A6570;">$count</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="$h" bgcolor="#3F9C84" class="bt-bar" style="height:${h}px;background-color:#3F9C84;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+
+<!-- @block day_bar_busy -->
+<td width="20%" align="center" valign="bottom" style="padding:0 4px;"><p class="bt-sig" style="margin:0 0 2px 0;font-size:12px;line-height:16px;font-weight:700;color:#0B6E5A;">$count</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="$h" bgcolor="#0B6E5A" class="bt-bar-hi" style="height:${h}px;background-color:#0B6E5A;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+
+<!-- @block day_label -->
+<td align="center" class="bt-axis bt-tm" style="padding:4px 0 0 0;border-top:1px solid #C3CAD2;font-size:12px;line-height:16px;color:#5A6570;">$name</td>
+
+<!-- @block day_label_busy -->
+<td align="center" class="bt-axis bt-tp" style="padding:4px 0 0 0;border-top:1px solid #C3CAD2;font-size:12px;line-height:16px;font-weight:700;color:#1A2430;">$name</td>
+
+<!-- @block flow_resolved -->
+<tr>
+<td width="78" valign="middle" class="bt-ts" style="padding:3px 0;font-size:13px;line-height:18px;color:#3D4752;">Resolved</td>
+<td valign="middle" style="padding:3px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="$w%" height="14" bgcolor="#0B6E5A" class="bt-bar-hi" style="height:14px;background-color:#0B6E5A;font-size:1px;line-height:1px;">&nbsp;</td>$rest</tr></table></td>
+<td width="44" align="right" valign="middle" class="bt-tp" style="padding:3px 0;font-size:14px;line-height:18px;font-weight:700;color:#1A2430;">$value</td>
+</tr>
+
+<!-- @block flow_created -->
+<tr>
+<td width="78" valign="middle" class="bt-ts" style="padding:3px 0;font-size:13px;line-height:18px;color:#3D4752;">Created</td>
+<td valign="middle" style="padding:3px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="$w%" height="14" bgcolor="#3F9C84" class="bt-bar" style="height:14px;background-color:#3F9C84;font-size:1px;line-height:1px;">&nbsp;</td>$rest</tr></table></td>
+<td width="44" align="right" valign="middle" class="bt-tp" style="padding:3px 0;font-size:14px;line-height:18px;font-weight:700;color:#1A2430;">$value</td>
+</tr>
+
+<!-- @block flow_bugs -->
+<tr>
+<td width="78" valign="middle" class="bt-ts" style="padding:3px 0;font-size:13px;line-height:18px;color:#3D4752;">Bugs</td>
+<td valign="middle" style="padding:3px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="$w%" height="14" bgcolor="#3D4752" class="bt-bar-bug" style="height:14px;background-color:#3D4752;font-size:1px;line-height:1px;">&nbsp;</td>$rest</tr></table></td>
+<td width="44" align="right" valign="middle" class="bt-tp" style="padding:3px 0;font-size:14px;line-height:18px;font-weight:700;color:#1A2430;">$value</td>
+</tr>
+
+<!-- @block flow_rest -->
+<td width="$w%" style="font-size:1px;line-height:1px;">&nbsp;</td>
+
+<!-- @block bulk_note -->
+<p class="bt-tm" style="margin:8px 0 0 0;font-size:12px;line-height:18px;color:#5A6570;">Also $count stale tickets closed in a cleanup. Not in these numbers.</p>
+
+<!-- @block team_line -->
+<tr><td width="18" valign="top" class="bt-tm" style="padding:2px 0;font-size:14px;line-height:20px;color:#5A6570;">&ndash;</td><td valign="top" class="bt-ts" style="padding:2px 0;font-size:14px;line-height:20px;color:#3D4752;">$text$link</td></tr>
+
+<!-- @block footer -->
+<tr><td bgcolor="#15202B" class="bt-head bt-hm" style="background-color:#15202B;border-top:1px solid #15202B;padding:14px 28px;font-size:12px;line-height:18px;color:#A9B4BF;">
+$status &middot; collected $collected for $range$notes
+</td></tr>
+
+<!-- @block footer_fresh -->
+<span class="bt-hsig" style="color:#6FE0C2;">&#9679;</span> Fresh data
+
+<!-- @block footer_stale -->
+<span style="color:#F2B84B;">&#9679;</span> Stale data, last run $last_run
+
+<!-- @block footer_gaps -->
+<br>
+Not fetched: $gaps &middot; team numbers include my own work
+
+<!-- @block footer_no_gaps -->
+<br>
+Team numbers include my own work

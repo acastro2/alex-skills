@@ -194,3 +194,19 @@ def test_main_without_team_config_has_no_team_block(tmp_path: Path, capsys, monk
     monkeypatch.setattr(collect, "CONFIG", tmp_path / "missing.json")
     assert collect.main(["--vault", str(tmp_path), "--no-github"]) == 0
     assert json.loads(capsys.readouterr().out)["team"] is None
+
+
+def test_team_merges_count_by_the_chicago_day() -> None:
+    # closedAt is UTC. A 7 pm Friday merge in Chicago is 01:00 Saturday UTC: it belongs to Friday,
+    # and a 7 pm Sunday merge before the week belongs to no day of it.
+    merged = [gh_pr("a", 1, closed="2026-11-14T01:00:00Z"), gh_pr("a", 2, closed="2026-11-10T03:00:00Z"),
+              gh_pr("a", 3, closed="2026-11-09T01:00:00Z")]
+    calls = []
+
+    def run(cmd, **_):
+        calls.append(cmd)
+        return Proc(merged if any(c.startswith("--merged-at=") for c in cmd) else [])
+
+    out = collect.team_prs(WINDOW, TEAM, mine_urls=set(), run=run)
+    assert [(p["number"], p["closed"]) for p in out["merged"]] == [(1, "2026-11-13"), (2, "2026-11-09")]
+    assert any("--merged-at=2026-11-08..2026-11-14" in c for c in calls)

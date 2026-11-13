@@ -1,14 +1,66 @@
 [
-  {"query": "write my weekly update for my manager", "should_trigger": true},
-  {"query": "prep my 1:1 for tomorrow: what did I do this week", "should_trigger": true},
-  {"query": "weekly report please, and include how my team's product moved this week", "should_trigger": true},
-  {"query": "what did I ship this week and what did the rest of the team ship", "should_trigger": true},
-  {"query": "status for my boss: my week plus the team's merged PRs and Jira tickets", "should_trigger": true},
-  {"query": "what did my team ship this week?", "should_trigger": true},
-  {"query": "update the team's initiative board with this week's progress", "should_trigger": false},
-  {"query": "write the weekly roll-up of our initiatives for the exec forum", "should_trigger": false},
-  {"query": "sweep this week's sessions into my Obsidian notes", "should_trigger": false},
-  {"query": "pull my latest Teams chats and mail into the raw store", "should_trigger": false},
-  {"query": "what did we decide about the Jira migration last month", "should_trigger": false},
-  {"query": "write a Jira ticket for my current branch", "should_trigger": false}
+ {
+  "query": "write my weekly update for my manager",
+  "should_trigger": true
+ },
+ {
+  "query": "prep my 1:1 for tomorrow: what did I do this week",
+  "should_trigger": true
+ },
+ {
+  "query": "weekly report please, and include how my team's product moved this week",
+  "should_trigger": true
+ },
+ {
+  "query": "what did I ship this week and what did the rest of the team ship",
+  "should_trigger": true
+ },
+ {
+  "query": "status for my boss: my week plus the team's merged PRs and Jira tickets",
+  "should_trigger": true
+ },
+ {
+  "query": "what did my team ship this week?",
+  "should_trigger": true
+ },
+ {
+  "query": "update the team's initiative board with this week's progress",
+  "should_trigger": false
+ },
+ {
+  "query": "write the weekly roll-up of our initiatives for the exec forum",
+  "should_trigger": false
+ },
+ {
+  "query": "sweep this week's sessions into my Obsidian notes",
+  "should_trigger": false
+ },
+ {
+  "query": "pull my latest Teams chats and mail into the raw store",
+  "should_trigger": false
+ },
+ {
+  "query": "what did we decide about the Jira migration last month",
+  "should_trigger": false
+ },
+ {
+  "query": "write a Jira ticket for my current branch",
+  "should_trigger": false
+ },
+ {
+  "query": "draft the weekly status email to my manager in outlook",
+  "should_trigger": true
+ },
+ {
+  "query": "make this week's report into the nice email and open it as a draft",
+  "should_trigger": true
+ },
+ {
+  "query": "write an email to the team saying the deploy is moved to Friday",
+  "should_trigger": false
+ },
+ {
+  "query": "reply to Greg's email about the vendor contract",
+  "should_trigger": false
+ }
 ]

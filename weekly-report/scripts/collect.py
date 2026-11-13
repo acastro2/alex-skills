@@ -189,12 +189,17 @@ def team_prs(window: tuple[dt.date, dt.date], team: dict, mine_urls: set[str], r
             if p["repository"]["name"] not in repos:
                 continue
             stamp = p.get("closedAt") or ""
+            day = chicago_day(stamp) if stamp and not stamp.startswith("0001") else None
+            if name == "merged" and not (day and window[0] <= day <= window[1]):
+                continue
             rows.append({"repo": p["repository"]["name"], "number": p["number"], "title": p["title"],
                          "author": (p.get("author") or {}).get("login"), "url": p["url"],
-                         "closed": stamp[:10] if stamp and not stamp.startswith("0001") else None,
+                         "closed": day.isoformat() if day else None,
                          "draft": bool(p.get("isDraft")), "mine": p["url"] in mine_urls})
         return rows
-    merged = search("merged", f"--merged-at={span}")
+    # GitHub reads --merged-at dates as UTC; search a day wider and keep the Chicago week.
+    wide = f"{(window[0] - dt.timedelta(days=1)).isoformat()}..{(window[1] + dt.timedelta(days=1)).isoformat()}"
+    merged = search("merged", f"--merged-at={wide}")
     open_ = search("open", "--state", "open", f"--updated={span}")
     return {"merged": merged, "open": open_, "truncated": truncated}
 
@@ -327,6 +332,7 @@ def main(argv: list[str] | None = None) -> int:
         "week": iso_week_label(window[0]),
         "window": [window[0].isoformat(), window[1].isoformat()],
         "manager": config.get("manager"),
+        "collected_at": dt.datetime.now(TZ).isoformat(timespec="seconds"),
         "bard_last_run": state.get("last_run"),
         "bard_fresh": bool(state.get("last_run")) and note_day(state["last_run"]) == today,
         "board": board,
