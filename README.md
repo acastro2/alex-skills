@@ -28,6 +28,33 @@ Each skill's `SKILL.md` frontmatter says what it does and when it loads. `agent-
 
 The upstream dependencies are copied verbatim from [mattpocock/skills](https://github.com/mattpocock/skills) and refreshed with them, never edited by hand. `improve-codebase-architecture` calls `codebase-design` for its vocabulary, `domain-modeling` to keep `GLOSSARY.md` and ADRs current, and `grilling` at its grill step.
 
+## Upstream provenance
+
+More skills here derive from public sources than the upstream dependencies above. This table records every confirmed one, verified by content comparison on 2026-11-12 (matching text and structure, not names alone). Unless a row says verbatim, the local copy carries Alex's changes; most add a standard `## Asking` preamble that routes decisions through his question tool.
+
+| Source | Skills | License | Notes |
+| --- | --- | --- | --- |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `grilling`, `codebase-design`, `domain-modeling`, `improve-codebase-architecture` | MIT | Near-verbatim copies |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `implement` | MIT | Heavily rewritten on the upstream skeleton; its TDD step defers to `code-rules`, its review step to `reviewer`, and the upstream commit instruction is reversed (never commit) |
+| [CloudAI-X/threejs-skills](https://github.com/CloudAI-X/threejs-skills) | `threejs-*` (all 13) | MIT | Verbatim; the current r186 edition |
+| [vercel-labs/skills](https://github.com/vercel-labs/skills) | `find-skills` | MIT | Byte-identical to upstream |
+| [openai/skills](https://github.com/openai/skills) and [anthropics/skills](https://github.com/anthropics/skills) | `skill-creator` | Apache-2.0 | Both creators vendored as pinned copies; see `skill-creator/vendor/PROVENANCE.md`. The wrapper that routes between them is Alex's |
+| [exa-labs/agent-skills](https://github.com/exa-labs/agent-skills) | `search` | MIT | The router on top is Alex's; the bundled references adapt Exa's `exa-search` and `exa-contents`. One section comes from mattpocock/skills `research`, credited in the file |
+| [openclaw/Peekaboo](https://github.com/openclaw/Peekaboo) | `peekaboo` | MIT | Pinned at v4.4.0; upstream has moved ahead since the pin |
+| [tt-a1i/archify](https://github.com/tt-a1i/archify) | `archify` | MIT as installed | Installed snapshot is v3.0.1; upstream is at v3.2 and now declares Apache-2.0. Itself based on Cocoon-AI/architecture-diagram-generator (MIT) |
+| [herdrdev/herdr](https://github.com/herdrdev/herdr) | `herdr` | Apache-2.0 | Line-for-line apart from the Asking preamble |
+| [anomalyco/browse](https://github.com/anomalyco/browse) | `browser-control` | MIT | Condensed adaptation of the upstream `browse` skill |
+| [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) | `security-audit` | MIT | File set matches upstream 1:1 |
+| [morluto/rea](https://github.com/morluto/rea) | `reverse-engineer-anything` | MIT | Installed copy is metadata version 49; upstream is at version 62 |
+| [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch) | `autoresearch` | MIT | Not karpathy/autoresearch: this is Udit Goenka's generalisation of that concept. Local copy trims 14 commands to 2 |
+| [unclebob/ub-mode](https://github.com/unclebob/ub-mode) | `ub-mode` | None | The upstream repo has no license file, so reuse is not formally licensed. Upstream is itself loosely based on portions of @poteto's rules |
+| [heydamir/unslop](https://github.com/heydamir/unslop) | `unslop` | CC BY 4.0 | By Damir Sokolovsky, credit kept in the skill. Pinned at commit 1d13095; upstream has small additions past the pin |
+| [cintelis/isoscene](https://github.com/cintelis/isoscene) | `isoscene` | None | By Cintelis. The upstream repo has no license file and its README says "Private. © Cintelis", so reuse is not licensed. Pinned at commit e9243171. Local changes: a `plane()` helper for content on any face, its tests, and the install path in `SKILL.md`. Its `NOTICE.md` and an `UPSTREAM.txt` stay in the folder |
+
+Everything else in this repo is Alex's own work: `agent-creator`, `alex-voice`, `archeologist`, `bard`, `browser-apple-events`, `browser-cookie-auth`, `cf-cli`, `design-system`, `forge`, `git-pull-acastro2`, `m365`, `mesh-measure`, `oreilly-answers`, `personal-finance-advisor`, `pr-change-description`, `printed-part-modeling`, `projects-curator`, `scribe`, `terminal-report`, `ticket-writer`, `weekly-report`. One nuance: `personal-finance-advisor` is original writing, but its `references/UPSTREAM.md` pins four method references it borrows topics from.
+
+Unverified candidates, recorded so they are not lost: `code-rules` shares one section with mattpocock/skills `tdd`, and `reviewer` shares its code layer with mattpocock/skills `code-review`; both matches are section-level only. `jev` shares distinctive guidance with typesafe-ai/skills but no verbatim text. The local sync tracks this table's sources and reports when an upstream moves ahead of the copy here.
+
 ## Install
 
 ```bash
