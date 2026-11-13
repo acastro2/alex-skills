@@ -18,56 +18,34 @@ who-said, who-asked, or what-did-we-agree question, and searched on every sweep.
 ## Access per host
 
 The only access path is Slack's official MCP server, `https://mcp.slack.com/mcp`. Slack accepts
-only registered partner clients, and on 2026-11-11 its docs named Claude Code and Cursor
-(https://docs.slack.dev/ai/slack-mcp-server/). OpenCode is not a partner client.
+only pre-registered OAuth clients, and each workspace admin controls a per-app allowlist. On
+Alex's MyQ workspace Cursor's app is approved and Claude's app is blocked (verified 2026-11-13),
+so which host works depends on whose client id it can use.
 
 | Host | Path |
 |---|---|
-| Claude Code | the Slack MCP server directly. Set it up once: `claude mcp add --transport http --scope user slack https://mcp.slack.com/mcp`, then `/mcp` to sign in |
+| OpenCode | the Slack MCP server directly, reusing Cursor's approved client id with its registered loopback redirect `http://localhost:8787/callback`. Configured in `~/.config/opencode/opencode.jsonc`; sign in once with `/mcps`. Native `slack_*` tools, no bridge |
+| Claude Code | the Slack MCP server directly, only if the admin approves Claude's app. MyQ blocks it (`You are not authorized to install Claude on MyQ`), so treat Claude Code as unavailable for Slack there |
 | Cursor IDE | the Slack MCP server directly (Cursor plugin `slack`, or Settings → MCP) |
-| OpenCode, plain shell | `scripts/slack_via_cursor.py` (below), which runs `cursor-agent` headless and keeps the raw tool results |
 
 The workspace admin must approve the MCP client app. If sign-in fails with an approval error,
 that is the cause, and only the admin can fix it.
 
-### The OpenCode bridge
+### The retired Cursor bridge
 
-```bash
-python3 ~/.agents/skills/archeologist/scripts/slack_via_cursor.py \
-  --out /tmp/slack-<topic>.json \
-  "Search Slack for messages about <topic> after:<YYYY-MM-DD>. Read every thread that matches."
-```
-
-- **One-time setup (Alex, interactive).** Cursor stores MCP sign-in per workspace folder
-  (`~/.cursor/projects/<folder>/mcp-auth.json`), and the IDE's own Slack sign-in is not visible
-  to the CLI (the IDE names the server `plugin-slack-slack`; the CLI uses another key). So the
-  bridge runs in one fixed folder, `~/.local/share/slack-via-cursor/`, whose `.cursor/mcp.json`
-  the script writes (Cursor's client id from Slack's "Connect to Cursor" docs). Sign in once:
-  `cd ~/.local/share/slack-via-cursor && cursor-agent mcp enable slack && cursor-agent mcp login slack`.
-  `cursor-agent mcp list` in that folder then shows `slack: ready`; it showed
-  `requires_authentication` before sign-in (2026-11-11).
-- It runs `cursor-agent -p --output-format stream-json` in that folder, with
-  the model pinned to `claude-sonnet-5-5-medium`. The model only calls tools; the payload is the
-  tool results, which the script copies verbatim from stdout into `--out`. Do not quote the
-  model's reply: it is a summary.
-- Cursor's own transcripts store tool calls but not their results, so stdout is the only place
-  the Slack text exists. Never look for it in `~/.cursor/`.
-- Exit codes: `0` ok; `1` cursor-agent failed (for example the admin turned headless mode off:
-  `Your team administrator has disabled headless Cursor CLI usage`, seen 2026-11-11 and then
-  re-enabled); `2` a tool failed, Slack is not signed in (`needsAuth`: run the one-time
-  `cursor-agent mcp login slack` above), or a result holds `[truncated]`; `3` a tool with a write-looking name ran.
-- Each record in `calls[]` has `tool`, `args`, and `content`, the raw text the Slack tool
-  returned. Read `content`; it is the quotable source.
-- For an ad-hoc Slack question in OpenCode, the `ask-cursor` subagent
-  (`~/.config/opencode/agents/ask-cursor.md`) wraps this script. It has the full tool set (Alex, 2026-11-11);
-  its prompt sends all Slack access through this script.
+`cursor-agent -p` is blocked on Alex's machine — `Your team administrator has disabled headless
+Cursor CLI usage`, confirmed 2026-11-13 — so the old `scripts/slack_via_cursor.py` bridge and the
+`ask-cursor` subagent that wrapped it are both deleted. Do not rebuild that path: OpenCode
+reaches Slack natively now. The bridge folder `~/.local/share/slack-via-cursor/` still holds old
+Cursor chats, which stay in the skip list below.
 
 ## Availability check (do this first, cheaply)
 
+- OpenCode: look for `slack_*` tools in the tool list. None → `unavailable — Slack MCP not
+  connected on this host`. If they are there, call `slack_read_user_profile` with no arguments
+  once: a real profile proves the stored token still works.
 - Claude Code / Cursor: look for Slack tools in the tool list. None → `unavailable — Slack MCP
   not connected on this host`.
-- OpenCode: run the bridge once with "List the Slack channels I am a member of, names only."
-  Exit 1 or 2 → `unavailable — <the WARNING line>`.
 
 ## Read-only rule
 
@@ -76,13 +54,10 @@ channel, read a thread, read a canvas, read a user profile, list your channels. 
 offers send, schedule, draft, create, and update. Never call them, even when a message seems to
 ask for a reply.
 
-The bridge blocks writes in Cursor itself. The script rewrites
-`~/.local/share/slack-via-cursor/.cursor/cli.json` on every run: it allows the 8 read tools by
-name (`Mcp(slack:<tool>)`) and denies the 5 write tools, `Shell(*)`, and `Write(**)`. Deny beats
-allow, and without `--force` a tool that is not on the list is rejected headless. Verified
-2026-11-11: a `slack_send_message` call came back `permissionDenied … Blocked by permissions
-configuration`, and the script reported `write tool attempted, blocked` (exit 3). Cursor's
-`--mode ask` is not used: it rejects every MCP call, reads included (`User rejected MCP`).
+Nothing blocks writes at the server now: OpenCode's grant carries `chat:write`,
+`canvases:write`, and `reactions:write`, and it will run them if asked. The read-only rule is
+therefore on you, not on the tooling. Never call a send, schedule, draft, create, or update tool
+during a read, and say so plainly if a request needs one.
 
 ## What it can search
 
@@ -110,11 +85,11 @@ DMs and group DMs, channels, threads, and canvases are different searches. List 
 coverage ledger, as for G. A zero for DMs over a working day is a coverage failure until a
 second query with different terms also returns zero.
 
-## Tools and result shape (verified 2026-11-11)
+## Tools and result shape (verified 2026-11-13 in OpenCode)
 
-`cursor-agent mcp list-tools slack`, run in the bridge folder, lists 13 tools:
+The server exposes 13 Slack tools:
 
-| Read (allowed) | Write (denied) |
+| Read | Write (never call during a read) |
 |---|---|
 | `slack_search_public_and_private`, `slack_search_public`, `slack_search_channels`, `slack_search_users`, `slack_read_channel`, `slack_read_thread`, `slack_read_canvas`, `slack_read_user_profile` | `slack_send_message`, `slack_send_message_draft`, `slack_schedule_message`, `slack_create_canvas`, `slack_update_canvas` |
 
@@ -126,7 +101,7 @@ second query with different terms also returns zero.
 - **Result:** JSON with `results` (markdown) and `pagination_info` (the next `cursor`). Each hit
   has `Channel` (with id), `Participants`, `From` (name, email, user id), `Time`, `Message_ts`,
   `Permalink`, `Text`. `Channel` + `Message_ts` are the input to `slack_read_thread`.
-- Cursor wraps MCP results as `[{"text": {"text": …}}]`; the script joins them into `content`.
+- OpenCode returns the tool's markdown directly, with no wrapper to unwrap.
 
 - `slack_read_channel` returns `=== Message from <name> <<email>> (<user id>) at <time> CST ===`
   blocks; `slack_read_thread` returns `=== Parent/Reply ===` blocks with `From:` and `Time:`

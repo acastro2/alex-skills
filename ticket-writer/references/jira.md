@@ -6,7 +6,14 @@ Why this file is careful: the write path was proven once, on one throwaway issue
 
 ## Tools and hosts
 
-Tools are `mcp__claude_ai_Atlassian__<name>` in Claude Code. OpenCode has no Atlassian connector. In OpenCode, hand the Jira steps to the `ask-claude` agent and use its answer.
+Tools are `mcp__claude_ai_Atlassian__<name>` in Claude Code and `atlassian_<name>` in OpenCode,
+which runs its own Atlassian MCP at `https://mcp.atlassian.com/v2/mcp`. Run the Jira calls
+directly in OpenCode; do not hand Jira to `ask-claude` any more. It is the same Atlassian MCP, so
+operation names and arguments match and only the prefix differs. OpenCode's v2 server keeps the
+primary tools (`getJiraIssue`, `searchJiraIssuesUsingJql`, `getConfluenceContent`, …) in the tool
+list; for anything else call the server's `discover`, then `executeRead` or `executeWrite` with
+the returned `name`, passing `cloudId` as a top-level argument. Verified in OpenCode 2026-11-13:
+`getAccessibleAtlassianResources` and `searchJiraIssuesUsingJql` both ran on v2.
 
 ## Run status
 

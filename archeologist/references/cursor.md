@@ -108,9 +108,9 @@ jq -rc 'select(.role=="assistant") | .message.content[] | select(.type=="tool_us
 ## Pitfalls
 
 - **Skip scratch and bridge sessions.** `private-tmp-*` project folders are scratch runs started
-  from other agents, and any project folder or cwd that contains `slack-via-cursor` is this
-  skill's own Slack bridge (`scripts/slack_via_cursor.py`, folder
-  `Users-<user>-local-share-slack-via-cursor`): every bridge run creates a Cursor chat. Neither is Alex's work.
+  from other agents. Any folder or cwd containing `slack-via-cursor` holds chats from the retired
+  Slack bridge (`Users-<user>-local-share-slack-via-cursor`): the bridge script is deleted, but its
+  old chats remain and are not Alex's work.
 - `empty-window/` is real work in an IDE window with no folder open; do not skip it.
 - The IDE flushes the transcript while a chat runs. A file can be newer than its
   `lastUpdatedAt`, so select by file mtime and filter turns by their `<timestamp>`.
