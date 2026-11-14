@@ -14,12 +14,14 @@ The exceptions are the ones that carry facts, not only method:
   memory: CRAP under 10, duplicate rank above 0.8, and mutation survivors killed.
   Those are the tools in `ub-mode/tools/`, pinned and installed by
   `ub-mode/tools/setup.sh`.
-- `codebase-design`, `grilling`, and `domain-modeling`, copied verbatim from
+- `codebase-design`, `grilling`, and `domain-modeling`, copied from
   mattpocock/skills because `improve-codebase-architecture` calls them by name.
   `codebase-design` fixes the deep-module vocabulary, `domain-modeling` fixes the
   `GLOSSARY.md` and ADR formats, and `grilling` fixes the interview round format
   that skill uses at its grill step. Refresh all four together from
-  `skills/engineering/` and `skills/productivity/`; do not edit them by hand.
+  `skills/engineering/` and `skills/productivity/`. Keep our edits small: the `## Asking`
+  block, `grilling`'s routing exclusion and question-tool rounds, and
+  `improve-codebase-architecture`'s shorter intro. Re-apply them on every refresh (see Upstreams).
 
 Do not widen this list without the same argument: name the fact the skill carries.
 
@@ -34,6 +36,19 @@ drift apart. `browser-cookie-auth`, `cf-cli`, and `autoresearch` were rebuilt th
 Every `SKILL.md` carries an `## Asking` block: decisions go through the `question` tool,
 one call per round, recommended option first with its reason. `reviewer` folds the same rule
 into its step 5 (grill rounds) instead of a separate section.
+
+## Upstreams
+
+The "Upstream provenance" table in `README.md` lists every skill that comes from another repo. Keep it true.
+
+- **Fetch before you judge.** Run `git fetch origin` and compare with `origin/main` before you call a commit, skill, or file missing. A stale or detached checkout is not the repo.
+- **Always check the upstream first.** Before you edit, refresh, review, or report on a skill in the table, compare it with the upstream's current default branch. Use `gh api`, not memory. Report the drift: our pin, upstream's latest release or commit, and what changed. Do not apply it until Alex picks.
+- **Keep local edits on a refresh.** Diff our copy against the upstream file first. Re-apply every local change (the `## Asking` block, description edits) after you copy. A plain re-copy deletes them.
+- **Record a pin on every refresh.** Write the upstream commit and date into the table row, or into the skill's own `PROVENANCE.md` or `UPSTREAM.md` where it has one.
+- **New skill from another repo:** add its row in the same change. To decide, count the long lines the two files share. Do not use a whole-file similarity ratio: it scores unrelated files of the same genre as matches.
+- **Check a sync report before you repeat it.** Check each claim (commit, skill count, added, updated) against `git log origin/main` and the files.
+
+**Why:** On 2026-11-13 an agent called a correct sync report false, because its checkout was detached and 21 commits behind `origin/main`. The same agent first listed `cf-cli` as derived from cloudflare/skills on a 0.81 character ratio, but the two files share 0 of 45 long lines. Pins were missing for most rows, so drift was visible only when someone checked by hand.
 
 ## Skill anatomy
 
