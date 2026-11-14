@@ -21,14 +21,13 @@ version and `browse doctor` diagnoses setup. Do not use the old `browser-control
 steps from memory.
 
 If the `browse` tools are missing, say so and stop. Setup is on the Mac: `browse install`
-picks the agents and pairs the browser; for Claude Code alone,
-`claude mcp add -s user browse -- ~/.local/bin/browse mcp`.
+picks the agents and pairs the browser; for Claude Code alone, `browse install -a claude`.
 
 ## Alex's rules on top of browse
 
 - **Inspect, act, verify.** `snapshot()` before you pick a locator. Prove the outcome with a
   fresh page read (URL, heading). A returned click or a handoff the user acknowledged is not
-  proof.
+  proof. A stale ref fails within a few seconds and says what changed: call `snapshot()` again.
 - **Human-only steps go to `handoff`.** Login, 2FA, passkey, captcha, payment: call
   `handoff("what to do")`, with `start` when the action itself blocks. Never solve a captcha
   and never retry-loop a blocked site.

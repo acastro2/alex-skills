@@ -8,10 +8,16 @@ repos:
         args: [--assume-in-merge]
       - id: check-yaml
       - id: detect-private-key
+        # the screen-cmd tests feed fake key headers to prove the gate refuses them
+        exclude: ^autoresearch/tests/test_screen_cmd\.sh$
       - id: end-of-file-fixer
+        # upstream copies stay byte-identical; see README "Upstream provenance"
+        exclude: ^(skill-creator/vendor|archify)/
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: trailing-whitespace
+        # upstream copies stay byte-identical; see README "Upstream provenance"
+        exclude: ^(skill-creator/vendor|archify)/
         args: [--markdown-linebreak-ext=md]
 
   - repo: local

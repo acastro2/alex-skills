@@ -42,6 +42,11 @@ def _found(ctx: SkillText, rule: str, name: str, line: int | None, message: str)
     return Finding(rule=rule, skill=ctx.skill, file=name, line=line, message=message)
 
 
+def _skip_style(ctx: SkillText, name: str) -> bool:
+    """A style rule skips an upstream copy: the next refresh would undo the fix."""
+    return ctx.policy.is_upstream(name)
+
+
 # --- frontmatter ---------------------------------------------------------------
 
 
@@ -162,13 +167,32 @@ def _anchor(heading: str) -> str:
     return re.sub(r"\s", "-", text)
 
 
+def _code_spans(line: str) -> list[tuple[int, int]]:
+    """Character ranges of the inline-code spans on one line, so an example link is
+    prose about a link, not a link."""
+    spans: list[tuple[int, int]] = []
+    opened: int | None = None
+    for index, char in enumerate(line):
+        if char != "`":
+            continue
+        if opened is None:
+            opened = index
+        else:
+            spans.append((opened, index))
+            opened = None
+    return spans
+
+
 def check_links(ctx: SkillText) -> list[Finding]:
     """A markdown link that resolves nowhere is the reader's dead end, and the model's too."""
     out: list[Finding] = []
     for name in ctx.texts:
         base = ctx.files[name].parent
         for lineno, line in ctx.prose_lines(name):
+            spans = _code_spans(line)
             for match in re.finditer(r"\[([^\]]*)\]\(([^)\s]+)\)", line):
+                if any(start <= match.start() < end for start, end in spans):
+                    continue
                 target = match.group(2)
                 if re.match(r"^[a-z][a-z0-9+.-]*:", target) or target.startswith("//"):
                     continue
@@ -282,6 +306,8 @@ def check_counted_lists(ctx: SkillText) -> list[Finding]:
     """Text that says "Three checks" and then lists four makes the reader distrust the rest."""
     out: list[Finding] = []
     for name in ctx.texts:
+        if _skip_style(ctx, name):
+            continue
         lines = ctx.lines[name]
         for index, line in enumerate(lines):
             if ctx.fenced[name][index]:
@@ -343,6 +369,8 @@ def check_duplicate_sentences(ctx: SkillText) -> list[Finding]:
                 other_file, other_line, other_raw = seen[normalized]
                 if other_file == name:
                     continue
+                if _skip_style(ctx, name) or _skip_style(ctx, other_file):
+                    continue
                 both_standalone = (
                     other_file in ctx.policy.standalone and name in ctx.policy.standalone
                 )
@@ -371,6 +399,8 @@ def check_weak_modals(ctx: SkillText) -> list[Finding]:
     """A hedge turns an instruction into a suggestion, and a suggestion gets skipped."""
     out: list[Finding] = []
     for name in ctx.texts:
+        if _skip_style(ctx, name):
+            continue
         for lineno, line in ctx.prose_lines(name):
             for match in WEAK.finditer(line):
                 before = line[: match.start()]
@@ -427,6 +457,8 @@ def check_tables(ctx: SkillText) -> list[Finding]:
     """A table whose rows disagree on column count renders as noise, not a table."""
     out: list[Finding] = []
     for name in ctx.texts:
+        if _skip_style(ctx, name):
+            continue
         lines = ctx.lines[name]
         index = 0
         while index < len(lines):
@@ -465,6 +497,8 @@ def check_backticks(ctx: SkillText) -> list[Finding]:
     """An unclosed inline-code span swallows the rest of the paragraph."""
     out: list[Finding] = []
     for name in ctx.texts:
+        if _skip_style(ctx, name):
+            continue
         balance = 0
         opened_at = 0
         for index, line in enumerate(ctx.lines[name]):
