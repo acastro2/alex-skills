@@ -134,7 +134,7 @@ Done when the picked commits are applied by hand, `scripts/orchestrate.sh` passe
 | D2 | archify 3.2.0 now, or hold? | Taken: now, in its own phase. The update notice will keep firing until we move, and the zip comes with a SHA-256 to check. |
 | D3 | vendor/claude whitespace: restore or document? | Taken: restore. "Never edited" is easy to check only while it is true. |
 | D4 | Pins: README column, or a PROVENANCE file per skill? | Taken: README column. One table is checkable in one read. Keep the existing PROVENANCE and UPSTREAM files and point to them. |
-| D5 | REA: upgrade the MCP with the skill? | Skill only (Alex overrode the recommendation to do both together). The MCP stays on 6.8.0, and P3 records the gap. |
+| D5 | REA: upgrade the MCP with the skill? | Skill only (Alex overrode the recommendation to do both together). Later the same day the opencode config removed the REA MCP entry entirely (`144a911`), so there is no server to upgrade. |
 
 ## Out of scope
 
