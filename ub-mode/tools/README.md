@@ -6,9 +6,9 @@ virtualenv, so the whole skill is this folder and nothing else on the machine.
 
 | Tool | Upstream | Pinned commit | What it does |
 | --- | --- | --- | --- |
-| `crapper` | github.com/unclebob/crapper | `6fd92c4` | CRAP score per function: cyclomatic complexity weighted by test coverage |
+| `crapper` | github.com/unclebob/crapper | `c757ec7` | CRAP score per function: cyclomatic complexity weighted by test coverage |
 | `dryer` | github.com/unclebob/dryer | `66ff6d2` | Structural duplicate candidates, scored by Jaccard similarity |
-| `mutator` | github.com/unclebob/mutator | `a5a0cb8` | Mutation testing: kills survivors, finds uncovered code |
+| `mutator` | github.com/unclebob/mutator | `830ec7e` | Mutation testing: kills survivors, finds uncovered code |
 
 All three are 0BSD. Each reads Clojure, Java, Go, TypeScript, Rust, and Python, and
 each writes a snapshot under `.metrics/` in the target repo.
