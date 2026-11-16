@@ -29,7 +29,9 @@ Its lines are `P#`, numbered after `B#`. They use the same review gate and the s
 
 ## 2. Buckets and their checks
 
-Read the live page first. Sort each page by its `bucket`.
+Read the live page first, as html. Sort each page by its `bucket`. Judge page facts on the html
+read, never on markdown: markdown drops `time` and status nodes, so a filled date cell reads
+as empty (seen live 2026-11-16).
 
 - **`portfolio`**: roadmap pages. The curator owns them (Alex lifted their read-only status on
   2026-11-13). Check each item against the board row and its anchor epic: name, stage, date,
