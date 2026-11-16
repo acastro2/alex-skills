@@ -1,0 +1,52 @@
+{
+  "skill_name": "jev",
+  "evals": [
+    {
+      "id": 1,
+      "name": "gate-with-follow-up",
+      "prompt": "A support inbox gets this ticket: \"Hi, order #4471 arrived with a cracked screen and order #4502 never came. I want my money back for the broken one. The other can wait. - Sam\". Our code must decide whether the ticket is a refund request, and if it is, which order the refund is for (4471, 4502, or neither). Write the ask_jev call or calls you would make, then two lines on how the code reads the answers.",
+      "expected_output": "One ask_jev call that carries the gate (is it a refund request) and the follow-up (which order) together; the follow-up reads alone and has a way out; the code checks the gate first and ignores the follow-up when the gate fails.",
+      "expectations": [
+        "code: exactly one ask_jev call",
+        "The refund gate and the which-order follow-up are asked in the same call",
+        "The which-order question does not refer to another question or its answer",
+        "The which-order question offers an option for no order or not mentioned",
+        "The explanation says the code checks the gate first and uses the which-order answer only when the gate passes"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "route-with-per-path-follow-ups",
+      "prompt": "An internal security inbox gets this report: \"Got an email from 'IT' saying my mailbox was full. I clicked the link and signed in, then saw the address was microsft-support.co. Did I mess up?\" Our code must pick the incident type (phishing, lost device, or data sent to the wrong person). For phishing it needs to know whether the person clicked a link and whether they entered a password. For a lost device it needs to know which device and whether it was stolen. For misdirected data it needs to know what kind of data and whether it left the company. Write the ask_jev call or calls you would make, then two lines on how the code reads the answers.",
+      "expected_output": "One ask_jev call with the incident Choice and the follow-ups for all three paths; the code uses only the follow-ups of the picked path.",
+      "expectations": [
+        "code: exactly one ask_jev call",
+        "The call includes follow-up questions for at least two different incident types, not only phishing",
+        "The explanation says the code uses only the follow-ups for the incident type that was picked"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "second-state-needs-first-answer",
+      "prompt": "A customer complaint says: \"Your clause about ending the contract early lets me leave with 30 days notice, so stop billing me.\" The contract has 40 numbered clauses (we hold them as a JSON array of clause texts). Our code must first find which clause the complaint relies on, and then check whether that clause's own text really allows ending with 30 days notice. We do not want to send all 40 clauses to the second check, because accuracy drops with unrelated detail. Write the ask_jev call or calls you would make, then two lines on how the code reads the answers.",
+      "expected_output": "Two calls: the first picks the clause; the second sends only the picked clause text (plus the complaint) and asks whether it allows 30 days notice.",
+      "expectations": [
+        "code: exactly two ask_jev calls",
+        "The second call's state holds the clause picked by the first call, not all 40 clauses",
+        "The explanation says the second call needs the first call's answer to build its state"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "merge-duplicate-state",
+      "prompt": "Review this code and rewrite it if you can make it better. It runs on every invoice email.\n\n```js\nconst triage = await ask_jev({ state: { invoice, email }, questions: { dispute: { type: 'noul', instructions: 'Does `email` dispute a charge on `invoice`?' } } })\nif (triage.dispute.noul > 0.8) {\n  const detail = await ask_jev({ state: { invoice, email }, questions: { which_line: { type: 'choice', instructions: 'Which line of `invoice` does `email` dispute?', criteria: { L1: 'line 1', L2: 'line 2', L3: 'line 3' } } } })\n  creditLine(detail.which_line.choice)\n}\nconst docs = await ask_jev({ state: { invoice, email }, questions: { wants_document: { type: 'noul', instructions: 'Does `email` ask for a W-9, receipt, or timesheet?' } } })\nif (docs.wants_document.noul > 0.8) sendDocuments()\n```\n\nWrite the improved ask_jev call or calls, then two lines on what changed and why.",
+      "expected_output": "The three calls merged into one call with dispute, which_line and wants_document; which_line gains a way out; the code checks dispute before it uses which_line.",
+      "expectations": [
+        "code: exactly one ask_jev call",
+        "The rewrite asks dispute, which_line and wants_document in the same call",
+        "The which_line question offers an option for no line or none",
+        "The explanation says the three calls sent the same state, or that one call is cheaper or faster"
+      ]
+    }
+  ]
+}

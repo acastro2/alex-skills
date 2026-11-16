@@ -55,8 +55,10 @@ The default model is the paid `jev-1.13` on the OpenCode Zen endpoint (Alex pays
 - **Name the part of `state`** the question is about, with backticked paths such as `review` or `ticket.messages[0].text`. Use JSON `state` when the evidence has several parts.
 - **Send only what the questions need.** Accuracy drops as unrelated detail grows. Filter first.
 - **Give every Choice a way out** ("None", "Not mentioned", "new") when nothing may fit, and define every option in the criteria.
-- **Batch independent questions over the same state in one call.** They run in parallel and cannot see each other's answers, so do not write a question that depends on another. Ask a second call only when the first answer changes what evidence you send.
-- **For a high-stakes Choice, reorder the options and ask again.** Jev can lean toward the first option; the answer should not change.
+- **Ask every question for one state in one call, follow-ups included.** TypeSafe's [Speculative fan-out](https://docs.typesafe.ai/patterns/fan-out.md) pattern: put a follow-up that matters only when a gate passes in the same call. In code, check the gate first, then read the follow-up; ignore the answers you do not need. When one Choice picks a path, ask the follow-ups for every path. Questions in a call are evaluated in parallel and on their own, so an extra question adds little time and costs only its own tokens ([Primitives](https://docs.typesafe.ai/primitives.md)). Every extra call sends the state again.
+- **Write each follow-up so it reads alone.** Never write "if yes above". Jev answers it even when its gate fails.
+- **Make a second call only when your code cannot build it without an earlier answer**: to fetch or narrow the state (the clause the first call picked), or to pick the next question's options. Two calls with the same state are a smell: merge them.
+- **For a high-stakes Choice, ask it twice in the same call, with the options in another order.** Jev can lean toward the first option; the two answers must agree.
 
 ## Read the answers
 
