@@ -80,6 +80,10 @@ Alex answers the project pass through the `question` tool, not a one-line answer
 - owners, new items, links (multi-select);
 - comments (one question: all, some, none), with the exact text shown above the question.
 
+The groups follow the review cap (`review.max_lines`, see SKILL.md): ask only about lines that
+made it in. Routine is one question ("routine: all"), never one per line. Rolled lines wait on
+`open_items`.
+
 A question he skips or answers "leave it" goes on `open_items`; it is not re-asked the same week.
 
 The `question` tool cuts long answers off in the conversation record (2026-11-13: two answers

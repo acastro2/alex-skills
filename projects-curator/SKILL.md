@@ -55,6 +55,7 @@ This skill holds no org facts. Before the first run, ask Alex for these and stor
 | `tracker.anchor_link_type`, `tracker.parked_label` | The issue link type that ties a child epic to its anchor epic; the label that marks an epic as parked (read only) |
 | `tracker.label_contract` | Where a tracker's label contract lives (repo, path, ref), when agents or automation act on labels |
 | `wiki.pages` | Pages the wiki pass keeps true: id, title, bucket (portfolio, status, mirror, check, retire), scope. Ids live only in the ledger |
+| `review.max_lines` | Line cap per review, default 15 |
 | `evidence.team_facts` | The `weekly-report` facts file that already holds the team's PRs and tracker tickets |
 
 A `config` key that is missing is a question for Alex, never a guess. Read the live field names and allowed values before the first write: a board drifts, and a stale column name fails the request.
@@ -166,6 +167,8 @@ This is the point of the skill. The board is org-visible and the user must own w
    - **Needs you:** every stage or state move, each on its own line; every NEW row or item; every pick between options; every fact only Alex knows; every line where the evidence ran out or a gate was unsure.
    - **Check the words:** every line whose value is new org-visible text. Show the exact text in a `>` quote.
    - **Routine:** a field or link straight from the evidence with no new prose.
+
+   **Cap.** Needs you plus Check the words hold at most `review.max_lines` lines. Routine is exempt: one group answer. Over the cap, keep by priority: wrong status shown today, stage moves, new items, field edits, comments; oldest evidence first. Roll the rest to `open_items` with full text and date. Also found: how many rolled, to which group. Next week proposes them first, within cap. Rolled twice: top of Needs you, "rolled twice" in Why. Never relax hard rules or the screen.
 4. **Emit the review in this shape.** No markdown tables. Wrap lines at 100 characters. Count exactly: each `(<n>)` equals the IDs in that group.
 
    ```
