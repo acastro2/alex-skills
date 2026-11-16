@@ -1,14 +1,13 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-16 15:10 CST, HEAD 093a1bd (moved to the per-workstream shape of the reviewed `handoff` skill; the old long version is `git show a2927d9:docs/HANDOFF.md`)
+Updated: 2026-11-16 15:40 CST, HEAD a94db9e (handoff skill pushed)
 
 ## handoff skill
 
-State: `handoff/SKILL.md` reviewed and rewritten, uncommitted: check the file against the repo on read, re-read before a write, one block per workstream, 400-word limit, gotchas section, never secrets. The AGENTS.md rule in opencode_config (`f0065cb`) and `~/.claude/CLAUDE.md` (`03cfdc9`) is committed. Checked 2026-11-16 by `git log`.
+State: `handoff/SKILL.md` reviewed and rewritten, pushed in `0aacd4a`: check the file against the repo on read, re-read before a write, one block per workstream, 400-word limit, gotchas section, never secrets. The AGENTS.md rule in opencode_config (`f0065cb`) and `~/.claude/CLAUDE.md` (`03cfdc9`) is committed. Checked 2026-11-16 by `git log`.
 
 Next:
-1. Alex commits `handoff/SKILL.md`, `docs/HANDOFF.md`, and `git add -f handoff/evals/trigger-evals.json`.
-2. Optional: a behaviour eval in which a fresh agent reads only this file and must state its next command.
+1. Optional: a behaviour eval in which a fresh agent reads only this file and must state its next command. It needs a fixture with a running server and a HANDOFF.md; the trigger runner cannot set that up.
 
 Gotchas and dead ends:
 - Trigger runs: `python3 scripts/run_triggers.py --skill handoff <out>`. Results are in `~/.agents/skill-workspace/alex-skills/handoff/triggers-*`.
