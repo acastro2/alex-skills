@@ -54,6 +54,7 @@ else
 fi
 run python3 -m unittest discover -s alex-voice/tests -p 'test_*.py'
 run_in m365/scripts python3 -m unittest tests
+run bash autoresearch/tests/test_screen_cmd.sh
 
 # --- ub-mode tools, behind --tools ---------------------------------------------
 if [ "$WITH_TOOLS" = "1" ]; then

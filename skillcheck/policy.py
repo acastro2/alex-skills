@@ -15,6 +15,11 @@ the exemption cannot hide a new broken path. Each entry names where the file is.
 `standalone` -- reference files written to be read on their own, so the same warning or
 navigation line must appear in more than one of them. Without this, `duplicate-sentences`
 flags correct prose, and a rule that cries wolf is a rule that gets ignored.
+
+`upstream` -- files copied from another repo and refreshed from it, never edited here. A
+style fix made locally is undone by the next pull, so the style rules skip these files
+while the correctness rules still run. Paths are relative to the skill folder, and one
+ending in "/" covers every file under it.
 """
 from __future__ import annotations
 
@@ -26,10 +31,21 @@ class Policy:
     path_bases: tuple[str, ...] = ()
     external_paths: frozenset[str] = frozenset()
     standalone: frozenset[str] = frozenset()
+    upstream: frozenset[str] = frozenset()
 
     @classmethod
     def for_skill(cls, name: str) -> Policy:
         return POLICY.get(name, cls())
+
+    def is_upstream(self, name: str) -> bool:
+        """True for a file we copy but never edit, so restyling it is wasted work."""
+        for entry in self.upstream:
+            if entry.endswith("/"):
+                if name.startswith(entry):
+                    return True
+            elif name == entry:
+                return True
+        return False
 
 
 POLICY: dict[str, Policy] = {
@@ -46,6 +62,9 @@ POLICY: dict[str, Policy] = {
             }
         ),
     ),
+    # archify is copied from its own repo and refreshed: a local restyle is undone by the
+    # next pull, so the style rules skip it.
+    "archify": Policy(upstream=frozenset({"SKILL.md", "references/"})),
     # archeologist points at the m365 CLI reference, which lives in the m365 skill, and
     # ships its Jev gates as a reference loaded alone.
     "archeologist": Policy(
@@ -71,6 +90,9 @@ POLICY: dict[str, Policy] = {
     # the skill is a symlink into the opencode-chart-tui repo, and the schema sits at that
     # repo's root, outside the linked folder.
     "opencode-charts": Policy(external_paths=frozenset({"schema/chart.schema.json"})),
+    # an upstream copy from the npm package rea-agents, not edited here: a local restyle is
+    # undone by the next pull, so the style rules skip it.
+    "reverse-engineer-anything": Policy(upstream=frozenset({"SKILL.md", "references/"})),
     # CC BY 4.0 needs the credit in every copy, so each reference carries the same line.
     "unslop": Policy(
         standalone=frozenset(

@@ -12,9 +12,9 @@ mkdir -p "$SRC"
 
 # repo:commit
 PINS="
-crapper:6fd92c4c9bcc56efb64a2f8743d5a2993bcfd42d
+crapper:c757ec79a6c15dc815238bbd9c2f4601eb54d3cc
 dryer:66ff6d21a42c04afcad89c78a80066176d1294b0
-mutator:a5a0cb803b66e0cdb8bf471b3b08af701d424a41
+mutator:830ec7e9c39664d753f8699015bc796df67727b9
 "
 
 printf '%s\n' "$PINS" | while IFS=: read -r repo commit; do

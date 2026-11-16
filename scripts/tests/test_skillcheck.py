@@ -122,6 +122,36 @@ def test_standalone_files_may_repeat_a_sentence(tmp_path: Path) -> None:
     assert check_skill(skill_dir, policy=policy) == []
 
 
+def test_upstream_files_skip_style_rules(tmp_path: Path) -> None:
+    # An upstream copy is not ours to restyle: a refresh would undo the fix. Style rules
+    # (tables, backticks, duplicate sentences, weak modals, counted lists) skip it.
+    sentence = (
+        "This paragraph is long enough to count as a sentence for the duplicate check and it "
+        "appears twice in this skill.\n"
+    )
+    guide = (
+        "# Guide\n\n" + sentence
+        + "\n| A | B |\n|---|---|\n| `a | b` | c |\n"
+        + "\nAn `unclosed span here.\n"
+    )
+    skill_dir = write_skill(tmp_path, body=CLEAN_SKILL + "\n" + sentence, guide=guide)
+    assert rules(check_skill(skill_dir)) != []
+    policy = Policy(upstream=frozenset({"references/"}))
+    assert check_skill(skill_dir, policy=policy) == []
+
+
+def test_upstream_files_still_fail_a_broken_link(tmp_path: Path) -> None:
+    guide = "# Guide\n\nSee [the other page](missing.md).\n"
+    skill_dir = write_skill(tmp_path, guide=guide)
+    policy = Policy(upstream=frozenset({"references/guide.md"}))
+    assert rules(check_skill(skill_dir, policy=policy)) == ["links"]
+
+
+def test_link_inside_inline_code_is_not_checked(tmp_path: Path) -> None:
+    body = CLEAN_SKILL + "\nExample: `Created [the page](/abs/path/page.html).`\n"
+    assert check_skill(write_skill(tmp_path, body=body, guide="# Guide\n")) == []
+
+
 def test_install_instruction_in_one_host_tree_fails(tmp_path: Path) -> None:
     body = CLEAN_SKILL + "\nCopy the folder to `~/.claude/skills/demo/` and restart.\n"
     findings = check_skill(write_skill(tmp_path, body=body, guide="# Guide\n"))

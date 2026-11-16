@@ -8,13 +8,15 @@ Use `POST https://api.exa.ai/search` for semantic web retrieval, ranked results,
 
 Call the Exa MCP tools (the name prefix varies by host). Do not run `curl` there: the Claude Code sandbox blocks `api.exa.ai`.
 
+`web_search_advanced_exa` is opt-in: the MCP URL must list it in `?tools=` (Exa docs, "Available Tools"). The URL in this setup (`https://mcp.exa.ai/mcp`) does not, so the tool is missing here. Where it is missing, use the REST `POST /search` for filters, content, and freshness.
+
 | Need | MCP tool and parameters |
 | --- | --- |
 | A plain search | `web_search_exa`: `query` (describe the ideal page), `objective` (which pages should rank first and which facts to pull), `numResults` |
 | Filters | `web_search_advanced_exa`: `category` (`company`, `people`, `news`, `publication`, `financial report`, `personal site`), `includeDomains`, `excludeDomains`, `startPublishedDate`, `endPublishedDate`, `includeText`, `excludeText`, `additionalQueries`, `numResults` |
 | Content in the results | `web_search_advanced_exa`: `enableHighlights` with `highlightsMaxCharacters` and `highlightsQuery`, `textMaxCharacters`, `enableSummary` with `summaryQuery`, `subpages` |
 | Freshness | `web_search_advanced_exa`: `maxAgeHours` (`0` always fetches fresh content) |
-| Speed | `type`: `auto` (default), `fast`, or `instant` |
+| Speed | `web_search_exa` has no `type` parameter. It always uses the server default. For `lite` or another type, use the REST `POST /search` |
 
 The MCP has no `deep` search type and no `outputSchema`. For one answer built from several sources, or for structured output, use [Exa Agent](exa-agent.md) at `low` effort.
 
@@ -102,7 +104,7 @@ Use this endpoint when the agent needs search results. If the agent already has 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `query` | string | Yes | - | Natural-language search query. Long, semantically rich descriptions work well. |
-| `type` | string | No | `auto` | Search method: `auto`, `fast`, `instant`, `deep-lite`, `deep`, or `deep-reasoning`. |
+| `type` | string | No | `auto` | Search method: `auto`, `lite`, `deep-lite`, `deep`, or `deep-reasoning`. |
 | `numResults` | integer | No | `10` | Number of results to return. Use small values for agent loops; maximum is 100. |
 | `category` | string | No | - | Known categories: `company`, `publication`, `news`, `personal site`, `financial report`, or `people`. Other strings are only category hints. |
 | `includeDomains` | string[] | No | - | Only return results from these domains, paths, or wildcard patterns. Max 1200. |
@@ -168,25 +170,26 @@ Prefer `contents.highlights: true` for the highest-quality default. Only use obj
 
 ## Search Types
 
-Search `type` controls the retrieval and synthesis mode. Pick the mode for the workflow, not just the output format. `outputSchema` can be used with any search type; use deeper modes when the search process itself needs more planning, synthesis, or reasoning.
+Search `type` controls the retrieval and synthesis mode. Pick the mode for the workflow, not just the output format. Use `auto` or a deep variant for `outputSchema`, not `lite`. Use deeper modes when the search process itself needs more planning, synthesis, or reasoning.
 
 | Type | Best for | Tradeoff |
 | --- | --- | --- |
 | `auto` | General default search and most new integrations | Balances speed and quality without requiring the caller to tune retrieval strategy. |
-| `fast` | Low-latency agent loops and product paths | Faster than `auto`; use when responsiveness matters more than maximum reasoning depth. |
-| `instant` | Real-time UI, chat, voice, and autocomplete-style paths | Lowest latency path; use for quick retrieval rather than deep synthesis. |
+| `lite` | Low-latency, low-cost chat, voice, autocomplete, and agent loops | Cached retrieval with a reduced parameter set. It does not fetch pages at query time. |
 | `deep-lite` | Lightweight research or synthesis | Adds more planning and synthesis than `auto` while staying lighter than full `deep`. |
 | `deep` | Multi-step research, comparisons, and synthesis-heavy retrieval | Higher latency; better when the query needs exploration across several sources. |
 | `deep-reasoning` | Hard research tasks with high ambiguity or complex tradeoffs | Highest latency and reasoning depth. |
 
-Use `auto` unless latency or reasoning depth is the primary constraint. Use `fast` or `instant` for time-sensitive calls. Use `deep`, `deep-lite`, or `deep-reasoning` when the query needs multi-step source discovery, comparison, or synthesis.
+With `type: "lite"`, supported parameters are `query` (a single string), `objective`, `userIdentifier`, `metadata`, `category`, `numResults`, `contents.highlights`, `contents.text`, `contents.snapshotAsOf`, `userLocation`, `includeDomains`, `excludeDomains`, `startPublishedDate`, `endPublishedDate`, `moderation`, and `compliance`. Other documented search parameters are rejected, including `outputSchema`, `systemPrompt`, `stream`, and freshness options such as `contents.maxAgeHours`. When the call needs a live fetch, use `auto`.
+
+Use `auto` unless latency or reasoning depth is the primary constraint. Use `lite` for time-sensitive or cost-sensitive calls. Use `deep`, `deep-lite`, or `deep-reasoning` when the query needs multi-step source discovery, comparison, or synthesis.
 
 ### Mode-only examples
 
 ```json
 {
   "query": "recent product launches from major AI chip companies",
-  "type": "fast",
+  "type": "lite",
   "numResults": 5
 }
 ```

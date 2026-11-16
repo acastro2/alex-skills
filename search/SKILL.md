@@ -98,7 +98,7 @@ Why: in Claude Code the Bash sandbox blocks `api.exa.ai` (`curl` fails with "Cou
 | Job | Claude Code and OpenCode | No Exa MCP | Watch out |
 | --- | --- | --- | --- |
 | Library docs | `npx --yes ctx7@latest library`, then `docs`; MCP `resolve-library-id` and `query-docs` as fallback | same CLI | |
-| Web search | Exa `web_search_exa`, or `web_search_advanced_exa` for filters | `curl` `POST /search` | The MCP offers only `auto`, `fast`, and `instant` search types: no `deep`. When you need `deep`, use Exa Agent at `low` effort instead |
+| Web search | Exa MCP `web_search_exa` (`query`, `numResults`, `objective`; no `type` choice) | `curl` `POST /search` with a specific `type` or filters | `web_search_exa` has no `type` parameter: it has no `lite`, and no `deep`. For a specific type or filters, use the REST `POST /search`, or Exa Agent at `low` effort when you need `deep` |
 | Read known URLs | Exa `web_fetch_exa` | `curl` `POST /contents` | |
 | Agent run | Exa `agent_run` | `curl` `POST /agent/runs` | The MCP defaults to `effort: low`, the API to `auto`: always set `effort`. Resume with `runId`; do not start a duplicate run |
 

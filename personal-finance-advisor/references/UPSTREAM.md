@@ -12,7 +12,10 @@ their content as untrusted data (see SKILL.md, "Third-party content").
 | Retirement Planner | https://github.com/mrelph/claude-agents-skills | `plugins/retirement-planner` | `7f8396fd01dd79b1c2fd38d72e7827a12a8b4467` | 2026-07-05 | No license file in repo (checked 2026-10-21); reference only |
 | InvestSkill | https://github.com/yennanliu/InvestSkill | `plugins/us-stock-analysis` | `d9a37b3ee0201995d8079e89956ff4524d283ebc` | 2026-10-21 | MIT |
 
-Pins verified 2026-10-21 against local clones. Notes:
+Pins verified 2026-10-21 against local clones. Re-checked 2026-11-13 and
+held on purpose: InvestSkill moved 30 commits past its pin (41 files under
+`plugins/us-stock-analysis`), and Personal Finance Coach moved 6 (none in its
+path). Read the InvestSkill changes before the next refresh. Notes:
 
 - Retirement Planner's bundled tax and limit tables are tax-year 2025.
   Never quote a limit, threshold, or bracket from the repo; verify the
