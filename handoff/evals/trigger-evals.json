@@ -1,0 +1,50 @@
+[
+ {
+  "query": "update the HANDOFF.md before I close this session",
+  "should_trigger": true
+ },
+ {
+  "query": "I'm about to step away, save where we are so the next session can pick it up",
+  "should_trigger": true
+ },
+ {
+  "query": "read docs/HANDOFF.md and continue from the next step",
+  "should_trigger": true
+ },
+ {
+  "query": "trim the handoff file, it's way too long now",
+  "should_trigger": true
+ },
+ {
+  "query": "write down the dev server you left running so a later session can kill it",
+  "should_trigger": true
+ },
+ {
+  "query": "where did we leave off in this repo? there's a handoff note somewhere",
+  "should_trigger": true
+ },
+ {
+  "query": "the login page wants a 2FA code, hand off to me in the browser so I can type it",
+  "should_trigger": false
+ },
+ {
+  "query": "what did we decide last week about the Jira MCP endpoint?",
+  "should_trigger": false
+ },
+ {
+  "query": "write an ADR for choosing Hex over whisper",
+  "should_trigger": false
+ },
+ {
+  "query": "hand this task off to a background subagent to implement",
+  "should_trigger": false
+ },
+ {
+  "query": "write a handover email to my manager before my vacation",
+  "should_trigger": false
+ },
+ {
+  "query": "explain what git rebase --onto does, with a small example",
+  "should_trigger": false
+ }
+]
