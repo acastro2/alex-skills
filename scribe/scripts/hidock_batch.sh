@@ -32,9 +32,9 @@ uv run --with mlx-audio python -c "pass"
 
 running=()
 failed=0
-for f in "$AUDIO"/*.mp3; do
+for f in "$AUDIO"/*.mp3 "$AUDIO"/*.ogg; do
   [ -e "$f" ] || continue
-  stem="$(basename "$f" .mp3)"
+  stem="$(basename "${f%.*}")"
   if [ -f "$DONE/$stem.json" ]; then rm -f "$f"; continue; fi
   echo "=== transcribing $stem ===" >&2
   (
@@ -45,7 +45,7 @@ for f in "$AUDIO"/*.mp3; do
       exit 0
     else
       rc=$?
-      echo "=== failed $stem rc=$rc wall=$((SECONDS - start))s (mp3 kept) ===" >&2
+      echo "=== failed $stem rc=$rc wall=$((SECONDS - start))s (audio kept) ===" >&2
       exit 1
     fi
   ) &

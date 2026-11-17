@@ -115,6 +115,21 @@ def test_pool_transcribes_concurrently_and_keeps_failed_mp3(tmp_path: Path) -> N
     assert _max_concurrency(tmp_path / "timelog.jsonl") >= 2
 
 
+def test_ogg_files_are_transcribed_and_deleted_like_mp3(tmp_path: Path) -> None:
+    scripts, audio = _setup(tmp_path)
+    done = tmp_path / ".scribe" / "transcripts"
+    (audio / "O.ogg").write_bytes(b"OggS")
+    (audio / "M.mp3").write_bytes(b"fake")
+
+    result = _run(scripts, tmp_path, "1")
+
+    assert result.returncode == 0, result.stderr
+    for stem in ("O", "M"):
+        assert (done / f"{stem}.json").exists()
+    assert not (audio / "O.ogg").exists()
+    assert not (audio / "M.mp3").exists()
+
+
 def test_jobs_must_be_a_positive_integer(tmp_path: Path) -> None:
     scripts, audio = _setup(tmp_path)
     (audio / "A.mp3").write_bytes(b"fake")

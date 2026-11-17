@@ -2,7 +2,10 @@
 
 Device facts (verified 2026-09-03): HiDock P1, USB 0x10D6:0xB00E, vendor protocol over bulk
 endpoints, not a USB drive. Recordings are `YYYYMonDD-HHMMSS-RecNN.hda`, which are plain MP3
-(mono, 48 kHz, 96 kbps). The filename timestamp is the device clock in Central time. The device
+(mono, 48 kHz, 96 kbps) on old firmware. Since about 2026-11-05 the firmware records Ogg Opus
+(mono, 16 kb/s, starts with `OggS`); sync writes those as `.ogg`. `list` `est_duration_s` is
+size-based and assumes MP3, so it under-reports Opus about 6x. `sync` judges `--min-seconds`
+on the real duration after download (Ogg: last page granule minus OpusHead pre_skip, over 48000). The filename timestamp is the device clock in Central time. The device
 keeps every recording until HiNotes removes it; scribe never deletes.
 
 1. Device check and inventory:
@@ -26,8 +29,8 @@ keeps every recording until HiNotes removes it; scribe never deletes.
    ```
 
    It runs `hidock_pull.py sync` (skips files already present with the same size, already
-   transcribed in `--done-dir`, shorter than 120 s, or older than the date), then
-   `transcribe.py` on each new MP3 (default 1 at a time, because Hex is one app; Hex
+   transcribed in `--done-dir`, older than the date, or shorter than 120 s of real duration, checked after download), then
+   `transcribe.py` on each new MP3 or OGG (default 1 at a time, because Hex is one app; Hex
    transcription plus local speaker diarization in one run), and deletes each MP3 once its
    JSON exists. One JSON line per file from the sync (`downloaded` or `skipped` + reason),
    then one `=== transcribing <stem> ===` per file on stderr, plus a

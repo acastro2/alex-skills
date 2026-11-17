@@ -114,11 +114,11 @@ def test_parse_filename_start_parses_valid_name_in_requested_timezone():
     assert start.isoformat() == "2026-09-02T15:00:56+00:00"
 
 
-def test_looks_like_mp3_accepts_frame_sync_and_id3_rejects_other_bytes():
-    assert hp.looks_like_mp3(b"\xff\xfb\x90\x00rest of an mp3 frame") is True
-    assert hp.looks_like_mp3(b"ID3\x03\x00\x00\x00\x00\x00\x00") is True
-    assert hp.looks_like_mp3(b"RIFF....WAVEfmt ") is False
-    assert hp.looks_like_mp3(b"") is False
+def test_audio_format_accepts_mp3_frame_sync_and_id3_rejects_other_bytes():
+    assert hp.audio_format(b"\xff\xfb\x90\x00rest of an mp3 frame") == "mp3"
+    assert hp.audio_format(b"ID3\x03\x00\x00\x00\x00\x00\x00") == "mp3"
+    assert hp.audio_format(b"RIFF....WAVEfmt ") is None
+    assert hp.audio_format(b"") is None
 
 
 # --- JensenClient read loop (the drain-until-idle bug fix) ----------------------
@@ -229,7 +229,9 @@ def test_cli_sync_skips_already_present_short_and_old_files_without_downloading(
     assert len(events) == 17
     assert all(e["status"] == "skipped" for e in events)
     assert by_file["2026Sep02-090319-Rec12.hda"]["reason"] == "already present"
-    assert "min-seconds" in by_file["2026Sep01-090855-Rec01.hda"]["reason"]
+    # --min-seconds is judged on real duration after download, so a short-looking
+    # entry is no longer skipped up front; --since catches it before any download.
+    assert "since" in by_file["2026Sep01-090855-Rec01.hda"]["reason"]
     assert "since" in by_file["2026Sep02-150056-Rec17.hda"]["reason"]
     # Only the GET_FILE_LIST command was ever sent -- no download attempted.
     assert len(transport.written) == 1

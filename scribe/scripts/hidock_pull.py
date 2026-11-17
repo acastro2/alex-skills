@@ -18,6 +18,10 @@ Common flags: --vid --pid --timeout-ms.
 Exit codes: 0 ok, 1 requested file not found on device, 2 device not found,
 3 USB claim error (device busy -- likely the HiNotes browser tab), 4
 downloaded payload failed size or magic-byte verification.
+
+Audio is MP3 (older firmware) or Ogg Opus (newer); files are written as .mp3 or
+.ogg by magic bytes. `list` durations are size estimates that assume MP3 and
+under-report Opus about 6x; `sync --min-seconds` uses the real duration.
 """
 from __future__ import annotations
 
@@ -169,8 +173,31 @@ def parse_filename_start(filename: str, tz_name: str) -> datetime | None:
     return naive.replace(tzinfo=ZoneInfo(tz_name))
 
 
-def looks_like_mp3(data: bytes) -> bool:
-    return data[:2] == b"\xff\xfb" or data[:3] == b"ID3"
+def audio_format(data: bytes) -> str | None:
+    """Return "mp3", "ogg" (Ogg Opus, firmware since ~2026-11-05) or None."""
+    if data[:2] == b"\xff\xfb" or data[:3] == b"ID3":
+        return "mp3"
+    if data[:4] == b"OggS":
+        return "ogg"
+    return None
+
+
+def _opus_duration_seconds(data: bytes) -> float:
+    """(granule of the LAST Ogg page - OpusHead pre_skip) / 48000. Opus
+    granule positions are always 48 kHz, whatever the input rate."""
+    head = data.find(b"OpusHead")
+    last = data.rfind(b"OggS")
+    if head == -1 or last == -1 or head + 12 > len(data) or last + 14 > len(data):
+        return 0.0
+    pre_skip = struct.unpack("<H", data[head + 10:head + 12])[0]
+    granule = struct.unpack("<q", data[last + 6:last + 14])[0]
+    return max(0.0, (granule - pre_skip) / 48000)
+
+
+def audio_duration_seconds(data: bytes) -> float:
+    if audio_format(data) == "ogg":
+        return _opus_duration_seconds(data)
+    return estimate_duration_seconds(len(data))
 
 
 # --- transport boundary -------------------------------------------------------
@@ -358,16 +385,20 @@ def _verify_download(entry: FileEntry, data: bytes) -> tuple[bool, int]:
     if len(data) != entry.size:
         print(f"error: {entry.filename}: expected {entry.size} bytes, got {len(data)}", file=sys.stderr)
         return False, 4
-    if not looks_like_mp3(data):
-        print(f"error: {entry.filename}: downloaded payload does not look like MP3 (bad magic bytes)", file=sys.stderr)
+    if audio_format(data) is None:
+        print(
+            f"error: {entry.filename}: downloaded payload does not look like MP3 or Ogg (bad magic bytes)",
+            file=sys.stderr,
+        )
         return False, 4
     return True, 0
 
 
-def _write_mp3(data: bytes, filename: str, output_dir: str) -> Path:
+def _write_audio(data: bytes, filename: str, output_dir: str) -> Path:
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    dest = out_dir / f"{Path(filename).stem}.mp3"
+    ext = "ogg" if audio_format(data) == "ogg" else "mp3"
+    dest = out_dir / f"{Path(filename).stem}.{ext}"
     dest.write_bytes(data)
     return dest
 
@@ -391,7 +422,7 @@ def _cmd_download(client: JensenClient, args: argparse.Namespace) -> int:
     ok, code = _verify_download(entry, data)
     if not ok:
         return code
-    dest = _write_mp3(data, entry.filename, args.output)
+    dest = _write_audio(data, entry.filename, args.output)
     print(str(dest))
     return 0
 
@@ -410,20 +441,17 @@ def _cmd_sync(client: JensenClient, args: argparse.Namespace) -> int:
     since = date.fromisoformat(args.since) if args.since else None
 
     for entry in entries:
-        dest = out_dir / f"{Path(entry.filename).stem}.mp3"
-        duration = estimate_duration_seconds(entry.size)
+        stem = Path(entry.filename).stem
         start = parse_filename_start(entry.filename, args.tz)
 
-        if dest.exists() and dest.stat().st_size == entry.size:
+        if any(
+            (p := out_dir / f"{stem}.{ext}").exists() and p.stat().st_size == entry.size
+            for ext in ("mp3", "ogg")
+        ):
             _emit_sync_event(entry.filename, "skipped", "already present")
             continue
-        if args.done_dir and (Path(args.done_dir) / f"{Path(entry.filename).stem}.json").exists():
+        if args.done_dir and (Path(args.done_dir) / f"{stem}.json").exists():
             _emit_sync_event(entry.filename, "skipped", "already transcribed")
-            continue
-        if duration < args.min_seconds:
-            _emit_sync_event(
-                entry.filename, "skipped", f"shorter than --min-seconds ({duration:.1f}s < {args.min_seconds}s)"
-            )
             continue
         if since is not None and (start is None or start.date() < since):
             _emit_sync_event(entry.filename, "skipped", f"older than --since {since.isoformat()}")
@@ -433,7 +461,14 @@ def _cmd_sync(client: JensenClient, args: argparse.Namespace) -> int:
         ok, code = _verify_download(entry, data)
         if not ok:
             return code
-        dest.write_bytes(data)
+        # Real duration is only known after download: the list size assumes MP3.
+        duration = audio_duration_seconds(data)
+        if duration < args.min_seconds:
+            _emit_sync_event(
+                entry.filename, "skipped", f"shorter than --min-seconds ({duration:.1f}s < {args.min_seconds}s)"
+            )
+            continue
+        _write_audio(data, entry.filename, args.output)
         _emit_sync_event(entry.filename, "downloaded", None)
 
     return 0
@@ -452,7 +487,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_list = sub.add_parser("list", parents=[common], help="List recordings on the device")
+    p_list = sub.add_parser(
+        "list", parents=[common],
+        help="List recordings on the device (duration is a size estimate that assumes MP3; "
+             "it under-reports Ogg Opus about 6x)",
+    )
     p_list.add_argument("--json", action="store_true")
     p_list.add_argument("--tz", default=DEFAULT_TZ)
 
@@ -463,7 +502,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p_sync = sub.add_parser("sync", parents=[common], help="Download recordings not already present")
     p_sync.add_argument("-o", "--output", required=True)
     p_sync.add_argument("--since", default=None, help="Skip recordings that started before this date (YYYY-MM-DD)")
-    p_sync.add_argument("--min-seconds", type=float, default=0.0, help="Skip recordings shorter than this")
+    p_sync.add_argument("--min-seconds", type=float, default=0.0, help="Skip recordings shorter than this (real duration, judged after download)")
     p_sync.add_argument(
         "--done-dir", default=None,
         help="Skip recordings whose <stem>.json transcript exists here (local audio is deleted after transcription)",

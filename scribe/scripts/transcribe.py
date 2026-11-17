@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Transcribe a local HiDock call recording into scribe.transcript/1 JSON.
 
-Input is a mono 48 kHz MP3 saved from a HiDock P1 as `<stem>.mp3`. ASR runs
+Input is a mono recording saved from a HiDock P1 as `<stem>.mp3` (older firmware)
+or `<stem>.ogg` (Ogg Opus, newer firmware). ASR runs
 through the running Hex app (Parakeet v3) in 30 s chunks cut with ffmpeg
 (Homebrew, must be on PATH); duration comes from ffprobe.
 
