@@ -68,12 +68,12 @@ compare the local file with the GitHub copy and say which one you used.
 | HTML page or Artifact | Put the colors on `:root` as CSS variables named after the tokens. Use the font stacks the file gives. The Artifact page contract still comes from `artifact-design`; the design file wins only on color, type, and shape. |
 | Chart | Use the palette from the design file instead of the placeholder palette in `dataviz`. Brand colors for series, status colors only for status. |
 | Diagram (`archify`) | Neutrals and the primary brand color for structure, status colors only for state. |
-| Isometric scene (`anatomy`) | Its colors are the `--anatomy-*` CSS variables in `kit/iso-kit.mjs` (`ISO_CSS`), tuned for a neutral grey look; do not ship them as-is. Override them from the file's ramps: `--anatomy-face`, `--anatomy-top` and `--anatomy-shade-0..3` from one neutral ramp, lightest to darkest, and `--anatomy-lit` plus `--anatomy-red/green/blue` from the primary brand ramp and the status colors. Neutrals for most parts, the brand color for the one part the scene is about. Use the light theme on a light page, and put labels in HTML beside the picture. A renderer without CSS-variable support (resvg) needs plain hex fills. |
+| Isometric scene (`anatomy`) | Its colors are the `--anatomy-*` CSS variables in `kit/iso-kit.mjs` (`ISO_CSS`), tuned for a neutral grey look; do not ship them as-is. Override them from the file's ramps: `--anatomy-face`, `--anatomy-top` and `--anatomy-shade-0..3` from one neutral ramp, lightest to darkest, and `--anatomy-lit` plus `--anatomy-red/green/blue` from the primary brand ramp and the status colors. Neutrals for most parts, the brand color for the one part the scene is about. Use the light theme on a light page, and put labels in HTML beside the picture. A renderer without CSS-variable support (resvg) needs plain hex fills. Shading tones are the one exception to "palette hex only": the four side tones, top, bevel and edge of a solid may be mixes of two palette colours (for example a palette colour toward a ramp neutral, black or white), because four-tone shading needs those steps. Every other fill (glyphs, paths, glows, status) stays a palette hex. |
 | Slides | Neutrals carry the slide, the primary brand color marks the one point. Keep the restraint the file describes. |
 
 ## Step 4: check before you hand it over
 
-- Every color in the output is in the palette (grep the hex values).
+- Every color in the output is in the palette (grep the hex values). For an isometric scene, the solid shading tones may be palette mixes (see the `anatomy` row); everything else is checked against the palette.
 - Every shape rule in the file's do's and don'ts holds (corners, line caps, button shape).
 - Body text is at or above the size floor in the file.
 - Say which copy of `DESIGN.md` you used (local or GitHub) and any value you had to invent.
