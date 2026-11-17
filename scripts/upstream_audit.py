@@ -46,7 +46,7 @@ UPSTREAMS: list[tuple[str, str, str]] = [
     ("autoresearch", "uditgoenka/autoresearch", ".agents/skills/autoresearch"),
     ("ub-mode", "unclebob/ub-mode", ""),
     ("unslop", "heydamir/unslop", "skills/unslop"),
-    ("isoscene", "cintelis/isoscene", ""),
+    ("anatomy", "wheresryan22/anatomy", ""),
 ] + [
     (f"threejs-{t}", "CloudAI-X/threejs-skills", f"skills/threejs-{t}")
     for t in ("animation", "asset-pipeline", "fundamentals", "geometry", "interaction", "lighting",
