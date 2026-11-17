@@ -9,6 +9,7 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
 - [Match the sibling root before review](#match-the-sibling-root-before-review)
+- [Check a new root before the PR](#check-a-new-root-before-the-pr)
 
 Company-specific module, runner, and reusable-workflow choices apply only to work repositories. Outside them, keep the same safety rules but use the repo's approved equivalents.
 
@@ -181,3 +182,20 @@ SRE reviewers check a new root against the closest existing root of the same tea
 - **When the code works around the platform, write the runtime decision down.** Wiping `/tmp` every run or living under a 900 s cap is a sign; add an ADR line in the README with the intent and the trigger to move.
 - **Take external identifiers from the live system, not from old code.** Org names, account IDs and repository lists come from the running environment (or the API) when one exists. `ChamberlainGroupFirmware` and `ChamberlainGroup-myQ-Firmware` are different orgs.
 - **Keep the PR body current.** Remove "before merge" items and CI notes as soon as they are done; reviewers read stale notes as open work.
+
+### Check a new root before the PR
+
+A mocked test and a first plan both pass with every fault below. Check each one before you open the PR for a new root, or for a change to its IAM, naming, or deploy path.
+
+- **Put every `locals {}` block in `locals.tf`.** Do not open a locals block in a resource file such as `iam.tf`. Group them in `locals.tf` under one header per resource family.
+- **Read how a module builds a name before you override a naming input.** An override replaces the default; it does not add to it. If the default suffix is the asset type (`ROLE`, `SG`), keep it at the end of yours: `EXECUTION-ROLE`, not `EXECUTION`. A rename after the first apply replaces the resource.
+- **Grant a permission in the change that uses it.** Do not pre-grant so that a later change needs no IAM edit. A role that can read secrets no container uses fails a least-privilege review.
+- **Prove the lock file is tracked.** A repo `.gitignore` can ignore `.terraform.lock.hcl` for every directory. Run `git check-ignore -v <root>/.terraform.lock.hcl`. If it is ignored, add a negation for the applied roots, then commit a lock made with `tofu providers lock` for every platform CI and laptops use.
+- **Set up the repository before you open the PR, and check the setup through the API.** A new root needs whatever its CI needs: deployment environments, repository properties, runner access, secrets. Without them the plan and test jobs wait in the queue forever and the PR has no proof. Compare each setting with a repository where the same workflow already runs. Check that the base branch CI is green too: a red base hides your own failures.
+- **Look up what each IAM action is authorized against.** A mocked test proves no IAM behaviour. Some actions check a different resource than the one they return: `ssm:GetParametersByPath` is authorized against the path, so list both `parameter/<path>` and `parameter/<path>/*`.
+- **When the service ignores `task_definition`, the deploy must roll the newest revision of the family.** Publish the family name as an output or parameter and describe that. A deploy that copies the revision the service runs now drops every later OpenTofu change to the containers.
+- **Do not join another team's security group to reach one port.** Membership gives your workload every network path that group has. Ask the owner for one ingress rule that references your group. If a deadline forces the membership, record it in the README with that exit.
+- **A role that trusts a CI deployment environment trusts every branch that can use it.** Restrict the environment to the release branch in the same setup, or any branch with the workflow can deploy.
+- **Read the first plan after an apply; it must be empty.** Some blocks are not stored when they are empty, so every later plan replaces the resource. One example is `health_check_custom_config {}` on `aws_service_discovery_service`: set `failure_threshold = 1`. Only the second plan shows this.
+
+**Why:** each of these reached a merged root because the test was mocked and the first plan was clean. A reviewer or the first real run found them, after the resources existed, when a fix means a replacement.
