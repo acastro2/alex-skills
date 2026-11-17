@@ -9,9 +9,11 @@ Why this file is careful: the write path was proven once, on one throwaway issue
 Tools are `mcp__claude_ai_Atlassian__<name>` in Claude Code and `atlassian_<name>` in OpenCode,
 which runs its own Atlassian MCP at `https://mcp.atlassian.com/v2/mcp`. Run the Jira calls
 directly in OpenCode; do not hand Jira to `ask-claude` any more. It is the same Atlassian MCP, so
-operation names and arguments match and only the prefix differs. OpenCode's v2 server keeps the
-primary tools (`getJiraIssue`, `searchJiraIssuesUsingJql`, `getConfluenceContent`, …) in the tool
-list; for anything else call the server's `discover`, then `executeRead` or `executeWrite` with
+most operation names and arguments match and only the prefix differs. Two differ in OpenCode
+(seen 2026-11-16): comments are `addOrEditJiraIssueComment`, and issue links are `addGraphContext`
+with `relationshipType: "jira-work-item-links-jira-work-item"` (or `...-blocks-...`). OpenCode's v2
+server keeps the primary tools (`getJiraIssue`, `searchJiraIssuesUsingJql`, `getConfluenceContent`, …)
+in the tool list; for other operations call the server's `discover`, then `executeRead` or `executeWrite` with
 the returned `name`, passing `cloudId` as a top-level argument. Verified in OpenCode 2026-11-13:
 `getAccessibleAtlassianResources` and `searchJiraIssuesUsingJql` both ran on v2.
 
@@ -19,7 +21,8 @@ the returned `name`, passing `cloudId` as a top-level argument. Verified in Open
 
 - Read calls RUN on 2026-11-12: `getAccessibleAtlassianResources`, `getVisibleJiraProjects`, `getJiraProjectIssueTypesMetadata`, `searchJiraIssuesUsingJql`, `getJiraIssue` (with `expand: "changelog"`).
 - Write calls RUN on 2026-11-13, on one throwaway Task: `createJiraIssue`, `editJiraIssue`, `addCommentToJiraIssue`, `getTransitionsForJiraIssue`, `transitionJiraIssue` (to Done). Also `getJiraIssueTypeMetaWithFields` and `getJiraIssueRemoteIssueLinks` (returns `[]` when there are no links).
-- Still NOT RUN: `createIssueLink`, setting `parent`, changing `issuetype`.
+- Still NOT RUN through the MCP: `createIssueLink` / `addGraphContext`, setting `parent`, changing `issuetype`. All three RAN through the Jira REST API v3 on 2026-11-12, about 300 writes in one backlog cleanup.
+- Before you rewrite or merge tickets, read the changelog (`executeRead` with `listJiraIssueChangelogs`): on 2026-11-16 two planned edits were already done by another session.
 
 ## Resolve first, never memorize
 
@@ -59,14 +62,15 @@ Read the allowed priority and component values from the field metadata first. Th
 3. `createJiraIssue` with the title, the six sections, and `additional_fields`.
 4. Read the item back and check the render. Return the item URL (`https://<site>.atlassian.net/browse/PROJ-123`).
 
-Parent: `createJiraIssue` has a `parent` parameter. The schema says "for subtasks". Setting an epic as the parent of a story is UNVERIFIED. Read the field metadata first.
+Parent: `createJiraIssue` has a `parent` parameter. The schema says "for subtasks", but a Story with an epic `parent` was created through the REST API on 2026-11-12. Through the MCP it is still UNVERIFIED. Read the field metadata first.
 
 ## Update
 
 1. `getJiraIssue` with fields `description`, `updated`, and any AC custom field. Merge with the update table in `../SKILL.md`. Do not overwrite.
 2. `editJiraIssue` has no revision guard. Re-read `updated` right before the edit. If it changed since your read, merge again.
 
-Type change: UNVERIFIED through the MCP. If `editJiraIssue` rejects `issuetype`, ask Alex to use Move in the Jira UI.
+Type change: the REST API accepted `issuetype` in a plain edit when both types used the same workflow (Task to Story, 2026-11-12). Still UNVERIFIED through the MCP `editJiraIssue`. If it rejects `issuetype`, or the types use different workflows, ask Alex to use Move in the Jira UI.
+
 
 ## State
 
