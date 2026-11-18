@@ -61,7 +61,7 @@ Run this when Alex asks to resync, re-audit, or refresh the upstreams. PR #8 (20
 7. **Code needs its tests.** When an upstream fix changes a script we ship, port it with upstream's own tests for that part. Show red on the old code and green on the new. Add the test to `scripts/check.sh`.
 8. **Keep copies byte-identical.** When a pre-commit whitespace hook rewrites an upstream file, add the folder to that hook's `exclude`. When skillcheck flags upstream prose for style, mark the files with `Policy.upstream` in `skillcheck/policy.py`. Do not restyle upstream text.
 9. **Record.** Update the README Pin column, the skill's `PROVENANCE.md` or `UPSTREAM.md`, and the repo's handoff file (`handoff` skill).
-10. **Gate and ship.** `./scripts/check.sh --tools` and `pre-commit run --all-files` must pass. Commit by area. pre-commit stashes unstaged files during a commit, so commit together any changes that depend on each other: a skillcheck policy with the copies it exempts, a hook exclude with the file it names. Push and open the PR as acastro2 (`GH_TOKEN=$(gh auth token --user acastro2)` for that one command). Write the body with `pr-change-description`, and confirm CI passes.
+10. **Gate and ship.** `./scripts/check.sh --tools` and `pre-commit run --all-files` must pass. Commit by area. pre-commit stashes unstaged files during a commit, so commit together any changes that depend on each other: a skillcheck policy with the copies it exempts, a hook exclude with the file it names. Push and open the PR as acastro2 (`GH_TOKEN=$(gh auth token --user acastro2)` for that one command). Write the body with `coding` (`references/pr-description.md`), and confirm CI passes.
 
 **Why:** On 2026-11-13 an agent called a correct sync report false, because its checkout was detached and 21 commits behind `origin/main`. The same agent first listed `cf-cli` as derived from cloudflare/skills on a 0.81 character ratio, but the two files share 0 of 45 long lines. Pins were missing for most rows, so drift was visible only when someone checked by hand.
 
@@ -85,7 +85,7 @@ Repo-wide tooling lives in `skillcheck/` and `scripts/`: `python -m skillcheck` 
 
 - **alex-voice/** is the one voice skill. `SKILL.md` covers chat, comms, exec, docs, and spoken; `references/alex-blogger.md` adds blog; `scripts/voice_check.py` scores a draft. Real excerpts live in Alex's private vault, never in this repo.
 - **skill-creator/** routes to the pinned OpenAI and Anthropic creators in `skill-creator/vendor/`. The vendored files are read-only, and their entry file is `CREATOR.md` so OpenCode does not register them as skills.
-- **reviewer/**, **search/**, and **jev/** serve other skills too: `implement` reviews its diff with `reviewer`, any skill that looks something up uses `search`, and eval grading uses `jev/references/eval-grading.md`.
+- **reviewer/**, **search/**, and **jev/** serve other skills too: `coding` reviews its own diff with `reviewer`, any skill that looks something up uses `search`, and eval grading uses `jev/references/eval-grading.md`.
 
 ## Working with skills
 

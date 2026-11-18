@@ -1,18 +1,7 @@
----
-name: pr-change-description
-description: "Write or rewrite a pull request description as a change description: why it changed, a Mermaid before and after diagram, and what is different now, scaled to the size of the PR. A small PR gets one diagram pair and a short why; a large or risky PR gets a section per area, a behaviour-change table, how the safety was proven, and a review path by commit. Every number comes from the code. Use when asked to write, rewrite, or deepen a PR description, to explain a change or a refactor with before and after diagrams, or when a PR is too big to understand from the diff. Not for critiquing a PR (that is reviewer) or for standalone architecture diagrams (that is archify)."
----
 
 # PR change description
 
-## Asking
-
-When you need a decision from Alex, ask through the `question` tool, not prose. One call
-carries the whole round. The recommended option goes first, and its description carries the
-why. Do not add a "type your own answer" option: the tool adds it. A decision with one
-plausible answer is not a question, so decide it and say why. Where this skill defines its
-own review or answer format, that format wins. If the host has no question tool, use
-`❓ **Q1 - <title>**: ...` and `➡️ <answer and why>` in the same place.
+Read this reference every time you open a pull request or change its body, and when asked to write, rewrite, or deepen a PR description. The general standards remain in [Coding](../SKILL.md). Paths in backticks are relative to the `coding` folder.
 
 A PR description tells the reader what changed and why, so they understand the change before they open the diff. The core is always the same three things: why it changed, what it looked like before, and what it looks like now. The diagrams carry the structure; the prose carries the reason.
 
@@ -26,7 +15,7 @@ Pick the size from the change, not from the line count alone. A 40-line change t
 | --- | --- | --- |
 | Small | One area, one idea, no change in failure behaviour | One or two sentences of why, one before and after diagram (or one diagram with both), what changed in bullets, how it was tested. Nothing else: no review path, no behaviour-change table, no watch-after-deploy section |
 | Medium | Two or three areas, or a changed contract | The small shape per area, plus a behaviour-change table |
-| Large or risky | Several areas, moved code, a new seam, changed failure paths, or many fixture files | The full template in `references/template.md` |
+| Large or risky | Several areas, moved code, a new seam, changed failure paths, or many fixture files | The full template in `references/pr-description-template.md` |
 
 Skip the diagram only when the change has no structure to show (a typo, a version bump, a config value). Then the description is the why and the what in a few lines.
 
@@ -51,7 +40,7 @@ A small PR needs only the rows it uses. If a fact cannot be checked, leave it ou
 
 For a small PR, write: why (one or two sentences), the before and after diagram, what changed (bullets), how it was tested (the run you saw). Stop there. A small PR has one or two commits, and the reader reads them in order without a review path. If the small PR changes behaviour (a new default, a new status code), say it as one bullet under what changed, such as "An expired token now gets one refresh before the call fails". A table for one change is the medium shape.
 
-For a medium or large PR, follow `references/template.md`. The full order:
+For a medium or large PR, follow `references/pr-description-template.md`. The full order:
 
 1. **Opener**: what the PR does in one sentence, its size, and how much of it is fixtures. Point to the spec and the rules it follows.
 2. **The whole change**: one before and one after diagram of the system, then a size table of the key files with a "Why" column.
@@ -72,13 +61,13 @@ Rules at every size:
 - **Name the evidence, not adjectives.** "770 passed, 1 skipped; main has 333" beats "well tested".
 - **List deviations and the edge cases no test covers.** The reader finds them anyway; finding them in the description keeps trust.
 
-Diagram syntax that renders on GitHub, and patterns per kind of change: `references/diagrams.md`.
+Diagram syntax that renders on GitHub, and patterns per kind of change: `references/pr-description-diagrams.md`.
 
 ### Rollout status, when the PR is one step of several
 
 Add it when the PR cannot ship alone: it waits on other PRs, a release tag, an approval, an apply, or a follow-up. Put it right after the opener, so a reader sees at once where the rollout is and what blocks it.
 
-- **One flowchart of every step**, each node coloured by its state: done, in progress, not started, blocked. Use the four-colour palette and the pattern in `references/diagrams.md`. Steps in other repos and manual steps belong in it too, because those are the ones a reader cannot see from the PR.
+- **One flowchart of every step**, each node coloured by its state: done, in progress, not started, blocked. Use the four-colour palette and the pattern in `references/pr-description-diagrams.md`. Steps in other repos and manual steps belong in it too, because those are the ones a reader cannot see from the PR.
 - **Every label starts with a status emoji** (🟢 🟡 ⚪ 🔴), so the state does not depend on colour alone.
 - **A table under the diagram** with one row per step: the step, its status in a few words, and **what it looks like when it is done**, as a fact you can check (a tag exists, a plan reads "24 to add", a URL returns the tools). Give the failure signal for a risky step and say it turns the step 🔴.
 - **Wrap the section in `<!-- rollout:start -->` and `<!-- rollout:end -->`** and put a "Last update" date in it. At each step, rewrite only that section: move the node's class and emoji, update the row, and post it again with the render check. A step goes 🟢 only on evidence you saw, never on a claim.
@@ -88,7 +77,7 @@ Add it when the PR cannot ship alone: it waits on other PRs, a release tag, an a
 
 1. Write the body to a file outside the repo and post it with `gh pr edit <n> --body-file <file>` (or `gh pr create --body-file`). GitHub caps a body at 65,536 characters; check with `wc -c`.
 2. Run `python3 ../alex-voice/scripts/voice_check.py <file> --register docs` and fix every blocker.
-3. **Check that every diagram renders.** A Mermaid syntax error shows as an error box only on the PR page. Open the PR with the `browser-control` skill and run the check in `references/diagrams.md`. The number of rendered frames must equal the number of `mermaid` blocks, and no frame may contain a syntax error. Then screenshot any styled or wide diagram (a rollout status, a long flowchart) and look at it: the syntax check passes even when a label is clipped or the text has no contrast in dark mode.
+3. **Check that every diagram renders.** A Mermaid syntax error shows as an error box only on the PR page. Open the PR with the `browser-control` skill and run the check in `references/pr-description-diagrams.md`. The number of rendered frames must equal the number of `mermaid` blocks, and no frame may contain a syntax error. Then screenshot any styled or wide diagram (a rollout status, a long flowchart) and look at it: the syntax check passes even when a label is clipped or the text has no contrast in dark mode.
 4. When the PR changes, update the description: the size table, the test counts, the review path, the rollout status, and any diagram whose flow changed. A stale description is worse than none.
 
 Report the PR link, the number of diagrams, and the render check result.

@@ -1,6 +1,6 @@
 # Change description template (medium and large PRs)
 
-For a small PR, use the short shape in `../SKILL.md` instead. Copy this skeleton, then replace every `<...>` with a fact from the code. Delete a section that has nothing true to say; never fill one with filler.
+For a small PR, use the short shape in `pr-description.md` instead. Copy this skeleton, then replace every `<...>` with a fact from the code. Delete a section that has nothing true to say; never fill one with filler.
 
 ````markdown
 This PR <does what, in one sentence>. It is <N> files, but <M> of those are <fixtures / snapshots / generated>. Production code is <K> files (+<a> / -<d>).
@@ -10,7 +10,7 @@ This description has one section per area. Each section gives the reason for the
 <!-- rollout:start -->
 ## Rollout status
 
-<Only when the PR is one step of several; else delete this section. Pattern and palette: diagrams.md, "Rollout status".> Updated at each step. 🟢 done · 🟡 in progress · ⚪ not started · 🔴 blocked. Last update: <YYYY-MM-DD>.
+<Only when the PR is one step of several; else delete this section. Pattern and palette: pr-description-diagrams.md, "Rollout status".> Updated at each step. 🟢 done · 🟡 in progress · ⚪ not started · 🔴 blocked. Last update: <YYYY-MM-DD>.
 
 ```mermaid
 flowchart LR

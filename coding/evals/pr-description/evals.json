@@ -1,5 +1,5 @@
 {
-  "skill_name": "pr-change-description",
+  "skill_name": "coding",
   "evals": [
     {
       "id": 1,
@@ -7,8 +7,8 @@
       "prompt": "Write the PR description for PR #318. I gathered the facts for you: {FIXTURES}/small-retry/facts.md and {FIXTURES}/small-retry/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
       "expected_output": "Small shape: one or two sentences of why tied to SYNC-212, one before/after Mermaid diagram (or one with both) where the before shows a 503 failing the whole run, what changed in bullets, and the 6 passed test run. No template sections such as review path or behaviour-change table.",
       "files": [
-        "evals/files/small-retry/facts.md",
-        "evals/files/small-retry/diff.patch"
+        "evals/pr-description/files/small-retry/facts.md",
+        "evals/pr-description/files/small-retry/diff.patch"
       ],
       "expectations": [
         "[code] Has 1 or 2 mermaid blocks",
@@ -27,7 +27,7 @@
       "prompt": "Write the PR description for PR #341. I gathered the facts for you: {FIXTURES}/large-lease/facts.md. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
       "expected_output": "Full template: opener with size and fixture share, whole-change before/after diagrams with a size table, sections per area, a sequence diagram with an alt failure branch, a behaviour-change table of the four ADR-0031 changes with who notices, what stays unchanged, the deviation (leases table, not advisory lock, because of pgbouncer), the untested clock-skew gap, the safety proof (golden replay 42/42 byte-identical, 41/42 order with batch_017 explained, 412 passed vs 359), and a review path by commit.",
       "files": [
-        "evals/files/large-lease/facts.md"
+        "evals/pr-description/files/large-lease/facts.md"
       ],
       "expectations": [
         "[code] Has at least 4 mermaid blocks",
@@ -53,8 +53,8 @@
       "prompt": "Write the PR description for PR #322. I gathered the facts for you: {FIXTURES}/version-bump/facts.md and {FIXTURES}/version-bump/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
       "expected_output": "No diagram: the change has no structure. A few lines of why and what: release 2.4.1, which carries the retry fix from #318.",
       "files": [
-        "evals/files/version-bump/facts.md",
-        "evals/files/version-bump/diff.patch"
+        "evals/pr-description/files/version-bump/facts.md",
+        "evals/pr-description/files/version-bump/diff.patch"
       ],
       "expectations": [
         "[code] Has no mermaid block",
@@ -69,8 +69,8 @@
       "prompt": "Write the PR description for PR #329. I gathered the facts for you: {FIXTURES}/no-test-output/facts.md and {FIXTURES}/no-test-output/diff.patch. You have no shell here, so work from those files only. Give me the body as markdown in your reply; I will post it myself.",
       "expected_output": "Medium shape (a changed contract over API, SDK and docs): why from API-877, before/after diagram, a behaviour-change table that marks the 404 as a change client callers notice, the unchanged 200-empty for a known device, and a testing section that says the tests were not run or not verified, with no invented pass counts.",
       "files": [
-        "evals/files/no-test-output/facts.md",
-        "evals/files/no-test-output/diff.patch"
+        "evals/pr-description/files/no-test-output/facts.md",
+        "evals/pr-description/files/no-test-output/diff.patch"
       ],
       "expectations": [
         "[code] Has no 'N passed' test count",

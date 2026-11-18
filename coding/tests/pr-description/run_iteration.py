@@ -5,16 +5,16 @@ Usage:
 
 Without --old-home the baseline is no skill (config without_skill).
 With --old-home the baseline is a snapshot installed as the project skill
-DIR/.claude/skills/pr-change-description-v1 (config old_skill); its runs use a cwd under DIR.
-Both baselines deny Skill(pr-change-description), so the live skill cannot load.
+DIR/.claude/skills/coding-v1 (config old_skill); its runs use a cwd under DIR.
+Both baselines deny Skill(coding), so the live skill cannot load.
 """
 import argparse, json, os, pathlib, subprocess, time, concurrent.futures as cf
 
 import shutil
-EVALS = pathlib.Path(__file__).resolve().parent.parent / "evals"
+EVALS = pathlib.Path(__file__).resolve().parents[2] / "evals" / "pr-description"
 EV = json.load(open(EVALS / "evals.json"))["evals"]
 MODEL = "claude-opus-5-5"
-DENY = ["--disallowedTools", "Skill(pr-change-description)"]
+DENY = ["--disallowedTools", "Skill(coding)"]
 
 ap = argparse.ArgumentParser()
 ap.add_argument("iteration")

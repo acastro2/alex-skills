@@ -1,6 +1,6 @@
 """Grade [jev] expectations: one Noul each, one jev call per run. Merges with code_grades.json into grading.json."""
 import json, sys, pathlib, subprocess
-S = pathlib.Path(__file__).resolve().parent.parent / "evals"
+S = pathlib.Path(__file__).resolve().parents[2] / "evals" / "pr-description"
 EV = {e["name"]: e for e in json.load(open(S / "evals.json"))["evals"]}
 # Positive, literal question per expectation text. invert=True: a high yes means the expectation fails.
 Q = {

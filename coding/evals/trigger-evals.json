@@ -1,0 +1,90 @@
+[
+ {
+  "query": "fix the off-by-one bug in paginate() in src/pager.py, the last page drops one item",
+  "should_trigger": true
+ },
+ {
+  "query": "add a retry with exponential backoff to the http client in src/client.ts",
+  "should_trigger": true
+ },
+ {
+  "query": "I'm about to open a PR for the retry change in src/client.ts; write the PR body",
+  "should_trigger": true
+ },
+ {
+  "query": "the description on PR #42 is too thin, rewrite it",
+  "should_trigger": true
+ },
+ {
+  "query": "add a private S3 bucket for access logs to the infra/ OpenTofu root",
+  "should_trigger": true
+ },
+ {
+  "query": "review this React signup form component for accessibility problems",
+  "should_trigger": true
+ },
+ {
+  "query": "write unit tests for parse_duration in utils/time.py",
+  "should_trigger": true
+ },
+ {
+  "query": "refactor OrderService so I can test it without a real database",
+  "should_trigger": true
+ },
+ {
+  "query": "bump the aws provider in our terraform module to the latest 6.x",
+  "should_trigger": true
+ },
+ {
+  "query": "check my landing page html against web interface best practices",
+  "should_trigger": true
+ },
+ {
+  "query": "review this email to my manager before I send it",
+  "should_trigger": false
+ },
+ {
+  "query": "critique PR #88 and tell me if it is ready to merge",
+  "should_trigger": false
+ },
+ {
+  "query": "draw an architecture diagram of our auth flow as an html page",
+  "should_trigger": false
+ },
+ {
+  "query": "write a blog post about why test seams matter",
+  "should_trigger": false
+ },
+ {
+  "query": "what did we decide about the lease timeout last month?",
+  "should_trigger": false
+ },
+ {
+  "query": "what meetings do I have tomorrow?",
+  "should_trigger": false
+ },
+ {
+  "query": "in two sentences, what is mutation testing?",
+  "should_trigger": false
+ },
+ {
+  "query": "create a jira ticket for the login timeout bug",
+  "should_trigger": false
+ },
+ {
+  "query": "pick a calm color palette and a font pairing for my brand",
+  "should_trigger": false
+ },
+ {
+  "query": "how much did I spend on dining out last month?",
+  "should_trigger": false
+ },
+ {
+  "query": "implement the tickets in docs/specs/export.md",
+  "should_trigger": true
+ },
+ {
+  "query": "build the CSV export feature from the spec in specs/csv-export.md",
+  "should_trigger": true
+ }
+]

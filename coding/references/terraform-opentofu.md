@@ -1,11 +1,12 @@
 # Terraform and OpenTofu
 
-Read this reference when writing, changing, or reviewing Terraform/OpenTofu code or its tooling and CI. The general standards remain in [Code Rules](../SKILL.md).
+Read this reference when writing, changing, or reviewing Terraform/OpenTofu code or its tooling and CI. The general standards remain in [Coding](../SKILL.md).
 
 ## Contents
 
 - [Use the SRE module library first, community modules second](#use-the-sre-module-library-first-community-modules-second)
 - [Use stable OpenTofu deliberately](#use-stable-opentofu-deliberately)
+- [Keep ordering and state safe](#keep-ordering-and-state-safe)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
 - [Match the sibling root before review](#match-the-sibling-root-before-review)
@@ -41,6 +42,10 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   }
   ```
 
+**Why:** exact tool pins make runs repeatable. Modern language features remove indexing tricks without turning every Terraform change into a toolchain upgrade.
+
+### Keep ordering and state safe
+
 - **Never put `depends_on` on a module call to order it after a resource.** It defers every data source inside the module while the dependency has pending changes; a deferred lookup (for example `aws_subnet` → `vpc_id`) turns a ForceNew argument unknown and replaces live resources. Order through a value the module consumes instead, and keep that value stable: `join("", [real_value, substr(dep.id, 0, 0)])`. Check the module for its own internal `depends_on` too: any changing input that feeds it has the same effect.
 - **A just-created IAM service-linked role or role is not usable at once.** Put a `time_sleep` (hashicorp/time) between the role and its first consumer; `depends_on` orders the API calls but does not wait for IAM propagation.
 - **A module output that echoes an input carries no dependency.** If a resource takes a name from such an output (`repository_name = var.name`), add the dependency explicitly, or it can run before the module creates the object.
@@ -48,12 +53,12 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 - **Use `moved` blocks when resource addresses change.** Do not make OpenTofu destroy and recreate an object just because code moved.
 - **Use `terraform_data` instead of `null_resource`** when no real managed resource fits.
 
-**Why:** exact tool pins make runs repeatable. Modern language features remove indexing tricks and state churn without turning every Terraform change into a toolchain upgrade.
+**Why:** a plan cannot show ordering, propagation, or a destroy you did not mean. Each rule here closes a failure that a clean first plan hid and the real apply found.
 
 ### Make version constraints tell the truth
 
 - **Every module declares its own `required_providers`.** A reusable module declares provider sources and compatibility, but it does not contain `provider` configuration blocks. The calling root module supplies provider configurations.
-- **Always use `~>` (pessimistic) constraints, for `required_version`, every provider, and every registry module.** Never use a bare `>=`. A bare minimum silently admits the next major release (`>= 6.0.0` accepts `7.0.0`) with no warning. `~>` caps the range before the next major, so a major upgrade becomes a deliberate, reviewed, versioned change. Write the minimum honestly, never lower it just to end in `.0`.
+- **Use `~>` (pessimistic) constraints for `required_version`, every provider, and registry modules in a reusable module.** A root that CI applies pins its registry modules to an exact version instead (see the module rules above). Never use a bare `>=`. A bare minimum silently admits the next major release (`>= 6.0.0` accepts `7.0.0`) with no warning. `~>` caps the range before the next major, so a major upgrade becomes a deliberate, reviewed, versioned change. Write the minimum honestly, never lower it just to end in `.0`.
 - **A reusable module sets a real minimum and lets later minors in, but still blocks the next major.** `~> 1.6` is `>= 1.6.0, < 2.0.0`; `~> 6.0` is `>= 6.0.0, < 7.0.0`. The minimum must be the oldest version that supports every feature the module uses.
 
   ```hcl
@@ -69,7 +74,7 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   }
   ```
 
-- **Root modules pin OpenTofu to a supported minor and cap providers before their next major.** Same rule: `~>` everywhere, never a bare `>=`.
+- **Root modules pin OpenTofu to a supported minor and cap providers before their next major.** Same rule: `~>` for OpenTofu and providers, never a bare `>=`. Registry modules in the root still pin an exact version.
 
   ```hcl
   terraform {
@@ -171,16 +176,16 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
 
 ### Match the sibling root before review
 
-SRE reviewers check a new root against the closest existing root of the same team (for Builder Tools: builder-hub `.sre/tf/*` on `develop`). Diff your root against it before you open the PR. Each rule below is a finding from a real review (bt-cortex #22, 2026-11-11).
+SRE reviewers check a new root against the closest existing root of the same team, on that repo's integration branch. Diff your root against it before you open the PR. Each rule below is a finding from a real SRE review (2026-11-11).
 
-- **Copy conventions from the sibling, not from memory.** Tag keys and their casing (`Application`, `Ticket`), log retention (30 days), and caller inputs (`require-apply-reviewers`) come from the sibling's current files. Policy changes land there first, so read `develop`, not an old copy.
+- **Copy conventions from the sibling, not from memory.** Tag keys and their casing (`Application`, `Ticket`), log retention (30 days), and caller inputs (`require-apply-reviewers`) come from the sibling's current files. Policy changes land there first, so read the integration branch, not an old copy.
 - **Compose resource names only through the defaults module, including in CI.** If a workflow needs a resource name, publish it in the root's SSM contract and read it with `aws ssm get-parameter`. A `case "$ENV"` that rebuilds `DV-USE2-...` is name composition outside `module.q`.
 - **Every override of a module default carries a reason in a comment.** Never turn off a module's logging (`log_publishing_options = []`) to save effort. If the default fails (Auto-Tune on t3), say that in the comment and when to remove the override.
 - **A generated secret needs `keepers` and a rotation note.** `random_password` with `keepers` tied to the resource it protects, so a plan never rotates it by accident; the README says how to rotate.
 - **Document every out-of-band secret:** owner, scope, expiry, and the ticket that replaces it (for example a PAT replaced by a GitHub App).
 - **Guard list indexing on contract values.** `slice(list, 0, 2)` on an SSM list fails with an index error on a short list. Clamp it with `min()` so the module's own validation reports the real problem, or add a `precondition` with a clear message.
 - **When the code works around the platform, write the runtime decision down.** Wiping `/tmp` every run or living under a 900 s cap is a sign; add an ADR line in the README with the intent and the trigger to move.
-- **Take external identifiers from the live system, not from old code.** Org names, account IDs and repository lists come from the running environment (or the API) when one exists. `ChamberlainGroupFirmware` and `ChamberlainGroup-myQ-Firmware` are different orgs.
+- **Take external identifiers from the live system, not from old code.** Org names, account IDs and repository lists come from the running environment (or the API) when one exists. Two orgs with near-identical names are still different orgs.
 - **Keep the PR body current.** Remove "before merge" items and CI notes as soon as they are done; reviewers read stale notes as open work.
 
 ### Check a new root before the PR

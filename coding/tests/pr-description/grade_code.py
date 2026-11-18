@@ -1,7 +1,7 @@
 """Grade the [code] expectations. Writes code_grades.json per run; [jev] ones are left for Jev."""
 import json, os, re, subprocess, sys, pathlib
 MERMAID_DIR = os.environ.get("MERMAID_DIR")  # dir with mermaid_parse.mjs and node_modules (see its header)
-S = pathlib.Path(__file__).resolve().parent.parent / "evals"
+S = pathlib.Path(__file__).resolve().parents[2] / "evals" / "pr-description"
 EV = {e["name"]: e for e in json.load(open(S / "evals.json"))["evals"]}
 def mermaid(t): return re.findall(r"```mermaid\n(.*?)```", t, re.S)
 def words(t): return len(re.findall(r"\S+", re.sub(r"```.*?```", "", t, flags=re.S)))

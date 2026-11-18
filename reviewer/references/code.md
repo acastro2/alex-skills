@@ -1,6 +1,6 @@
 # Code layer: PRs, branches, diffs
 
-Read `../../code-rules/SKILL.md` and the repo's own rules (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, standards docs) first. The repo wins over everything here. If a team standards skill is available (for example the team's standards skill, or its change-control skill for anything that ships to production), load it too.
+Read `../../coding/SKILL.md` and the repo's own rules (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, standards docs) first. The repo wins over everything here. If a team standards skill is available (for example the team's standards skill, or its change-control skill for anything that ships to production), load it too.
 
 ## Pin the diff
 

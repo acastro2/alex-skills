@@ -45,6 +45,7 @@ run "$UV" run --with pytest python -m pytest bard/tests -q
 run "$UV" run --with pytest python -m pytest gather/tests -q
 run "$UV" run --with pytest python -m pytest weekly-report/tests -q
 run "$UV" run --with pytest --with pyusb python -m pytest scribe/tests -q
+run python3 -m unittest discover -s coding/tests -p 'test_*.py'
 # Apple Events exist only on macOS and the suite raises by design elsewhere, so skip it
 # rather than fail the gate on a Linux runner.
 if [ "$(uname -s)" = "Darwin" ]; then

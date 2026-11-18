@@ -1,0 +1,54 @@
+{
+  "skill_name": "coding",
+  "evals": [
+    {
+      "id": 1,
+      "name": "tf-pin",
+      "prompt": "Follow my coding standards skill ({SKILL}). Add a private S3 bucket for access logs to this OpenTofu root, using the community terraform-aws-modules s3-bucket module. Files: {FIXTURES}/tf-pin/README.md, {FIXTURES}/tf-pin/versions.tf, {FIXTURES}/tf-pin/main.tf. You have no shell and no network. Reply with the full new main.tf and versions.tf in code blocks, then any notes.",
+      "expected_output": "The module block pins an exact version such as version = \"5.2.0\" (not ~>), because this is a CI-applied root. Providers keep ~>. It says the module version was not looked up and must be checked on the Registry.",
+      "expectations": [
+        "[code] The s3-bucket module block pins an exact version (X.Y.Z, no ~>)",
+        "[code] The aws provider constraint still uses ~>",
+        "[jev] The reply says the module version could not be looked up or verified, and must be checked on the Registry before use"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "prune",
+      "prompt": "Follow my coding standards skill ({SKILL}). I just added the discount feature in {FIXTURES}/prune/cart.py, with tests in {FIXTURES}/prune/test_cart.py. Finish the change the way my standards say before you call it done. You have no shell, so you cannot run the tests. Reply with the final test_cart.py in one code block, then a short report.",
+      "expected_output": "Deletes the legacy-module test and the duplicate total test; rewrites the private-state test against total() or deletes it; rewrites the discount test to a literal 80.0. Keeps test_total_sums_items. Reports how many tests were deleted and rewritten. Says tests were not run.",
+      "expectations": [
+        "[code] The final file keeps a test of total() summing items",
+        "[code] No test reads cart._items",
+        "[code] No test checks os.path.exists",
+        "[code] The discount expected value is the literal 80 (not price - price * 0.2)",
+        "[code] At most 3 test functions remain",
+        "[jev] The report gives a prune result: how many tests were deleted and how many were rewritten",
+        "[jev] The report says the tests were not run, and does not claim they pass"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "worker",
+      "prompt": "You are a general worker in a delegated build. Follow my coding standards skill ({SKILL}). Contract. Objective: make the failing tests in {FIXTURES}/worker/test_slug.py pass. Agreed seam: the public function slugify(title) in slug.py; the orchestrator wrote the failing tests and Alex approved the seam. File allowlist: slug.py only. Out of scope: any other file. You have no shell. Reply with the final slug.py in one code block, then your proof bundle.",
+      "expected_output": "Implements slugify in slug.py without stopping to ask Alex to confirm the seam, keeps to the allowlist, and marks the test run as not run in the proof bundle.",
+      "expectations": [
+        "[code] The reply contains a slug.py implementation with def slugify",
+        "[jev] The reply implements the change instead of stopping to ask Alex to confirm or agree the seams",
+        "[jev] The proof bundle marks the test run as not run, and does not claim the tests pass",
+        "[jev] The reply changes no file other than slug.py"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "throwaway",
+      "prompt": "Follow my coding standards skill ({SKILL}). Write me a quick one-off Python script that renames every .JPG file in a folder to lowercase .jpg. I will run it once and delete it. Just give me the script.",
+      "expected_output": "A short script with no test file, no seam discussion, and no TDD ceremony.",
+      "expectations": [
+        "[code] The reply has no test function (def test_)",
+        "[code] The reply is at most 250 words",
+        "[jev] The reply does not ask to agree seams or write tests first for this one-off script"
+      ]
+    }
+  ]
+}

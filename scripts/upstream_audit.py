@@ -33,7 +33,6 @@ UPSTREAMS: list[tuple[str, str, str]] = [
     ("codebase-design", "mattpocock/skills", "skills/engineering/codebase-design"),
     ("domain-modeling", "mattpocock/skills", "skills/engineering/domain-modeling"),
     ("improve-codebase-architecture", "mattpocock/skills", "skills/engineering/improve-codebase-architecture"),
-    ("implement", "mattpocock/skills", "skills/engineering/implement"),
     ("find-skills", "vercel-labs/skills", "skills/find-skills"),
     ("skill-creator/vendor/codex", "openai/skills", "skills/.system/skill-creator"),
     ("skill-creator/vendor/claude", "anthropics/skills", "skills/skill-creator"),

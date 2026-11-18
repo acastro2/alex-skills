@@ -49,6 +49,8 @@ class Policy:
 
 
 POLICY: dict[str, Policy] = {
+    # an upstream copy (caldoai/skills prune-tests), byte-identical, never restyled here.
+    "coding": Policy(upstream=frozenset({"references/prune-tests.md"})),
     # each register is loaded alone when writing in that register, so the shared "never
     # invent a fact" rules must appear in more than one of them.
     "alex-voice": Policy(

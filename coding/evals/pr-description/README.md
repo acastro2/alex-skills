@@ -1,4 +1,4 @@
-# Evals: pr-change-description
+# Evals: coding, PR descriptions (`references/pr-description.md`)
 
 Safe-run rules (repo standard): run each `claude -p` eval with
 `--strict-mcp-config --tools "Skill,Read"`, each in its own process group,
@@ -14,7 +14,7 @@ Notes:
   outputs as fixture files in `files/<case>/`. The runs cannot post or
   touch a real PR. The publish and render-check steps (section 3) are not
   tested here; the evals check only that a run does not claim them.
-- Baseline: the same prompt with `--disallowedTools "Skill(pr-change-description)"`.
+- Baseline: the same prompt with `--disallowedTools "Skill(coding)"`.
   The baseline keeps the Skill tool, so it can still load `alex-voice`, as the
   real host does. Checked 2026-11-11: the deny rule returns "Skill execution
   blocked by permission rules".
@@ -24,10 +24,10 @@ Notes:
 - All fixtures are synthetic. The PR numbers, hashes, tickets and incidents
   are made up and must stay internally consistent: the shortstat lines match
   the line-count tables and the diff excerpts.
-- The tooling lives in `../tests/`. Run, then grade:
-  `python3 tests/run_iteration.py <workspace>/iteration-N`, then
-  `MERMAID_DIR=<dir> python3 tests/grade_code.py <workspace>/iteration-N`, then
-  `python3 tests/grade_jev.py <workspace>/iteration-N`. `MERMAID_DIR` is a temp dir
+- The tooling lives in `../../tests/pr-description/`. Run, then grade:
+  `python3 tests/pr-description/run_iteration.py <workspace>/iteration-N`, then
+  `MERMAID_DIR=<dir> python3 tests/pr-description/grade_code.py <workspace>/iteration-N`, then
+  `python3 tests/pr-description/grade_jev.py <workspace>/iteration-N`. `MERMAID_DIR` is a temp dir
   with `mermaid_parse.mjs` and `npm install mermaid@11.4.1 jsdom@25.0.1`.
   The runner writes `<case>/<config>/run-1/`, the layout `aggregate_benchmark` reads.
 - The number check also flags correct derived numbers (1501 - 558 = 943, or a
