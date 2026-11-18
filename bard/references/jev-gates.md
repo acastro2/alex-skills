@@ -116,6 +116,7 @@ during the re-check pass (step 6).
         "pattern": "a reusable technique",
         "artifact": "a tool or approach worth remembering",
         "impact": "an outcome that mattered",
+        "idea": "a proposal nobody has decided or built yet, naming both a real problem today and a concrete change that would fix it",
         "drop": "routine fix, transient debugging, one-off lookup, status chatter"}},
     "hub": {"type": "choice",
       "instructions": "Which hub in `hubs` does `candidate` belong under?",
@@ -187,6 +188,7 @@ user 0.98, over 0.80: ⏫".
 | Full Set T on the CAB case | waits on user, one step, user owes, ⏫, open | 0.99 · 0.91 · 0.98 · `high` 0.99 · done 0.02 |
 | SAD case, a later session shows it merged | user waits, done | `user_waits` 1.00 · done 0.92 · `high` 0.85 (forum date, a real event) |
 | Set K: ADO filter lesson (historical, ADO era) | lesson, Azure DevOps hub | `lesson` 0.96 · `Azure DevOps` 1.00 |
+| Set K: idea vs decision vs wish (2026-11-18, jev-1.13) | idea, decision, drop | `idea` 0.99 · `decision` 0.54 (unsure vs lesson) · `drop` 0.84 |
 | Set A: 5 real Teams messages, redacted | 2 asks, 2 not, 1 unclear | 0.89 · 0.97 ask; 0.14 · 0.11 not; 0.33 unsure |
 
 Re-run these after you change any question text. Note on the SAD row: `high` comes from the

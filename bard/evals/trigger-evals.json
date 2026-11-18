@@ -8,6 +8,14 @@
   "should_trigger": true
  },
  {
+  "query": "save this idea to bard: an agent that bumps our internal packages when they publish",
+  "should_trigger": true
+ },
+ {
+  "query": "add a future idea to my knowledge base and research how we could build it",
+  "should_trigger": true
+ },
+ {
   "query": "capture what I worked on today into my knowledge base",
   "should_trigger": true
  },

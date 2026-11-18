@@ -1,6 +1,13 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-18, HEAD bf65aed (coding evals complete)
+Updated: 2026-11-18, HEAD bf65aed (coding evals complete; bard ideas uncommitted)
+
+## bard ideas
+
+State: uncommitted (2026-11-18). bard writes `type: idea` notes to `Bard/Ideas/` (`bard/references/ideas.md`), on demand (`/bard idea`) or from Set K `idea` in a sweep. The live `Bard.base` has an Ideas view. Checks: `check.sh` 12/12, triggers 4/4 (q02, q03, q10, q11, 3 runs each), Jev Set K row in `jev-gates.md`. First note: `Bard/Ideas/A package-published event lets a Hub dependency agent open bump PRs in every consumer within minutes.md`.
+
+Next:
+1. Alex commits by area: `feat(bard): capture future ideas in Bard/Ideas`.
 
 ## coding skill (was code-rules)
 
