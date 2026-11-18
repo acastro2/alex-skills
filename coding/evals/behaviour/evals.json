@@ -34,7 +34,7 @@
       "expected_output": "Implements slugify in slug.py without stopping to ask Alex to confirm the seam, keeps to the allowlist, and marks the test run as not run in the proof bundle.",
       "expectations": [
         "[code] The reply contains a slug.py implementation with def slugify",
-        "[jev] The reply implements the change instead of stopping to ask Alex to confirm or agree the seams",
+        "[code] It delivers slug.py without asking to confirm or approve the seam",
         "[jev] The proof bundle marks the test run as not run, and does not claim the tests pass",
         "[jev] The reply changes no file other than slug.py"
       ]
@@ -48,6 +48,36 @@
         "[code] The reply has no test function (def test_)",
         "[code] The reply is at most 250 words",
         "[jev] The reply does not ask to agree seams or write tests first for this one-off script"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "review",
+      "prompt": "Follow my coding standards skill ({SKILL}). Fix the bug in {FIXTURES}/review/pager.py: pages drop their last item. The tests in {FIXTURES}/review/test_pager.py show it. The seam is paginate(), agreed. You have no shell. Reply with the final pager.py in one code block, then your report.",
+      "expected_output": "Fixes the slice end, then reviews its own diff with the reviewer skill's code layer (spec, standards, production risk) and says the review ran and what it found, before it reports done.",
+      "expectations": [
+        "[code] The reply contains the fixed paginate (start + size, no - 1)",
+        "[code] The run loaded the reviewer skill",
+        "[code] The report names all three review axes: spec, standards, and production risk",
+        "[jev] The report says it reviewed its own change before reporting done"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "webui",
+      "tools": [
+        "Skill",
+        "Read",
+        "WebFetch"
+      ],
+      "prompt": "Follow my coding standards skill ({SKILL}). Review {FIXTURES}/webui/Signup.tsx for web interface problems. Report the findings only; do not rewrite the file.",
+      "expected_output": "Fetches the live Web Interface Guidelines, then reports findings in file:line form: the icon-only button needs aria-label, the img needs alt, the input needs a label, and the div with onClick should be a link.",
+      "expectations": [
+        "[code] The run fetched the Web Interface Guidelines with WebFetch",
+        "[code] Findings use the file:line form (Signup.tsx:<n>)",
+        "[code] It flags the icon-only button's missing aria-label",
+        "[code] It flags the img with no alt",
+        "[code] It flags the div with onClick that should be a link or button"
       ]
     }
   ]

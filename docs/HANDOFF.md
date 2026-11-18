@@ -1,21 +1,19 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-18, HEAD 64e1c21 (code-rules renamed to coding, evals running)
+Updated: 2026-11-18, HEAD bf65aed (coding evals complete)
 
 ## coding skill (was code-rules)
 
-State: uncommitted, staged in part. `code-rules` was renamed to `coding`. web-design-guidelines, pr-change-description, and caldoai prune-tests were folded in as references. SKILL.md was restructured into shape / test / finish / by domain. In the Terraform reference, the employer names were made generic and the `~>`-vs-exact module pin contradiction was fixed. The global AGENTS.md and CLAUDE.md now load `coding`. skillcheck passes. Checked 2026-11-18.
+State: done and pushed (2026-11-18). The evals are in `coding/evals/`, and results are under `~/.agents/skill-workspace/alex-skills/coding/` (`re-eval-1`, `re-eval-2`). Against the `code-rules-v0` snapshot, on Opus, Sonnet and Haiku: the self-review case goes 0.5 to 1.0, and the other 5 cases tie at 1.0 (Haiku throwaway is 0.83 on both). Triggers 22/22. PR description beats no skill on 3 of 4 cases. Checked 2026-11-18 by `grade.py` and `grade_jev.py`.
 
 Next:
-1. Results, checked 2026-11-18. Triggers 20/20 (iter-1 plus q2 and q18 re-run in iter-2). Behaviour against the fair snapshot (iter-2): a tie, 0.93 to 1.0 on every case; every miss is a Jev UNSURE on "not run" wording. The cases do not separate Opus with or without the skill.
-2. Builder lanes ran 2026-11-18 (`iter-3-haiku`, `iter-3-sonnet`): no regression, all key behaviours pass. The only gap: Haiku throwaway replies are shorter with the new skill. Grade with `grade.py <iter>`.
-3. Gates pass: `./scripts/check.sh`, `pre-commit run --all-files`. Nothing is committed.
+1. None open. To re-run: `python3 coding/tests/behaviour/run_behaviour.py <iter> --baseline-skill <snapshot> [--only names] [--model claude-haiku-5-5]`, then `grade.py <iter>`.
 
 Gotchas and dead ends:
-- Old `code-rules` copies: the claude.ai skill was removed, and the `skills-provenance` and `skills-isoscene` worktrees were removed (2026-11-18; their branches are still on origin). The `~/.claude/skills/synced/` cache goes when Claude Code resyncs.
-- `implement` was folded into `coding` (part 0 and the "Review your own diff" step) on 2026-11-18. Triggers q20 and q21 cover its old asks: 4/4.
-- Iteration 1 baseline never loaded `code-rules-v0`: denied `Skill(coding)`, no fallback. Fixed: prompts carry `{SKILL}`, filled per config by `run_behaviour.py`.
-- The baseline snapshot is `~/.agents/skill-workspace/alex-skills/coding/snapshot/code-rules-v0`, renamed so it does not pass as the live skill.
+- The baseline must be named in the prompt (`{SKILL}`): a denied `Skill(coding)` never falls back on its own.
+- Jev misreads optional offers and long replies. Keep exact checks (seam asks, file:line, the div finding) in code.
+- PR description: the number check flags correct derived numbers (`429`), and the word limit counts notes outside the fenced body. Check those flags by hand.
+- `checks.yml` runs on pull requests only, so a direct push to main gets no CI.
 
 ## handoff skill
 

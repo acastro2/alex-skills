@@ -29,12 +29,21 @@ ap.add_argument("--runs", type=int, default=2)
 ap.add_argument("--timeout", type=int, default=600)
 ap.add_argument("--model", default="claude-opus-5-5")
 ap.add_argument("--dry-run", action="store_true")
+ap.add_argument("--only", default=None, help="comma list of eval names to run; default all")
 a = ap.parse_args()
 
 if not (EVALS / "evals.json").is_file():
     print(f"missing {EVALS / 'evals.json'}", file=sys.stderr)
     sys.exit(2)
 EV = json.load(open(EVALS / "evals.json"))["evals"]
+if a.only is not None:
+    wanted = [n.strip() for n in a.only.split(",") if n.strip()]
+    known = {e["name"] for e in EV}
+    for n in wanted:
+        if n not in known:
+            print(f"unknown eval: {n}", file=sys.stderr)
+            sys.exit(2)
+    EV = [e for e in EV if e["name"] in wanted]
 IT = Path(a.iteration).expanduser().resolve()
 BASE = Path(a.baseline_skill).expanduser().resolve()
 FIX = IT / "fixtures"
@@ -47,20 +56,28 @@ for ev in EV:
     ev["prompt"] = ev["prompt"].replace("{FIXTURES}", str(FIX))
 
 
+def tools_of(ev):
+    return ev.get("tools", ["Skill", "Read"])
+
+
 def plan(ev, cfg, k):
     d = IT / f"eval-{ev['id']}-{ev['name']}" / cfg / f"run-{k}"
     cwd = d if cfg == "with_skill" else IT / "old-cwd" / f"{ev['name']}-{k}"
     # Name the skill each config loads: a denied baseline does not fall back by itself (iteration 1).
     prompt = ev["prompt"].replace("{SKILL}", "coding" if cfg == "with_skill" else BASE.name)
-    cmd = ["claude", "-p", prompt, "--model", a.model, "--strict-mcp-config", "--tools", "Skill,Read",
-           "--output-format", "stream-json", "--verbose", *([] if cfg == "with_skill" else DENY)]
+    tools = tools_of(ev)
+    extra = [t for t in tools if t not in ("Skill", "Read")]
+    allowed = ["--allowedTools", ",".join(extra)] if extra else []
+    cmd = ["claude", "-p", prompt, "--model", a.model, "--strict-mcp-config", "--tools", ",".join(tools),
+           *allowed, "--output-format", "stream-json", "--verbose", *([] if cfg == "with_skill" else DENY)]
     return d, cwd, cmd
 
 
 def run(ev, cfg, k):
     d, cwd, cmd = plan(ev, cfg, k)
     (d / "outputs").mkdir(parents=True, exist_ok=True)
-    json.dump({"eval_id": ev["id"], "eval_name": ev["name"], "prompt": ev["prompt"], "assertions": ev["expectations"]},
+    json.dump({"eval_id": ev["id"], "eval_name": ev["name"], "prompt": ev["prompt"], "assertions": ev["expectations"],
+               "tools": tools_of(ev)},
               open(d.parent.parent / "eval_metadata.json", "w"), indent=2)
     if cfg == "old_skill":
         dest = cwd / ".claude" / "skills" / BASE.name

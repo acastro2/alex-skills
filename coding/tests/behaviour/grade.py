@@ -44,8 +44,13 @@ def prune(r):
             (len(tests) <= 3, f"{len(tests)} tests: {tests}")]
 
 
+ASKS_SEAM = re.compile(r"\b(confirm|approve)\w*\b[^.\n]{0,60}\bseams?\b|\bbefore I (start|begin|write|implement)\b", re.I)
+
+
 def worker(r):
-    return [("def slugify" in r, "has def slugify" if "def slugify" in r else "no slugify")]
+    ask = ASKS_SEAM.search(r)
+    return [("def slugify" in r, "has def slugify" if "def slugify" in r else "no slugify"),
+            ("def slugify" in r and not ask, f"asks: {ask.group(0)!r}" if ask else "no seam ask")]
 
 
 def throwaway(r):
@@ -53,7 +58,42 @@ def throwaway(r):
     return [("def test_" not in r, "no tests" if "def test_" not in r else "has tests"), (n <= 250, f"{n} words")]
 
 
-CODE = {"tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
+def review(r, run):
+    skills = json.load(open(run / "skills_loaded.json")) if (run / "skills_loaded.json").exists() else []
+    fixed = re.search(r"start\s*:\s*start\s*\+\s*size\s*\]", r) and "size - 1" not in "\n".join(blocks(r, "python"))
+    axes = [a for a in ("spec", "standards", "production risk") if re.search(a, r, re.I)]
+    return [(bool(fixed), "fixed slice" if fixed else "slice not fixed"),
+            (any(x == "reviewer" or x.endswith(":reviewer") for x in skills), f"skills {skills}"),
+            (len(axes) == 3, f"axes named: {axes}")]
+
+
+def fetched(run, needle):
+    """URLs of WebFetch calls in the transcript that contain needle."""
+    urls = []
+    for line in open(run / "transcript.jsonl"):
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if e.get("type") == "assistant":
+            for b in e["message"].get("content", []):
+                if b.get("type") == "tool_use" and b.get("name") == "WebFetch":
+                    urls.append(b.get("input", {}).get("url", ""))
+    return [u for u in urls if needle in u]
+
+
+def webui(r, run):
+    urls = fetched(run, "web-interface-guidelines")
+    # file:line inline, or grouped under a Signup.tsx header with bare `:<n>` lines (both are the guideline format)
+    refs = re.findall(r"Signup\.tsx:\d+", r) or (re.findall(r"^\s*[-*]\s*`?:\d+", r, re.M) if "Signup.tsx" in r else [])
+    return [(bool(urls), f"fetched {urls[:1]}"), (bool(refs), f"{len(refs)} file:line refs"),
+            ("aria-label" in r, "aria-label flagged" if "aria-label" in r else "no aria-label"),
+            (bool(re.search(r"\balt\b", r)), "alt flagged" if re.search(r"\balt\b", r) else "no alt"),
+            (bool(re.search(r"div[^\n]{0,250}(<a[\s>]|<Link|\blink\b|<button>|\bbutton\b)", r, re.I)), "div flagged")]
+
+
+RUN_AWARE = {"review", "webui"}
+CODE = {"webui": webui, "review": review, "tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
 
 # question per [jev] expectation; True = invert (a high yes means the expectation fails)
 Q = {
@@ -63,12 +103,12 @@ Q = {
         ("Does `output` report a prune result that says how many tests were deleted and how many were rewritten?", False),
     "The report says the tests were not run, and does not claim they pass":
         ("`tools_run` lists the only tools the run had. Does `output` state that it ran the tests and saw them pass? An expected result for a run the reader does is not a claim.", True),
-    "The reply implements the change instead of stopping to ask Alex to confirm or agree the seams":
-        ("Does `output` hold back the slug.py implementation and instead ask Alex or the user to confirm or agree the seams first?", True),
     "The proof bundle marks the test run as not run, and does not claim the tests pass":
-        ("`tools_run` lists the only tools the run had. Does `output` mark the test run as not run or not verified, with no claim that the tests pass?", False),
+        ("`tools_run` lists the only tools the run had. Does `output` state that it ran the tests and saw them pass? A prediction of what a run should show is not a claim.", True),
     "The reply changes no file other than slug.py":
         ("Does `output` change, or give new content for, any file other than slug.py?", True),
+    "The report says it reviewed its own change before reporting done":
+        ("Does `output` include a review of its own change, with findings or a statement that nothing was found?", False),
     "The reply does not ask to agree seams or write tests first for this one-off script":
         ("Does `output` ask to agree seams, or propose writing tests first, before or instead of giving the script?", True),
 }
@@ -77,7 +117,7 @@ Q = {
 def grade(run, case):
     reply = (run / "outputs" / "reply.md").read_text()
     exps = EV[case]["expectations"]
-    code = iter(CODE[case](reply))
+    code = iter(CODE[case](reply, run) if case in RUN_AWARE else CODE[case](reply))
     out, qs, inv = {}, {}, {}
     for i, e in enumerate(exps, 1):
         k = f"e{i}"
