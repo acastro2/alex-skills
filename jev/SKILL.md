@@ -28,6 +28,17 @@ It pays most when the same judgment runs on many items (grading every eval expec
 
 Keep it out of: generating or rewriting text, arithmetic, counting (words, items, occurrences), comparing dates, exact lookups, and anything a regex or parser can decide. Do those in code or yourself; Jev's own known-limits page lists them as weak spots.
 
+## Routing
+
+Routing is the highest-value use. If the answer is one of a fixed set, it is a `choice`, not a prose decision. TypeSafe documents it as a first-class pattern: a fast, cheap classifier in front of expensive handlers.
+
+- **Put the labels in `criteria` and define each one.** The answer can only be a label you supplied, so the router cannot return a bucket the code does not handle.
+- **Add an escape label** (`none`, `other`, `not_sure`) when no option may fit. A forced pick is worse than an honest miss.
+- **Ask intent and difficulty in one call**: a `choice` for the route, a `score` for complexity. Gate on both.
+- **Read `confidence`, not just `choice`.** Below your bar, send it to a person or the general path; do not guess. TypeSafe's own example sends anything under 0.5 to a human.
+- **Up to 255 options fit one Choice.** Above about 20, do a cheap first pass over coarse groups, then a second Choice over the shortlist.
+- **Thresholds live in one place in code**, never per run. Use 0.80 when a wrong route is expensive, 0.50 when the handler is cheap to correct.
+
 ## How to call it
 
 | Host | Path |
