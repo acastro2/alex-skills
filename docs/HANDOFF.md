@@ -1,6 +1,6 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-18, HEAD bf65aed (coding evals complete; bard ideas uncommitted)
+Updated: 2026-11-18, HEAD 0b7d795 (reverse-engineer-anything removed; jev branch merged into main)
 
 ## bard ideas
 
@@ -61,6 +61,7 @@ Not re-checked; each was true when it was written:
 - `jev` CLI: the auth store key returns HTTP 401, and the CLI falls back to `$OPENCODE_API_KEY`. Fix: `opencode auth login opencode-go`.
 - weekly-report: the first team Slack paste has not run; it reports the full name of the prefix channel. Datadog needs `/mcp` login at the Mac.
 - Alex only: delete the stale `alex-voice` and `skill-creator` in claude.ai → Customize → Skills.
+- Alex only: `git branch -d feat/jev-speculative-questions`. It is merged into main (`0b7d795`); `git branch` needs Alex's approval.
 - Alex only: the label contract names a Done epic as the active bolt epic. Draft an evolution proposal when Alex says go.
 - alex-voice round 3: it is not known whether Alex marked the lineup (`wf_7113c18f-530`). Private notes: `~/Developer/obsidian/Alex/40 Writing/Voice/`.
 
@@ -76,5 +77,6 @@ None.
 - Eval workspaces: `~/.agents/skill-workspace/alex-skills/<skill>/`. `evals/` is gitignored, so add it with `git add -f`.
 - Plain `python3` has no PyYAML, so skillcheck silently skips. Use `uv run --with pyyaml python -m skillcheck`.
 - Jev: `~/.local/bin/jev`, MCP `jev-mcp`, model `jev-1.13` on OpenCode Zen. Read a `score` as its lean, not the nearest integer.
+- OpenCode denies every `git checkout *` (`~/.config/opencode/opencode.jsonc`). To change branch, use `git switch <branch>`, which refuses to overwrite local changes.
 - Install layout: `~/.claude/skills` holds one symlink per skill. Run `scripts/link_claude_skills.sh` after you add or remove a skill.
 - This repo is public. Never write employer names, Jira keys, site names, or account ids here. Commit `0ebe692` still holds a Jira key in git history; a history scrub is Alex's call.
