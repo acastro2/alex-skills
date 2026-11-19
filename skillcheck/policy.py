@@ -95,9 +95,6 @@ POLICY: dict[str, Policy] = {
     # the skill is a symlink into the opencode-chart-tui repo, and the schema sits at that
     # repo's root, outside the linked folder.
     "opencode-charts": Policy(external_paths=frozenset({"schema/chart.schema.json"})),
-    # an upstream copy from the npm package rea-agents, not edited here: a local restyle is
-    # undone by the next pull, so the style rules skip it.
-    "reverse-engineer-anything": Policy(upstream=frozenset({"SKILL.md", "references/"})),
     # CC BY 4.0 needs the credit in every copy, so each reference carries the same line.
     "unslop": Policy(
         standalone=frozenset(

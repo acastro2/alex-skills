@@ -54,13 +54,6 @@ Next:
 Blockers:
 - huggingface.co is blocked on every network. Alex must AirDrop the models.
 
-## reverse-engineer-anything
-
-State: the skill has no server. Checked 2026-11-16: `rea-agents` is not in `~/.config/opencode/opencode.jsonc` (removed in opencode_config `144a911`).
-
-Next:
-1. Add the REA MCP back at `rea-agents@6.9.0` in `~/.config/opencode/opencode.jsonc`.
-
 ## Other open items
 
 Not re-checked; each was true when it was written:

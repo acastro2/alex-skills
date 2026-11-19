@@ -10,8 +10,8 @@ with our `## Asking` block removed, so a local edit and upstream drift read apar
     python3 -I scripts/upstream_audit.py --detail      # plus commits since, SKILL.md diff
     python3 -I scripts/upstream_audit.py archify peekaboo --json
 
-A difference is not drift by itself: a skill we copy from a release (archify) or a package
-(reverse-engineer-anything) differs from `main`. Read the README "Upstream provenance" row
+A difference is not drift by itself: a skill we copy from a release (archify) differs from
+`main`. Read the README "Upstream provenance" row
 before calling a skill behind. Keep UPSTREAMS in step with that table.
 """
 from __future__ import annotations
@@ -41,7 +41,6 @@ UPSTREAMS: list[tuple[str, str, str]] = [
     ("herdr", "herdrdev/herdr", "skills/herdr"),
     ("browser-control", "anomalyco/browse", "cli/skills/browse"),
     ("security-audit", "cloudflare/security-audit-skill", "skills/security-audit"),
-    ("reverse-engineer-anything", "morluto/rea", ".agents/skills/reverse-engineer-anything"),
     ("autoresearch", "uditgoenka/autoresearch", ".agents/skills/autoresearch"),
     ("ub-mode", "unclebob/ub-mode", ""),
     ("unslop", "heydamir/unslop", "skills/unslop"),
