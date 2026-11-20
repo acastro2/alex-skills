@@ -9,7 +9,7 @@ Run this lane in the main thread, not inside the archeologist: the archeologist 
 Planner, To Do, Todoist, Jira, or `gh` tools. The one exception is the Teams-and-mail paging
 on a busy window, which a general background agent can carry (see **Volume** below).
 
-Teams, mail, Jira, and GitHub come from the gather lane first (see `SKILL.md` step 3). The
+Teams, mail, Jira, GitHub, and Slack come from the gather lane first (see `SKILL.md` step 3). The
 calls below are the fallback, for a source that gather did not fetch.
 
 ## Two cursor kinds
@@ -120,7 +120,9 @@ that Alex has not answered in the same chat as an open ask.
 
 ## Slack
 
-Slack is the busiest comms store at Alex's current job, so run it first. Use archeologist
+Slack is the busiest comms store at Alex's current job, so run it first. Read gather's
+`raw/slack/` files first (verbatim, quotable). Keep each hit's `Permalink` for the breadcrumb.
+Run the native method below only when the gather `slack` line is in `fallback`. Use archeologist
 [Source J](../../archeologist/references/slack.md) for access per host: OpenCode reaches Slack
 natively through its own `slack_*` tools. Search with `slack_search_public_and_private` (modifiers
 go in `filters`), then read each hit with `slack_read_thread` (`Channel` id + `Message_ts` from
@@ -137,7 +139,7 @@ the result). Quote the tool's own markdown result verbatim.
 - Breadcrumb on the board: `([slack:YYYY-MM-DD](https://<workspace>.slack.com/archives/<channel>/p<ts>))`, the message date linked to the
   ask's `Permalink` from the search result (todo-board.md, Source breadcrumb). Keep the
   permalink when you read the hit, so the board line can link it.
-- **Method that worked (2026-11-11):** get Alex's user id with `slack_search_users`; search DMs
+- **Fallback method (2026-11-11), when the gather `slack` line is in `fallback`:** get Alex's user id with `slack_search_users`; search DMs
   (`channel_types: im,mpim`) and mentions (`keywords: "<@U…>"`) only to find the conversations;
   then read each DM in full with `slack_read_channel` and each mentioned thread with
   `slack_read_thread`. Alex answers fast, so most items are his own commitments ("will do",

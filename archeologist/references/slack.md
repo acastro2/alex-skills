@@ -25,6 +25,7 @@ so which host works depends on whose client id it can use.
 | Host | Path |
 |---|---|
 | OpenCode | the Slack MCP server directly, reusing Cursor's approved client id with its registered loopback redirect `http://localhost:8787/callback`. Configured in `~/.config/opencode/opencode.jsonc`; sign in once with `/mcps`. Native `slack_*` tools, no bridge |
+| gather (headless) | `opencode run --agent gather-slack` in `~/.gather/run-opencode`, read tools only, sessions deleted after each run; see gather/SKILL.md |
 | Claude Code | the Slack MCP server directly, only if the admin approves Claude's app. MyQ blocks it (`You are not authorized to install Claude on MyQ`), so treat Claude Code as unavailable for Slack there |
 | Cursor IDE | the Slack MCP server directly (Cursor plugin `slack`, or Settings → MCP) |
 

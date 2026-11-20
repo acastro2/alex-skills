@@ -1,12 +1,12 @@
 # Spec: gather — fetch-only intake for bard
 
-Status: built 2026-11-13; contracts below match `scripts/gather.py`. Owner: Alex.
+Status: built 2026-11-13; `slack` added 2026-11-20. Contracts below match `scripts/gather.py`. Owner: Alex.
 
 ## Why
 
 bard fetches and distills in one run, but no single host reaches every source.
 Claude Code has M365 and Jira, Cursor had Slack, OpenCode had neither. So bard ran in
-three places. Update 2026-11-13: OpenCode now reaches Slack and Jira natively (commit af5f36a), so Slack left gather; bard reads it natively. `gather` takes over the fetching. It writes raw, verbatim payloads to a local
+three places. Update 2026-11-13: OpenCode now reaches Slack and Jira natively (commit af5f36a), so Slack left gather. Update 2026-11-20: Slack came back, because bard's own Slack reads left Slack as the one source with no raw store, no cursor, and no ledger line. gather now fetches Slack through `opencode run` (contract 7). `gather` takes over the fetching. It writes raw, verbatim payloads to a local
 store, and bard then reads only local files, from any host (OpenCode by default).
 
 Skill category (AGENTS.md): **Alex's systems**. It records which host reaches which source,
@@ -49,6 +49,39 @@ and the calls that are proven.
           No ~/.gather, or a source missing from the ledger → bard's current lane (fallback).
 ```
 
+## Facts added 2026-11-20 (Slack, verified live)
+
+- `claude -p` cannot reach Slack: `claude mcp list` shows `claude.ai Slack` as `Needs authentication`,
+  and the MyQ admin blocks Claude's Slack app.
+- OpenCode reaches Slack with Cursor's approved client id. `opencode run --agent <a> --archived
+  --format json -m <model> "<prompt>"` runs headless. Each tool call is one stdout line:
+  `{"type":"tool_use","sessionID":"ses_...","part":{"type":"tool","tool":"slack_slack_read_channel",
+  "state":{"status":"completed","input":{...},"output":"<text>","metadata":{"truncated":false,...}}}}`.
+  `state.output` equals the MCP text byte for byte.
+- No OpenCode API endpoint calls an MCP tool without a model, so a model is in the loop.
+- Project config in the run cwd (`opencode.jsonc`) is honored. An agent that denies `*` and then
+  allows only the Slack read tools blocked `glob`: no tool event came back for it.
+- OpenCode cuts tool output at `tool_output.max_bytes` (default 51200). The run cwd config raises it
+  (`max_bytes: 20000000`, `max_lines: 1000000`). `metadata.truncated` reports a cut.
+- Results are JSON: search gives `{"results": "<markdown>", "pagination_info": "<text>"}`;
+  `slack_read_channel` gives `{"messages": ..., "pagination_info": ...}`; `slack_read_user_profile`
+  gives `{"result": "User ID: U...\n..."}`. `pagination_info` is either
+  ``For the next page of results use cursor `<c>` `` or `There are no more messages available.`
+- A search hit is markdown: `### Result i of n`, then `Channel: <name> (ID: C...)`, `Participants`,
+  `From`, `Time`, `Permalink`, `Text`.
+- Every `opencode run` saves a session in `~/.local/share/opencode/opencode.db` (directory = run cwd),
+  even with `--archived`. `opencode session delete <id>` removes the session, its messages and parts.
+- The runner model reads every result. Cursor models cannot use MCP tools through OpenCode: no
+  `tool_use` event, and the model says "Tool not found". Model order (Alex, 2026-11-20):
+  `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash` (`high`).
+- Rewriting `opencode.jsonc` right before each `opencode run` raced OpenCode's config reload: every
+  call failed with `Agent not found: "gather-slack"`. The same run without the rewrite worked.
+- `claude-agent/haiku` completed `slack_read_user_profile` with `{"response_format": "concise"}`.
+  With `{}` it added `user_id: ""` and the call failed. It saves Claude Code sessions (tool results
+  included) under `~/.claude/projects/<cwd, every non-alphanumeric character as ->/`.
+- Not yet verified live: a full `gather.py run --sources slack` run, an empty search result, and the
+  message format of a `read_channel` page.
+
 ## Sources (first cut)
 
 | Source | Kind | Calls |
@@ -61,6 +94,7 @@ and the calls that are proven.
 | `sharepoint` | window | `sharepoint_search` `query:"*"`, `author:<display name>` (the mail matches nothing), `afterDateTime:<cursor>` (docs Alex authored or changed; docs he only opened are out of reach) |
 | `jira` | snapshot | `searchJiraIssuesUsingJql` `assignee = currentUser() AND statusCategory != Done` (no date: bard filters by changelog), then `getJiraIssue` `expand: changelog` per hit, in batches of up to 10 per round |
 | `github` | snapshot | `gh search prs --review-requested=@me --state=open` and `gh search prs --involves=@me --updated=>=<cursor date>` |
+| `slack` | window | `opencode run`, Slack tools only (contract 7): user profile, three searches (DMs, mentions of me, my posts), `read_channel` per DM channel, `read_thread` per thread; one span, no day chunks |
 | `github_activity` | stream | `gh api users/<login>/events?per_page=100&page=1..3`, `gh search prs --involves=@me --updated=>=<date> --json number,repository,updatedAt`, then `gh api repos/<repo>/issues/<n>/timeline?per_page=100 --paginate --slurp` per touched item, newest activity first, max 200 |
 
 `<me>` comes from `get_me` at run start, never from a file in the repo.
@@ -91,7 +125,7 @@ are in the events (when not dropped) but not in the timelines.
    run where K `getJiraIssue` calls failed: the records read are stored, `last_ok` stays, exit 1.
    The reason is fixed text (`claude failed`, `gh failed`, `tool error`, `spill`,
    `unexpected result`, `call mismatch`, `paging`, `no jira site`, `unknown source`,
-   `get_me failed`, `state unreadable`); exception and tool text go to `logs/<run_id>.log`
+   `get_me failed`, `state unreadable`, `opencode failed`, `no slack user id`); exception and tool text go to `logs/<run_id>.log`
    (0600), never the ledger. One ledger file is written per run and rewritten after each
    source, together with `state.json`, so a crash keeps the finished sources. A corrupt
    `state.json` (not an object, or `cursors`, `last_ok`, `covered_from` not an object) gives every
@@ -127,7 +161,59 @@ are in the events (when not dropped) but not in the timelines.
    `(<tool> completed with no output)`; anything else is `error: unexpected result`. So is a JSON
    body whose only keys are `error`, `message`, `code`, `status`, `statusCode`, and a Jira search
    result that is not `{"issues": {"nodes": [...]}}`.
-7. **Slack.** Removed 2026-11-13. bard reads Slack natively in OpenCode.
+7. **Slack.** Source `slack` is a window source (cursor and `covered_from`) with one span, because
+   Slack `after:` is a date, and no day chunks. It does not start `get_me`. Window start = cursor,
+   else `--since`, else 7 days back. The runner is `opencode_runner(root)`; the `runner(calls, allowed)
+   -> stdout` seam is the same as for `claude -p`, and `run_round` takes the parser (`parse_opencode`).
+   `run(..., slack_runner=...)` takes a separate runner, so tests inject a fake one.
+   - **Calls.** `slack_slack_read_user_profile {"response_format": "detailed"}` gives my user id from `User ID: (U\w+)` (none:
+     `error: no slack user id`). Then three `slack_slack_search_public_and_private` chains:
+     DMs (`channel_types` `im,mpim`), mentions (`keywords: ["<@U...>"]`), and own posts
+     (`filters: "from:<@U...> after:<D>"`), all with `limit: 20`, `include_context: false`,
+     `sort: "timestamp"`. `D` = the day before the window start (UTC date), because `after:` leaves
+     out the date typed. Then, up to 10 calls per runner round: `slack_slack_read_channel` for each DM
+     channel id from the DM search (`oldest` = window start epoch seconds, `limit: 100`), and
+     `slack_slack_read_thread` for each thread (`limit: 100`). A thread target is the permalink's
+     `thread_ts` when present; else, for a hit outside the DM channels, the `p<digits>` path part as
+     `<first 10>.<rest>`. Targets are deduped by `(channel, ts)`.
+   - **Paging.** The `cursor` in `pagination_info` gives the next call a `cursor` argument. `no more`
+     ends the chain. Neither, on a full search page, is `capped at N pages`. A read page with neither
+     ends its chain: the page has no message count to compare. `--max-pages` counts per chain. A cap
+     leaves the cursor where it was, or pins it to the window start, as for a capped first chunk.
+   - **Items and ledger.** Items = total search hits. Line: `fetched N calls, M items`. N counts every
+     stored record, the profile included.
+   - **Parse.** A tool part whose `tool` is not in the round's allowed tools is a `GuardError`.
+     `status` `completed` gives `state.output` as the content. `error` is a tool error with
+     `state.error`. `metadata.truncated` true is a `SpillError`. The tools are the OpenCode ids
+     `slack_slack_read_user_profile`, `slack_slack_search_public_and_private`,
+     `slack_slack_read_channel`, `slack_slack_read_thread`.
+   - **Runner.** cwd `<root>/run-opencode` (0700). It writes `opencode.jsonc` there from a constant,
+     only when the file is missing or different, never per round: agents (V2 keys `agents` and
+     `system`) `gather-slack` (mode primary, system prompt = the exact-calls instruction, which says to
+     pass each args object exactly as given and add no keys; permissions deny `*` then allow the four
+     Slack read tools), `tool_output` limits, and `"snapshots": false`. The per-round allowlist stays
+     in the parser. Command: `opencode run --agent gather-slack --archived --format json -m
+     <model> <prompt>`.
+   - **Model fallback.** `SLACK_MODELS` = `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash`
+     (`high`). A Cursor model is not used: it cannot call OpenCode MCP tools. A runner failure
+     (non-zero exit, timeout, an error event, or calls asked but no tool part in the output) on the first
+     model retries that round once on the second and keeps it for
+     the rest of the run. The run log gets `slack: fell back to opencode-go: <reason>`. A failure on
+     the last model is `error: opencode failed`.
+   - **Cleanup.** Every `sessionID` seen in stdout is deleted with `opencode session delete` in a
+     `finally`. A failed delete writes the id to `<root>/run-opencode/orphans` (0600); the next run
+     deletes orphans first. gather never touches a session it did not create. A run killed by a
+     timeout keeps only the ids that reached stdout before the kill, so the first call and
+     `runner.close()` (called from `cmd_run` in a `finally`) also run `opencode session list --format
+     json` in the run cwd and delete every session whose `directory` equals the resolved cwd exactly,
+     never by the list alone, because a non-git folder can share a project with other folders. A list
+     failure is a note in `runner.notes`, never an error. After every attempt the
+     `~/.claude/projects/<run-opencode cwd>` folder (the name `_project_dir` gives) is removed whole,
+     because `claude-agent` models save Claude Code sessions there. It is skipped if it is a symlink,
+     and no other path is touched.
+   - **Privacy.** The runner model reads every Slack result, so Slack text goes to that model's
+     provider.
+   - **Not in scope.** Slack canvases and files, channel history without Alex in it, the `with:` search.
 
 8. **bard reads.** bard sweeps every raw file not in `gather_seen` and copies the gather ledger
    lines into its coverage ledger. A source fetched more than `--max-age-hours` (default 24) ago is a gap.
@@ -157,5 +243,5 @@ are in the events (when not dropped) but not in the timelines.
 
 ## Not in the first cut
 
-Parallel sources, Planner/To Do/Todoist, `m365` CLI path, Slack headless, removing bard's
-old lanes.
+Parallel sources, Planner/To Do/Todoist, `m365` CLI path, removing bard's old lanes. (Slack headless
+was in this list until 2026-11-20; it is built, see contract 7.)

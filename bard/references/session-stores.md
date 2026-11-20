@@ -28,7 +28,9 @@ already cost a sweep.
   `session_v2.time_created` alone, because sessions span days. Text lives in `data`: a
   `user` row has `.text`; an `assistant` row has `.content[]`, keep only
   `type=="text"` parts (drop `reasoning` and tool parts). Skip subagent sessions unless
-  the parent points at them, and skip `*-smoke`/`cctest` scratch directories. The
+  the parent points at them, and skip `*-smoke`/`cctest` scratch directories. Skip sessions
+  whose directory is under `~/.gather/`: those are gather's Slack runner sessions. Gather
+  deletes them, so a leftover is mechanics, not work. The
   legacy `session` table is stale (last row 2026-08); never use it as the cursor.
   Verified 2026-09-25: 139 sessions (51 main) in one week, the second-largest store
   after Claude Code, and the first opencode-free sweep missed all of it.

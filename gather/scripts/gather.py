@@ -16,6 +16,7 @@ import uuid
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 M365 = "mcp__claude_ai_Microsoft_365__"
 ATL = "mcp__claude_ai_Atlassian__"
@@ -36,6 +37,29 @@ MCP_OUTPUT_TOKENS = "200000"
 PREVIEW_MARK = "<persisted-output>"
 CAP_ERROR = re.compile(r"Error: result \([\d,]+ characters\) exceeds maximum allowed tokens")
 DEFAULT_ROOT = Path.home() / ".gather"
+# Slack runs through `opencode run`: claude-agent first, then opencode-go (Alex, 2026-11-20). The Cursor
+# model cannot call OpenCode MCP tools: it made no tool call and said "Tool not found" (live 2026-11-20).
+SLACK_MODELS = ("claude-agent/haiku", "opencode-go/deepseek-v4.1-flash#high")
+SLACK_AGENT = "gather-slack"
+SLACK_PROFILE = "slack_slack_read_user_profile"
+SLACK_SEARCH = "slack_slack_search_public_and_private"
+SLACK_CHANNEL = "slack_slack_read_channel"
+SLACK_THREAD = "slack_slack_read_thread"
+SLACK_TOOLS = (SLACK_PROFILE, SLACK_SEARCH, SLACK_CHANNEL, SLACK_THREAD)
+# live 2026-11-20: with {} the model added `user_id: ""` and the call failed
+SLACK_PROFILE_ARGS = {"response_format": "detailed"}  # concise has no "User ID:" line (live 2026-11-20)
+SLACK_ROUND = 10
+SLACK_SEARCH_LIMIT = 20
+SLACK_READ_LIMIT = 100
+OPENCODE_TIMEOUT_S = 300
+# OpenCode cuts a tool result at 51200 bytes unless the run cwd config raises the limit
+SLACK_PROMPT = (
+    "Make exactly the tool calls in the message, in that order, with exactly those arguments. "
+    "Call no other tool. Do not retry a failed call and do not change its arguments. "
+    "Pass each args object exactly as given. Add no keys. "
+    "After the last call, reply DONE.")
+SLACK_CURSOR = re.compile(r"cursor `([^`]+)`")
+SLACK_RESULT = re.compile(r"^### Result \d+ of \d+\s*$", re.M)
 _SPACE = re.compile(r"\s*")
 # a JSON body with only these keys is an error reply, not data
 ERROR_KEYS = {"error", "message", "code", "status", "statusCode"}
@@ -59,7 +83,8 @@ NOT_FETCHED = {
     "teams_channels": "channel hit shape and reply activity fields not verified live",
 }
 
-SOURCES = ["teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint", "jira", "github", "github_activity"]
+SOURCES = ["teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint", "jira", "github", "github_activity",
+           "slack"]
 ACTIVITY_PAGES = 3
 # snapshot sources whose mark moves even after a cap: see fetch_one
 STREAM = ("github_activity",)
@@ -190,14 +215,47 @@ def _valid_result(tool, text):
     return bool(values) and not all(_error_body(v) for v in values)
 
 
-def run_round(runner, calls, tolerate_errors=False):
+def parse_opencode(text, allowed):
+    """Tool parts of `opencode run --format json`, one `tool_use` line per call, in call order."""
+    calls = []
+    for line in text.splitlines():
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        part = msg.get("part") if isinstance(msg, dict) else None
+        if not (isinstance(part, dict) and msg.get("type") == "tool_use" and part.get("type") == "tool"):
+            continue
+        if part.get("tool") not in allowed:
+            raise GuardError(part.get("tool"))
+        state = part.get("state") or {}
+        if (state.get("metadata") or {}).get("truncated"):
+            raise SpillError("opencode cut the tool output at tool_output.max_bytes")
+        ok = state.get("status") == "completed" and isinstance(state.get("output"), str)
+        args = state.get("input", {})
+        # OpenCode shows the Slack tools with one string parameter `args` that holds the JSON arguments
+        if isinstance(args, dict) and set(args) == {"args"} and isinstance(args["args"], str):
+            try:
+                args = json.loads(args["args"])
+            except ValueError:
+                pass
+        calls.append({
+            "tool": part["tool"],
+            "args": args,
+            "content": state["output"] if ok else str(state.get("error") or f"call ended as {state.get('status')}"),
+            "is_error": not ok,
+        })
+    return calls
+
+
+def run_round(runner, calls, tolerate_errors=False, parse=parse_stream):
     """One `claude -p` round. The model sometimes changes an argument (seen live: an invented
     `uri` key on get_me). A drifted round is thrown away and tried up to 3 times in all, and
     each try can take up to CLAUDE_TIMEOUT_S. With `tolerate_errors`, a call whose result is an
     error comes back with is_error set and the caller decides; otherwise it raises."""
     allowed = sorted({c["tool"] for c in calls})
     for attempt in (1, 2, 3):
-        got = parse_stream(runner(calls, allowed), set(allowed))
+        got = parse(runner(calls, allowed), set(allowed))
         if len(got) == len(calls) and all(
                 g["tool"] == c["tool"] and g["args"] == c["args"] for g, c in zip(got, calls)):
             break
@@ -284,6 +342,7 @@ class Ctx:
     max_pages: int
     chunk: object = None
     after: object = None
+    slack_runner: object = None
 
 
 @dataclass
@@ -469,7 +528,111 @@ def fetch_jira(ctx):
     return got
 
 
+def slack_body(content):
+    return next((v for v in top_level_values(content) if isinstance(v, dict)), {})
+
+
+def slack_user_id(content):
+    body = slack_body(content)
+    text = body["result"] if isinstance(body.get("result"), str) else content
+    m = re.search(r"User ID: (U\w+)", text)
+    return m.group(1) if m else None
+
+
+def slack_hits(content):
+    """(channel id, permalink) of each hit of one search page. The shape is markdown in `results`."""
+    md = slack_body(content).get("results")
+    if not isinstance(md, str):
+        return []
+    hits = []
+    for block in SLACK_RESULT.split(md)[1:]:
+        chan = re.search(r"^Channel: .*\(ID: (\w+)\)\s*$", block, re.M)
+        link = re.search(r"^Permalink: (\S+)", block, re.M)
+        hits.append((chan and chan.group(1), link and link.group(1)))
+    return hits
+
+
+def slack_thread(cid, link, dm_ids):
+    """(channel, thread ts) a hit points to, or None. A hit in a DM channel has no thread unless the
+    link names one: the channel read already holds it."""
+    if not link:
+        return None
+    url = urlparse(link)
+    chan = cid or (re.search(r"/archives/(\w+)/", url.path) or [None, None])[1]
+    ts = parse_qs(url.query).get("thread_ts")
+    if ts and chan:
+        return chan, ts[0]
+    digits = re.search(r"/p(\d{11,})$", url.path)
+    if digits and chan and chan not in dm_ids:
+        return chan, f"{digits.group(1)[:10]}.{digits.group(1)[10:]}"
+    return None
+
+
+def slack_next(call, page, max_pages):
+    """(args for the next page or None, page count when the chain stopped early else 0)."""
+    info = slack_body(call["content"]).get("pagination_info")
+    info = info if isinstance(info, str) else ""
+    m = SLACK_CURSOR.search(info)
+    if m:
+        return (None, max_pages) if page >= max_pages else ({**call["args"], "cursor": m.group(1)}, 0)
+    if "no more" in info:
+        return None, 0
+    full = call["tool"] == SLACK_SEARCH and len(slack_hits(call["content"])) == call["args"].get("limit")
+    return None, page if full else 0
+
+
+def slack_chains(ctx, got, firsts):
+    """Run each (tool, args) chain to its end, up to SLACK_ROUND calls per round. Returns the calls
+    of each chain and the page count of the first chain that stopped early (0 if none)."""
+    chains, cap = [[] for _ in firsts], 0
+    pending = [(i, tool, args) for i, (tool, args) in enumerate(firsts)]
+    while pending:
+        batch, pending = pending[:SLACK_ROUND], pending[SLACK_ROUND:]
+        calls = run_round(ctx.slack_runner, [{"tool": t, "args": a} for _, t, a in batch], parse=parse_opencode)
+        for (i, tool, _), call in zip(batch, calls):
+            chains[i].append(call)
+            got.records.append(call)
+            nxt, stopped = slack_next(call, len(chains[i]), ctx.max_pages)
+            if nxt:
+                pending.append((i, tool, nxt))
+            cap = cap or stopped
+    return chains, cap
+
+
+def fetch_slack(ctx):
+    if ctx.slack_runner is None:
+        raise RuntimeError("no slack runner")
+    got = Fetched([], 0)
+    (profile,) = run_round(ctx.slack_runner, [{"tool": SLACK_PROFILE, "args": dict(SLACK_PROFILE_ARGS)}], parse=parse_opencode)
+    got.records.append(profile)
+    uid = slack_user_id(profile["content"])
+    if not uid:
+        raise ToolError("no slack user id")
+    # Slack `after:` leaves out the date typed, so ask from the day before the window start
+    day = (ctx.after.astimezone(timezone.utc).date() - timedelta(days=1)).isoformat()
+    base = {"limit": SLACK_SEARCH_LIMIT, "include_context": False, "natural_language_query": "", "sort": "timestamp"}
+    searches = [
+        {**base, "keywords": [], "filters": f"after:{day}", "channel_types": "im,mpim"},
+        {**base, "keywords": [f"<@{uid}>"], "filters": f"after:{day}"},
+        {**base, "keywords": [], "filters": f"from:<@{uid}> after:{day}"},
+    ]
+    found, cap = slack_chains(ctx, got, [(SLACK_SEARCH, a) for a in searches])
+    hits = [[h for call in chain for h in slack_hits(call["content"])] for chain in found]
+    got.items = sum(len(h) for h in hits)
+    dm_ids = list(dict.fromkeys(c for c, _ in hits[0] if c))
+    oldest = str(int(ctx.after.timestamp()))
+    reads = [(SLACK_CHANNEL, {"channel_id": c, "oldest": oldest, "limit": SLACK_READ_LIMIT}) for c in dm_ids]
+    targets = dict.fromkeys(t for group in hits for c, link in group if (t := slack_thread(c, link, dm_ids)))
+    reads += [(SLACK_THREAD, {"channel_id": c, "message_ts": ts, "limit": SLACK_READ_LIMIT}) for c, ts in targets]
+    _, read_cap = slack_chains(ctx, got, reads)
+    if cap or read_cap:
+        got.capped = f"capped at {cap or read_cap} pages"
+    return got
+
+
 def fetch_source(source, ctx):
+    if source == "slack":
+        return fetch_slack(ctx)
     if source == "github":
         return fetch_github(ctx)
     if source == "github_activity":
@@ -572,11 +735,17 @@ def new_run_id(now):
     return f"{now.astimezone(timezone.utc):%Y%m%dT%H%M%S}-{uuid.uuid4().hex[:6]}"
 
 
+def has_cursor(source):
+    return source in WINDOW or source == "slack"
+
+
 def failure_reason(source, e):
     if isinstance(e, ToolError):
         return e.reason
     if isinstance(e, SpillError):
         return "spill"
+    if source == "slack":
+        return "opencode failed"
     return "gh failed" if source in ("github", "github_activity") else "claude failed"
 
 
@@ -596,7 +765,7 @@ def skip_line(source, me_name, stopped):
         return "not fetched: run stopped after a guard abort"
     if source in NOT_FETCHED:
         return f"not fetched: {NOT_FETCHED[source]}"
-    if source not in WINDOW and source not in ("github", "github_activity", "jira"):
+    if source not in WINDOW and source not in ("github", "github_activity", "jira", "slack"):
         return "error: unknown source"
     if not me_name and any(v == "ME_NAME" for _, fixed, _ in WINDOW.get(source, []) for v in fixed.values()):
         return "not fetched: no display name from get_me"
@@ -606,7 +775,7 @@ def skip_line(source, me_name, stopped):
 def fetch_one(source, base, state, root, run_id, since, details):
     """Fetch one source, store what it read, and move its marks. Returns (ledger line, guard abort)."""
     # window sources keep a cursor; snapshot sources keep only the time of the last good run
-    marks = state["cursors"] if source in WINDOW else state["last_ok"]
+    marks = state["cursors"] if has_cursor(source) else state["last_ok"]
     anchor = marks.get(source)
     anchor_dt = datetime.fromisoformat(anchor) if anchor else None
     ctx = replace(base, after=window_start(source, anchor, since, base.now))
@@ -625,7 +794,7 @@ def fetch_one(source, base, state, root, run_id, since, details):
     # later than the cursor leaves it where it was.
     store_records(root, source, run_id, ctx.now, got.records, "verbatim")
     if got.capped:
-        if source in WINDOW and not (since and anchor_dt and since > anchor_dt):
+        if has_cursor(source) and not (since and anchor_dt and since > anchor_dt):
             move_mark(marks, source, got.resume_from or ctx.after, max)
         if got.clean_before:
             move_mark(state["covered_from"], source, ctx.after, min)
@@ -638,18 +807,19 @@ def fetch_one(source, base, state, root, run_id, since, details):
         return f"partial: {len(got.records)} calls, {got.items} items, {got.issue_errors} issue errors", False
     # a --since later than the mark, or with no mark at all, leaves an unfetched gap
     if not (since and (anchor_dt is None or since > anchor_dt)):
-        move_mark(marks, source, ctx.now - CURSOR_OVERLAP if source in WINDOW else ctx.now, max)
-    if source in WINDOW:
+        move_mark(marks, source, ctx.now - CURSOR_OVERLAP if has_cursor(source) else ctx.now, max)
+    if has_cursor(source):
         move_mark(state["covered_from"], source, ctx.after, min)
     return f"fetched {len(got.records)} calls, {got.items} items", False
 
 
 def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me_name=None,
-        preset=None, notes=(), chunk=None):
+        preset=None, notes=(), chunk=None, slack_runner=None):
     """Fetch each source once. Returns {source: ledger line}. `preset` maps a source to a ledger
     line the caller already knows, so it is not fetched; `notes` go to the run log. `chunk` splits
     a window source's window into spans of that length, oldest first. State and ledger are saved
-    after each source, so a crash keeps the finished ones."""
+    after each source, so a crash keeps the finished ones. `slack_runner` is the opencode runner of
+    the `slack` source; it may carry a `notes` list that goes to the run log."""
     root = Path(root)
     run_id = new_run_id(now)
     preset = preset or {}
@@ -661,12 +831,16 @@ def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me
         ledger = {s: "error: state unreadable" for s in sources}
         write_ledger(root, run_id, now, ledger, [*details, f"state.json: {type(e).__name__}: {e}"])
         return ledger
-    base = Ctx(runner, gh or real_gh, me, me_name, now, max_pages, chunk)
+    base = Ctx(runner, gh or real_gh, me, me_name, now, max_pages, chunk, slack_runner=slack_runner)
+    runner_notes = getattr(slack_runner, "notes", None)
     for source in sources:
         line = preset.get(source) or skip_line(source, me_name, stopped)
         if line is None:
             line, aborted = fetch_one(source, base, state, root, run_id, since, details)
             stopped = stopped or aborted
+            if source == "slack" and runner_notes:
+                details.extend(runner_notes)
+                runner_notes.clear()
         ledger[source] = line
         write_json(root / "state.json", state)
         write_ledger(root, run_id, now, ledger, details)
@@ -742,6 +916,172 @@ def claude_runner(root):
     return runner
 
 
+def _text(value):
+    return value.decode(errors="replace") if isinstance(value, bytes) else value or ""
+
+
+def opencode_config(allowed=SLACK_TOOLS):
+    """The run cwd config: an agent that denies every tool but the Slack read tools, and no cut on
+    tool output (OpenCode cuts at 51200 bytes by default). The per-round allowlist is the parser's."""
+    allow = [{"action": t, "resource": "*", "effect": "allow"} for t in allowed]
+    return json.dumps({
+        # V2 keys: `agents` and `system`. The V1 `agent`/`prompt` form is not what was proven live.
+        "agents": {SLACK_AGENT: {"mode": "primary", "system": SLACK_PROMPT, "permissions": [
+            {"action": "*", "resource": "*", "effect": "deny"}, *allow]}},
+        "tool_output": {"max_bytes": 20000000, "max_lines": 1000000},
+        "snapshots": False,
+    }, indent=2)
+
+
+def opencode_sessions(text):
+    ids = {}
+    for line in text.splitlines():
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        sid = msg.get("sessionID") if isinstance(msg, dict) else None
+        if isinstance(sid, str) and re.fullmatch(r"ses_\w+", sid):
+            ids[sid] = None
+    return list(ids)
+
+
+def opencode_failure(text):
+    """A run with no tool parts is a failed run, even with exit 0: an error event, or a model that never
+    saw the tool (the Cursor model said "Tool not found", live 2026-11-20). Calls were always asked."""
+    events = []
+    for line in text.splitlines():
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(msg, dict):
+            events.append(msg)
+    if any(m.get("type") == "tool_use" for m in events):
+        return None
+    err = next((m for m in events if m.get("type") == "error"), None)
+    if err:
+        return f"opencode error event: {json.dumps(err)[:200]}"
+    return "opencode made no tool call (the model may not see the tool)"
+
+
+def drop_claude_project(cwd):
+    """claude-agent models save Claude Code sessions, tool results included, under
+    ~/.claude/projects/<cwd>. That folder is gather's own, so it goes whole. Only that one path,
+    and never through a symlink."""
+    d = _project_dir(cwd)
+    if d.is_dir() and not d.is_symlink():
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def delete_session(sid, cwd):
+    p = subprocess.run(["opencode", "session", "delete", sid], capture_output=True, text=True, cwd=cwd, timeout=60)
+    if p.returncode:
+        raise RuntimeError(f"opencode session delete exited {p.returncode}: {(p.stderr or p.stdout)[-200:].strip()}")
+
+
+def list_sessions(cwd):
+    """Every session of the project of `cwd`, as OpenCode lists them: a JSON list of objects."""
+    p = subprocess.run(["opencode", "session", "list", "--format", "json"], capture_output=True, text=True,
+                       cwd=cwd, timeout=60)
+    if p.returncode:
+        raise RuntimeError(f"opencode session list exited {p.returncode}: {(p.stderr or p.stdout)[-200:].strip()}")
+    return json.loads(p.stdout)
+
+
+def opencode_runner(root, delete=None, models=SLACK_MODELS, lister=None):
+    """Real slack runner. cwd is <root>/run-opencode: its opencode.jsonc is written only when missing or
+    different (a rewrite before each run raced OpenCode's config reload, live 2026-11-20), and OpenCode
+    saves every run as a session there, so each session id seen in stdout is deleted. A delete that fails
+    goes to `orphans`, and the next run deletes it first. The cwd's ~/.claude/projects folder is removed
+    after every attempt. A session whose id never reached stdout (a run killed early) is found by listing:
+    the first call and `runner.close()` delete every listed session whose `directory` is exactly the cwd,
+    never by the list alone, because a non-git folder can share a project with other folders. A failure on
+    the first model retries the round on the next model, which then stays for the rest of the run
+    (`runner.notes` logs it)."""
+    cwd = Path(root) / "run-opencode"
+    mkdir_private(cwd)
+    orphans = cwd / "orphans"
+    delete = delete or (lambda sid: delete_session(sid, cwd))
+    lister = lister or (lambda: list_sessions(cwd))
+    notes, state = [], {"model": 0, "swept": False}
+
+    def remember(ids):
+        left = []
+        for sid in ids:
+            try:
+                delete(sid)
+            except Exception:
+                left.append(sid)
+        return left
+
+    def strays():
+        """Ids of listed sessions made in this exact cwd. A list failure is a note, never an error."""
+        try:
+            where = str(cwd.resolve())
+            return [r["id"] for r in lister()
+                    if isinstance(r, dict) and r.get("directory") == where and re.fullmatch(r"ses_\w+", str(r.get("id")))]
+        except Exception as e:
+            notes.append(f"slack: session list failed: {type(e).__name__}: {e}")
+            return []
+
+    def keep(ids):
+        if ids:
+            write_private(orphans, "\n".join([*(orphans.read_text().split() if orphans.exists() else []), *ids]) + "\n")
+
+    def sweep():
+        pending = strays() + (orphans.read_text().split() if orphans.exists() else [])
+        left = remember(list(dict.fromkeys(pending)))
+        if left:
+            write_private(orphans, "\n".join(left) + "\n")
+        elif orphans.exists():
+            orphans.unlink()
+
+    def close():
+        keep(remember(strays()))
+
+    def attempt(model, calls):
+        config, want = cwd / "opencode.jsonc", opencode_config()
+        if not config.exists() or config.read_text() != want:
+            write_private(config, want)
+        cmd = ["opencode", "run", "--agent", SLACK_AGENT, "--archived", "--format", "json", "-m", model,
+               "Calls:\n" + json.dumps(calls, indent=1)]
+        out = ""
+        try:
+            try:
+                p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env={**os.environ, "PWD": str(cwd)}, timeout=OPENCODE_TIMEOUT_S)
+            except subprocess.TimeoutExpired as e:
+                out = _text(e.stdout)
+                raise RuntimeError(f"opencode timed out after {OPENCODE_TIMEOUT_S}s") from e
+            out = p.stdout
+            if p.returncode:
+                raise RuntimeError(f"opencode exited {p.returncode}: {(p.stderr or p.stdout)[-200:].strip()}")
+            failure = opencode_failure(out)
+            if failure:
+                raise RuntimeError(failure)
+            return out
+        finally:
+            drop_claude_project(cwd)
+            keep(remember(opencode_sessions(out)))
+
+    def runner(calls, allowed):
+        if not state["swept"]:
+            state["swept"] = True
+            sweep()
+        while True:
+            try:
+                return attempt(models[state["model"]], calls)
+            except (RuntimeError, OSError) as e:
+                if state["model"] == len(models) - 1:
+                    raise
+                state["model"] += 1
+                notes.append(f"slack: fell back to {models[state['model']].split('/')[0]}: {e}")
+
+    runner.notes = notes
+    runner.close = close
+    return runner
+
+
 def lookup_me(runner):
     tool = M365 + "get_me"
     (call,) = run_round(runner, [{"tool": tool, "args": {}}])
@@ -788,6 +1128,7 @@ def cmd_run(a):
         print(f"unknown source: {', '.join(bad)}; known: {', '.join(SOURCES)}", file=sys.stderr)
         return 2
     runner = claude_runner(root)
+    slack_runner = opencode_runner(root) if "slack" in names else None
     try:
         since = parse_since(a.since, now) if a.since else None
     except ValueError:
@@ -803,8 +1144,15 @@ def cmd_run(a):
             # only the window sources need `me`; jira and github still run
             preset = {s: "error: get_me failed" for s in names if s in WINDOW}
             notes = [f"get_me: {type(e).__name__}: {e}"]
-    ledger = run(names, root=root, now=now, runner=runner, me=me, max_pages=a.max_pages, since=since,
-                 me_name=me_name, preset=preset, notes=notes, chunk=CHUNK)
+    try:
+        ledger = run(names, root=root, now=now, runner=runner, me=me, max_pages=a.max_pages, since=since,
+                     me_name=me_name, preset=preset, notes=notes, chunk=CHUNK, slack_runner=slack_runner)
+    finally:
+        if slack_runner:
+            slack_runner.close()
+            # close runs after the run log is written, so a note it made goes to stderr
+            for n in getattr(slack_runner, "notes", ()):
+                print(n, file=sys.stderr)
     for s, line in ledger.items():
         print(f"{s}: {line}")
     return exit_code(ledger)

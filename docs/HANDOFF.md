@@ -1,6 +1,20 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-18, HEAD 0b7d795 (reverse-engineer-anything removed; jev branch merged into main)
+Updated: 2026-11-20, HEAD 5566380 (Slack moved from bard into gather, uncommitted)
+
+## gather Slack
+
+State: uncommitted (2026-11-20). gather has a `slack` source: `opencode run --agent gather-slack` in `~/.gather/run-opencode`, model `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash#high`. Spec: `docs/specs/gather-slack.md`. bard reads `raw/slack/` through the gather lane, and its native Slack lane is only the fallback. Live 2026-11-20: `slack: fetched 32 calls, 284 items`; no session left in opencode.db and no `~/.claude/projects` folder. Tests 150 passed, pre-commit passes.
+
+Next:
+1. Alex checks the index: parts were staged by someone else during the work. Then commit by area: `feat(gather): fetch Slack through opencode run`, `feat(bard): read Slack from gather`.
+2. The first real `/gather` run sets the slack cursor (7 days back).
+
+Gotchas and dead ends:
+- Cursor models get no MCP tools through OpenCode ("Tool not found").
+- Rewriting `opencode.jsonc` right before `opencode run` gives "Agent not found": write the config once.
+- `claude-agent` saves Claude Code sessions under `~/.claude/projects/<cwd>`: gather removes that folder after each attempt.
+- `slack_read_user_profile` with `concise` has no `User ID:` line: use `detailed`.
 
 ## bard ideas
 

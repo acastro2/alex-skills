@@ -1,10 +1,13 @@
-"""Opt-in live check: real `claude -p` against Teams. Costs about USD 0.02 per call.
+"""Opt-in live checks: real `claude -p` against Teams (about USD 0.02 per call) and real
+`opencode run` against Slack.
 
-Run with GATHER_LIVE=1. Read-only: the run allows one search tool and get_me.
+Run with GATHER_LIVE=1. Read-only: the Teams run allows one search tool and get_me; the Slack run
+allows the four Slack read tools.
 """
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -33,3 +36,23 @@ def test_teams_mine_seven_days_live_writes_raw_and_leaves_no_session(tmp_path):
     # claude -p ran with cwd <root>/run; no session may be saved for that cwd
     encoded = re.sub(r"[^A-Za-z0-9]", "-", str((root / "run").resolve()))
     assert not (Path.home() / ".claude" / "projects" / encoded).exists()
+
+
+def test_slack_one_day_live_writes_raw_and_leaves_no_opencode_session(tmp_path):
+    root = tmp_path / "store"
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "run", "--sources", "slack", "--since", "1d", "--root", str(root)],
+        capture_output=True, text=True, timeout=900)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stdout.startswith("slack: fetched"), proc.stdout
+
+    raws = [json.loads(p.read_text()) for p in sorted((root / "raw" / "slack").rglob("*.json"))]
+    assert any(r["tool"] == "slack_slack_read_user_profile" for r in raws)
+    assert all(r["content"] and r["provenance"] == "verbatim" for r in raws)
+
+    # every opencode run saves a session for its cwd; gather must have deleted them all
+    db = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+    cwd = str((root / "run-opencode").resolve())
+    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as con:
+        (left,) = con.execute("select count(*) from session_v2 where directory = ?", (cwd,)).fetchone()
+    assert left == 0

@@ -24,7 +24,7 @@ Read-only. It prints one JSON object:
   that have no line at all: a coverage gap. With `--state`, a window source (every source but
   jira, github, and github_activity, which gather tracks by last_ok) whose `covered_from` is missing or later than the
   bard watermark is a gap too: gather never fetched the days before it. A `partial:` line is a
-  gap. So is a `fetched ... 0 items` line for teams_chats, teams_mine, or mail when the run
+  gap. So is a `fetched ... 0 items` line for teams_chats, teams_mine, mail, or slack when the run
   started on a Monday to Friday (UTC): a working day is never silent.
 """
 from __future__ import annotations
@@ -47,7 +47,7 @@ SNAPSHOT = ("jira", "github")
 # snapshot its older runs are never superseded.
 NO_HISTORY = SNAPSHOT + ("github_activity",)
 # A zero from these on a working day is a coverage failure, not a quiet day.
-BUSY = ("teams_chats", "teams_mine", "mail")
+BUSY = ("teams_chats", "teams_mine", "mail", "slack")
 _ITEMS = re.compile(r"\b(\d+) items\b")
 
 

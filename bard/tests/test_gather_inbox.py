@@ -161,6 +161,12 @@ def test_zero_teams_or_mail_items_on_a_working_day_is_a_gap_but_not_on_a_weekend
     assert "mail" not in inbox.listing(weekend, seen=set())["fallback"]
 
 
+def test_zero_slack_items_on_a_working_day_is_a_gap(tmp_path: Path) -> None:
+    write(tmp_path / "ledger/20261111T090000-aaaaaa.json",  # a Wednesday
+          {"started_at": "2026-11-11T09:00:00+00:00", "sources": {"slack": "fetched 1 calls, 0 items"}})
+    assert "slack" in inbox.listing(tmp_path, seen=set())["fallback"]
+
+
 def test_github_activity_keeps_every_run_and_needs_no_covered_from(tmp_path: Path) -> None:
     # events are a stream: an older run holds events a newer one may not, so nothing is superseded,
     # and gather keeps last_ok for it, not covered_from, so a watermark must not flag it
