@@ -96,6 +96,7 @@ and the calls that are proven.
 | `jira` | snapshot | `searchJiraIssuesUsingJql` `assignee = currentUser() AND statusCategory != Done` (no date: bard filters by changelog), then `getJiraIssue` `expand: changelog` per hit, in batches of up to 10 per round |
 | `github` | snapshot | `gh search prs --review-requested=@me --state=open` and `gh search prs --involves=@me --updated=>=<cursor date>` |
 | `slack` | window | `opencode run`, Slack tools only (contract 7): user profile, three searches (DMs, mentions of me, my posts), `read_channel` per DM channel, `read_thread` per thread; one span, no day chunks |
+| `slack_team` | window | `opencode run`, Slack tools only (contract 7a): `read_channel` per configured team channel, `read_thread` per message with replies; one span, no day chunks |
 | `github_activity` | stream | `gh api users/<login>/events?per_page=100&page=1..3`, `gh search prs --involves=@me --updated=>=<date> --json number,repository,updatedAt`, then `gh api repos/<repo>/issues/<n>/timeline?per_page=100 --paginate --slurp` per touched item, newest activity first, max 200 |
 
 `<me>` comes from `get_me` at run start, never from a file in the repo.
@@ -215,6 +216,25 @@ are in the events (when not dropped) but not in the timelines.
    - **Privacy.** The runner model reads every Slack result, so Slack text goes to that model's
      provider.
    - **Not in scope.** Slack canvases and files, channel history without Alex in it, the `with:` search.
+
+7a. **Slack team channels.** Source `slack_team` reads the team's channels in full. `slack` covers only
+   Alex's DMs, mentions, and own posts; weekly-report's team section needs the channels, which were a
+   manual paste until now. This source replaces that paste.
+   - **Config.** Channel ids are the list `slack_team_channels` in the JSON file named by env
+     `GATHER_CONFIG`, default `~/.config/gather.json`. `run(..., slack_channels=...)` takes them in tests.
+     A missing or unreadable file, a missing key, or an empty list gives `not fetched: no
+     slack_team_channels in ~/.config/gather.json`, makes no call, and exits 1: it is a config gap,
+     not a source that is not built, so the exit rule for `NOT_FETCHED` does not cover it.
+   - **Calls.** Same runner, cursor, `covered_from`, and cap rules as `slack` (one span, no day
+     chunks, no `get_me`, no profile or search call). Per channel, one chain of
+     `slack_slack_read_channel {"channel_id": <id>, "oldest": <window start epoch seconds>, "limit": 100}`,
+     paged by the `cursor` in `pagination_info`. Then `slack_slack_read_thread {"channel_id": <id>,
+     "message_ts": <ts>, "limit": 100}` for each message in any channel page whose block has a line
+     `Thread: N replies` with N of 1 or more. A message block starts with `=== Message from ` and has a
+     line `Message TS: <ts>`. Targets are deduped by `(channel, ts)`. Up to 10 calls per runner round.
+   - **Items and ledger.** Items = channel messages read: the message blocks on all channel pages. Thread
+     reads add records but no items. Line: `fetched N calls, M items`.
+   - **Privacy.** Team channel text is stored under `raw/slack_team/` like other raw comms.
 
 8. **bard reads.** bard sweeps every raw file not in `gather_seen` and copies the gather ledger
    lines into its coverage ledger. A source fetched more than `--max-age-hours` (default 24) ago is a gap.

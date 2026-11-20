@@ -22,6 +22,7 @@ Same words as the markdown report, as JSON. The fixture
 | `decisions` | `[{ask, options: [{label, detail?, picked}], why}]` | 5; exactly one `picked` |
 | `done` | `[{theme, items: [{text, ref, url}]}]` | 7 items in total |
 | `next` | `["..."]` | 5 |
+| `ideas` | `["..."]`, optional; omit when the week has no ideas | 3 |
 | `blocked` | `[{text, waiting_on}]`, `waiting_on` is a first name | |
 | `team` | `[{text, ref, url}]`, never a line with `mine: true` | |
 

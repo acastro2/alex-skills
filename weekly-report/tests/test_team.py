@@ -210,3 +210,45 @@ def test_team_merges_count_by_the_chicago_day() -> None:
     out = collect.team_prs(WINDOW, TEAM, mine_urls=set(), run=run)
     assert [(p["number"], p["closed"]) for p in out["merged"]] == [(1, "2026-11-13"), (2, "2026-11-09")]
     assert any("--merged-at=2026-11-08..2026-11-14" in c for c in calls)
+
+
+def gather_record(root: Path, day: str, n: int, tool: str = "slack_slack_read_channel") -> None:
+    d = root / "raw" / "slack_team" / day
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"run-{n}.json").write_text(json.dumps({
+        "source": "slack_team", "tool": tool, "args": {"channel_id": f"C{n}"}, "run_id": "run",
+        "fetched_at": f"{day}T20:00:00+00:00", "provenance": "verbatim", "content": f"raw {n}"}))
+
+
+def test_team_slack_comes_from_gather_slack_team_files_in_the_window(tmp_path: Path, capsys, monkeypatch) -> None:
+    vault = tmp_path / "vault"
+    (vault / "Bard").mkdir(parents=True)
+    (vault / "Todo.md").write_text("<!-- BARD:START -->\n## Done\n")
+    config = tmp_path / "weekly-report.json"
+    config.write_text(json.dumps({"team": TEAM}))
+    monkeypatch.setattr(collect, "CONFIG", config)
+    store = tmp_path / "gather"
+    monkeypatch.setattr(collect, "GATHER_ROOT", store)
+    gather_record(store, "2026-11-08", 1)   # Sunday before: out
+    gather_record(store, "2026-11-11", 2)   # in the week
+    gather_record(store, "2026-11-16", 3)   # the Monday after (a weekend or Monday run): in
+    gather_record(store, "2026-11-17", 4)   # next week: out
+
+    assert collect.main(["--vault", str(vault), "--date", "2026-11-11", "--no-github"]) == 0
+    team = json.loads(capsys.readouterr().out)["team"]
+    assert team["slack"] == {"calls": 2, "items": [
+        {"tool": "slack_slack_read_channel", "args": {"channel_id": "C2"}, "content": "raw 2"},
+        {"tool": "slack_slack_read_channel", "args": {"channel_id": "C3"}, "content": "raw 3"}]}
+    assert not any(g.startswith("slack") for g in team["gaps"])
+
+
+def test_no_gather_files_is_still_slack_not_fetched(tmp_path: Path, capsys, monkeypatch) -> None:
+    vault = tmp_path / "vault"
+    (vault / "Bard").mkdir(parents=True)
+    (vault / "Todo.md").write_text("<!-- BARD:START -->\n## Done\n")
+    config = tmp_path / "weekly-report.json"
+    config.write_text(json.dumps({"team": TEAM}))
+    monkeypatch.setattr(collect, "CONFIG", config)
+    monkeypatch.setattr(collect, "GATHER_ROOT", tmp_path / "empty")
+    assert collect.main(["--vault", str(vault), "--date", "2026-11-11", "--no-github"]) == 0
+    assert "slack: not fetched" in json.loads(capsys.readouterr().out)["team"]["gaps"]

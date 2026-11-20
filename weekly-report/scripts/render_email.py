@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/Chicago")
 ASSETS = Path(__file__).resolve().parents[1] / "assets" / "email"
-MAX_DECISIONS, MAX_DONE, MAX_NEXT = 5, 7, 5
+MAX_DECISIONS, MAX_DONE, MAX_NEXT, MAX_IDEAS = 5, 7, 5, 3
 DAY_BAR_MAX, MIN_BAR = 72, 2
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
@@ -156,6 +156,9 @@ class Email:
                                   waiting=waiting))
         return self.fill("blocked", rows="\n".join(rows))
 
+    def ideas(self, items: list) -> str:
+        return self.fill("ideas", rows="\n".join(self.fill("ideas_item", text=esc(t)) for t in items))
+
     def team(self, report: dict, team: dict, window: list[dt.date]) -> str:
         prs, jira = team.get("prs"), team.get("jira")
         days = [window[0] + dt.timedelta(days=i) for i in range(5)]
@@ -240,9 +243,13 @@ def check(report: dict, facts: dict) -> None:
     blocked = report.get("blocked")
     if blocked is not None and not (isinstance(blocked, list) and all(isinstance(b, dict) for b in blocked)):
         raise ReportError("blocked: must be a list of objects")
+    ideas = report.get("ideas")
+    if ideas is not None and not (isinstance(ideas, list) and all(isinstance(i, str) and i.strip() for i in ideas)):
+        raise ReportError("ideas: must be a list of non-blank strings")
     limits = (("decisions", len(report["decisions"]), MAX_DECISIONS),
               ("done", sum(len(g.get("items") or []) for g in report["done"]), MAX_DONE),
-              ("next", len(report["next"]), MAX_NEXT))
+              ("next", len(report["next"]), MAX_NEXT),
+              ("ideas", len(ideas or []), MAX_IDEAS))
     for key, size, limit in limits:
         if size > limit:
             raise ReportError(f"{key}: at most {limit} items, got {size}")
@@ -275,6 +282,8 @@ def render(report: dict, facts: dict, template: str = "light") -> str:
             email.fill("next_item", text=esc(t)) for t in report["next"])))
     if blocked:
         sections.append(email.blocked(blocked))
+    if report.get("ideas"):
+        sections.append(email.ideas(report["ideas"]))
     team = facts.get("team")
     if team is not None:
         sections.append(email.team(report, team, [first, last]))

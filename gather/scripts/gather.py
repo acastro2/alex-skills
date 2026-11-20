@@ -60,6 +60,9 @@ SLACK_PROMPT = (
     "After the last call, reply DONE.")
 SLACK_CURSOR = re.compile(r"cursor `([^`]+)`")
 SLACK_RESULT = re.compile(r"^### Result \d+ of \d+\s*$", re.M)
+SLACK_MESSAGE = re.compile(r"^=== Message from ", re.M)
+SLACK_MESSAGE_TS = re.compile(r"^Message TS: (\S+)", re.M)
+SLACK_REPLIES = re.compile(r"^Thread: (\d+) repl", re.M)
 _SPACE = re.compile(r"\s*")
 # a JSON body with only these keys is an error reply, not data
 ERROR_KEYS = {"error", "message", "code", "status", "statusCode"}
@@ -84,7 +87,9 @@ NOT_FETCHED = {
 }
 
 SOURCES = ["teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint", "jira", "github", "github_activity",
-           "slack"]
+           "slack", "slack_team"]
+SLACK_SOURCES = ("slack", "slack_team")
+SLACK_CONFIG_KEY = "slack_team_channels"
 ACTIVITY_PAGES = 3
 # snapshot sources whose mark moves even after a cap: see fetch_one
 STREAM = ("github_activity",)
@@ -358,6 +363,7 @@ class Ctx:
     chunk: object = None
     after: object = None
     slack_runner: object = None
+    slack_channels: object = None
 
 
 @dataclass
@@ -645,9 +651,39 @@ def fetch_slack(ctx):
     return got
 
 
+def slack_messages(call):
+    """(message ts, reply count) of each message block on one channel page. The page is markdown in
+    `messages`: `=== Message from ...`, a `Message TS:` line, and `Thread: N replies` when it has any."""
+    md = slack_body(call["content"]).get("messages")
+    out = []
+    for block in SLACK_MESSAGE.split(md)[1:] if isinstance(md, str) else []:
+        ts, replies = SLACK_MESSAGE_TS.search(block), SLACK_REPLIES.search(block)
+        out.append((ts and ts.group(1), int(replies.group(1)) if replies else 0))
+    return out
+
+
+def fetch_slack_team(ctx):
+    if ctx.slack_runner is None:
+        raise RuntimeError("no slack runner")
+    got = Fetched([], 0)
+    oldest = str(int(ctx.after.timestamp()))
+    reads = [(SLACK_CHANNEL, {"channel_id": c, "oldest": oldest, "limit": SLACK_READ_LIMIT}) for c in ctx.slack_channels]
+    pages, cap = slack_chains(ctx, got, reads)
+    messages = [(call["args"]["channel_id"], m) for chain in pages for call in chain for m in slack_messages(call)]
+    got.items = len(messages)
+    threads = dict.fromkeys((c, ts) for c, (ts, replies) in messages if ts and replies >= 1)
+    _, read_cap = slack_chains(ctx, got, [
+        (SLACK_THREAD, {"channel_id": c, "message_ts": ts, "limit": SLACK_READ_LIMIT}) for c, ts in threads])
+    if cap or read_cap:
+        got.capped = f"capped at {cap or read_cap} pages"
+    return got
+
+
 def fetch_source(source, ctx):
     if source == "slack":
         return fetch_slack(ctx)
+    if source == "slack_team":
+        return fetch_slack_team(ctx)
     if source == "github":
         return fetch_github(ctx)
     if source == "github_activity":
@@ -751,7 +787,7 @@ def new_run_id(now):
 
 
 def has_cursor(source):
-    return source in WINDOW or source == "slack"
+    return source in WINDOW or source in SLACK_SOURCES
 
 
 def failure_reason(source, e):
@@ -759,7 +795,7 @@ def failure_reason(source, e):
         return e.reason
     if isinstance(e, SpillError):
         return "spill"
-    if source == "slack":
+    if source in SLACK_SOURCES:
         return "opencode failed"
     return "gh failed" if source in ("github", "github_activity") else "claude failed"
 
@@ -774,14 +810,16 @@ def window_start(source, anchor, since, now):
     return start - timedelta(days=1) if source in ("github", "github_activity") else start
 
 
-def skip_line(source, me_name, stopped):
+def skip_line(source, me_name, stopped, slack_channels=None):
     """The ledger line of a source that is not fetched at all, else None."""
     if stopped:
         return "not fetched: run stopped after a guard abort"
     if source in NOT_FETCHED:
         return f"not fetched: {NOT_FETCHED[source]}"
-    if source not in WINDOW and source not in ("github", "github_activity", "jira", "slack"):
+    if source not in WINDOW and source not in ("github", "github_activity", "jira", *SLACK_SOURCES):
         return "error: unknown source"
+    if source == "slack_team" and not slack_channels:
+        return f"not fetched: no {SLACK_CONFIG_KEY} in ~/.config/gather.json"
     if not me_name and any(v == "ME_NAME" for _, fixed, _ in WINDOW.get(source, []) for v in fixed.values()):
         return "not fetched: no display name from get_me"
     return None
@@ -829,12 +867,13 @@ def fetch_one(source, base, state, root, run_id, since, details):
 
 
 def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me_name=None,
-        preset=None, notes=(), chunk=None, slack_runner=None):
+        preset=None, notes=(), chunk=None, slack_runner=None, slack_channels=None):
     """Fetch each source once. Returns {source: ledger line}. `preset` maps a source to a ledger
     line the caller already knows, so it is not fetched; `notes` go to the run log. `chunk` splits
     a window source's window into spans of that length, oldest first. State and ledger are saved
     after each source, so a crash keeps the finished ones. `slack_runner` is the opencode runner of
-    the `slack` source; it may carry a `notes` list that goes to the run log."""
+    the Slack sources; it may carry a `notes` list that goes to the run log. `slack_channels` are
+    the channel ids `slack_team` reads."""
     root = Path(root)
     run_id = new_run_id(now)
     preset = preset or {}
@@ -846,14 +885,15 @@ def run(sources, *, root, now, runner, me, max_pages=40, gh=None, since=None, me
         ledger = {s: "error: state unreadable" for s in sources}
         write_ledger(root, run_id, now, ledger, [*details, f"state.json: {type(e).__name__}: {e}"])
         return ledger
-    base = Ctx(runner, gh or real_gh, me, me_name, now, max_pages, chunk, slack_runner=slack_runner)
+    base = Ctx(runner, gh or real_gh, me, me_name, now, max_pages, chunk, slack_runner=slack_runner,
+               slack_channels=slack_channels)
     runner_notes = getattr(slack_runner, "notes", None)
     for source in sources:
-        line = preset.get(source) or skip_line(source, me_name, stopped)
+        line = preset.get(source) or skip_line(source, me_name, stopped, slack_channels)
         if line is None:
             line, aborted = fetch_one(source, base, state, root, run_id, since, details)
             stopped = stopped or aborted
-            if source == "slack" and runner_notes:
+            if source in SLACK_SOURCES and runner_notes:
                 details.extend(runner_notes)
                 runner_notes.clear()
         ledger[source] = line
@@ -1134,6 +1174,17 @@ def exit_code(ledger):
     return 0 if ok else 1
 
 
+def read_slack_channels():
+    """Channel ids of `slack_team_channels` in the JSON file named by GATHER_CONFIG (default
+    ~/.config/gather.json). A missing or unreadable file, or no list, gives none."""
+    path = Path(os.environ.get("GATHER_CONFIG") or Path.home() / ".config" / "gather.json")
+    try:
+        found = json.loads(path.read_text()).get(SLACK_CONFIG_KEY)
+    except (OSError, ValueError, AttributeError):
+        return []
+    return [c for c in found if isinstance(c, str) and c] if isinstance(found, list) else []
+
+
 def cmd_run(a):
     now = datetime.now(timezone.utc)
     root = Path(a.root).expanduser()
@@ -1142,8 +1193,9 @@ def cmd_run(a):
     if bad:
         print(f"unknown source: {', '.join(bad)}; known: {', '.join(SOURCES)}", file=sys.stderr)
         return 2
-    runner = claude_runner(root)
-    slack_runner = opencode_runner(root) if "slack" in names else None
+    runner = claude_runner(root) if any(s not in SLACK_SOURCES for s in names) else None
+    slack_runner = opencode_runner(root) if any(s in SLACK_SOURCES for s in names) else None
+    slack_channels = read_slack_channels() if "slack_team" in names else None
     try:
         since = parse_since(a.since, now) if a.since else None
     except ValueError:
@@ -1161,7 +1213,8 @@ def cmd_run(a):
             notes = [f"get_me: {type(e).__name__}: {e}"]
     try:
         ledger = run(names, root=root, now=now, runner=runner, me=me, max_pages=a.max_pages, since=since,
-                     me_name=me_name, preset=preset, notes=notes, chunk=CHUNK, slack_runner=slack_runner)
+                     me_name=me_name, preset=preset, notes=notes, chunk=CHUNK, slack_runner=slack_runner,
+                     slack_channels=slack_channels)
     finally:
         if slack_runner:
             slack_runner.close()

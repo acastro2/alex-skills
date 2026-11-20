@@ -38,9 +38,9 @@ report to judge Alex; the team's progress is context. Alex's own PRs and tickets
 graph LR
   F{bard ran today?} -->|no| B[run /bard first]
   F -->|yes| J
-  B --> J[Jira search pages, Slack paste]
+  B --> J[Jira search pages, gather slack_team]
   J --> C[collect.py: facts for Mon-Fri, me + team]
-  C --> D[draft: Decisions · Done · Next · Blocked · Team]
+  C --> D[draft: Decisions · Done · Next · Blocked · Ideas · Team]
   D --> E[vault Reports/Weekly/YYYY-Www.md + chat copy]
   E --> M[render_email.py: designed email, Outlook draft]
 ```
@@ -60,10 +60,13 @@ graph LR
    - **Jira.** Follow [references/team-jira.md](references/team-jira.md): count first, then
      even pages, so each page is saved to a file the script can read. A short page comes
      back inline, and a skipped page silently skews the bulk flags.
-   - **Slack.** Only by hand. Give Alex the prompt in
-     [references/team-slack-prompt.md](references/team-slack-prompt.md), filled in. If he
-     has a file, pass it to `--slack`. If not, go on; the gap is named in the facts. No
-     `slack_channels` in config → ask Alex for the channel names first.
+   - **Slack.** Team Slack comes from gather's `slack_team` source. Run
+     `gather.py run --sources slack_team` before the collector. Its channels come from
+     `slack_team_channels` in `~/.config/gather.json`. The hand paste in
+     [references/team-slack-prompt.md](references/team-slack-prompt.md) is only the fallback
+     when gather has no files for the week. Then give Alex that prompt, filled in, and pass
+     his file to `--slack`. If he has no file either, go on; the gap is named in the facts.
+     No `slack_channels` in config → ask Alex for the channel names first.
 3. **Fresh data.** Run the collector:
 
    ```bash
@@ -144,6 +147,9 @@ graph LR
    ## Blocked
    - <what, and who it waits on>
 
+   ## Ideas (backlog, not committed)
+   - <problem> → <idea> (with <first name>)
+
    ## <team.name> this week
    - <what moved, outcome first> ([PR](url) / [ticket](url) / [thread](url))
    ```
@@ -154,6 +160,13 @@ graph LR
    - **Next** comes from the `🔥 This week` and `📅 This month` lines, at most 5.
    - **Blocked** is only real blockers: `⏳ Waiting on others` lines and 🔺 risks. Omit the
      section when empty.
+   - **Ideas** come from `Bard/Ideas/` notes whose `timestamp` falls in the report window
+     (Mon-Fri, Central time) and whose `status` is `seed` or `shaping`. At most 3, newest
+     first. One line each: the problem, then the idea, then who it came from (first name).
+     FYI only, never an ask: an idea that needs the manager's yes goes under Decisions. Omit
+     the section when there are none. Why: brainstormed ideas (often with Matt) otherwise
+     never reach the manager until they are work, and the label stops him reading one as a
+     promise.
    - **Team** comes last, from step 5, without Alex's own lines. Its format is a draft:
      Alex shapes it later.
 8. **Screen before you write.** Never a credential, token, or password value (say "a token
@@ -180,7 +193,8 @@ graph LR
 
 - Meetings show up only through bard's notes; the calendar is not read. Mail is read only
   for asks from the manager (step 4).
-- Team Slack is by hand only (admin block on headless Slack). Datadog is not read yet.
+- Team Slack comes from gather's `slack_team` files. The hand paste is only the fallback when
+  gather has no files for the week (admin block on headless Slack). Datadog is not read yet.
 - The report only knows what bard, GitHub, Jira, and the Slack paste know. Work done off the record (a hallway call,
   a whiteboard) is missing unless Alex adds it; ask once in the chat summary whether anything
   is missing.

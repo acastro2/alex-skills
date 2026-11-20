@@ -1,5 +1,7 @@
 # Team Slack channels: the prompt Alex pastes into Cursor
 
+This is the fallback. Team Slack now comes from gather's `slack_team` files; use this only when gather has none for the week.
+
 Slack is reached only by hand: the admin blocked headless cursor-agent, so never automate
 it. Alex opens interactive Cursor (it has the Slack tools), pastes the prompt below, and
 gives the file to `collect.py --slack`. This reads the team's channels, which gather's own

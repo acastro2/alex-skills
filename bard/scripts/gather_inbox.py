@@ -40,7 +40,7 @@ DEFAULT_ROOT = "~/.gather"
 DEFAULT_MAX_AGE_HOURS = 24
 # Every comms source gather can fill. One with no ledger line was never fetched: a gap.
 SOURCES = ("teams_chats", "teams_mine", "teams_channels", "mail", "calendar", "sharepoint",
-           "jira", "github", "github_activity", "slack")
+           "jira", "github", "github_activity", "slack", "slack_team")
 # Snapshot sources hold every open item, so they have no history window to cover.
 SNAPSHOT = ("jira", "github")
 # Sources gather tracks by last_ok, not covered_from. github_activity is a stream, so unlike a

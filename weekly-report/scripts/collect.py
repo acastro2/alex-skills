@@ -24,6 +24,7 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/Chicago")
 CONFIG = Path.home() / ".config" / "weekly-report.json"
+GATHER_ROOT = Path.home() / ".gather"
 PRIORITY = re.compile(r"(🔺|⏫|🔼|🔽|⏬)")
 DONE_DATE = re.compile(r"✅ (\d{4}-\d{2}-\d{2})\s*$")
 MARKER = "<!-- BARD:START"
@@ -271,6 +272,36 @@ def parse_slack(text: str) -> dict:
     return {"calls": len(calls), "items": [{k: c[k] for k in ("tool", "args", "content")} for c in calls]}
 
 
+def gather_slack_team(root: Path, window: tuple[dt.date, dt.date]) -> dict | None:
+    """Team Slack from gather's `slack_team` store, same shape as parse_slack. Folders run from
+    the window's Monday to Friday plus 3 days, so a weekend or Monday run gets the week. None
+    when there is no folder or no file for those days."""
+    base = root / "raw" / "slack_team"
+    if not base.is_dir():
+        return None
+    first, last = window[0], window[1] + dt.timedelta(days=3)
+    days = []
+    for folder in base.iterdir():
+        try:
+            day = dt.date.fromisoformat(folder.name)
+        except ValueError:
+            continue
+        if folder.is_dir() and first <= day <= last:
+            days.append((day, folder))
+    files = [path for _, folder in sorted(days, key=lambda d: d[0]) for path in sorted(folder.glob("*.json"))]
+    if not files:
+        return None
+    items, seen = [], set()
+    for path in files:
+        record = json.loads(path.read_text())
+        call = {k: record[k] for k in ("tool", "args", "content")}
+        key = (call["tool"], json.dumps(call["args"], sort_keys=True), call["content"])
+        if key not in seen:
+            seen.add(key)
+            items.append(call)
+    return {"calls": len(items), "items": items}
+
+
 def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: argparse.Namespace) -> dict:
     """The team block and its gaps, in the order github, jira, slack, datadog."""
     gaps = []
@@ -296,13 +327,19 @@ def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: a
         else:
             if jira["missing"] > 0:
                 gaps.append(f"jira: {jira['missing']} issues missing (pass every page; bulk flags are unreliable)")
-    if not args.slack:
-        gaps.append("slack: not fetched")
-    else:
+    if args.slack:
         try:
             slack = parse_slack(args.slack.read_text())
         except (OSError, ValueError, AttributeError) as exc:
             gaps.append(f"slack: unreadable file ({exc})"[:300])
+    else:
+        try:
+            slack = gather_slack_team(GATHER_ROOT, window)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            gaps.append(f"slack: unreadable gather file ({exc})"[:300])
+        else:
+            if slack is None:
+                gaps.append("slack: not fetched")
     gaps.append("datadog: not fetched")
     return {"name": team.get("name"), "prs": prs, "prs_error": prs_error, "jira": jira, "slack": slack, "gaps": gaps}
 
@@ -313,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--date", type=dt.date.fromisoformat, default=None, help="any day in the week; default today")
     ap.add_argument("--no-github", action="store_true")
     ap.add_argument("--jira", type=Path, action="append", help="saved Jira search page; repeat per page")
-    ap.add_argument("--slack", type=Path, help="saved Slack reads, JSON")
+    ap.add_argument("--slack", type=Path, help="saved Slack reads, JSON; default: gather's slack_team files")
     args = ap.parse_args(argv)
 
     config = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}

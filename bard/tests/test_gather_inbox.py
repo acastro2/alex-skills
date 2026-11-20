@@ -57,7 +57,7 @@ def test_the_latest_ledger_line_per_source_wins_so_a_failed_last_fetch_shows(tmp
     }
     # mail failed last, teams_channels was not built, and the rest never ran: all are gaps
     assert sorted(out["fallback"]) == ["calendar", "github", "github_activity", "mail", "sharepoint",
-                                       "teams_channels", "teams_chats", "teams_mine"]
+                                       "slack_team", "teams_channels", "teams_chats", "teams_mine"]
 
 
 def test_a_source_gather_never_ran_is_a_gap_not_silence(tmp_path: Path) -> None:

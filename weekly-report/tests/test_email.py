@@ -275,3 +275,35 @@ def test_subject_without_a_team_is_the_week_alone() -> None:
 
 def test_the_draft_step_never_sends() -> None:
     assert "send" not in render_email.DRAFT_SCRIPT.lower()
+
+
+IDEAS = ["Gateway with 3000 tools bloats agent context: search tools with find_tools (with Matt)",
+         "Apps deploy from one MCP call, like artifact pages (with Andy)"]
+
+
+def test_ideas_render_after_blocked_and_before_team() -> None:
+    out = text(render(report={**REPORT, "ideas": IDEAS}))
+    assert "Ideas (backlog, not committed)" in out
+    assert IDEAS[0] in out and IDEAS[1] in out
+    assert out.index("WAITING ON") < out.index("Ideas (backlog") < out.index("TEAM ·")
+
+
+def test_no_ideas_hides_the_section() -> None:
+    for report in ({**REPORT, "ideas": []}, {k: v for k, v in REPORT.items() if k != "ideas"}):
+        assert "Ideas (backlog" not in text(render(report=report))
+
+
+def test_more_than_three_ideas_is_refused() -> None:
+    with pytest.raises(render_email.ReportError, match="ideas"):
+        render(report={**REPORT, "ideas": IDEAS * 2})
+
+
+@pytest.mark.parametrize("value", ["none", [""], [{"text": "x"}]])
+def test_malformed_ideas_are_refused(value) -> None:
+    with pytest.raises(render_email.ReportError, match="ideas"):
+        render(report={**REPORT, "ideas": value})
+
+
+def test_idea_text_is_escaped() -> None:
+    out = render(report={**REPORT, "ideas": ['<b>x</b> & "y"']})
+    assert "<b>x</b>" not in out and "&lt;b&gt;" in out
