@@ -658,3 +658,21 @@ def test_cmd_run_closes_the_slack_runner_even_when_run_raises(tmp_path, monkeypa
     with pytest.raises(KeyboardInterrupt):
         gather.main(["run", "--sources", "slack", "--root", str(tmp_path)])
     assert world.closed
+
+
+def test_parallel_slack_calls_that_come_back_out_of_order_are_matched_to_their_request():
+    # live 2026-11-20: opencode reports parallel tool calls in completion order, so a 10-call round
+    # failed "call mismatch" three times although every call was exactly the one asked for
+    calls = [{"tool": gather.SLACK_CHANNEL, "args": {"channel_id": f"D{i}", "oldest": "1", "limit": 100}} for i in range(3)]
+    out = oc_stream([tool_event(c["tool"], c["args"], read_json(f"chan {c['args']['channel_id']}")) for c in reversed(calls)])
+    got = gather.run_round(lambda calls_, allowed: out, calls, parse=gather.parse_opencode, ordered=False)
+    assert [g["args"] for g in got] == [c["args"] for c in calls]
+    assert [json.loads(g["content"])["messages"] for g in got] == ["chan D0", "chan D1", "chan D2"]
+
+
+def test_an_out_of_order_round_still_fails_when_an_argument_changed():
+    calls = [{"tool": gather.SLACK_CHANNEL, "args": {"channel_id": f"D{i}", "limit": 100}} for i in range(2)]
+    drifted = [calls[1], {"tool": gather.SLACK_CHANNEL, "args": {"channel_id": "D0", "limit": 5}}]
+    out = oc_stream([tool_event(c["tool"], c["args"], read_json()) for c in drifted])
+    with pytest.raises(gather.ToolError, match="call mismatch"):
+        gather.run_round(lambda calls_, allowed: out, calls, parse=gather.parse_opencode, ordered=False)

@@ -4,13 +4,14 @@ Updated: 2026-11-20, HEAD 5566380 (Slack moved from bard into gather, uncommitte
 
 ## gather Slack
 
-State: committed and pushed to main (2026-11-20). Trigger evals 16/16 (2 new Slack cases, workspace `~/.agents/skill-workspace/alex-skills/gather/triggers-slack-1`). The runner also sweeps OpenCode sessions whose `directory` equals its run folder exactly, at the first call and at run end. gather has a `slack` source: `opencode run --agent gather-slack` in `~/.gather/run-opencode`, model `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash#high`. Spec: `docs/specs/gather-slack.md`. bard reads `raw/slack/` through the gather lane, and its native Slack lane is only the fallback. Live 2026-11-20: `slack: fetched 32 calls, 284 items`; no session left in opencode.db and no `~/.claude/projects` folder. Tests 156 passed, `check.sh` 193/193, pre-commit passes.
+State: committed and pushed to main (2026-11-20). Trigger evals 16/16 (2 new Slack cases, workspace `~/.agents/skill-workspace/alex-skills/gather/triggers-slack-1`). The runner also sweeps OpenCode sessions whose `directory` equals its run folder exactly, at the first call and at run end. gather has a `slack` source: `opencode run --agent gather-slack` in `~/.gather/run-opencode`, model `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash#high`. Spec: `docs/specs/gather-slack.md`. bard reads `raw/slack/` through the gather lane, and its native Slack lane is only the fallback. Live 2026-11-20: `slack: fetched 74 calls, 850 items` over 7 days; no session left in opencode.db and no `~/.claude/projects` folder. Tests 158 passed, `check.sh` 193/193, pre-commit passes.
 
 Next:
-1. The first real `/gather` run sets the slack cursor (7 days back). A run at 17:15 UTC on 11-20 (before the `detailed` fix) logged `slack: error: no slack user id`; the next run clears it.
+1. The first real `/gather` run sets the slack cursor (7 days back). Runs at 17:15 and 17:37 UTC on 11-20 logged `no slack user id` and `call mismatch`; both are fixed, so the next run clears them.
 
 Gotchas and dead ends:
 - Cursor models get no MCP tools through OpenCode ("Tool not found").
+- OpenCode reports parallel tool calls in completion order, not request order (live 2026-11-20: a 7-day run failed `call mismatch`). Slack rounds match each call to its request by exact tool and args; `claude -p` rounds keep the positional match.
 - Rewriting `opencode.jsonc` right before `opencode run` gives "Agent not found": write the config once.
 - `claude-agent` saves Claude Code sessions under `~/.claude/projects/<cwd>`: gather removes that folder after each attempt.
 - `slack_read_user_profile` with `concise` has no `User ID:` line: use `detailed`.

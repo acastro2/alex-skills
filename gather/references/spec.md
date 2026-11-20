@@ -74,6 +74,7 @@ and the calls that are proven.
 - The runner model reads every result. Cursor models cannot use MCP tools through OpenCode: no
   `tool_use` event, and the model says "Tool not found". Model order (Alex, 2026-11-20):
   `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash` (`high`).
+- OpenCode reports parallel tool calls in completion order, not request order (live 2026-11-20: a 7-day run failed `call mismatch`). Slack rounds match each call to its request by exact tool and args; `claude -p` rounds keep the positional match.
 - Rewriting `opencode.jsonc` right before each `opencode run` raced OpenCode's config reload: every
   call failed with `Agent not found: "gather-slack"`. The same run without the rewrite worked.
 - `claude-agent/haiku` completed `slack_read_user_profile` with `{"response_format": "concise"}`.

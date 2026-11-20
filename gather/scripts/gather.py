@@ -248,7 +248,19 @@ def parse_opencode(text, allowed):
     return calls
 
 
-def run_round(runner, calls, tolerate_errors=False, parse=parse_stream):
+def _by_request(calls, got):
+    """`got` put back in request order, matching each call by exact tool and args. A round with any
+    unmatched or extra call comes back as it was, so the positional check still rejects it."""
+    pool, out = list(got), []
+    for c in calls:
+        i = next((i for i, g in enumerate(pool) if g["tool"] == c["tool"] and g["args"] == c["args"]), None)
+        if i is None:
+            return got
+        out.append(pool.pop(i))
+    return out if not pool else got
+
+
+def run_round(runner, calls, tolerate_errors=False, parse=parse_stream, ordered=True):
     """One `claude -p` round. The model sometimes changes an argument (seen live: an invented
     `uri` key on get_me). A drifted round is thrown away and tried up to 3 times in all, and
     each try can take up to CLAUDE_TIMEOUT_S. With `tolerate_errors`, a call whose result is an
@@ -256,6 +268,9 @@ def run_round(runner, calls, tolerate_errors=False, parse=parse_stream):
     allowed = sorted({c["tool"] for c in calls})
     for attempt in (1, 2, 3):
         got = parse(runner(calls, allowed), set(allowed))
+        # OpenCode reports parallel calls in completion order (live 2026-11-20); claude -p keeps position
+        if not ordered:
+            got = _by_request(calls, got)
         if len(got) == len(calls) and all(
                 g["tool"] == c["tool"] and g["args"] == c["args"] for g, c in zip(got, calls)):
             break
@@ -588,7 +603,7 @@ def slack_chains(ctx, got, firsts):
     pending = [(i, tool, args) for i, (tool, args) in enumerate(firsts)]
     while pending:
         batch, pending = pending[:SLACK_ROUND], pending[SLACK_ROUND:]
-        calls = run_round(ctx.slack_runner, [{"tool": t, "args": a} for _, t, a in batch], parse=parse_opencode)
+        calls = run_round(ctx.slack_runner, [{"tool": t, "args": a} for _, t, a in batch], parse=parse_opencode, ordered=False)
         for (i, tool, _), call in zip(batch, calls):
             chains[i].append(call)
             got.records.append(call)
@@ -603,7 +618,7 @@ def fetch_slack(ctx):
     if ctx.slack_runner is None:
         raise RuntimeError("no slack runner")
     got = Fetched([], 0)
-    (profile,) = run_round(ctx.slack_runner, [{"tool": SLACK_PROFILE, "args": dict(SLACK_PROFILE_ARGS)}], parse=parse_opencode)
+    (profile,) = run_round(ctx.slack_runner, [{"tool": SLACK_PROFILE, "args": dict(SLACK_PROFILE_ARGS)}], parse=parse_opencode, ordered=False)
     got.records.append(profile)
     uid = slack_user_id(profile["content"])
     if not uid:
