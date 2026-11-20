@@ -4,11 +4,10 @@ Updated: 2026-11-20, HEAD 5566380 (Slack moved from bard into gather, uncommitte
 
 ## gather Slack
 
-State: uncommitted (2026-11-20). gather has a `slack` source: `opencode run --agent gather-slack` in `~/.gather/run-opencode`, model `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash#high`. Spec: `docs/specs/gather-slack.md`. bard reads `raw/slack/` through the gather lane, and its native Slack lane is only the fallback. Live 2026-11-20: `slack: fetched 32 calls, 284 items`; no session left in opencode.db and no `~/.claude/projects` folder. Tests 150 passed, pre-commit passes.
+State: committed and pushed to main (2026-11-20). Trigger evals 16/16 (2 new Slack cases, workspace `~/.agents/skill-workspace/alex-skills/gather/triggers-slack-1`). The runner also sweeps OpenCode sessions whose `directory` equals its run folder exactly, at the first call and at run end. gather has a `slack` source: `opencode run --agent gather-slack` in `~/.gather/run-opencode`, model `claude-agent/haiku`, then `opencode-go/deepseek-v4.1-flash#high`. Spec: `docs/specs/gather-slack.md`. bard reads `raw/slack/` through the gather lane, and its native Slack lane is only the fallback. Live 2026-11-20: `slack: fetched 32 calls, 284 items`; no session left in opencode.db and no `~/.claude/projects` folder. Tests 156 passed, `check.sh` 193/193, pre-commit passes.
 
 Next:
-1. Alex checks the index: parts were staged by someone else during the work. Then commit by area: `feat(gather): fetch Slack through opencode run`, `feat(bard): read Slack from gather`.
-2. The first real `/gather` run sets the slack cursor (7 days back).
+1. The first real `/gather` run sets the slack cursor (7 days back). A run at 17:15 UTC on 11-20 (before the `detailed` fix) logged `slack: error: no slack user id`; the next run clears it.
 
 Gotchas and dead ends:
 - Cursor models get no MCP tools through OpenCode ("Tool not found").
