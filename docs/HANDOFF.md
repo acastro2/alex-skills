@@ -1,6 +1,6 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-20, HEAD 5566380 (Slack moved from bard into gather, uncommitted)
+Updated: 2026-11-20 15:39 CST, HEAD 2228d4d (gather Slack is in HEAD; README accuracy pass)
 
 ## gather Slack
 

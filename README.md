@@ -18,9 +18,9 @@ The exceptions are skills that carry facts, not only method: `ub-mode`, plus the
 
 | Kind | Skills |
 | --- | --- |
-| Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control` (rules on top of the browse MCP), `browser-apple-events`, `archify`, `anatomy` (isometric SVG figures with a camera you can turn), `mesh-measure`, `printed-part-modeling`, `find-skills` (installs skills from the open ecosystem) |
+| Tools | `search` (Context7, Exa, cited research files), `jev` (typed decisions), `m365`, `peekaboo`, `browser-control` (rules on top of the browse MCP), `browser-apple-events`, `archify`, `anatomy` (isometric SVG figures with a camera you can turn), `mesh-measure`, `printed-part-modeling`, `find-skills` (installs skills from the open ecosystem), `herdr`, `cf-cli`, `oreilly-answers`, `security-audit`, `unslop` |
 | Library guides | `threejs-*` (13: fundamentals, geometry, materials, textures, lighting, loaders, asset-pipeline, animation, interaction, shaders, postprocessing, performance, react-three-fiber) |
-| Alex's systems | `scribe`, `bard`, `gather` (fetch-only intake of comms into `~/.gather` for bard), `archeologist`, `projects-curator`, `ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator`, `git-pull-acastro2`, `weekly-report` |
+| Alex's systems | `scribe`, `bard`, `gather` (fetch-only intake of comms into `~/.gather` for bard), `archeologist`, `projects-curator`, `ticket-writer`, `browser-cookie-auth`, `agent-creator`, `autoresearch`, `skill-creator`, `git-pull-acastro2`, `weekly-report`, `forge`, `rex` |
 | Alex's taste and process | `alex-voice`, `coding`, `reviewer`, `improve-codebase-architecture`, `personal-finance-advisor`, `ub-mode`, `terminal-report`, `handoff` |
 | Upstream dependencies | `codebase-design`, `domain-modeling`, `grilling` |
 
@@ -54,7 +54,7 @@ More skills here derive from public sources than the upstream dependencies above
 
 Everything else in this repo is Alex's own work: `agent-creator`, `alex-voice`, `archeologist`, `bard`, `browser-apple-events`, `browser-cookie-auth`, `cf-cli`, `forge`, `git-pull-acastro2`, `handoff`, `m365`, `mesh-measure`, `oreilly-answers`, `personal-finance-advisor`, `printed-part-modeling`, `projects-curator`, `scribe`, `terminal-report`, `ticket-writer`, `weekly-report`. One nuance: `personal-finance-advisor` is original writing, but its `references/UPSTREAM.md` pins four method references it borrows topics from.
 
-Two skills are neither copies nor Alex's own text: `rex` is a stub that `rex skill setup` writes, and its guide comes from the installed Rex CLI; `opencode-charts` ships from Alex's [acastro2/opencode-chart-tui](https://github.com/acastro2/opencode-chart-tui) repo, which is its source.
+Two skills are neither copies nor Alex's own text. `rex` is a stub that `rex skill setup` writes, and its guide comes from the installed Rex CLI. `opencode-charts` is not in this checkout: it is a symlink into Alex's [acastro2/opencode-chart-tui](https://github.com/acastro2/opencode-chart-tui) repo, which is its source, and `skillcheck/policy.py` records the one external path it needs.
 
 Unverified candidates, recorded so they are not lost: `coding` shares one section with mattpocock/skills `tdd`, and `reviewer` shares its code layer with mattpocock/skills `code-review`; both matches are section-level only. `jev` shares distinctive guidance with typesafe-ai/skills but no verbatim text. The local sync tracks this table's sources and reports when an upstream moves ahead of the copy here.
 
@@ -78,6 +78,8 @@ Do not point `~/.claude/skills` at this repo with one symlink. Claude Code syncs
 
 ## Skill anatomy
 
+A skill is a folder with `SKILL.md` at its root. Two top-level folders are not skills: `docs/specs/` holds the designs, and `skillcheck/` is the linter the hook calls.
+
 ```
 skill-name/
 ├── SKILL.md        # Entry point: YAML frontmatter (name, description) + instructions
@@ -98,9 +100,11 @@ skill-name/
 ```bash
 pre-commit install            # once
 pre-commit run --all-files    # before every commit
+scripts/check.sh              # the rules, then every offline suite
+scripts/check.sh --tools      # also the ub-mode tools' own suites
 ```
 
-The pre-commit hooks run `scripts/validate_skill_graph.py`, which checks each skill's frontmatter, that the folder name matches `name`, and that relative links between skills resolve.
+The `skillcheck` hook runs `python -m skillcheck`, which checks each skill's frontmatter, that the folder name matches `name`, and that relative links between skills resolve. The hook installs PyYAML in its own environment; to run either it or `scripts/validate_skill_graph.py` (the same rules, same exit codes) by hand, use `uv run --with pyyaml python -m skillcheck`, because plain `python3` has no PyYAML.
 
 ## License
 
