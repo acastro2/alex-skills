@@ -57,6 +57,19 @@ views:
       - up
       - timestamp
   - type: table
+    name: Specs
+    filters:
+      and:
+        - 'type == "spec"'
+    groupBy:
+      property: status
+      direction: ASC
+    order:
+      - file.name
+      - status
+      - up
+      - timestamp
+  - type: table
     name: Health (unreviewed / orphans)
     filters:
       and:

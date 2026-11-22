@@ -16,6 +16,14 @@
   "should_trigger": true
  },
  {
+  "query": "turn the dependency agent idea in bard into a spec with acceptance criteria",
+  "should_trigger": true
+ },
+ {
+  "query": "let's build our ideas as specs in the vault, ask me the decisions first",
+  "should_trigger": true
+ },
+ {
   "query": "capture what I worked on today into my knowledge base",
   "should_trigger": true
  },
@@ -53,6 +61,10 @@
  },
  {
   "query": "create a Jira story from my branch",
+  "should_trigger": false
+ },
+ {
+  "query": "write the design spec for this feature into docs/ in the repo",
   "should_trigger": false
  }
 ]

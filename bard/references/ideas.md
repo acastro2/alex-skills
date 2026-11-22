@@ -17,7 +17,8 @@ these; a candidate with only one of them is a drop:
 - It names a **mechanism**: what would change, and where.
 
 "We should make it better" fails both, so drop it. Once a choice is made, write a `decision`
-note. Once the thing is built, write an `artifact` or `impact` note.
+note. When Alex asks to build it, write a spec in `Bard/Specs/` (see [Specs](specs.md)). Once
+the thing is built, write an `artifact` or `impact` note.
 
 ## Two entry points
 
@@ -35,7 +36,8 @@ The same OKF envelope as every note (SKILL.md STEP 3), plus `status`:
 
 ```yaml
 type: idea
-status: seed              # seed | shaping | ready | adopted | dropped
+status: seed              # seed | shaping | ready | specced | adopted | dropped
+spec: "[[<Spec title>]]"  # only when status is specced or later
 title: <claim: what the idea gets you, in one line>
 description: <one line>
 up: "[[Topic Hub]]"
@@ -49,6 +51,9 @@ resource: ""              # a real verified URL, or omit
 - `seed`: captured, not researched.
 - `shaping`: researched, with open questions.
 - `ready`: Alex could start it tomorrow.
+- `specced`: a spec exists in `Bard/Specs/`. Set it, with the `spec` link, when bard writes the
+  spec Alex asked for. This is the one status change bard makes on its own. It can follow
+  `shaping` directly: the statuses are not a strict sequence.
 - `adopted`: work started. Link the decision or board item.
 - `dropped`: Alex said no. Keep the note and the reason: a dropped idea stops the same idea
   from coming back.
@@ -64,9 +69,10 @@ limit) is cited or verified. The proposal itself is the only part that is not a 
 
 ## Editing an idea
 
-Ideas change, so they are the one knowledge note bard edits in place, but only when Alex asks:
+Ideas change, so bard edits them in place (specs too, see [Specs](specs.md)), but only when Alex asks:
 "move it to shaping", "add this to the idea", "drop it". Never change `status` on bard's own
-judgment, and never in a sweep. Why: the status is Alex's call, like the board's priority.
+judgment, and never in a sweep, except `specced` when Alex asks for the spec (see
+[Specs](specs.md)). Why: the status is Alex's call, like the board's priority.
 
 ## Filename
 

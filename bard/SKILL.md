@@ -8,10 +8,10 @@ description: >-
   (Evidence/). Use when the user runs /bard, asks to capture/record what they've been
   working on into Obsidian, to sweep recent sessions, meetings, or comms into the
   knowledge base, to bootstrap the bard hubs, or to turn past decisions/lessons/patterns
-  into notes, to save a future idea into Bard/Ideas,
+  into notes, to save an idea to Bard/Ideas or spec it in Bard/Specs,
   and to keep the root-vault `Todo.md` board fed from Slack, Teams, mail,
   Planner, To Do, Todoist, Jira and GitHub, with every judgment typed through Jev.
-  On-demand only. Writes OKF-envelope markdown notes. Never commits, never runs a server,
+  On-demand only. Writes OKF markdown notes. Never commits, never runs a server,
   never invents provenance. Not for raw transcripts (scribe), fetching raw comms
   (gather), or history questions (archeologist).
 allowed-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, mcp__exa__web_search_advanced_exa, mcp__jev__ask_jev, mcp__claude_ai_Microsoft_365__chat_message_search, mcp__claude_ai_Microsoft_365__outlook_email_search, mcp__claude_ai_Microsoft_365__get_me, mcp__microsoft-tasks__tasks_login_status, mcp__microsoft-tasks__tasks_assigned_to_me, mcp__claude_ai_Todoist__find-tasks-by-date, mcp__claude_ai_Atlassian__atlassianUserInfo, mcp__claude_ai_Atlassian__getAccessibleAtlassianResources, mcp__claude_ai_Atlassian__getJiraIssue, mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql
@@ -30,7 +30,7 @@ own review or answer format, that format wins. If the host has no question tool,
 
 bard is Alex's personal knowledge base, fed from AI-coding session history. It is
 NOT a brag doc, a PR machine, or a provenance-citation system. It is a knowledge
-base. One concept per note, flat folder (ideas are the one subfolder), navigated by search / tags / graph /
+base. One concept per note, flat folder (ideas and specs are the only subfolders), navigated by search / tags / graph /
 `Bard.base`.
 
 Three frames govern it:
@@ -45,6 +45,7 @@ Three frames govern it:
 - Vault root: `$OBSIDIAN_VAULT`, or the vault the `obsidian` CLI reports. Never a literal path.
 - KB folder: `<vault>/Bard/` (flat)
 - Ideas folder: `<vault>/Bard/Ideas/` (`type: idea` only; see [Ideas](references/ideas.md))
+- Specs folder: `<vault>/Bard/Specs/` (`type: spec` only; see [Specs](references/specs.md))
 - State file: `<vault>/Bard/.bard-state.json`
 - Base + hubs: `<vault>/Bard/Bard.base`, `<vault>/Bard/<Topic Hub>.md`
 - Root TODO board: `<vault>/Todo.md` (the one living board both Alex and bard edit — see **Root TODO board (`Todo.md`)** below; verified to exist)
@@ -72,8 +73,9 @@ Three frames govern it:
   on every sweep, verbatim; unchecked lines above the marker are never touched (see
   [Board rules](references/todo-board.md) → Ownership split). The retired `Bard/TODO.md` is a
   pointer stub only; bard never writes it. Knowledge notes and hubs stay
-  append-only/never-touched. One exception: an idea note in `Bard/Ideas/` changes in place,
-  but only when Alex asks (see [Ideas](references/ideas.md) → Editing an idea).
+  append-only/never-touched. Two exceptions: an idea note in `Bard/Ideas/` and a spec in
+  `Bard/Specs/` change in place, but only when Alex asks (see [Ideas](references/ideas.md) →
+  Editing an idea, and [Specs](references/specs.md) → Editing a spec).
 - Never INVENT provenance: no sha/PR/commit/date guessed. You MAY RETRIEVE real,
   verified provenance (see STEP 2b: `gh` for a real PR/commit/issue, the Atlassian MCP
   for a real Jira issue, Exa for a public doc) and cite it. If retrieval finds
@@ -316,6 +318,14 @@ Write one idea note into `Bard/Ideas/` now: no watermark, no lanes, no state cha
 the body sections, and when an idea may be edited. Research only when Alex asks, through the
 `search` skill. The normal provenance, link, tag and hub rules all apply.
 
+### `/bard spec <idea>` (or "build this idea as a spec")
+
+Turn an idea into a spec in `Bard/Specs/`: no watermark, no lanes, no state change. **Read
+[Specs](references/specs.md) first**: it owns the decision rounds (every open choice goes to
+Alex through the `question` tool before the spec is written), the format (a decisions table
+plus the ticket-writer six sections), the self-review with the `reviewer` skill, and the
+idea-to-spec links. Never write a spec in a sweep.
+
 ### `/bard full`
 
 Same as a sweep but ignores `watermark` and `scribe_seen` (re-walks all history). Dedupe against
@@ -382,8 +392,8 @@ at most.
 Flat lowercase keys, no spaces, one consistent type per key across every note.
 
 ```yaml
-type: decision            # REQUIRED (OKF). decision|lesson|pattern|artifact|impact|idea
-status: seed              # idea notes only: seed|shaping|ready|adopted|dropped
+type: decision            # REQUIRED (OKF). decision|lesson|pattern|artifact|impact|idea|spec
+status: seed              # idea: seed|shaping|ready|specced|adopted|dropped; spec: draft|ready|ticketed|shipped|superseded
 title: <short, specific claim>
 description: <one-line summary>
 up: "[[Topic Hub]]"       # quoted wikilink, one value, chosen from `hubs`. Orphan backbone.
@@ -450,7 +460,8 @@ The set of note files (path + full content), plus a one-line report per note:
 `Bard/<Title in Title Case>.md` — the title IS the wikilink target, so the filename
 must equal the canonical `title`. Sanitize illegal chars (`/`, `:`, `#`, `^`, `|`,
 `[`, `]`) to a space or dash. Hub notes use the hub name verbatim. Idea notes go to
-`Bard/Ideas/<Title>.md`.
+`Bard/Ideas/<Title>.md`; specs go to `Bard/Specs/<SERVICE-NAME> <outcome>.md` (see
+[Specs](references/specs.md)).
 
 ## State file shape
 

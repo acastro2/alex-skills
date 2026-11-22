@@ -1,6 +1,6 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-20 15:39 CST, HEAD 2228d4d (gather Slack is in HEAD; README accuracy pass)
+Updated: 2026-11-22 (bard specs lane; gather Slack from 2026-11-20 kept)
 
 ## gather Slack
 
@@ -16,12 +16,12 @@ Gotchas and dead ends:
 - `claude-agent` saves Claude Code sessions under `~/.claude/projects/<cwd>`: gather removes that folder after each attempt.
 - `slack_read_user_profile` with `concise` has no `User ID:` line: use `detailed`.
 
-## bard ideas
+## bard ideas and specs
 
-State: uncommitted (2026-11-18). bard writes `type: idea` notes to `Bard/Ideas/` (`bard/references/ideas.md`), on demand (`/bard idea`) or from Set K `idea` in a sweep. The live `Bard.base` has an Ideas view. Checks: `check.sh` 12/12, triggers 4/4 (q02, q03, q10, q11, 3 runs each), Jev Set K row in `jev-gates.md`. First note: `Bard/Ideas/A package-published event lets a Hub dependency agent open bump PRs in every consumer within minutes.md`.
+State: ideas committed in `bef3ffe`; specs added 2026-11-22 (this commit). `/bard spec <idea>` writes `type: spec` notes to `Bard/Specs/` (`bard/references/specs.md`): decision rounds through the question tool first, then a decisions table plus the ticket-writer six sections, then a `reviewer` self-review. Ideas gained status `specced` and a `spec:` back-link. The live `Bard.base` has Ideas and Specs views. Checks 2026-11-22: `check.sh` 12/12, `pre-commit` clean, triggers 17/17 (2 runs each, precision and recall 1.0); results in `~/.agents/skill-workspace/alex-skills/bard/specs-iter1/`.
 
 Next:
-1. Alex commits by area: `feat(bard): capture future ideas in Bard/Ideas`.
+1. None open. The spec workflow itself (question rounds, self-review) has no automated eval: `claude -p` cannot answer question prompts.
 
 ## coding skill (was code-rules)
 
