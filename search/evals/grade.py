@@ -25,13 +25,17 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 FENCE = re.compile(r"(?:```|~~~)json\s*\n(.*?)(?:```|~~~)", re.S | re.I)
+OTHER_FENCE = re.compile(r"(?:```|~~~)(\w*)[^\n]*\n.*?(?:```|~~~)", re.S)
 PASS_AT = 0.80
 FAIL_AT = 0.20
 
 
 def split_output(output: str) -> dict:
     """The calls and the prose apart: mixed together, Jev misread one for the other."""
-    return {"calls": FENCE.findall(output), "explanation": FENCE.sub("", output).strip()}
+    # Other code blocks (scripts, diagrams) become a marker: the questions judge the prose and
+    # the agent_run calls, and the full blocks made each Jev request too big to send by hand.
+    prose = OTHER_FENCE.sub(lambda m: f"[{m.group(1) or 'code'} block omitted]", FENCE.sub("", output))
+    return {"calls": FENCE.findall(output), "explanation": prose.strip()}
 
 
 def code_verdict(output: str, bounds: list[int]) -> tuple[bool, str]:
@@ -115,6 +119,24 @@ def grade_run(run_dir: str, ev: dict) -> dict | None:
     out = {"expectations": rows, "summary": summary}
     json.dump(out, open(os.path.join(run_dir, "grading.json"), "w"), indent=1)
     return out
+
+
+def send(root: str) -> int:
+    """Pipe each jev-request.json to the `jev` CLI unchanged and save its answer next to it."""
+    bad = 0
+    for d in run_dirs(root):
+        req = os.path.join(d, "jev-request.json")
+        if not os.path.exists(req):
+            continue
+        with open(req, "rb") as f:
+            r = subprocess.run(["jev", "-", "--raw"], stdin=f, capture_output=True)
+        if r.returncode:
+            bad += 1
+            print(f"{d}: jev failed: {r.stderr.decode()[-300:]}")
+            continue
+        open(os.path.join(d, "jev-response.json"), "wb").write(r.stdout)
+        print(f"{d}: answered")
+    return 1 if bad else 0
 
 
 def apply(root: str) -> int:

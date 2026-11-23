@@ -78,9 +78,12 @@ def main() -> int:
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--jobs", type=int, default=4)
+    ap.add_argument("--only", type=int, action="append", help="eval id to run; repeatable")
     ap.add_argument("--dry-run", action="store_true", help="print the job list and exit; no claude call")
     args = ap.parse_args()
     evals = json.load(open(os.path.join(HERE, "evals.json")))["evals"]
+    if args.only:  # re-run a subset without paying for the rest
+        evals = [e for e in evals if e["id"] in args.only]
     guides = dict(g.split("=", 1) for g in args.guide)
     for label, path in guides.items():
         if not os.path.isfile(path):
