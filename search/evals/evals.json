@@ -1,0 +1,57 @@
+{
+  "skill_name": "search",
+  "guide": "references/exa-agent.md",
+  "notes": "Behaviour evals for the run plan, agent-or-script, and coverage-check sections of references/exa-agent.md. No Exa call is made: agent_run is not connected, and the model writes its calls as json blocks. Eval 4 is the guard against over-reach: three known rows must stay one agent_run with input.data, not a script.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "plan-a-list-build",
+      "prompt": "Find B2B SaaS companies in Brazil and Mexico that raised a Series A in the last 6 months. I want about 30, with a source for each.",
+      "expected_output": "A short plan (universe, segments Brazil and Mexico, target about 30, evidence), then one agent_run call with an exact date range, an explicit effort, and an outputSchema whose company array has maxItems and a source URL per row.",
+      "expectations": [
+        {"text": "code: exactly one agent_run call", "code": {"calls": [1, 1]}},
+        {"text": "The plan names Brazil and Mexico as separate segments and a target of about 30", "jev": "Does `explanation` or `calls` treat Brazil and Mexico as separate segments to cover, and state a target of about 30 companies?"},
+        {"text": "The query or schema uses an exact date range, not only 'last 6 months'", "jev": "Does `calls` contain an exact calendar date (such as 2026-05-23, May 2026, or 2026-05) as the start of the funding window, rather than only the words 'last 6 months'?"},
+        {"text": "The outputSchema company array has maxItems", "jev": "Does the outputSchema in `calls` put a maxItems limit on the array of companies?"},
+        {"text": "Each row in the schema has a source or evidence URL field", "jev": "Does each company item in the outputSchema in `calls` have a field for a source, evidence, or citation URL?"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "batch-400-known-rows",
+      "prompt": "I have companies.csv with 400 company domains, one per line. For each one I need the HQ city and the employee count, with a source. Set it up.",
+      "expected_output": "No agent_run loop over 400 rows. A script against the Exa API, with a cost estimate or a request for approval before it runs, and a note that it needs a host that can reach api.exa.ai and EXA_API_KEY.",
+      "expectations": [
+        {"text": "code: at most one agent_run call", "code": {"calls": [0, 1]}},
+        {"text": "Recommends a script against the Exa API instead of one agent_run per company", "jev": "Does `explanation` recommend a script that calls the Exa API for the rows, instead of making one agent_run call per company?"},
+        {"text": "Gives a cost estimate or asks for approval before the script runs", "jev": "Does `explanation` give an estimated total cost, or say it will ask the user for a yes before running the 400 rows?"},
+        {"text": "Says the script needs a host that can reach api.exa.ai, an EXA_API_KEY, or asks where to run it", "jev": "Does `explanation` say the script needs EXA_API_KEY, or a host that can reach api.exa.ai, or ask the user where to run it, or say a sandbox blocks the API?"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "report-a-sparse-run",
+      "prompt": "Earlier you started an agent_run for: \"B2B SaaS companies in Brazil and Mexico that raised a Series A between 2026-05-23 and 2026-11-23; about 30, with a source each\". It came back with this result:\n\n```text\nid: agent_run_7f3a\nstatus: completed\nstopReason: schema_satisfied\noutput.structured.companies (12 rows):\n 1. Quarta Labs | Brazil | Series A 2026-06 | https://news.example/quarta\n 2. Ponto Fiscal | Brazil | Series A 2026-07 | https://news.example/ponto\n 3. Raia Cloud | Brazil | Series A 2026-07 | https://news.example/raia\n 4. Trilha HR | Brazil | Series A 2026-08 | https://news.example/trilha\n 5. Quarta Labs | Brazil | Series A 2026-06 | https://blog.example/quarta-raise\n 6. Seta Pay | Brazil | Series A 2026-08 | https://news.example/seta\n 7. Vinco Data | Brazil | Series A 2026-09 | https://news.example/vinco\n 8. Lume Ops | Brazil | Series A 2026-09 | https://news.example/lume\n 9. Arco Legal | Brazil | Series A 2026-10 | https://news.example/arco\n10. Nexo Frete | Brazil | Series A 2026-10 | https://news.example/nexo\n11. Bico Sales | Brazil | Series A 2026-11 | https://news.example/bico\n12. Tear Analytics | Brazil | Series A 2026-11 | https://news.example/tear\noutput.grounding: every row has one citation, confidence medium\n```\n\nWrite the answer you would give me now.",
+      "expected_output": "An answer that does not call the list complete: 11 unique companies against a target of about 30, Quarta Labs is a duplicate, Mexico has no rows, and a follow-up is proposed (previousRunId, input.exclusion, or a Mexico-only run).",
+      "expectations": [
+        {"text": "code: at most one agent_run call", "code": {"calls": [0, 1]}},
+        {"text": "Says the result is best-effort or not exhaustive, and does not call it complete", "jev": "Does `explanation` say the list is best-effort, partial, incomplete, or not exhaustive, without calling it a complete list?"},
+        {"text": "Says the count is short of the target of about 30", "jev": "Does `explanation` say the run returned fewer companies than the target of about 30?"},
+        {"text": "Says Mexico has no rows", "jev": "Does `explanation` say that no Mexican company was returned, or that the Mexico segment is empty?"},
+        {"text": "Flags or removes the Quarta Labs duplicate", "jev": "Does `explanation` say Quarta Labs appears twice, or count 11 unique companies, or list Quarta Labs only once?"},
+        {"text": "Proposes a follow-up with previousRunId, input.exclusion, or a separate Mexico run", "jev": "Does `explanation` or `calls` propose a follow-up that uses previousRunId, input.exclusion, or a separate run for Mexico?"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "three-known-rows-stay-agent",
+      "prompt": "For stripe.com, notion.so and figma.com, find the current CEO name and one source for each.",
+      "expected_output": "One agent_run call with the three companies in input.data. No script.",
+      "expectations": [
+        {"text": "code: exactly one agent_run call", "code": {"calls": [1, 1]}},
+        {"text": "The call passes the three companies in input.data", "jev": "Does the agent_run call in `calls` pass stripe.com, notion.so and figma.com as rows in input.data?"},
+        {"text": "Does not recommend a script against the Exa API", "jev": "Does `explanation` recommend writing a script against the Exa API for this task?", "invert": true}
+      ]
+    }
+  ]
+}

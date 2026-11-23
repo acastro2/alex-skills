@@ -25,6 +25,26 @@ Call the Exa MCP tool `agent_run` (the name prefix varies by host). Do not run `
 
 The MCP tool waits for the run and returns its output. A long run comes back still running: call `agent_run` again with its `runId`. The MCP has no stop call; to stop an `ultra` run early, set `budget.maxDurationSeconds` up front. The checks in **`completed` does not mean correct** below apply to MCP results too.
 
+## Plan the run first
+
+A run costs money and is slow to repeat. Before you create one, write down:
+
+- **Objective:** the question the run answers.
+- **Universe:** which entities qualify.
+- **Segments:** the partitions to cover (geography, industry, persona, date range).
+- **Coverage target:** the count you want, the maximum, and what "good enough" means.
+- **Output fields:** the columns you need. These become the `outputSchema`.
+- **Evidence:** URL, source title, date, and a confidence or rationale field for fuzzy judgments.
+- **Exclusions:** earlier results and disallowed entities, for `input.exclusion`.
+
+Turn relative time ("recent", "last 6 months") into exact dates from today's date before you write the query.
+
+### Agent or a script
+
+- **Discovery is the hard part** (open universe, multi-hop, deciding what to search next): use the Agent.
+- **Known rows that fit in one run:** use the Agent with `input.data` (see **Enrich rows you already have**).
+- **Too many known rows for one run, same enrichment on each** (hundreds of companies or people): write a script against the Exa API. Do not loop hundreds of identical MCP calls by hand; that burns context and money. The script needs a host that can reach `api.exa.ai` and has `EXA_API_KEY`; the Claude Code sandbox blocks it, so ask the user where to run it. Every row is a paid call: estimate the total cost from the row count and get the user's yes before you run it. The script reads its inputs from a file, uses bounded concurrency and exponential backoff on `429` and `5xx`, checkpoints progress, keeps the raw API error per row, and writes one JSON or CSV file. Then read that file and answer from it.
+
 ## Create a run
 
 Build the request body with `jq -n`. It escapes shell input for you and cannot emit invalid JSON.
@@ -219,6 +239,20 @@ jq -r '
 
 The four stop reasons are `schema_satisfied`, `budget_reached`, `error`, and `cancelled`.
 
+### Check coverage before you report
+
+A completed run is not an exhaustive one. Before you answer:
+
+1. Compare the row count with the coverage target.
+2. Check that each segment has rows.
+3. Remove duplicate entities.
+4. Check the evidence in `output.grounding` (see **Read the citations**). Fetch a source URL only for a claim you will repeat: each fetch is a paid call.
+5. List the gaps.
+
+If the output is sparse, continue with `previousRunId`, put the earlier results in `input.exclusion`, or split the universe into one run per segment and merge the results yourself.
+
+Say "best-effort discovery" or "not exhaustive", and say where coverage is strong and where it is weak. Say "complete" or "all" only when the universe is bounded, every segment was searched, and steps 1 to 5 passed.
+
 ## Read the citations
 
 `output.grounding` is what makes an Agent run worth its price, so do not stop at `output.text`. Each entry is `{field, citations, confidence}`, where `field` is a path into the output such as `structured.companies[0].sourceUrl` and `confidence` is `low`, `medium`, `high`, or absent.
@@ -374,3 +408,5 @@ If ZDR is enabled for the team, three things in this skill stop working: `previo
 - https://exa.ai/docs/reference/agent-api/cancel-a-run
 - https://exa.ai/docs/reference/agent-api/delete-a-run
 - https://exa.ai/docs/reference/agent-api/connect/overview
+
+_**Plan the run first**, **Agent or a script**, and **Check coverage before you report** adapt the `exa-agent` skill in exa-labs/exa-mcp-server (MIT) at `81d687e` (2026-11-21), the source of the `exa@claude-plugins-official` plugin._
