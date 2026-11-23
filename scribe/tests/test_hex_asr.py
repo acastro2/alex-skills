@@ -33,6 +33,8 @@ class FakeHex:
             state = "on" if self.labs_on else "off"
             out = f"transcribe-files               {state}      everyone  Turn a WAV recording into text\n"
             return subprocess.CompletedProcess(cmd, 0, out, "")
+        if args[:3] == ["settings", "get", "transcription.model"]:
+            return subprocess.CompletedProcess(cmd, 0, "custom-4b50b6dd862bf6e3\n", "")
         if args[:2] == ["labs", "on"]:
             self.labs_on = True
             return subprocess.CompletedProcess(cmd, 0, "Turned transcribe-files on.\n", "")
@@ -97,8 +99,58 @@ def test_hex_not_running_says_how_to_fix(tmp_path: Path) -> None:
                            split=fake_split(["c0000.wav"]))
 
 
-def test_default_model_is_parakeet_v3() -> None:
-    assert transcribe.DEFAULT_MODEL == "parakeet_v3"
+def test_no_model_leaves_the_choice_to_hex(tmp_path: Path) -> None:
+    hexer = FakeHex({"c0000.wav": "Hi."})
+    transcribe.hex_asr(str(tmp_path / "a.m4a"), None, "en", run=hexer, split=fake_split(["c0000.wav"]))
+    command = next(c for c in hexer.calls if c[1] == "transcribe")
+    assert "--model" not in command
+
+
+def test_result_names_the_model_hex_used(tmp_path: Path) -> None:
+    hexer = FakeHex({"c0000.wav": "Hi."})
+    result = transcribe.hex_asr(str(tmp_path / "a.m4a"), None, "en", run=hexer, split=fake_split(["c0000.wav"]))
+    assert result["model"] == "custom-4b50b6dd862bf6e3"
+    named = transcribe.hex_asr(str(tmp_path / "a.m4a"), "parakeet_v3", "en", run=hexer,
+                               split=fake_split(["c0000.wav"]))
+    assert named["model"] == "parakeet_v3"
+
+
+def test_named_model_is_passed_to_hex(tmp_path: Path) -> None:
+    hexer = FakeHex({"c0000.wav": "Hi."})
+    transcribe.hex_asr(str(tmp_path / "a.m4a"), "parakeet_v3", "en", run=hexer, split=fake_split(["c0000.wav"]))
+    command = next(c for c in hexer.calls if c[1] == "transcribe")
+    assert command[command.index("--model") + 1] == "parakeet_v3"
+
+
+def test_failed_chunk_error_carries_the_message_hex_prints_on_stdout(tmp_path: Path) -> None:
+    """Hex prints its errors as JSON on stdout and leaves stderr empty, so the old message
+    came out blank (2026-11-23, model-unavailable)."""
+    hexer = FakeHex({})
+    message = "`parakeet_v3` isn't ready in the running Hex; run `hex model install parakeet_v3`"
+
+    def run(cmd, **kw):
+        if cmd[1] == "transcribe":
+            body = {"status": "error", "code": "model-unavailable", "message": message}
+            return subprocess.CompletedProcess(cmd, 1, json.dumps(body), "")
+        return hexer(cmd, **kw)
+
+    with pytest.raises(RuntimeError, match="isn't ready"):
+        transcribe.hex_asr(str(tmp_path / "a.m4a"), "parakeet_v3", "en", run=run, split=fake_split(["c0000.wav"]))
+
+
+def test_selected_model_is_read_from_hex_settings() -> None:
+    def run(cmd, **kw):
+        assert cmd[1:] == ["settings", "get", "transcription.model"]
+        return subprocess.CompletedProcess(cmd, 0, "custom-4b50b6dd862bf6e3\n", "")
+
+    assert transcribe.selected_model(run=run, hex_bin="hex") == "custom-4b50b6dd862bf6e3"
+
+
+def test_selected_model_is_unknown_when_hex_cannot_answer() -> None:
+    def run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 3, "", "hex: Hex isn't running")
+
+    assert transcribe.selected_model(run=run, hex_bin="hex") == "unknown"
 
 
 def test_no_speech_chunk_is_skipped_not_an_error(tmp_path: Path) -> None:

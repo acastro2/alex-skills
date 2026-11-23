@@ -38,7 +38,7 @@ deletes a memo.
      --voicememo-id <id> --start <start> [--title "<title>"]
    ```
 
-   Exit 4 = the memo has no Apple transcript: fall back to Hex (Parakeet v3) with the same output path:
+   Exit 4 = the memo has no Apple transcript: fall back to Hex (its selected model) with the same output path:
 
    ```bash
    uv run --with mlx-audio python transcribe.py "<audio>" \

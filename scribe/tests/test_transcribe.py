@@ -226,6 +226,41 @@ def test_empty_segment_after_strip_is_dropped_without_counting_as_repeat(tmp_pat
 
 # --- provenance and end computation -------------------------------------------
 
+def test_no_model_flag_asks_asr_for_no_particular_model(tmp_path):
+    """Parakeet v3 was not installed on every Mac (missing 2026-11-23); with no --model, scribe
+    must not name one and lets Hex use the model it has selected."""
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    asked = []
+
+    def asr(audio_path, model, lang):
+        asked.append(model)
+        return {"segments": [], "language": "en"}
+
+    transcribe.main([str(audio), "-o", str(tmp_path / "out.json")], asr=asr,
+                    probe_duration=_fake_probe(5.0), diarize=_fake_spans([]))
+
+    assert asked == [None]
+
+
+def test_provenance_records_the_model_the_asr_reports_using(tmp_path):
+    audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
+    out = tmp_path / "out.json"
+    segments = [{"id": 0, "seek": 0, "start": 0.0, "end": 1.0, "text": "Hello."}]
+
+    def asr_that_names_its_model(audio_path, model, lang):
+        return {"segments": segments, "language": "en", "model": "custom-4b50b6dd862bf6e3"}
+
+    rc = transcribe.main(
+        [str(audio), "-o", str(out), "--language", "en"],
+        asr=asr_that_names_its_model,
+        probe_duration=_fake_probe(125.0),
+        diarize=_fake_spans([]),
+    )
+
+    assert rc == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["provenance"]["asr_model"] == "custom-4b50b6dd862bf6e3"
+
+
 def test_provenance_fields_and_end_from_probed_duration(tmp_path):
     audio = _dummy_audio(tmp_path, "2026Sep02-150056-Rec17.mp3")
     out = tmp_path / "out.json"

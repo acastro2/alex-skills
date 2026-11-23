@@ -47,7 +47,7 @@ keeps every recording until HiNotes removes it; scribe never deletes.
      -o ~/.scribe/transcripts/<stem>.json
    ```
 
-   Runs offline through Hex's Parakeet v3 (see **ASR is Hex** in `../SKILL.md`; 60 s of audio
+   Runs offline through the model Hex has selected (see **ASR is Hex** in `../SKILL.md`; 60 s of audio
    took about 1 s on 2026-11-13). Start time comes from the filename. Speaker labels come from
    `mlx-community/Nemotron-3-Diarization` via mlx-audio: each ASR segment takes the label of the
    span it overlaps most, turns split on 2 s pauses, on speaker change, and at 90 s, and spans

@@ -3,12 +3,12 @@
 
 Input is a mono recording saved from a HiDock P1 as `<stem>.mp3` (older firmware)
 or `<stem>.ogg` (Ogg Opus, newer firmware). ASR runs
-through the running Hex app (Parakeet v3) in 30 s chunks cut with ffmpeg
-(Homebrew, must be on PATH); duration comes from ffprobe.
+through the running Hex app (the model Hex has selected, unless --model names one)
+in 30 s chunks cut with ffmpeg (Homebrew, must be on PATH); duration comes from ffprobe.
 
 Usage:
     python3 transcribe.py <audio> -o <out.json> \\
-        [--model parakeet_v3] [--language en] \\
+        [--model <hex model id>] [--language en] \\
         [--diarization-model mlx-community/Nemotron-3-Diarization] \\
         [--start ISO8601] [--tz America/Chicago] [--title TEXT] \\
         [--hidock-name 2026Sep02-150056-Rec17.hda] [--paragraph-gap 2.0] \\
@@ -51,7 +51,7 @@ from zoneinfo import ZoneInfo
 
 import scribe_common as common
 
-DEFAULT_MODEL = "parakeet_v3"
+DEFAULT_MODEL = None  # None = the model Hex has selected; it always works, a named one may not be installed
 
 
 def _default_hex_bin() -> str:
@@ -104,9 +104,30 @@ def _is_no_speech(stdout: str) -> bool:
         return False
 
 
+def _hex_error(proc) -> str:
+    """Hex prints its errors as JSON on stdout and leaves stderr empty."""
+    try:
+        message = json.loads(proc.stdout).get("message")
+    except (ValueError, AttributeError):
+        message = None
+    return str(message or proc.stderr.strip() or proc.stdout.strip())
+
+
+def selected_model(*, run=subprocess.run, hex_bin: str | None = None) -> str:
+    """The model id Hex has selected, for provenance. 'unknown' when Hex cannot say."""
+    try:
+        proc = run([hex_bin or HEX_BIN, "settings", "get", "transcription.model"],
+                   capture_output=True, text=True)
+    except OSError:
+        return "unknown"
+    if proc.returncode != 0:
+        return "unknown"
+    return proc.stdout.strip() or "unknown"
+
+
 def hex_asr(
     audio_path: str,
-    model: str,
+    model: str | None,
     language: str,
     *,
     run=subprocess.run,
@@ -134,12 +155,13 @@ def hex_asr(
         segments: list[dict] = []
         with tempfile.TemporaryDirectory(prefix="scribe-hex-") as tmp:
             for i, chunk in enumerate(split(audio_path, tmp, chunk_seconds)):
-                proc = hex_run("transcribe", "--json", "--model", model, "--language", language, chunk)
+                model_args = ["--model", model] if model else []
+                proc = hex_run("transcribe", "--json", *model_args, "--language", language, chunk)
                 if proc.returncode == 4 and _is_no_speech(proc.stdout):
                     continue  # Hex 3.4: silent chunk is exit 4, code "no-speech"; same as empty text
                 if proc.returncode != 0:
                     raise RuntimeError(
-                        f"Hex transcribe failed on {Path(chunk).name}: {proc.stderr.strip()}"
+                        f"Hex transcribe failed on {Path(chunk).name}: {_hex_error(proc)}"
                     )
                 text = str(json.loads(proc.stdout).get("text") or "").strip()
                 if not text:
@@ -153,10 +175,11 @@ def hex_asr(
     finally:
         if was_off:
             hex_run("labs", "off", "transcribe-files")
-    return {"segments": segments, "language": language}
+    return {"segments": segments, "language": language,
+            "model": model or selected_model(run=run, hex_bin=hex_bin)}
 
 
-def asr(audio_path: str, model: str, language: str) -> dict:
+def asr(audio_path: str, model: str | None, language: str) -> dict:
     """Default ASR: the running Hex app."""
     return hex_asr(audio_path, model, language)
 
@@ -366,7 +389,8 @@ def main(
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("audio", help="Path to the local audio file (mp3)")
     parser.add_argument("-o", "--out", required=True, help="Path to write the normalized transcript JSON")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Hex model id from `hex model list`")
+    parser.add_argument("--model", default=DEFAULT_MODEL,
+                        help="Hex model id from `hex model list`; default: the model Hex has selected")
     parser.add_argument("--language", default=DEFAULT_LANGUAGE, help="Language code for ASR")
     parser.add_argument(
         "--diarization-model", default=DEFAULT_DIARIZATION_MODEL,
@@ -410,6 +434,7 @@ def main(
     result = asr(args.audio, args.model, args.language)
     segments = result.get("segments") or []
     language = result.get("language") or args.language
+    asr_model = result.get("model") or args.model
 
     kept_segments, dropped_repeats = _filter_segments(segments)
     if dropped_repeats:
@@ -454,7 +479,7 @@ def main(
         "hidock_file": _resolve_hidock_file(args) if args.source == "hidock" else None,
         "audio_sha256": _sha256_file(args.audio),
         "asr_engine": "hex",
-        "asr_model": args.model,
+        "asr_model": asr_model,
         "asr_language": language,
         "duration_s": duration,
         "segment_count": len(kept_segments),
@@ -480,7 +505,7 @@ def main(
     common.dump_transcript(transcript, args.out)
 
     print(
-        f"model={args.model} language={language} duration_s={duration} "
+        f"model={asr_model} language={language} duration_s={duration} "
         f"segments_kept={len(kept_segments)} segments_dropped={dropped_repeats} "
         f"turns={len(turns)} diarization={diarization_status} "
         f"spans={len(spans)} speakers={len(speakers)}",

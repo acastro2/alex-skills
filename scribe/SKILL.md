@@ -6,7 +6,7 @@ description: >-
   Microsoft 365 connector — directly in Claude Code, or through the ask-claude
   subagent in OpenCode), HiDock P1 call recordings (pulled over USB), and Apple Voice
   Memos on the Mac (iPhone memos arrive through iCloud); recordings are transcribed
-  locally with Hex (Parakeet v3) and speaker-diarized locally with mlx-audio. Use when the user
+  locally with Hex and speaker-diarized locally with mlx-audio. Use when the user
   runs /scribe, asks to fetch, pull, clean, transcribe or save meeting transcripts,
   call recordings, voice memos or one recording, to add speaker labels or diarize a call,
   to sync the HiDock, or to prepare meeting notes for bard. Not for writing notes into
@@ -52,7 +52,10 @@ graph TD
 
 ## Paths (verified 2026-09-03)
 
-- Vault root: `$OBSIDIAN_VAULT`, or the vault the `obsidian` CLI reports. Never a literal path.
+- Vault root, call it `$VAULT`: `$OBSIDIAN_VAULT`, or the `path` of the open vault in
+  `~/Library/Application Support/obsidian/obsidian.json` (verified 2026-11-23: it was
+  `~/Downloads/obsidian/Alex`, not `~/Developer/...`). The `obsidian` CLI answers only when Alex
+  has turned it on in Settings > General > Advanced. Never a literal path.
 - Notes: `<vault>/Scribe/Meetings/Transcripts/<YYYY-MM-DD HHMM> <title>.md`
 - Glossary: `<vault>/Scribe/Glossary.md` (`- wrong => Right` lines; scribe applies, you may append)
 - State: `<vault>/Scribe/.scribe-state.json`
@@ -60,22 +63,31 @@ graph TD
   deleted after transcription; the device keeps the only copy), `~/.scribe/transcripts/`
   (normalized JSON, kept), `~/.scribe/raw/` (raw M365 payloads)
 - Scripts: `~/.agents/skills/scribe/scripts/` — run from that directory with
-  `uv run --with pyusb --with mlx-audio python <script>` (uv caches the env; first run ~45 s)
+  `uv run --with pyusb --with mlx-audio python <script>` (uv caches the env; first run ~45 s).
+  `scripts/.python-version` pins Python 3.12. Without it uv picks the macOS system Python 3.9,
+  which crashes `write_note.py` on Teams timestamps with 7 fractional digits and resolves
+  mlx-audio 0.2.9, which has no `vad` module, so diarization never ran (both verified 2026-11-23).
 
 **ASR is Hex** (Alex, 2026-11-13; it replaced mlx-whisper). `transcribe.py` drives the running
 Hex app (`~/Applications/Hex.app`, override with `SCRIBE_HEX_BIN`): it cuts the audio into 30 s
-WAV chunks with ffmpeg, runs `hex transcribe --json --model parakeet_v3` per chunk, and stamps
-each chunk's text with the chunk start, so turn times are 30 s coarse. It turns Hex's Labs
-`transcribe-files` on for the run and back off after if it was off. Hex must be running
-(`hex start`); one Hex means one transcription at a time.
+WAV chunks with ffmpeg, runs `hex transcribe --json` per chunk with **the model Hex has
+selected** (`hex settings get transcription.model`), and stamps each chunk's text with the chunk
+start, so turn times are 30 s coarse. Pass `--model <id>` only to force another installed model.
+Provenance `asr_model` records the model Hex really used. Since 2026-11-17 that is the imported
+`custom-4b50b6dd862bf6e3` (Parakeet Unified EN 0.6B); `parakeet_v3` is not installed on this Mac,
+and naming it fails with `model-unavailable`. Hex prints its errors as JSON on stdout, and
+`transcribe.py` now shows that message. It turns Hex's Labs `transcribe-files` on for the run and
+back off after if it was off. Hex must be running (`hex start`); one Hex means one transcription
+at a time.
 
 **First run on a new Mac**: `brew install libusb ffmpeg`, install Hex
-(`brew install --cask anomalyco/tap/hex`), and put its models in the Hugging Face cache:
-`handy-computer/parakeet-tdt-0.6b-v3-gguf` and `handy-computer/silero-vad-v6.2-gguf`. Then
-`hex model use parakeet_v3` (Hex finds cached models but may keep another one selected). The
-diarizer `mlx-community/Nemotron-3-Diarization` (~200 MB) also goes in the cache. The corporate
-network blocks huggingface.co on every network (Prisma), so models arrive by AirDrop of the cache
-folders, zipped with `ditto -c -k --keepParent` to keep the snapshot symlinks.
+(`brew install --cask anomalyco/tap/hex`), and give Hex a speech model: install one with
+`hex model install <id>` or import a GGUF file with `hex model import <file>`, then check
+`hex settings get transcription.model`. The diarizer `mlx-community/Nemotron-3-Diarization`
+(~200 MB) must be in the Hugging Face cache (`~/.cache/huggingface/hub`, missing on this Mac on
+2026-11-23, so every note is unlabeled until it arrives). The corporate network blocks
+huggingface.co on every network (Prisma), so models arrive by AirDrop of the cache folders,
+zipped with `ditto -c -k --keepParent` to keep the snapshot symlinks.
 
 ## Hard constraints (never violate)
 
@@ -244,9 +256,9 @@ One meeting, or no subagents on this host: run all eight steps serially.
 
    ```bash
    uv run python write_note.py ~/.scribe/transcripts/<id>.json \
-     --vault ~/Developer/obsidian/Alex \
+     --vault "$VAULT" \
      --summary-file ~/.scribe/transcripts/<id>.summary.md \
-     --glossary ~/Developer/obsidian/Alex/Scribe/Glossary.md \
+     --glossary "$VAULT/Scribe/Glossary.md" \
      [--title "..."] [--attendees "A,B"] [--tags aab,forum]
    ```
 
@@ -272,7 +284,8 @@ One meeting, or no subagents on this host: run all eight steps serially.
    day fall behind `--since` and never come back. When a source cursor is absent, use
    `last_run`.
 7. **Sync the vault**: Obsidian watches the filesystem, so new files show up on their own. Run
-   only `obsidian sync:status vault=Alex` (expect `status: synced`). Do NOT run
+   only `obsidian sync:status vault=Alex` (expect `status: synced`; if it prints `Command line interface is not enabled`, report that and
+   move on, it is a setting Alex controls, not a failed run). Do NOT run
    `obsidian reload`: on 2026-09-03 it printed `Reloading...` and never returned. Wrap the CLI in
    a 20 s timeout (macOS has no `timeout` binary; use `python3 -c` with `subprocess.run(...,
    timeout=20)`), and report "Obsidian not running" if it times out.
@@ -359,7 +372,7 @@ scribe_schema: scribe.transcript/1
 - Re-transcribing may not reproduce the text exactly (seen with mlx-whisper, 2026-09-24; not
   measured with Hex). Check the text before overwriting an existing note.
 - Hex turn times are 30 s chunks, not word times, and a word cut at a chunk edge can be lost
-  or garbled. Parakeet accuracy on long multi-speaker calls is not measured yet.
+  or garbled. Accuracy of the selected Hex model on long multi-speaker calls is not measured yet.
 - Diarization failure degrades to the old unlabeled note and says why on stderr; provenance
   records `diarization_status` (ok / skipped / failed).
 - The speech model still garbles names. The glossary fixes the known ones; the summary step catches the
@@ -390,7 +403,7 @@ scribe_schema: scribe.transcript/1
 ## Tests
 
 ```bash
-cd ~/.agents/skills && uv run --with pytest --with pyusb pytest scribe/tests -q
+cd ~/.agents/skills && uv run --python 3.12 --with pytest --with pyusb pytest scribe/tests -q
 ```
 
 Coverage: protocol parsing on a real captured device listing, the silent-device retry and exit 4,
