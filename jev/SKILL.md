@@ -43,8 +43,11 @@ Routing is the highest-value use. If the answer is one of a fixed set, it is a `
 
 | Host | Path |
 | --- | --- |
-| Claude Code, OpenCode | The `ask_jev` MCP tool (server `jev`): `{"state": "...", "questions": {...}}`; add `assets` for images |
+| OpenCode | The direct tool `jev_ask_jev` when it is in your tool list; else `tools.jev.ask_jev` inside `execute` (Code Mode). Input: `{"state": "...", "questions": {...}}`; add `assets` for images |
+| Claude Code | The `ask_jev` tool of the `jev` MCP server, when that server is connected |
 | When the MCP is missing | `jev -` with the same JSON on stdin; add `--raw` for the API's JSON |
+
+Try every path in your host's row, then the CLI, before you say Jev is unavailable. The host names the tool differently, so a missing name is not a missing tool: check your tool list.
 
 Images: give `assets` as `{"<ref>": {"path": "/abs/pic.png"}}` and write `<ref>`, in backticks, in the state, an instruction, or a criterion. `state` stays a JSON string, so put a reference inside it as text, e.g. `"{\"photo\": \"<ref>\"}"`. jev reads the file, base64s it, and sends the experimental header for you. PNG or JPEG, 280 to 1568 px per side, 16 MiB per file, every asset referenced. Verified 2026-10-28 against `jev-1.13`: a 300×300 red PNG returned 0.98 for "is `img` a solid red square" and 0.00 for blue. Jev 1.14 and Box questions are documented but not served by OpenCode Zen yet (`400 Model is unavailable`).
 
