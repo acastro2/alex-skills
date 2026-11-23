@@ -416,24 +416,62 @@ def fetch_window(source, ctx):
     return got
 
 
+def utc_days(ctx):
+    """UTC dates from the window start to now, inclusive, oldest first. One involves search each."""
+    day, last = ctx.after.astimezone(timezone.utc).date(), ctx.now.astimezone(timezone.utc).date()
+    out = []
+    while day <= last:
+        out.append(day.isoformat())
+        day += timedelta(days=1)
+    return out
+
+
+def hour_spans(day):
+    return [f"{day}T{h:02d}:00:00Z..{day}T{h:02d}:59:59Z" for h in range(24)]
+
+
+def involves_search(ctx, call, fields):
+    """(items, capped) of every PR that involves me. One search per UTC day, oldest first. A day at
+    the gh limit is kept as a record but not counted: its 24 hours are searched instead, and only
+    those count. `capped` means one hour hit the limit."""
+    def search(updated):
+        return json.loads(call(["search", "prs", "--involves=@me", f"--updated={updated}",
+                                "--limit", str(GH_LIMIT), "--json", fields]))
+
+    items, capped = [], False
+    for day in utc_days(ctx):
+        found = search(day)
+        if len(found) < GH_LIMIT:
+            items += found
+            continue
+        for span in hour_spans(day):
+            hour = search(span)
+            capped = capped or len(hour) == GH_LIMIT
+            items += hour
+    return items, capped
+
+
 def fetch_github(ctx):
     login = ctx.gh(["api", "user", "--jq", ".login"]).strip()
     if login == PERSONAL_GH:
         raise PersonalAccount(login)
-    since = ctx.after.strftime("%Y-%m-%d")
-    queries = [
-        ["--review-requested=@me", "--state=open"],
-        ["--involves=@me", f"--updated=>={since}"],
-    ]
     got = Fetched([], 0)
-    for q in queries:
-        argv = ["search", "prs", *q, "--limit", str(GH_LIMIT), "--json", GH_FIELDS]
+
+    def call(argv):
         out = ctx.gh(argv)
         got.records.append({"tool": "gh", "args": {"argv": argv, "login": login}, "content": out})
-        n = count_items(out)
-        got.items += n
-        if n == GH_LIMIT:
-            got.capped = f"capped at gh limit {GH_LIMIT}"
+        return out
+
+    review = call(["search", "prs", "--review-requested=@me", "--state=open", "--limit", str(GH_LIMIT),
+                   "--json", GH_FIELDS])
+    n = count_items(review)
+    got.items += n
+    if n == GH_LIMIT:
+        got.capped = f"capped at gh limit {GH_LIMIT}"
+    items, capped = involves_search(ctx, call, GH_FIELDS)
+    got.items += len(items)
+    if capped:
+        got.capped = f"capped at gh limit {GH_LIMIT}"
     return got
 
 
@@ -481,10 +519,7 @@ def fetch_github_activity(ctx):
         if len(events) < 100 or len(recent) < len(events):
             break
         full_window = page == ACTIVITY_PAGES
-    since = ctx.after.strftime("%Y-%m-%d")
-    out = call(["search", "prs", "--involves=@me", f"--updated=>={since}", "--limit", str(GH_LIMIT),
-                "--json", "number,repository,updatedAt"])
-    found = json.loads(out)
+    found, search_capped = involves_search(ctx, call, "number,repository,updatedAt")
     for item in found:
         touch((item["repository"]["nameWithOwner"], item["number"]), _when(item.get("updatedAt") or iso_z(ctx.after)))
     items = sorted(touched, key=lambda k: (-touched[k].timestamp(), k))
@@ -493,7 +528,7 @@ def fetch_github_activity(ctx):
     got.items = in_window + min(len(items), ACTIVITY_TIMELINES)
     if full_window:
         got.capped = f"capped at events limit {ACTIVITY_PAGES * 100}"
-    elif len(found) == GH_LIMIT:
+    elif search_capped:
         got.capped = f"capped at gh limit {GH_LIMIT}"
     elif len(items) > ACTIVITY_TIMELINES:
         got.capped = f"capped at {ACTIVITY_TIMELINES} timelines"

@@ -454,7 +454,7 @@ def test_github_uses_its_last_good_run_minus_a_day_not_a_fixed_seven_days(tmp_pa
     calls.clear()
     gather.run(["github"], root=tmp_path, now=later, runner=None, me=ME, gh=gh)
     updated = [a for argv in calls for a in argv if a.startswith("--updated=")]
-    assert updated == [f"--updated=>={(NOW - timedelta(days=1)):%Y-%m-%d}"]
+    assert updated[0] == f"--updated={(NOW - timedelta(days=1)):%Y-%m-%d}"
 
 
 def test_a_full_gh_page_is_capped(tmp_path):
@@ -818,7 +818,7 @@ def test_a_pr_from_the_involves_search_gets_a_timeline_even_with_no_event(tmp_pa
     assert gh.timelines() == ["repos/org/c/issues/13/timeline?per_page=100"]
     search = next(a for a in gh.calls if a[0] == "search")
     assert "updatedAt" in search[search.index("--json") + 1]
-    assert "--involves=@me" in search and f"--updated=>={(NOW - timedelta(days=7)):%Y-%m-%d}" in search
+    assert "--involves=@me" in search and f"--updated={(NOW - timedelta(days=7)):%Y-%m-%d}" in search
 
 
 def test_activity_stops_paging_events_once_a_page_reaches_past_the_window(tmp_path):
@@ -862,7 +862,7 @@ def test_activity_moves_last_ok_and_uses_it_minus_a_day_next_time(tmp_path):
     gh2 = FakeGh(search=[])
     gather.run(["github_activity"], root=tmp_path, now=NOW + timedelta(days=3), runner=None, me=ME, gh=gh2)
     search = next(a for a in gh2.calls if a[0] == "search")
-    assert f"--updated=>={(NOW - timedelta(days=1)):%Y-%m-%d}" in search
+    assert f"--updated={(NOW - timedelta(days=1)):%Y-%m-%d}" in search
 
 
 def test_activity_is_never_fetched_as_the_personal_account(tmp_path):
@@ -909,3 +909,128 @@ def test_a_timeline_cap_still_moves_last_ok(tmp_path):
     ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
     assert ledger["github_activity"] == "capped at 200 timelines"
     assert read_state(tmp_path)["last_ok"]["github_activity"] == NOW.isoformat()
+
+
+# --- day chunks for the involves search (Alex, 2026-11-23) --------------------------------
+# live 2026-11-23: 100+ PRs involved Alex in 3 days, and `gh search prs` returns at most 100
+# with no paging, so one span always capped. One search per UTC day caps only on a 100-PR day.
+
+def involves_days(calls):
+    return [a.split("=", 1)[1] for argv in calls if argv[0] == "search" and "--involves=@me" in argv
+            for a in argv if a.startswith("--updated=")]
+
+
+def days_back(n):
+    return [f"{(NOW - timedelta(days=d)):%Y-%m-%d}" for d in range(n, -1, -1)]
+
+
+def test_github_searches_involves_once_per_utc_day_oldest_first(tmp_path):
+    calls = []
+
+    def gh(argv):
+        calls.append(argv)
+        return "[]"
+
+    gather.run(["github"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert involves_days(calls) == days_back(7)
+    review = [a for a in calls if "--review-requested=@me" in a]
+    assert len(review) == 1
+
+
+def test_github_is_not_capped_when_each_day_stays_under_the_limit(tmp_path):
+    day = json.dumps([{"number": i} for i in range(60)])
+    ledger = gather.run(["github"], root=tmp_path, now=NOW, runner=None, me=ME, gh=lambda argv: day)
+    # 1 review search + 8 day searches, 60 items each
+    assert ledger["github"] == "fetched 9 calls, 540 items"
+
+
+# live 2026-11-23: one day had 111 PRs, the busiest hour 23. A full day is searched again
+# hour by hour; only a full hour is a cap.
+
+def hour_spans(day):
+    return [f"{day}T{h:02d}:00:00Z..{day}T{h:02d}:59:59Z" for h in range(24)]
+
+
+def test_github_splits_a_full_day_into_hours(tmp_path):
+    today = f"{NOW:%Y-%m-%d}"
+    calls = []
+
+    def gh(argv):
+        calls.append(argv)
+        if "--review-requested=@me" in argv:
+            return "[]"
+        n = 100 if f"--updated={today}" in argv else 5 if any(a.startswith(f"--updated={today}T") for a in argv) else 0
+        return json.dumps([{"number": i} for i in range(n)])
+
+    ledger = gather.run(["github"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    # 1 review + 8 days + 24 hours; the full day's 100 are not counted again
+    assert ledger["github"] == "fetched 33 calls, 120 items"
+    assert involves_days(calls)[-24:] == hour_spans(today)
+    assert len(raw_records(tmp_path, "github")) == 33
+
+
+def test_github_caps_when_one_hour_fills_the_limit(tmp_path):
+    today = f"{NOW:%Y-%m-%d}"
+
+    def gh(argv):
+        full = f"--updated={today}" in argv or f"--updated={today}T09:00:00Z..{today}T09:59:59Z" in argv
+        return json.dumps([{"number": i} for i in range(100 if full else 3)])
+
+    ledger = gather.run(["github"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert ledger["github"] == "capped at gh limit 100"
+
+
+def test_activity_splits_a_full_day_into_hours(tmp_path):
+    today = f"{NOW:%Y-%m-%d}"
+    gh = FakeGh()
+    base = gh.__call__
+
+    def call(argv):
+        if argv[0] != "search":
+            return base(argv)
+        gh.calls.append(argv)
+        span = next(a for a in argv if a.startswith("--updated=")).split("=", 1)[1]
+        if span == today:
+            items = [{"number": i, "repository": {"nameWithOwner": "org/day"}, "updatedAt": at(1)} for i in range(100)]
+        elif span.startswith(f"{today}T"):
+            h = int(span[11:13])
+            items = [{"number": h * 10 + i, "repository": {"nameWithOwner": "org/hour"}, "updatedAt": at(1)}
+                     for i in range(5)]
+        else:
+            items = []
+        return json.dumps(items)
+
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=call)
+    assert ledger["github_activity"].startswith("fetched")
+    assert involves_days(gh.calls)[-24:] == hour_spans(today)
+    # hour hits get timelines; the day hits are the same PRs seen through a capped search
+    assert len([t for t in gh.timelines() if "/org/hour/" in t]) == 120
+
+
+def test_activity_searches_involves_once_per_utc_day(tmp_path):
+    gh = FakeGh(search=[{"number": 13, "repository": {"nameWithOwner": "org/c"}}])
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=gh)
+    assert involves_days(gh.calls) == days_back(7)
+    # the same PR in every day's answer still gets one timeline
+    assert gh.timelines() == ["repos/org/c/issues/13/timeline?per_page=100"]
+    assert ledger["github_activity"].startswith("fetched")
+
+
+def test_activity_is_not_capped_by_many_prs_spread_over_days(tmp_path):
+    def search_for(argv):
+        d = next(a for a in argv if a.startswith("--updated=")).split("=", 1)[1]
+        return [{"number": i, "repository": {"nameWithOwner": f"org/{d}"}, "updatedAt": f"{d}T12:00:00Z"}
+                for i in range(20)]
+
+    gh = FakeGh()
+    base = gh.__call__
+
+    def call(argv):
+        if argv[0] == "search":
+            gh.calls.append(argv)
+            return json.dumps(search_for(argv))
+        return base(argv)
+
+    ledger = gather.run(["github_activity"], root=tmp_path, now=NOW, runner=None, me=ME, gh=call)
+    assert ledger["github_activity"].startswith("fetched")
+    assert len(gh.timelines()) == 160
