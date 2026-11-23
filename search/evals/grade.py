@@ -20,6 +20,7 @@ import glob
 import json
 import os
 import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -204,10 +205,10 @@ def main() -> int:
     if sys.argv[1:] == ["--selftest"]:
         return selftest()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["prepare", "apply"])
+    ap.add_argument("command", choices=["prepare", "send", "apply"])
     ap.add_argument("root")
     args = ap.parse_args()
-    return prepare(args.root) if args.command == "prepare" else apply(args.root)
+    return {"prepare": prepare, "send": send, "apply": apply}[args.command](args.root)
 
 
 if __name__ == "__main__":

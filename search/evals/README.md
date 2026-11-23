@@ -33,11 +33,14 @@ python3 -I grade.py --selftest          # offline known answers; must print SELF
 python3 -I grade.py prepare $W          # writes jev-request.json in each run folder
 ```
 
-Then the orchestrator sends each `jev-request.json` to `ask_jev` (one call per run), and saves the reply as `jev-response.json` in the same run folder. Then:
+Then send them and grade:
 
 ```bash
+python3 -I grade.py send $W             # pipes each request to `jev - --raw` unchanged; writes jev-response.json
 python3 -I grade.py apply $W            # writes grading.json per run and a TOTAL line per guide
 ```
+
+`send` needs the `jev` CLI on `PATH` (`~/.config/opencode/bin/install.sh` links it). Do not copy the requests into the `ask_jev` tool by hand: on 2026-11-23 two agents changed the state text while copying, so those answers graded different evidence. Script blocks and diagrams in an output become `[<lang> block omitted]` in the state; the questions judge only the prose and the `agent_run` calls.
 
 Unsure verdicts (between 0.20 and 0.80) need a second look by hand or an LLM grader. A run with no `jev-response.json` is graded on its code checks only, with a warning.
 
@@ -45,3 +48,7 @@ Unsure verdicts (between 0.20 and 0.80) need a second look by hand or an LLM gra
 
 | Iteration | Date | Model | New | Old |
 | --- | --- | --- | --- | --- |
+| 1 | 2026-11-23 | sonnet, 2 runs | Not graded. Eval 2 showed a bug: the first script rule made the model start one Agent run per row (400 runs, about USD 40, against about USD 2 batched). Rule fixed. | Not graded |
+| 2 | 2026-11-23 | sonnet, 2 runs; eval 2 new re-run after the fix, the rest reused from iteration 1 | 38/38 | 35/38, 1 unsure: eval 2 never says where the script can run (both runs), and gives no cost gate (run 1, unsure 0.48). Evals 1, 3 and 4 tie. |
+
+Iteration 1 call bounds were widened after reading the outputs: both guides split eval 1 into one run per country, and eval 3's follow-up the same way, which the guide allows. Claude cost about USD 2 for both iterations. Zero Exa calls.
