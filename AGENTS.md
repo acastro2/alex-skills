@@ -61,7 +61,7 @@ Run this when Alex asks to resync, re-audit, or refresh the upstreams. PR #8 (20
 7. **Code needs its tests.** When an upstream fix changes a script we ship, port it with upstream's own tests for that part. Show red on the old code and green on the new. Add the test to `scripts/check.sh`.
 8. **Keep copies byte-identical.** When a pre-commit whitespace hook rewrites an upstream file, add the folder to that hook's `exclude`. When skillcheck flags upstream prose for style, mark the files with `Policy.upstream` in `skillcheck/policy.py`. Do not restyle upstream text.
 9. **Record.** Update the README Pin column, the skill's `PROVENANCE.md` or `UPSTREAM.md`, and the repo's handoff file (`handoff` skill).
-10. **Gate and ship.** `./scripts/check.sh --tools` and `pre-commit run --all-files` must pass. Commit by area. pre-commit stashes unstaged files during a commit, so commit together any changes that depend on each other: a skillcheck policy with the copies it exempts, a hook exclude with the file it names. Push and open the PR as acastro2 (`GH_TOKEN=$(gh auth token --user acastro2)` for that one command). Write the body with `coding` (`references/pr-description.md`), and confirm CI passes.
+10. **Gate and ship.** Locally, `pre-commit run --all-files` and the tests of each skill you changed must pass. When `ub-mode/tools/` changed, also run those tools' suites (the `--tools` lane of `scripts/check.sh`): CI does not run them. CI runs the full `./scripts/check.sh` on the PR. Commit by area. pre-commit stashes unstaged files during a commit, so commit together any changes that depend on each other: a skillcheck policy with the copies it exempts, a hook exclude with the file it names. Push and open the PR as acastro2 (`GH_TOKEN=$(gh auth token --user acastro2)` for that one command). Write the body with `coding` (`references/pr-description.md`), and confirm CI passes.
 
 **Why:** On 2026-11-13 an agent called a correct sync report false, because its checkout was detached and 21 commits behind `origin/main`. The same agent first listed `cf-cli` as derived from cloudflare/skills on a 0.81 character ratio, but the two files share 0 of 45 long lines. Pins were missing for most rows, so drift was visible only when someone checked by hand.
 
@@ -92,7 +92,7 @@ Repo-wide tooling lives in `skillcheck/` and `scripts/`: `python -m skillcheck` 
 - When you create or edit a skill, follow `skill-creator/SKILL.md`. Write eval JSON in the format of `skill-creator/vendor/claude/references/schemas.md`.
 - Skills that produce prose reference `../alex-voice/SKILL.md`; blog skills also reference `../alex-voice/references/alex-blogger.md`.
 - In a `SKILL.md`, never write a dollar sign followed by a digit: Claude Code replaces it with the skill's arguments. Write `USD 0.10`.
-- Run `python3 scripts/validate_skill_graph.py` after any edit, and `pre-commit run --all-files` before you commit.
+- Run `python3 scripts/validate_skill_graph.py` after any edit, and `pre-commit run --all-files` and the changed skill's own tests before you commit. Do not run the full `scripts/check.sh` locally: CI runs it on every PR (`coding` part 2).
 - After you add or remove a skill, run `scripts/link_claude_skills.sh` and update the skills table in `README.md`.
 
 ## Evals

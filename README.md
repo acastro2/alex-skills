@@ -101,9 +101,11 @@ skill-name/
 ```bash
 pre-commit install            # once
 pre-commit run --all-files    # before every commit
-scripts/check.sh              # the rules, then every offline suite
+scripts/check.sh              # the rules, then every offline suite (CI runs this)
 scripts/check.sh --tools      # also the ub-mode tools' own suites
 ```
+
+Locally, run only the rules and the tests of the skill you changed, for example `python3 -m unittest discover -s coding/tests -p 'test_*.py'`. CI runs the full `scripts/check.sh` on every pull request.
 
 The `skillcheck` hook runs `python -m skillcheck`, which checks each skill's frontmatter, that the folder name matches `name`, and that relative links between skills resolve. The hook installs PyYAML in its own environment; to run either it or `scripts/validate_skill_graph.py` (the same rules, same exit codes) by hand, use `uv run --with pyyaml python -m skillcheck`, because plain `python3` has no PyYAML.
 
