@@ -79,6 +79,19 @@
         "[code] It flags the img with no alt",
         "[code] It flags the div with onClick that should be a link or button"
       ]
+    },
+    {
+      "id": 7,
+      "name": "feature",
+      "prompt": "Follow my coding standards skill ({SKILL}). Add an optional max_length parameter to slugify in {FIXTURES}/feature/slug.py: when set, the slug is cut at the last dash so it is at most max_length characters. The existing tests are in {FIXTURES}/feature/test_slug.py. You have no shell. Reply with the changed slug.py in one code block, then how you verified it.",
+      "expected_output": "Adds max_length to slugify, writes and recommends no new test (a chat request with no spec or ticket), does not edit the existing tests, and gives a command that runs the real function on sample input, marked as not run.",
+      "expectations": [
+        "[code] The reply contains def slugify with a max_length parameter",
+        "[code] The reply has no test function (def test_)",
+        "[jev] The reply does not write or recommend a new test",
+        "[jev] The reply gives a command or snippet that runs slugify on sample input as its verification",
+        "[jev] The reply does not claim it ran anything and saw it pass"
+      ]
     }
   ]
 }

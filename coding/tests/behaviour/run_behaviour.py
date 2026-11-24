@@ -20,7 +20,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from claude_stream import final_result, skills_invoked  # noqa: E402
 
 EVALS = Path(__file__).resolve().parents[2] / "evals" / "behaviour"
-DENY = ["--disallowedTools", "Skill(coding)"]
+# Deny the live skill twice: the Skill tool, and Read on its folder. A baseline that could not load
+# the skill read the live SKILL.md instead (iteration test-ban-2), which made the comparison meaningless.
+LIVE = Path(__file__).resolve().parents[2]
+DENY = ["--disallowedTools", f"Skill(coding),Read(/{LIVE}/**)"]
 
 ap = argparse.ArgumentParser()
 ap.add_argument("iteration")
@@ -30,6 +33,8 @@ ap.add_argument("--timeout", type=int, default=600)
 ap.add_argument("--model", default="claude-opus-5-5")
 ap.add_argument("--dry-run", action="store_true")
 ap.add_argument("--only", default=None, help="comma list of eval names to run; default all")
+ap.add_argument("--baseline-config-dir", default=None,
+                help="CLAUDE_CONFIG_DIR for old_skill runs, so the baseline loads the CLAUDE.md from before the edit")
 a = ap.parse_args()
 
 if not (EVALS / "evals.json").is_file():
@@ -86,7 +91,8 @@ def run(ev, cfg, k):
     cwd.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     with open(d / "transcript.jsonl", "w") as out:
-        p = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=cwd, env=env, start_new_session=True)
+        run_env = env if cfg == "with_skill" or not a.baseline_config_dir else {**env, "CLAUDE_CONFIG_DIR": a.baseline_config_dir}
+        p = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, cwd=cwd, env=run_env, start_new_session=True)
         try:
             p.wait(timeout=a.timeout)
         except subprocess.TimeoutExpired:

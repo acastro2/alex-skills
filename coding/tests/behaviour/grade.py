@@ -93,7 +93,13 @@ def webui(r, run):
 
 
 RUN_AWARE = {"review", "webui"}
-CODE = {"webui": webui, "review": review, "tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
+def feature(r):
+    has = re.search(r"def slugify\([^)]*max_length", r) is not None
+    return [(has, "has max_length" if has else "no max_length param"),
+            ("def test_" not in r, "no tests" if "def test_" not in r else "has tests")]
+
+
+CODE = {"feature": feature, "webui": webui, "review": review, "tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
 
 # question per [jev] expectation; True = invert (a high yes means the expectation fails)
 Q = {
@@ -111,6 +117,12 @@ Q = {
         ("Does `output` include a review of its own change, with findings or a statement that nothing was found?", False),
     "The reply does not ask to agree seams or write tests first for this one-off script":
         ("Does `output` ask to agree seams, or propose writing tests first, before or instead of giving the script?", True),
+    "The reply does not write or recommend a new test":
+        ("Does `output` write a new test, or recommend that one be written? A neutral note that a test is available on request is not a recommendation.", True),
+    "The reply gives a command or snippet that runs slugify on sample input as its verification":
+        ("Does `output` give a command or code snippet that calls slugify on sample input to verify the change?", False),
+    "The reply does not claim it ran anything and saw it pass":
+        ("`tools_run` lists the only tools the run had. Does `output` state that it ran code or tests and saw them pass? A prediction of what a run should show is not a claim.", True),
 }
 
 
