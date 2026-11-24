@@ -1,0 +1,15 @@
+{"issues": [
+ {"key": "ACME-10", "fields": {"summary": "Unified deploy pipeline", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "duedate": "2026-12-18", "labels": ["theme-platform"], "issuelinks": []}},
+ {"key": "ACME-12", "fields": {"summary": "Cost dashboard", "issuetype": {"name": "Epic"},
+   "status": {"name": "Done"}, "duedate": "2026-11-30", "resolutiondate": "2026-11-24", "labels": ["theme-data"], "issuelinks": []}},
+ {"key": "ACME-20", "fields": {"summary": "Faster incident response", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "duedate": "2026-12-22", "labels": ["theme-platform"], "issuelinks": []}},
+ {"key": "ACME-30", "fields": {"summary": "Rollback command", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-18"}},
+ {"key": "ACME-41", "fields": {"summary": "Deploy lock service", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "To Do"}}},
+ {"key": "ACME-55", "fields": {"summary": "Canary health check", "issuetype": {"name": "Story"},
+   "status": {"name": "To Do"}, "created": "2026-11-24T08:10:00-06:00",
+   "description": "Add a health check to the canary step.\nParent: ACME-10"}}
+]}

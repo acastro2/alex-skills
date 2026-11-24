@@ -1,7 +1,7 @@
-# The wiki pass: keep chosen pages true, every week
+# The wiki pass: keep chosen pages true, weekly in full, daily in part
 
 Read this on every Team-mode run, after the project pass. It keeps the Confluence pages in
-`config.wiki.pages` true against live evidence. The board database stays in
+`config.wiki.pages` true against live evidence. The weekly run covers every page. The daily run covers only pages whose facts touch something that changed in its window ([daily-pass.md](daily-pass.md) section 5). The board database stays in
 [team-board.md](team-board.md). Hard rules stay in `SKILL.md`; this file adds the page checks and
 the page write path. Why: a page that states a stale fact does more harm than no page, because
 readers trust it.

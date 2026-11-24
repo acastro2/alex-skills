@@ -3,7 +3,8 @@ name: projects-curator
 description: >
   Turn scattered evidence of what a team did (AI sessions, decision records, tickets, PRs) into a
   small, executive-legible board of initiatives, and keep it true week after week. Use for board
-  population, row updates and comments, weekly maintenance, full audits, ticket and epic upkeep
+  population, row updates and comments, a daily truth-up (`--daily`) that feeds the weekly run,
+  weekly maintenance, full audits, ticket and epic upkeep
   against the board, decision-forum close-outs, a weekly roll-up, and keeping the team's wiki
   pages (roadmap, status, catalog) true against the tracker. Works with any board, tracker
   or forum; org facts live in the local ledger. Org-visible writes need a numbered user review,
@@ -38,6 +39,24 @@ Three invariants that override everything below:
 2. **Never write unconfirmed.** The board is org-visible. The review gate *is* the mandatory human review. Skipped and excluded candidates are never written; the user owns what gets published.
 3. **`Stage` is Alex's column.** He curates lifecycle position himself. Never bundle a Stage move into other edits; a proposed move is always its own line in the review, flagged as needing his explicit yes. Applying his dictated updates → touch only the fields he named.
 
+## Modes
+
+| Flag | What it does |
+|---|---|
+| `--daily` | A small truth-up of what changed since the last daily run. It writes a daily report note with what weekly needs. Procedure: [references/daily-pass.md](references/daily-pass.md). |
+| `--maintain` | The weekly run, and the default when no flag is given. It reads every daily report note first, then runs the full weekly controls. |
+| `--audit` | Discovery plus maintenance, in one review. |
+
+Why two cadences: a daily run keeps the tracker and wiki close to true. The weekly run still owns
+stage moves, new rows, row comments and the roll-up, and it must see everything the daily runs saw.
+
+```mermaid
+flowchart LR
+  S[scribe] --> G[gather] --> B[bard] --> D["projects-curator --daily"]
+  D -->|daily report note| W["projects-curator --maintain"]
+  WR[weekly-report] --> W
+```
+
 ## Setup — once per org
 
 This skill holds no org facts. Before the first run, ask Alex for these and store them under the `config` key of the ledger `curated.json`, which is gitignored. Why: org names, URLs and vocabulary must never land in this repo.
@@ -56,6 +75,8 @@ This skill holds no org facts. Before the first run, ask Alex for these and stor
 | `tracker.label_contract` | Where a tracker's label contract lives (repo, path, ref), when agents or automation act on labels |
 | `wiki.pages` | Pages the wiki pass keeps true: id, title, bucket (portfolio, status, mirror, check, retire), scope. Ids live only in the ledger |
 | `review.max_lines` | Line cap per review, default 15 |
+| `review.daily_max_lines` | Line cap per daily review, default 8 |
+| `reports.daily` | Path pattern of the daily report note, default `$OBSIDIAN_VAULT/Reports/Daily/<YYYY-MM-DD>.md`. Resolve the vault from `$OBSIDIAN_VAULT` as bard does, never a literal path |
 | `evidence.team_facts` | The `weekly-report` facts file that already holds the team's PRs and tracker tickets |
 
 A `config` key that is missing is a question for Alex, never a guess. Read the live field names and allowed values before the first write: a board drifts, and a stale column name fails the request.
@@ -233,6 +254,8 @@ Write only approved lines, through the tool named in `config`. For a Jira tracke
       "<itemId>": {"title": "...", "row": "<rowId>", "created_by_curator": false, "updates": []}
     },
     "ideas": {},
+    "daily": {"last_run": "<ISO 8601 time with offset>", "notes": ["<path of each daily report note written>"]},
+    "weekly": {"last_run": "<ISO 8601 time with offset>"},
     "open_items": ["<row>: milestone date needs a real date from Alex"],
     "not_doing": [{"what": "<initiative>", "decided": "YYYY-MM-DD", "note": "Declined. Never re-propose."}]
   }
@@ -241,6 +264,7 @@ Write only approved lines, through the tool named in `config`. For a Jira tracke
 - **`open_items`** — gaps a run couldn't close. Read them every run and re-surface what is still open.
 - **`tracker`** — stops a re-run posting a second weekly update or filing the same work twice.
 - **`ideas`** — stops a dropped idea coming back.
+- **`daily` and `weekly`** — the cursors only (`daily.last_run`, `weekly.last_run`), plus `daily.notes`, the paths of the daily report notes written. The daily log is the note in the vault, one source of truth, so nothing drifts between two copies. Its shape and the cursor rules: [references/daily-pass.md](references/daily-pass.md).
 - **`not_doing`** — evaluated-and-rejected initiatives. Check before proposing any NEW row. It stops every fresh session rediscovering the same dead idea.
 
 ## Weekly controls
@@ -266,8 +290,10 @@ Run in this order, reporting one line per check as `PASS` / `ALERT` / `UNVERIFIE
 
 ## Weekly maintenance mode (`--maintain`, the default)
 
-Skip discovery of new initiatives. True up what exists, and gate every change through the review:
+Skip discovery of new initiatives. True up what exists, and gate every change through the review.
+The daily run (`--daily`, [references/daily-pass.md](references/daily-pass.md)) feeds this one.
 
+0. Read every daily report note whose `window_to` is later than `weekly.last_run` (list the `reports.daily` folder; compare full times, never the file date, because a daily run after a weekly run on the same day has the same date), before anything else. No `weekly.last_run` yet: start at the start of the current week in `config.week`. Treat each signal under its "For weekly" section as evidence: its source still needs a live check before a line. Use the per-epic progress for "Done this week". Re-propose declined lines that are still true, and rolled lines, by the existing rules. Report a working day with no note as `UNVERIFIED` (a gap). The weekly evidence window is always since `weekly.last_run`, never since `daily.last_run`. Set `weekly.last_run` at the end, after the writes are verified, to the time this run's evidence reads started, never the end time.
 1. Run the weekly controls, forum first. In Team mode, the tracker control is the full project pass in [references/project-pass.md](references/project-pass.md), run after `weekly-report` so its facts file is fresh.
 1a. After the project pass, run the wiki pass ([references/wiki-pass.md](references/wiki-pass.md)).
 2. Diff stage and milestone against fresh evidence; propose moves.

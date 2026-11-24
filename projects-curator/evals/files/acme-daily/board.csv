@@ -1,0 +1,4 @@
+Row ID,Title,Theme,Stage,Role,Sponsor,Impact,Milestone,Milestone date,Key Artifact,Execution Link,Decisions
+R-1,Unified deploy pipeline,theme-platform,3. Delivering,Builds,VP Engineering,Target: one deploy path for every service,Pipeline live for core services,2026-12-18,https://wiki.acme.test/rfc-31,ACME-10,
+R-3,Faster incident response,theme-platform,2. Committed,Builds,VP Engineering,Target: halve time to page,Pager rollout to all teams,2026-12-15,https://wiki.acme.test/adr-12,ACME-20,
+R-5,Cost visibility for teams,theme-data,2. Committed,Builds,Head of Data,Target: every team sees its monthly cost,Cost dashboard live,2026-11-30,https://wiki.acme.test/adr-22,ACME-12,

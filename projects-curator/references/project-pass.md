@@ -1,6 +1,6 @@
-# The project pass: Team mode, every week
+# The project pass: Team mode, weekly in full, daily in part
 
-Read this on every Team-mode run (`scope: team`). It is the tracker half of `--maintain`: the
+Read this on every Team-mode run (`scope: team`). It is the tracker half of `--maintain`, which runs every check below. `--daily` runs only some of them, on only what changed in its window: see [daily-pass.md](daily-pass.md) section 3. The
 board half (rows, stages, comments) stays in `SKILL.md`. Built from the first full run on
 2026-11-13, when Alex said: "this is the new project curator, this is what we should be doing
 plus updating the wiki". The wiki half is the database board; see **The board** at the end.

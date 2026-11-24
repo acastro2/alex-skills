@@ -66,6 +66,49 @@
         "For ACME-91, proposes a comment or a narrow change to the one preprod criterion, and does not propose closing ACME-91.",
         "Does not propose rewriting ACME-90's done-when criteria to remove preprod."
       ]
+    },
+    {
+      "id": 4,
+      "name": "daily-pass",
+      "prompt": "Today is 2026-11-24. Use the projects-curator skill to run the daily truth-up (`--daily`) for our team, Team mode, dry run, no live tools. Work only from the files in {FIXTURES}/acme-daily/: gather.md is the gather store excerpt for the window, jira.json holds the items as returned by getJiraIssue view full, and board.csv is the board database as returned by getConfluenceContent with content_format csv. Use {FIXTURES}/acme-daily/curated.json as the only ledger and do not read any other ledger. Write nothing. Show the review exactly as you would show it to me, and show the daily report note you would write.",
+      "expected_output": "A capped daily review with ACME-41 To Do to In Progress as its own Needs-you line, a Milestone date fix for the drifted row and ACME-10 proposed as the parent of ACME-55, no stage move, new row or epic comment, the Done-anchor stage-move signal parked under For weekly, and a Reports/Daily/2026-11-24.md note with all five sections.",
+      "files": [
+        "acme-daily/gather.md",
+        "acme-daily/jira.json",
+        "acme-daily/board.csv",
+        "acme-daily/curated.json"
+      ],
+      "expectations": [
+        "Proposes moving ACME-41 from To Do to In Progress (its keyed PR merged), as its own line in the group of lines that need Alex's decision.",
+        "Proposes changing the Milestone date of Faster incident response (R-3) from 2026-12-15 to 2026-12-22 to match the due date of its anchor epic ACME-20, and does not propose changing the epic's due date.",
+        "Does not propose any Stage move, any new board row, or any row comment.",
+        "Puts the signal that the anchor epic ACME-12 of Cost visibility for teams (R-5) went Done under a 'For weekly' section of the daily note, not as a review line proposing a stage move.",
+        "Does not propose or draft an epic weekly comment, a weekly roll-up, or any email.",
+        "Shows a daily report note for Reports/Daily/2026-11-24.md that has Sources read, Written, Declined, Rolled and For weekly sections.",
+        "Proposes ACME-10 as the parent of the new item ACME-55, citing its 'Parent: ACME-10' description line."
+      ]
+    },
+    {
+      "id": 5,
+      "name": "weekly-reads-daily",
+      "prompt": "Today is 2026-11-27. Use the projects-curator skill to run the weekly maintenance, Team mode, dry run, no live tools. Start with what the daily runs left you. Work only from the files in {FIXTURES}/acme-weekly/: curated.json is the only ledger (do not read any other ledger), the daily report notes are in {FIXTURES}/acme-weekly/Reports/Daily/, jira.json holds the items as returned by getJiraIssue view full, and board.csv is the board database as returned by getConfluenceContent with content_format csv. Write nothing. Show the review and the epic weekly comment for ACME-10 exactly as you would show them to me, and say when weekly.last_run gets set.",
+      "expected_output": "A weekly review that reads the 2026-11-20 daily note by its window_to, reports 2026-11-25 as an unverified gap, builds the ACME-10 weekly comment from the notes' items by name, treats the Done-epic signal as needing a live check, and sets weekly.last_run only at the end after verified writes.",
+      "files": [
+        "acme-weekly/curated.json",
+        "acme-weekly/board.csv",
+        "acme-weekly/jira.json",
+        "acme-weekly/Reports/Daily/2026-11-20.md",
+        "acme-weekly/Reports/Daily/2026-11-23.md",
+        "acme-weekly/Reports/Daily/2026-11-24.md",
+        "acme-weekly/Reports/Daily/2026-11-26.md"
+      ],
+      "expectations": [
+        "Reads the 2026-11-20 daily note even though its date equals the weekly.last_run date, because its window_to (17:30) is later than weekly.last_run (10:00).",
+        "Reports 2026-11-25 as a gap: UNVERIFIED, or a working day with no daily note.",
+        "The ACME-10 weekly comment's 'Done this week' names the items from the daily notes (Deploy design review, Rollback command, Deploy lock service, Canary health check).",
+        "Treats the 2026-11-20 note's stage-move signal for R-5 (epic ACME-12 Done) as evidence that needs a live check; it may propose the move as a line for Alex's decision, but does not write it or treat it as already approved.",
+        "Says weekly.last_run is set only at the end, after the writes are verified."
+      ]
     }
   ]
 }

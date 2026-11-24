@@ -1,0 +1,16 @@
+{"issues": [
+ {"key": "ACME-10", "fields": {"summary": "Unified deploy pipeline", "issuetype": {"name": "Epic"},
+   "status": {"name": "In Progress"}, "duedate": "2026-12-18", "labels": ["theme-platform"], "issuelinks": []}},
+ {"key": "ACME-12", "fields": {"summary": "Cost dashboard", "issuetype": {"name": "Epic"},
+   "status": {"name": "Done"}, "duedate": "2026-11-30", "resolutiondate": "2026-11-20", "labels": ["theme-data"], "issuelinks": []}},
+ {"key": "ACME-9", "fields": {"summary": "Deploy design review", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-20"}},
+ {"key": "ACME-30", "fields": {"summary": "Rollback command", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-23"}},
+ {"key": "ACME-41", "fields": {"summary": "Deploy lock service", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-24"}},
+ {"key": "ACME-55", "fields": {"summary": "Canary health check", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "Done"}, "resolutiondate": "2026-11-26"}},
+ {"key": "ACME-58", "fields": {"summary": "Deploy audit log", "issuetype": {"name": "Story"}, "parent": {"key": "ACME-10"},
+   "status": {"name": "In Progress"}}}
+]}
