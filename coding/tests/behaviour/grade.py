@@ -63,7 +63,7 @@ def review(r, run):
     fixed = re.search(r"start\s*:\s*start\s*\+\s*size\s*\]", r) and "size - 1" not in "\n".join(blocks(r, "python"))
     axes = [a for a in ("spec", "standards", "production risk") if re.search(a, r, re.I)]
     return [(bool(fixed), "fixed slice" if fixed else "slice not fixed"),
-            (any(x == "reviewer" or x.endswith(":reviewer") for x in skills), f"skills {skills}"),
+            (not any(x == "reviewer" or x.endswith(":reviewer") for x in skills), f"skills {skills}"),
             (len(axes) == 3, f"axes named: {axes}")]
 
 
@@ -164,18 +164,30 @@ def grade(run, case):
 
 def main():
     it = pathlib.Path(sys.argv[1]).expanduser().resolve()
-    bench = {}
+    bench, cost = {}, {}
     for reply in sorted(it.glob("eval-*/*/run-*/outputs/reply.md")):
         run = reply.parent.parent
         case = run.parent.parent.name.split("-", 2)[2]
         cfg = run.parent.name
         g = grade(run, case)
         bench.setdefault(case, {}).setdefault(cfg, []).append(g["summary"]["pass_rate"])
+        t = json.load(open(run / "timing.json")) if (run / "timing.json").exists() else {}
+        loc = sum(len([x for x in b.splitlines() if x.strip()]) for b in blocks(reply.read_text()))
+        cost.setdefault(case, {}).setdefault(cfg, []).append(
+            {"cost_usd": t.get("cost_usd") or 0, "seconds": (t.get("duration_ms") or 0) / 1000, "loc": loc})
         misses = [o["text"][:60] + " | " + o["evidence"] for o in g["expectations"] if o["passed"] is not True]
         print(f"{case:10} {cfg:11} {run.name} {g['summary']['passed']}/{g['summary']['total']} skills={g['skills_loaded']} {misses}")
     summary = {c: {k: round(sum(v) / len(v), 3) for k, v in cfgs.items()} for c, cfgs in bench.items()}
-    json.dump({"per_case_mean_pass_rate": summary, "runs": bench}, open(it / "benchmark.json", "w"), indent=2)
+    # Cost, time and code size per case, so a rule change shows what it costs, not only whether it passes.
+    spend = {c: {k: {m: round(sum(r[m] for r in v) / len(v), 3) for m in ("cost_usd", "seconds", "loc")}
+                 for k, v in cfgs.items()} for c, cfgs in cost.items()}
+    json.dump({"per_case_mean_pass_rate": summary, "per_case_mean_spend": spend, "runs": bench},
+              open(it / "benchmark.json", "w"), indent=2)
     print(json.dumps(summary, indent=1))
+    print(f"{'case':10} {'config':11} {'USD':>6} {'sec':>5} {'loc':>4}")
+    for c, cfgs in spend.items():
+        for k, m in cfgs.items():
+            print(f"{c:10} {k:11} {m['cost_usd']:6.3f} {m['seconds']:5.0f} {m['loc']:4.0f}")
 
 
 if __name__ == "__main__":

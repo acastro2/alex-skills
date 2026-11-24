@@ -5,7 +5,7 @@ Safe-run rules (repo standard): every `claude -p` run uses `--strict-mcp-config 
 | Set | What it proves | Run |
 | --- | --- | --- |
 | `trigger-evals.json` | The description loads the skill for code, PR, Terraform, and UI tasks, and stays quiet for near misses (critique a PR, an email, a diagram, a ticket) | `python3 scripts/run_triggers.py --skill coding <out>` |
-| `behaviour/` | Seven cases: an exact module pin in a CI-applied root, the prune before done, a delegated worker that does not stop to ask for seams, no test-first ceremony for a one-off script, a self-review with `reviewer` before done, a web UI review that fetches the live guidelines, and a small feature that gets no volunteered test | `python3 coding/tests/behaviour/run_behaviour.py <iteration> --baseline-skill <snapshot>`, then `python3 coding/tests/behaviour/grade.py <iteration>`. Add `--only review,webui` to run some cases |
+| `behaviour/` | Seven cases: an exact module pin in a CI-applied root, the prune before done, a delegated worker that does not stop to ask for seams, no test-first ceremony for a one-off script, a short self-review without loading `reviewer` for a one-line fix, a web UI review that fetches the live guidelines, and a small feature that gets no volunteered test | `python3 coding/tests/behaviour/run_behaviour.py <iteration> --baseline-skill <snapshot>`, then `python3 coding/tests/behaviour/grade.py <iteration>`. Add `--only review,webui` to run some cases |
 | `pr-description/` | The PR description shape. See its own README | `coding/tests/pr-description/` |
 
 Behaviour notes:

@@ -57,7 +57,7 @@
       "expected_output": "Fixes the slice end, then reviews its own diff with the reviewer skill's code layer (spec, standards, production risk) and says the review ran and what it found, before it reports done.",
       "expectations": [
         "[code] The reply contains the fixed paginate (start + size, no - 1)",
-        "[code] The run loaded the reviewer skill",
+        "[code] The run did not load the reviewer skill (a one-file, one-line fix)",
         "[code] The report names all three review axes: spec, standards, and production risk",
         "[jev] The report says it reviewed its own change before reporting done"
       ]
