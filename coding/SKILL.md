@@ -48,6 +48,25 @@ The start and review steps come from mattpocock/skills `implement`, rewritten.
 
 ## 1. Shape the code
 
+### Make the smallest complete change
+
+- **Before you write, list everything the change must reach:** every caller, test, fixture, config entry and export. For a bug fix, grep every caller of the function and fix the root cause once, in the shared code. This reach list is also how you find the existing tests to run in part 2.
+- **Take the first option that fully works:**
+  1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line.
+  2. Is it already in this codebase? Use the helper, component or pattern the way the code around it does.
+  3. Does the standard library or the platform have it? Use it, unless the project has its own.
+  4. Does a dependency already installed do it? Use it. Never add a dependency for a few lines.
+  5. Otherwise, write the minimum code that works. One line, if a reader gets it at a glance.
+- **Be lazy about the solution, never about the change.** Finish every part the reach list names. Code you move or merge keeps its error handling and validation.
+- **Between options of the same size, take the one that is correct on edge cases.** Deletion beats addition. Keep the layers, interfaces and conventions the codebase already has.
+- **Mark a shortcut with a known limit:** `shortcut: <the limit>, <when to upgrade>`.
+- **Never cut:** validation at trust boundaries, error handling that prevents data loss, security, accessibility, or anything I asked for.
+- **End the report with one or two lines:** what you skipped or did not check, and the risk I must know.
+
+**Why:** every line we add is a line we maintain. Ponytail measured these rules on 39 agentic tasks: 53% less code, 26% less cost, and the same hidden checks passed (96% to 97%). That benchmark is the author's own. Its rule "leave one small test for new logic" is not here: part 2 decides which tests to write.
+
+Adapted from [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail/blob/ebd8654/skills/ponytail/SKILL.md) (MIT, `ebd8654`).
+
 ### Design for testability. Do not inject everything
 
 - **Testable means controllable and observable.** Controllable: a test can cheaply reproduce the situations the code runs in. Observable: a test can see what the code did. If you can't do both, the design is the problem, not the test.
@@ -85,25 +104,27 @@ flowchart TD
   V --> R[Restore test files from base, run again]
 ```
 
+The evidence behind every rule here is in [verify-and-test evidence](references/verify-and-test-evidence.md).
+
 ### Verify by running the real thing
 
 - **Prove every change by running it.** Run the real code path: the CLI, the service, the page in a browser, the script against real input. You pick how. Show the command and its real output. "It should work" is not proof.
-- **Run the existing tests the change touches, and leave no earlier test failing.** If a test already failed on the base branch, say so. Never add a new failure.
+- **Run the existing tests the change touches, and leave no earlier test failing.** Use the reach list from part 1 to find them. If a test already failed on the base branch, say so.
 - **If you cannot run it, say so.** Mark it "not run", give the reason, and give the exact command that runs the real code path on sample input, with the output you expect. Running only the existing tests is not this command. Never claim a run you did not see.
 
-**Why:** an agent stops when the work looks done. A run gives a signal that the agent did not write itself. The regression cost across changes comes mostly from earlier tests left failing, not from code that is hard to maintain ([SWE-Maintain](https://arxiv.org/abs/2610.14768)).
+**Why:** an agent stops when the work looks done. A run is a signal the agent did not write itself, and old tests left failing are where regressions cost the most.
 
 ### Do not write tests nobody asked for
 
-- **Do not write a test that only the code suggests.** That means no unit test for a helper, no test "for coverage", and no characterization or snapshot test that records what the code does now.
+- **Do not write a test that only the code suggests.** No unit test for a helper, no test "for coverage", and no characterization or snapshot test that records what the code does now.
 - **Write a new test only in these cases:**
   - **A bug fix.** Write the repro test from the bug report, before the fix. See it fail for the right reason, then fix the code.
-  - **A written acceptance criterion.** A spec or a ticket states the rule before the code exists. A chat request does not count, unless I ask for a test in it. The test name says which criterion it guards.
+  - **A written acceptance criterion.** A spec or a ticket states the rule before the code exists. A chat request does not count, unless I ask for a test in it. Take each case and expected value from the criterion, not from the code. The test name says which criterion it guards.
 - **Keep the existing behaviour tests as the guard.** Keep them green, fix them when they are wrong, and add a case when the change extends a rule they already guard.
 - **Do not apply any of this to a throwaway script, a spike, a config value, or a pure rename.** Run it and show the output.
 - **In delegated work, the orchestrator writes the allowed test and agrees its seam with me.** The worker gets both in its contract and writes no other test.
 
-**Why:** a test that the agent derives from its own code holds the same reading of the task as the code. If the reading is wrong, the test confirms the error. Banning these tests did not lower success, and it cut time and tokens ([Kun Chen, DeepSWE](https://substack.com/@kunchenguid/note/c-356087116); [arXiv 2602.07900](https://arxiv.org/abs/2602.07900)). Generated regression tests also lock in bugs: 8–17% of them asserted the faulty behaviour, and most of those were still passing many commits later ([arXiv 2610.11835](https://arxiv.org/abs/2610.11835)). A test is worth what its expected value is anchored to. A bug report or a written criterion was fixed before the code, so it gives an anchor that the code does not.
+**Why:** a test the agent derives from its own code holds the same reading of the task as the code, so it confirms the error. Banning these tests cut cost with no loss in success, and generated regression tests locked in bugs for months.
 
 ### When an existing test fails
 
@@ -112,47 +133,16 @@ flowchart TD
 - **Never delete, skip, or weaken a test to get green.** Never special-case a test's input in the code.
 - **Before you trust a green run, restore the test files from base and run again:** `git checkout <base> -- <existing test paths>`. In delegated work the orchestrator does this. New test files are not on the base branch, so review them in the diff.
 
-**Why:** agents edit tests to get green. Read-only tests cut Claude Opus 4.1's cheating from 50% to 1%, and a "flag for a human" exit cut GPT-5's from 54% to 9% ([ImpossibleBench](https://arxiv.org/abs/2510.20270)). Restoring from base gives the same effect as read-only tests, with no harness setup. It does not catch special-casing, so the self-review looks for that.
+**Why:** agents edit tests to get green. Restoring from base works like read-only tests, which stopped most of that cheating. It does not catch special-casing, so the self-review looks for it.
 
 ### Write an allowed test first, at a seam
 
 - **Agree the seam before you write the test,** unless your contract already gives it. A seam is the place where you observe behaviour without reaching inside the implementation.
 - **Red before green.** Run the test and see it fail for the right reason. Then write only enough code to pass it.
-- **Approve the interface before you build against it** when the shape of the seam is itself the open question.
+- **Test observable behaviour against a rule someone owns.** Enter through a public entry point, assert an outcome outside the implementation, and take the expected value from the rule, not from the code. Do not stub the boundary the change crosses. The test shapes and the tests to reject are in [test shapes](references/test-shapes.md).
 - **Refactor after green, as its own step.** Then run the tests and the real thing again.
 
-**Why:** a test written after the code passes on its first run, so nothing shows that it can ever fail. The failing run is the only evidence that the test reaches the code.
-
-### Prove the contract through behaviour
-
-Use this when you write an allowed test, or fix an existing one. A test earns its place when it can fail because the system's observable behaviour is wrong. It should not fail only because code moved, a private name changed, or the implementation now reaches the same result by a different path.
-
-```mermaid
-flowchart LR
-  A[Real input] --> B[Production entry point]
-  B --> C[Real behaviour]
-  C --> D[Observable outcome]
-  D --> E[Contract proved]
-```
-
-Use the closest proof to production that stays deterministic, safe, and cheap:
-
-- **Behaviour tests prove outcomes that matter to a user or operator.** Start through a public entry point. Assert returned data, persisted state, emitted events, logs, metrics, files, process exit status, or another result outside the implementation. Do not substitute assertions about private methods or collaborator calls unless that interaction is itself the contract.
-- **Contract tests prove each boundary.** Cover accepted and rejected inputs, outputs, failure semantics, and side effects. Include protocol details such as status codes, schemas, serialization, idempotency, and error shape when callers depend on them.
-- **Integration tests prove real boundaries where practical.** Exercise the real database engine, filesystem, network client, subprocess, queue, or vendor adapter in a safe test environment. A test double can isolate caller logic. It cannot prove that the real dependency accepts the request or produces the response your code expects. Do not stub the boundary the change crosses.
-- **End-to-end tests prove critical production flows.** Start at the real external entry point and follow the flow to its durable or user-visible result. Keep this set small because these tests cost more and fail for more environmental reasons.
-- **Failure-path tests prove safe failure.** Show what happens with invalid input, timeouts, unavailable dependencies, partial work, retries, and cleanup when they apply. Assert the relevant safety contract: no corrupted data, bounded retries, a useful error, and no false success after incomplete work.
-- **Expected values come from the rule, not the code.** If calculating the expected result requires rebuilding the production algorithm inside the test, use a higher-level test or real execution instead.
-- **Refactor-safe tests preserve freedom to change the code.** A correct internal rewrite should keep passing when the public contract stays unchanged. Exact call order, object layout, helper names, and file structure are assertions only when consumers truly depend on them.
-
-Reject tests that create the appearance of proof. [The prune](references/prune-tests.md) lists the common ones: tests tied to the past, to nothing, or to the implementation. Two more it does not name:
-
-- **Fake upstream programs:** a mock that accepts the string the test expects proves string assembly against the mock. It does not prove that the real program parses the command, honours its flags, or produces the required side effect.
-- **Volume as quality:** a large test count can repeat one weak assertion many times. Confidence comes from distinct contracts and realistic failure paths, not volume.
-
-**Rule:** Test observable behaviour against a rule someone owns. Use real execution as proof when a test would only mirror the implementation.
-
-**Why:** implementation-shaped tests give false confidence. They can pass while the real workflow is broken, then fail during a safe refactor.
+**Why:** a test written after the code passes on its first run, so nothing shows it can fail. A test shaped like the implementation passes while the real workflow is broken, then fails on a safe refactor.
 
 ## 3. Finish
 
@@ -166,13 +156,14 @@ Reject tests that create the appearance of proof. [The prune](references/prune-t
 
 ### Review your own diff
 
-- **For a behaviour change, load the `reviewer` skill and review your own diff before you report done.** Use its code layer: the spec, the repo standards, and production risk, as three separate axes.
+- **For a big or risky behaviour change, have a fresh context review the diff before you report done.** Big or risky means more than one file, more than about 20 changed lines, or code that touches auth, money, data, infrastructure, or security. Give a subagent the spec and the diff, not this conversation, and have it load `reviewer` and use its code layer: the spec, the repo standards, and production risk, as three separate axes. If the host has no subagents, load `reviewer` yourself.
+- **For a smaller behaviour change, review it yourself without loading `reviewer`.** Write one line for each of the three axes, by name: spec, standards, production risk.
 - **Check the diff for test cheating:** an edited or deleted existing test, a new skip, a new test outside the allowed cases, or code that special-cases a test's input.
 - **Fix every Blocker and Should-fix you can fix yourself.** Bring the rest to me as decisions, through the `question` tool.
 - **Say that the review ran and what it found**, in one line per axis.
 - **Skip it for a throwaway script, a config value, or a pure rename.** Showing it working is the proof there.
 
-**Why:** the author is the cheapest reviewer, while the change is still in their head. A finding I make after you report done costs a whole extra round.
+**Why:** a finding I make after you report done costs a whole extra round. A verifier that got only the spec caught 95.4% of seeded faults, against 85.1% for the builder's own check ([arXiv 2610.28667](https://arxiv.org/abs/2610.28667)), so a big diff is worth the extra tokens. A small diff is not: loading `reviewer` raised the cost of a small eval change by about half.
 
 ### Every PR gets a change description
 
@@ -191,3 +182,6 @@ Read the reference that matches the task. Tasks outside these need only parts 1 
 | Web UI code: HTML, CSS, components, pages, forms | [Web interface standards](references/web-interface.md): fetch the current Web Interface Guidelines and use their review format |
 | Opening a PR, or changing its body | [PR description standards](references/pr-description.md), with its [template](references/pr-description-template.md) and [diagram patterns](references/pr-description-diagrams.md) |
 | Finishing any change that added or changed tests | [The prune](references/prune-tests.md) |
+| Writing an allowed test, or fixing an existing one | [Test shapes](references/test-shapes.md) |
+| Defending or changing a rule in part 2 | [Verify and test evidence](references/verify-and-test-evidence.md) |
+| Checking whether part 2 works on real work | [Real-work tracking](references/real-work-tracking.md) |
