@@ -57,9 +57,14 @@ Three frames govern it:
 ## Hard constraints (never violate)
 
 - On-demand only. No scheduler, no autonomous run.
+- **Sync the vault first, every run, every mode.** Before you read or write anything
+  in the vault, run the **Start sync** in **Vault sync**. Why: bard edits `Todo.md`,
+  `.bard-state.json` and notes in place. A copy that is behind the other devices gives
+  an old watermark, a board without Alex's latest edits, and a sync conflict when both
+  versions land.
 - Never `git`, never run a server, never commit. (User does that outside.) The
-  read-only `obsidian sync:status` at the end of a sweep is allowed — it queries the
-  already-running Obsidian app, it does not start a server. `obsidian reload` is
+  `obsidian sync on` and `sync:status` calls in **Vault sync** are allowed: they talk to
+  the already-running Obsidian app, they do not start a server. `obsidian reload` is
   BANNED: it hangs and wedges the CLI (see **Vault sync**).
 - Write ONLY inside `Bard/` and `Evidence/`, with the root vault `Todo.md` as the
   named board exception. Never edit a hub or an existing knowledge note during a sweep
@@ -125,6 +130,7 @@ so it is derived from real work and ratified by Alex.
 
 ### `/bard` (normal incremental sweep — the default)
 
+0. Run **Start sync** (see **Vault sync**). Read nothing in the vault before it passes.
 1. Read `Bard/.bard-state.json`. If absent or `watermark` is null → this is a first
    sweep; if no hubs exist, run **bootstrap** first.
 2. Gather context the generation prompt needs:
@@ -543,9 +549,31 @@ during a normal sweep. This is required capture, not a separate opt-in mode.
 ## Vault sync
 
 bard writes files straight to disk, outside the Obsidian app. Obsidian watches the
-filesystem, so it picks those writes up on its own; the only thing left is to confirm
-Obsidian Sync flushed them, via the `obsidian` CLI (installed at
-`/usr/local/bin/obsidian`; the vault is named `Alex`):
+filesystem, so it picks those writes up on its own. bard talks to Obsidian Sync twice per
+run through the `obsidian` CLI (installed at `/usr/local/bin/obsidian`; the vault is
+named `Alex`): once at the start, once at the end.
+
+### Start sync (before anything else, every mode)
+
+The CLI has no "sync now" command (checked against the official CLI docs,
+https://obsidian.md/help/cli, 2026-11-24). `sync on` is the closest: it resumes Sync
+if it is paused and does nothing if it already runs. So "force a sync" means: make
+sure Sync runs, then wait for it to catch up.
+
+```bash
+obsidian vault=Alex sync on       # resume Sync if paused
+obsidian sync:status vault=Alex   # repeat every 10 s, up to 2 min, until "status: synced"
+```
+
+- `synced` → start the run.
+- Still `syncing` after 2 min → start the run, and put the status line in the report.
+  A false `syncing` is known (2026-10-14, below), so do not block on it.
+- Paused, an error, `Command line interface is not enabled`, or a timeout (Obsidian not
+  running) → STOP. Ask Alex through the `question` tool: fix it and retry (recommended,
+  because a stale vault gives a stale board), or run on the local copy. Never launch
+  Obsidian yourself.
+
+### End sync (after the writes)
 
 ```bash
 obsidian sync:status vault=Alex   # expect "status: synced"
@@ -562,10 +590,10 @@ obsidian sync:status vault=Alex   # expect "status: synced"
   `sync:status` returning `synced` is the confirmation; if it shows pending/syncing,
   report that rather than claiming it's done. `syncing` is not a failure: on 2026-10-14 it
   read `syncing` for over 30 minutes while Alex confirmed the vault was in sync (other
-  sessions keep writing to it). Report the line and ask Alex to glance at the Sync icon;
-  never retry in a loop.
+  sessions keep writing to it). Report the line and ask Alex to glance at the Sync icon.
+  The only retry loop is the bounded 2-minute wait in **Start sync**.
 - Never use `sync off` / `reload` / `restart` / destructive `sync:restore` in a sweep.
-  Only `sync:status` (read-only) is part of the flow.
+  Only `sync on` (at the start) and `sync:status` are part of the flow.
 
 See [Board rules](references/todo-board.md) for the board's formats and decisions, and
 `references/obsidian-setup.md` for the one-time scaffolding: `Bard.base`, the hub-note
