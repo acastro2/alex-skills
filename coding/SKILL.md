@@ -20,7 +20,7 @@ How I code, from the first line to the PR. `AGENTS.md` and `CLAUDE.md` make ever
 ```mermaid
 flowchart LR
   S[0. Start from the spec] --> A[1. Shape the code]
-  A --> B[2. Test it]
+  A --> B[2. Verify and test]
   B --> C[3. Finish: prune, review, then PR]
   D[4. By domain: Terraform, web UI] -.adds rules to.-> A
 ```
@@ -69,29 +69,63 @@ Sources for the framing above: Feathers on seams, Beck on controllability, Hever
 
 **Why:** models tend to over-comment, and I don't like it. Noisy comments bury the few that matter, and good names plus small functions already tell the what.
 
-## 2. Test it
+## 2. Verify and test
 
-### When the test-first loop applies
+```mermaid
+flowchart TD
+  C[Change] --> K{Bug fix, or a written criterion?}
+  K -- yes --> T[Write that one test first, see it fail]
+  K -- no --> B[Build it]
+  T --> B
+  B --> E[Run the existing tests the change touches]
+  E --> F{One fails?}
+  F -- yes --> X[Fix the code, or stop and flag the test]
+  F -- no --> V[Run the real thing, show command and output]
+  X --> E
+  V --> R[Restore test files from base, run again]
+```
 
-- **It applies to a behaviour change in code that ships or that other people run.** A new feature, a bug fix, a changed contract.
-- **It does not apply to a throwaway script, a spike, a config value, or a pure rename.** Show those working instead: run it and show the output.
-- **In delegated work, the orchestrator agrees the seams with me and writes the failing test.** The worker gets both in its contract and does not stop to ask me. If the worker finds the seam is wrong, it returns `blocked` with the reason instead of moving the seam.
+### Verify by running the real thing
 
-**Why:** test-first on a one-off script is the overengineering I hate, and a worker that stops to ask me on every build makes me the bottleneck. The seam is a design decision, so it stays with whoever talks to me.
+- **Prove every change by running it.** Run the real code path: the CLI, the service, the page in a browser, the script against real input. You pick how. Show the command and its real output. "It should work" is not proof.
+- **Run the existing tests the change touches, and leave no earlier test failing.** If a test already failed on the base branch, say so. Never add a new failure.
+- **If you cannot run it, say so.** Mark it "not run", give the reason, and give the exact command that runs the real code path on sample input, with the output you expect. Running only the existing tests is not this command. Never claim a run you did not see.
 
-### Write the test first, at a seam you agreed
+**Why:** an agent stops when the work looks done. A run gives a signal that the agent did not write itself. The regression cost across changes comes mostly from earlier tests left failing, not from code that is hard to maintain ([SWE-Maintain](https://arxiv.org/abs/2610.14768)).
 
-- **Agree the seams before you write a test.** Write down the seams under test and confirm them with me first, unless your contract already gives them. A seam is the place where you observe behaviour without reaching inside the implementation. You cannot test everything, so agreeing the seams up front is how effort lands on the critical paths and the complex logic instead of every edge case. Tests live at seams, never against internals.
-- **Red before green.** Write the failing test first, then write only enough code to pass it. Run it and see it fail for the right reason before you make it pass. Do not anticipate later tests and do not add speculative features.
-- **One slice at a time.** One seam, one test, one minimal implementation, then repeat. Do not write all the tests first and then all the implementation: bulk tests verify imagined behaviour, and you lock in a test structure before you understand the implementation.
-- **Approve the interface before you build against it.** When the shape of the seam is itself the open question, agree the interface first. A seam chosen badly is expensive to move once callers depend on it.
-- **Refactoring is not part of the loop.** It comes after green, as its own step.
+### Do not write tests nobody asked for
 
-**Why:** a test written after the code passes on the first run, so it proves nothing about whether it can ever fail. The failing run is the only evidence that the test reaches the code at all. Working one slice at a time keeps each test honest about what the code does now, instead of what you imagined it would do.
+- **Do not write a test that only the code suggests.** That means no unit test for a helper, no test "for coverage", and no characterization or snapshot test that records what the code does now.
+- **Write a new test only in these cases:**
+  - **A bug fix.** Write the repro test from the bug report, before the fix. See it fail for the right reason, then fix the code.
+  - **A written acceptance criterion.** A spec or a ticket states the rule before the code exists. A chat request does not count, unless I ask for a test in it. The test name says which criterion it guards.
+- **Keep the existing behaviour tests as the guard.** Keep them green, fix them when they are wrong, and add a case when the change extends a rule they already guard.
+- **Do not apply any of this to a throwaway script, a spike, a config value, or a pure rename.** Run it and show the output.
+- **In delegated work, the orchestrator writes the allowed test and agrees its seam with me.** The worker gets both in its contract and writes no other test.
+
+**Why:** a test that the agent derives from its own code holds the same reading of the task as the code. If the reading is wrong, the test confirms the error. Banning these tests did not lower success, and it cut time and tokens ([Kun Chen, DeepSWE](https://substack.com/@kunchenguid/note/c-356087116); [arXiv 2602.07900](https://arxiv.org/abs/2602.07900)). Generated regression tests also lock in bugs: 8–17% of them asserted the faulty behaviour, and most of those were still passing many commits later ([arXiv 2610.11835](https://arxiv.org/abs/2610.11835)). A test is worth what its expected value is anchored to. A bug report or a written criterion was fixed before the code, so it gives an anchor that the code does not.
+
+### When an existing test fails
+
+- **The code is wrong until you show otherwise.** Fix the code.
+- **Change a test only when you can name the rule that changed, and I agreed.** If a test looks wrong, stop and flag it: name the test and say why. Do not edit it. In delegated work, return `blocked`.
+- **Never delete, skip, or weaken a test to get green.** Never special-case a test's input in the code.
+- **Before you trust a green run, restore the test files from base and run again:** `git checkout <base> -- <existing test paths>`. In delegated work the orchestrator does this. New test files are not on the base branch, so review them in the diff.
+
+**Why:** agents edit tests to get green. Read-only tests cut Claude Opus 4.1's cheating from 50% to 1%, and a "flag for a human" exit cut GPT-5's from 54% to 9% ([ImpossibleBench](https://arxiv.org/abs/2510.20270)). Restoring from base gives the same effect as read-only tests, with no harness setup. It does not catch special-casing, so the self-review looks for that.
+
+### Write an allowed test first, at a seam
+
+- **Agree the seam before you write the test,** unless your contract already gives it. A seam is the place where you observe behaviour without reaching inside the implementation.
+- **Red before green.** Run the test and see it fail for the right reason. Then write only enough code to pass it.
+- **Approve the interface before you build against it** when the shape of the seam is itself the open question.
+- **Refactor after green, as its own step.** Then run the tests and the real thing again.
+
+**Why:** a test written after the code passes on its first run, so nothing shows that it can ever fail. The failing run is the only evidence that the test reaches the code.
 
 ### Prove the contract through behaviour
 
-A test earns its place when it can fail because the system's observable behaviour is wrong. It should not fail only because code moved, a private name changed, or the implementation now reaches the same result by a different path.
+Use this when you write an allowed test, or fix an existing one. A test earns its place when it can fail because the system's observable behaviour is wrong. It should not fail only because code moved, a private name changed, or the implementation now reaches the same result by a different path.
 
 ```mermaid
 flowchart LR
@@ -105,21 +139,20 @@ Use the closest proof to production that stays deterministic, safe, and cheap:
 
 - **Behaviour tests prove outcomes that matter to a user or operator.** Start through a public entry point. Assert returned data, persisted state, emitted events, logs, metrics, files, process exit status, or another result outside the implementation. Do not substitute assertions about private methods or collaborator calls unless that interaction is itself the contract.
 - **Contract tests prove each boundary.** Cover accepted and rejected inputs, outputs, failure semantics, and side effects. Include protocol details such as status codes, schemas, serialization, idempotency, and error shape when callers depend on them.
-- **Integration tests prove real boundaries where practical.** Exercise the real database engine, filesystem, network client, subprocess, queue, or vendor adapter in a safe test environment. A test double can isolate caller logic. It cannot prove that the real dependency accepts the request or produces the response your code expects.
+- **Integration tests prove real boundaries where practical.** Exercise the real database engine, filesystem, network client, subprocess, queue, or vendor adapter in a safe test environment. A test double can isolate caller logic. It cannot prove that the real dependency accepts the request or produces the response your code expects. Do not stub the boundary the change crosses.
 - **End-to-end tests prove critical production flows.** Start at the real external entry point and follow the flow to its durable or user-visible result. Keep this set small because these tests cost more and fail for more environmental reasons.
 - **Failure-path tests prove safe failure.** Show what happens with invalid input, timeouts, unavailable dependencies, partial work, retries, and cleanup when they apply. Assert the relevant safety contract: no corrupted data, bounded retries, a useful error, and no false success after incomplete work.
-- **Unit tests prove focused contracts without copying the implementation.** Use them when you can state the input and expected result independently. If calculating the expected result requires rebuilding the production algorithm inside the test, use a higher-level test or real execution instead.
+- **Expected values come from the rule, not the code.** If calculating the expected result requires rebuilding the production algorithm inside the test, use a higher-level test or real execution instead.
 - **Refactor-safe tests preserve freedom to change the code.** A correct internal rewrite should keep passing when the public contract stays unchanged. Exact call order, object layout, helper names, and file structure are assertions only when consumers truly depend on them.
-- **The smallest strong test set wins.** Each test should add a distinct proof or failure mode. Test count and coverage percentage can expose gaps, but neither proves quality.
 
 Reject tests that create the appearance of proof. [The prune](references/prune-tests.md) lists the common ones: tests tied to the past, to nothing, or to the implementation. Two more it does not name:
 
 - **Fake upstream programs:** a mock that accepts the string the test expects proves string assembly against the mock. It does not prove that the real program parses the command, honours its flags, or produces the required side effect.
 - **Volume as quality:** a large test count can repeat one weak assertion many times. Confidence comes from distinct contracts and realistic failure paths, not volume.
 
-**Rule:** Test observable behaviour. Use real execution as proof when a unit test would only mirror the implementation.
+**Rule:** Test observable behaviour against a rule someone owns. Use real execution as proof when a test would only mirror the implementation.
 
-**Why:** implementation-shaped tests give false confidence. They can pass while the real workflow is broken, then fail during a safe refactor. Tests should protect contracts, catch regressions, and leave the implementation free to improve.
+**Why:** implementation-shaped tests give false confidence. They can pass while the real workflow is broken, then fail during a safe refactor.
 
 ## 3. Finish
 
@@ -129,11 +162,12 @@ Reject tests that create the appearance of proof. [The prune](references/prune-t
 - **Scope it to the change, not the whole repo.** A repo-wide prune on every task fills the diff with deletions nobody asked for. Prune the whole suite only when I ask.
 - **Report the result in one line:** how many tests were deleted, how many were rewritten, or "nothing to prune".
 
-**Why:** a test that guards no behaviour still costs a run, a read, and a fix on every refactor, and it makes the suite look stronger than it is. The rules above say which tests to write. The prune catches the ones that slipped through, while the change is still fresh.
+**Why:** a test that guards no behaviour still costs a run, a read, and a fix on every refactor, and it makes the suite look stronger than it is. Part 2 says which tests to write. The prune catches the ones that slipped through, while the change is still fresh.
 
 ### Review your own diff
 
 - **For a behaviour change, load the `reviewer` skill and review your own diff before you report done.** Use its code layer: the spec, the repo standards, and production risk, as three separate axes.
+- **Check the diff for test cheating:** an edited or deleted existing test, a new skip, a new test outside the allowed cases, or code that special-cases a test's input.
 - **Fix every Blocker and Should-fix you can fix yourself.** Bring the rest to me as decisions, through the `question` tool.
 - **Say that the review ran and what it found**, in one line per axis.
 - **Skip it for a throwaway script, a config value, or a pure rename.** Showing it working is the proof there.

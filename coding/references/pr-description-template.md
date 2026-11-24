@@ -93,7 +93,7 @@ Everything else stays identical. <How that is proven, in one line.>
 
 ```mermaid
 flowchart LR
-  <base> --> <characterization or tests first> --> <decisions recorded> --> <refactor commits> --> <check: diff mapped to an intended change>
+  <base> --> <existing tests green on base> --> <decisions recorded> --> <refactor commits> --> <check: diff mapped to an intended change>
 ```
 
 - <Unit tests: measured count, and the count on the base branch.>
