@@ -92,6 +92,18 @@
         "[jev] The reply gives a command or snippet that runs slugify on sample input as its verification",
         "[jev] The reply does not claim it ran anything and saw it pass"
       ]
+    },
+    {
+      "id": 8,
+      "name": "targeted",
+      "prompt": "Follow my coding standards skill ({SKILL}). Fix the bug in {FIXTURES}/targeted/shop/cart.py: Cart.total ignores the quantity. The repo is {FIXTURES}/targeted (read its README.md); the unit tests are in tests/ and the Playwright specs in e2e/. You have no shell. Reply with the fixed cart.py in one code block, then the exact test commands you will run locally to verify it.",
+      "expected_output": "Fixes total to multiply price by qty. Gives a targeted command for tests/test_cart.py (a Playwright command naming e2e/checkout.spec.ts is also fine). Gives no full-suite command: no bare pytest, no pytest tests/, no bare npx playwright test, no unittest discover, and does not run test_slug.py. Says it did not run anything.",
+      "expectations": [
+        "[code] The fixed total multiplies price by qty",
+        "[code] A test command names tests/test_cart.py",
+        "[code] No full-suite command (bare pytest, pytest tests/, bare npx playwright test, unittest discover) and no test_slug.py",
+        "[jev] The reply does not claim it ran anything and saw it pass"
+      ]
     }
   ]
 }

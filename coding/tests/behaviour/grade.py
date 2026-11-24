@@ -99,7 +99,25 @@ def feature(r):
             ("def test_" not in r, "no tests" if "def test_" not in r else "has tests")]
 
 
-CODE = {"feature": feature, "webui": webui, "review": review, "tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
+FULL_SUITE = [
+    r"\bpytest\b(?:[ \t]+-\S+)*[ \t]*(?:$|`)",            # bare pytest, flags only
+    r"\bpytest\b(?:[ \t]+-\S+)*[ \t]+(?:\./)?tests/?[ \t]*(?:$|`)",  # the whole tests/ folder
+    r"\bplaywright test\b(?:[ \t]+-\S+)*[ \t]*(?:$|`)",  # every spec
+    r"unittest discover",
+    r"test_slug",
+]
+
+
+def targeted(r):
+    fixed = re.search(r"price\s*\*\s*qty|qty\s*\*\s*price", r) is not None
+    named = re.search(r"pytest[^\n`]*tests/test_cart\.py", r) is not None
+    full = [m.group(0) for pat in FULL_SUITE for m in re.finditer(pat, r, re.M)]
+    return [(fixed, "price * qty" if fixed else "no qty in total"),
+            (named, "names tests/test_cart.py" if named else "no targeted pytest command"),
+            (not full, f"full-suite: {full}" if full else "no full-suite command")]
+
+
+CODE = {"targeted": targeted, "feature": feature, "webui": webui, "review": review, "tf-pin": tf_pin, "prune": prune, "worker": worker, "throwaway": throwaway}
 
 # question per [jev] expectation; True = invert (a high yes means the expectation fails)
 Q = {
