@@ -9,6 +9,7 @@ Read this reference when writing, changing, or reviewing Terraform/OpenTofu code
 - [Keep ordering and state safe](#keep-ordering-and-state-safe)
 - [Make version constraints tell the truth](#make-version-constraints-tell-the-truth)
 - [Enforce checks locally and in CI](#enforce-checks-locally-and-in-ci)
+- [Run only targeted tests](#run-only-targeted-tests)
 - [Match the sibling root before review](#match-the-sibling-root-before-review)
 - [Check a new root before the PR](#check-a-new-root-before-the-pr)
 
@@ -173,6 +174,19 @@ Company-specific module, runner, and reusable-workflow choices apply only to wor
   When adding or deliberately upgrading hooks, run `pre-commit autoupdate` before these checks. If a hook changes files, review them and rerun `pre-commit run --all-files` until it passes.
 
 **Why:** local hooks catch formatting, validation, and generated-doc issues early. CI makes the same checks mandatory for every pull request.
+
+### Run only targeted tests
+
+- **Never run the whole `tofu test` or `terraform test` suite locally.** This is the targeted-tests rule from part 2 of [Coding](../SKILL.md); CI runs the full suite. A bare `tofu test` runs every `.tftest.hcl` file in the root and in `tests/`. Always name the files.
+- **Run only the test files that cover the change.** Use the reach list from part 1 of [Coding](../SKILL.md) to pick them, then pass each one with `-filter`. The path is relative to the working directory, even with `-test-directory`.
+
+  ```bash
+  tofu test -filter=tests/iam.tftest.hcl -filter=tests/naming.tftest.hcl
+  ```
+
+- **If no test file covers the change, say so.** Do not fall back to the full suite. Ask me before you run more than the targeted files.
+
+**Why:** `tofu test` creates real infrastructure unless a run block is mocked or uses `command = plan`. The full suite costs time and money, and it can leave resources behind when cleanup fails. The targeted files are the proof the change needs.
 
 ### Match the sibling root before review
 

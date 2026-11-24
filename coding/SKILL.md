@@ -109,10 +109,12 @@ The evidence behind every rule here is in [verify-and-test evidence](references/
 ### Verify by running the real thing
 
 - **Prove every change by running it.** Run the real code path: the CLI, the service, the page in a browser, the script against real input. You pick how. Show the command and its real output. "It should work" is not proof.
-- **Run the existing tests the change touches, and leave no earlier test failing.** Use the reach list from part 1 to find them. If a test already failed on the base branch, say so.
+- **Run the existing tests the change touches, and leave none of them failing.** Use the reach list from part 1 to find them. If a test already failed on the base branch, say so.
+- **Locally, run only targeted tests. Never the full suite.** This holds for unit tests in every language, Playwright and other browser tests, and `tofu test` or `terraform test`. Name the test files, or filter by test name, with the runner's own flag (`pytest tests/test_cart.py`, `npx playwright test tests/login.spec.ts`). If no test covers the change, say so and ask before you run more.
+- **The full suite runs in CI.** On a PR, read the CI result and report it. If no CI runs the full suite on this change (no workflow, or a push that skips it), say so and ask.
 - **If you cannot run it, say so.** Mark it "not run", give the reason, and give the exact command that runs the real code path on sample input, with the output you expect. Running only the existing tests is not this command. Never claim a run you did not see.
 
-**Why:** an agent stops when the work looks done. A run is a signal the agent did not write itself, and old tests left failing are where regressions cost the most.
+**Why:** an agent stops when the work looks done. A run is a signal the agent did not write itself, and old tests left failing are where regressions cost the most. A full local run costs minutes and tokens on every change. Picking the tests the change touches is what cut regressions in one study (TDAD, in the evidence file). CI runs the full suite on a clean machine, so a local full run buys little.
 
 ### Do not write tests nobody asked for
 
@@ -148,7 +150,7 @@ The evidence behind every rule here is in [verify-and-test evidence](references/
 
 ### Prune tests before you call it done
 
-- **Before you report a change as done, run [the prune](references/prune-tests.md) on the tests the change added or changed.** Include the other tests in the same test files. Delete or rewrite what it flags, and delete production code that only existed for those tests. Then run the suite again and show it green.
+- **Before you report a change as done, run [the prune](references/prune-tests.md) on the tests the change added or changed.** Include the other tests in the same test files. Delete or rewrite what it flags, and delete production code that only existed for those tests. Then run the targeted tests again and show them green.
 - **Scope it to the change, not the whole repo.** A repo-wide prune on every task fills the diff with deletions nobody asked for. Prune the whole suite only when I ask.
 - **Report the result in one line:** how many tests were deleted, how many were rewritten, or "nothing to prune".
 
@@ -178,7 +180,7 @@ Read the reference that matches the task. Tasks outside these need only parts 1 
 
 | When the task touches | Read |
 | --- | --- |
-| Terraform or OpenTofu code, its tooling, or its CI | [Terraform and OpenTofu standards](references/terraform-opentofu.md): module choices, version pins, ordering and state safety, hooks, CI, and the checks before a new root's PR |
+| Terraform or OpenTofu code, its tooling, or its CI | [Terraform and OpenTofu standards](references/terraform-opentofu.md): module choices, version pins, ordering and state safety, hooks, CI, targeted tests only, and the checks before a new root's PR |
 | Web UI code: HTML, CSS, components, pages, forms | [Web interface standards](references/web-interface.md): fetch the current Web Interface Guidelines and use their review format |
 | Opening a PR, or changing its body | [PR description standards](references/pr-description.md), with its [template](references/pr-description-template.md) and [diagram patterns](references/pr-description-diagrams.md) |
 | Finishing any change that added or changed tests | [The prune](references/prune-tests.md) |
