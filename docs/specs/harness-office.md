@@ -32,6 +32,12 @@ Why two kinds of surface: the office answers "is anything wrong?" in one glance.
 | O6 | Figure size | anatomy Hero: 80 to 150 parts, about 2 to 4 hours of build time | One dense live floor; an Epic (people, rooms, shaders) is out of scope |
 | O7 | Views | Inbox, Sessions and workers, Worktrees and conflicts, Proof bundles, Rules, Journal and replay, Harness changes, Jobs | Alex picked all 8 |
 | O8 | Build path | Code-first, recorded in `harness/.impeccable/config.json` | App screens and anatomy figures are built in code either way |
+| O9 | Reach | Local only, on `localhost`. The VM page reaches the Mac browser through port forwarding. No phone access | Passkeys work on `localhost` with no certificates, and nothing is exposed past the machine |
+| O10 | Desk assignment | Sessions that need Alex first (a waiting question, stuck), then running turns, then idle. A desk stays with its session until it ends; an ended desk dims for 10 minutes, then frees. A racked session that needs Alex takes the longest-idle desk, and that is the only reshuffle | What needs Alex is always on the floor, and nothing moves under his eyes |
+| O11 | Alerts | A silent browser notification when a question arrives or a session goes stuck. Permission is asked from a top-bar button, never on page load. The bell is drawn, not heard | Alex notices from another app, with no noise |
+| O12 | One world | The working views share the office's look: the anatomy paper and ink palette, one lit accent, the same type. `impeccable` new-work sets the details | Clicking into a view feels like zooming into the same room |
+| O13 | Inbox answers | The question's own options as buttons, plus a free-text box. An answer from the page is never a grant, even with `MERGE-OK` in it (D35) | Grants come only from a typed prompt or a passkey tap |
+| O14 | Ticker and theme | The ticker's speed follows the journal rate on a log scale, not one notch per row. The theme follows the system, with a switch | One notch per row blurs at a few hundred rows a minute |
 
 ## The office (anatomy figure)
 
@@ -45,13 +51,13 @@ Why two kinds of surface: the office answers "is anything wrong?" in one glance.
 | Red flag on the desk | `stuck` (D78) | The flag rises after the 5th nudge. |
 | Filing cabinet, one drawer per worktree | `worktrees` | A drawer slides open while `active`. Its tab turns red on `conflict` (D79), and an empty drawer slides shut on `removed`. |
 | Pneumatic tube to each desk | the waker (`watches`) | A capsule runs the tube on each wake: a PR merged, CI red, a stall nudge. |
-| Ticker-tape machine | the journal | The tape advances one notch per journal row. A deny prints with a darker mark. |
+| Ticker-tape machine | the journal | The tape speed follows the journal rate on a log scale (O14). A deny prints with a darker mark. |
 | Rubber stamp and ink pad | grants (`tokens`) | The stamp presses down once per grant, and lifts when the token is used. |
 | Dial gauge on the wall | steering share (journal, last 7 days) | The needle reads the share of steering prompts; 28% at baseline. |
 | Wall clock | jobs (`jobs`, `Bun.cron`) | The hands show the time; a small second hand points at the next job. |
 | Fuse box by the door | the kill switch and rule modes (`rules`, `harness off`) | The main lever is down when the harness is off. One small breaker per rule shows its mode: enforce, advise, inject or off. |
 | Bell | a session newly `stuck`, or a conflict with no owner | It rings once, then stays still until the next event. |
-| "+N" rack | sessions beyond 8 | One slot per extra session, each with a small lit or dark lamp. |
+| "+N" rack | sessions beyond 8 (O10) | One slot per extra session, each with a small lit or dark lamp. |
 
 **Truth module.** A pure `office-model.ts` turns ledger rows into the figure's state: desks, lamps, drawers, capsules in flight, the tape position, the needle angle. The build and the page both import it, the same pattern as the arcade's coins. Every readout on the card comes from this module.
 
@@ -100,7 +106,7 @@ Why two kinds of surface: the office answers "is anything wrong?" in one glance.
 
 **Actions and safety.** Merge, harness apply, `harness off` and `on`, and rollback each ask for a fresh passkey tap. Answers, `harness wrong` and read views use the 30-minute session. Each action calls the authority module; the page holds no logic of its own that grants anything.
 
-**Constraints.** Keyboard reachable everywhere, visible focus, light and dark themes, reduced motion respected. It must work at 390 px for a quick look, though the Mac at 1440 is the main screen.
+**Constraints.** Keyboard reachable everywhere, visible focus, light and dark themes following the system (O14), reduced motion respected. It must work in a 390 px-wide Mac window, though 1440 is the main screen. Local only (O9).
 
 **Anti-goals.** No decorative motion in the working views. No modal as a first choice: details open inline. No data the ledger did not record. No human figures in the office.
 
@@ -114,4 +120,4 @@ Why two kinds of surface: the office answers "is anything wrong?" in one glance.
 
 ## Open
 
-- Whether the VM page is also reachable from the phone (it is local only today).
+None. The design was grilled with Alex on 2026-11-25 (O9 to O14).

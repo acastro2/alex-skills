@@ -35,7 +35,7 @@ Every number and moving part on the page comes from the harness's own ledger and
 - First view is an isometric office floor (anatomy figure, Hero size). Up to 8 desks; more sessions go on a "+N" rack. Workers sit at a smaller desk beside their parent.
 - Eight working views: Inbox, Sessions and workers, Worktrees and conflicts, Proof bundles, Rules, Journal and replay, Harness changes, Jobs.
 - Agents must never be able to act on the page: the guard denies agent shell calls to its port and `browse` access to it (D61).
-- Undecided: whether the VM page is also reachable from the phone.
+- Local only: no phone access (O9 in `docs/specs/harness-office.md`).
 
 ## Brand Commitments
 
