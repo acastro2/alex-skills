@@ -203,6 +203,20 @@ Do this first. Step 0: install the pinned Bun on both hosts (D11), and add a `se
 
 If the deny test fails, the OpenCode adapter uses `execute.before` to replace the command with one that fails with the reason. If `bun:sqlite` does not load, the OpenCode adapter spawns `bun core.ts` like Claude Code. If the wake test fails, the waker uses the Rex or Herdr notification only. If more than one of these fails, stop and bring it to Alex.
 
+### Phase 0 results (2026-11-25, VM)
+
+| Probe | Result | Consequence |
+| --- | --- | --- |
+| Bun pinned | `bun = "1.4.5"` in mac-bootstrap `42-mise.sh` and `~/.config/mise/config.toml`; `bun:sqlite` 3.54.1 and `Bun.cron` load | Runtime ready |
+| OpenCode deny under the default permission flow | `permission.hook("evaluate")` with `effect = "deny"` blocked `echo PROBE-DENY`; the model saw `Permission denied: harness probe: denied` (OpenCode 2.4.1, `opencode run --standalone`) | The OpenCode guard works as designed |
+| OpenCode `execute.before` input change | Not applied, by replacing or by editing in place | Spawn rules deny with the contract text in OpenCode, the planned fallback |
+| OpenCode `execute.after` output change | Applied: pushing to `result.content` reached the model | Verify results and nudges go in as tool-result context |
+| OpenCode stop event | No idle hook; `session.execution.succeeded` fires at the end of each turn | The OpenCode `stop` event is that bus event |
+| Typed-prompt marker | None in either tool: OpenCode `prompt` has `delivery: "steer"` and no metadata for `opencode run`; Claude Code `UserPromptSubmit` has no interactive field. Synthetic and waker messages skip the OpenCode `prompt` hook | Grants count only in a root session (no parent), never in a subagent's prompt, and `harness-self` denies agent shell calls that pass a grant word to `opencode run` or `claude -p` (D72: mistakes, not a wall) |
+| Claude Code `PreToolUse` deny and `updatedInput` | Both applied (`echo MODIFIED-BY-HARNESS` ran) | Claude Code spawn rules modify the prompt |
+| Claude Code `Stop` exit 2 | Sent the agent back once; the second stop had `stop_hook_active: true`. The input has `last_assistant_message` | Stop checks read the reply from the hook input |
+| Hook cost | A Bun command hook with a SQLite write: 10 to 20 ms | Claude Code uses command hooks for every event. The `harness-hooks` MCP server (D32 to D34) is dropped: no model-callable `decide` exists, which closes that forgery route |
+
 ## Phase 1. Core, ledger, adapters, guard
 
 Build the core, both adapters, the install manifest (D49), the rule registry (D67), the event journal (D68), the authority module (D50) and the destructive rules module (D51). Together they close the worst risks and prove the seam with both adapters.
