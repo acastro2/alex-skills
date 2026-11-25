@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only. Nothing is built. Written 2026-11-25. Decisions D1 to D3 were taken by Alex on 2026-11-25 (see the table). D4 to D7 are open.
+Status: plan only. Nothing is built. Written 2026-11-25. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
 
 Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
@@ -44,80 +44,141 @@ The practice behind this is harness engineering: when an agent makes a mistake, 
 
 ## Shape
 
-One guard script holds the logic. Each tool gets a thin adapter that calls it. The prose files keep only the why.
+One core module holds every policy behind one interface. One ledger module holds every piece of state. Each tool gets one thin adapter. The prose files keep only the why.
 
 ```mermaid
 flowchart LR
-  subgraph alex-skills/harness
-    G[guard.py<br/>parse command, decide]
-    V[verify_worker.py]
-    T[tests/]
+  CC[Claude Code adapter<br/>hooks run bun core.ts] -. seam .-> CORE
+  OC[OpenCode adapter<br/>plugin imports core] -. seam .-> CORE
+  subgraph CORE[harness core: decide event to decision]
+    G[guard rules]
+    S[stop checks]
+    W[worker lifecycle]
+    T[merge token]
   end
-  G --> CA[Claude adapter<br/>PreToolUse, UserPromptSubmit, Stop]
-  G --> OA[OpenCode plugin<br/>permission.evaluate, tool.execute, session.prompt]
-  V --> CA
-  V --> OA
-  CA --> CS[~/.claude/settings.json]
-  OA --> OC[~/.config/opencode/plugins]
-  CS --> P[CLAUDE.md / AGENTS.md<br/>why only]
-  OC --> P
+  CORE --> L[(ledger<br/>~/.local/state/harness/ledger.db)]
+  K[waker<br/>one watch per session] --> L
+  K -. seam .-> KA[OpenCode automation<br/>Claude Monitor<br/>Rex or Herdr notify]
+  CORE --> P[AGENTS.md / CLAUDE.md<br/>why only]
 ```
 
-Why one script: two copies drift. Why thin adapters: each tool's hook API changes between versions (OpenCode V2 renamed every hook), and only the adapter has to follow.
+Why this shape (from the architecture review):
+- **Core, not 8 scripts.** In the first draft, each policy read its tool's raw hook JSON. A change in a tool's hook format then leaked into 8 modules, and OpenCode V2 already renamed every hook once. Now only the 2 adapters know the tool formats. Two adapters make the seam real.
+- **Ledger, not 9 stores.** The first draft kept state in token files, plugin memory, `.git` lock files, automation state and more. The merge token alone had two designs, and plugin memory is lost when the OpenCode server restarts.
+- **Worker lifecycle, not a command to remember.** A `verify_worker.py` that the parent must call is the same prose-rule failure this spec removes. The core now verifies on every worker return.
+- **One waker.** The PR watcher, the done signal and the watchdog all poll something and wake a session. One module writes the fallback once.
+
+### Interface
+
+`decide(event) → decision`. The tests use the same interface: JSON event in, decision out.
+
+| Event | Claude Code hook | OpenCode hook |
+| --- | --- | --- |
+| `tool.before` | `PreToolUse` | `permission.hook("evaluate")`, `tool.hook("execute.before")` |
+| `tool.after` | `PostToolUse` | `tool.hook("execute.after")` |
+| `prompt` | `UserPromptSubmit` | `session.hook("prompt")` |
+| `stop` | `Stop` | session idle event (name to confirm in Phase 0) |
+| `session.start` | `SessionStart` | session created event (Phase 0) |
+| `session.end` | `SessionEnd` | equivalent to confirm in Phase 0 |
+
+| Decision | Claude Code | OpenCode |
+| --- | --- | --- |
+| `allow` | `permissionDecision: allow` | no change |
+| `deny` + message | `permissionDecision: deny`; on `stop`, exit 2 sends the agent back | `effect = "deny"`; on `stop`, a prompt into the session |
+| `modify` + new input or context | `updatedInput`, `additionalContext` | input change in `execute.before`, output change in `execute.after` (Phase 0) |
+| `ask` + message | `permissionDecision: ask` | `deny` with "ask Alex with the question tool, then retry", because `autoaccept` passes every ask |
+
+**Failure mode.** If the core crashes or times out, the adapter denies calls that match a destructive rule (recursive delete, merge, destructive git) and allows everything else. Why: a timed-out Claude Code `PreToolUse` hook lets the call through, so the adapter must enforce this itself.
+
+**Runtime.** TypeScript on Bun. mac-bootstrap installs a pinned Bun on the Mac and the VM. Claude Code hooks run `bun harness/core.ts <event>`. The OpenCode plugin imports the core in-process, because OpenCode runs plugins on Bun, so each call costs nothing extra. Tests run with `bun test harness/`, and `scripts/check.sh` runs them in CI.
+
+### Ledger
+
+One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun:sqlite` in WAL mode, so several sessions can write at once. The guard denies agent writes to it. It is per host: a merge token on the Mac does not work on the VM.
+
+| Table | Holds | Kept |
+| --- | --- | --- |
+| `decisions` | every decision: session, event, rule id, outcome, reason | 30 days |
+| `tokens` | merge grants from Alex's prompts | until used or 30 minutes |
+| `watches` | PRs and workers the waker polls, with the last state seen | until done or 24 hours |
+| `workers` | each spawn: base SHA, test file hashes, acceptance commands, last activity | 30 days |
+| `sessions` | live sessions per repo | until `session.end` |
+| `worktrees` | session, repo, path, branch, state (active, merged, removed) | until removed |
+| `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
+| `sendbacks` | stop send-backs per turn, for the cap | 30 days |
 
 ## Decisions
 
+All taken by Alex on 2026-11-25.
+
 | # | Decision | Answer | Why |
 | --- | --- | --- | --- |
-| D1 | Scope of this change | Plan doc only | Alex picked it, 2026-11-25 |
-| D2 | `gh pr merge` | Deny, unless Alex's prompt has a one-time token | Alex picked it over a hard deny. He keeps the merge in chat. The token is checked by a typed `merge_pr` tool, not by shell parsing (see Phase 1). |
-| D3 | Where the code lives | `alex-skills/harness/` | Alex picked it over a new repo. One fewer repo. |
-| D4 | Token word and lifetime | Open. Proposal: `MERGE-OK`, one merge, then gone | |
-| D5 | Recursive `rm` allowlist | Open. Proposal: the scratchpad, `~/.agents/skill-workspace`, and paths inside the current git repo that git tracks or ignores | |
-| D6 | Stop hook: warn or block on a stale `HANDOFF.md` | Open. Proposal: warn | A block can loop on a session that has nothing to record |
-| D7 | Repo lock for parallel sessions: warn or block | Open. Proposal: warn, and show the other session's ID | |
-| D8 | Where the steering fixes go | In this spec, as Phase 2 | Alex picked it, 2026-11-25 |
-| D9 | What the agent does when a watched PR merges | Resume the session and run the next planned step | Alex picked it, 2026-11-25. It is what he does by hand today when he types "merged". |
-| D10 | Stop hook cap | Open. Proposal: send the agent back at most 3 times per turn, then let it stop and say why | Stops a loop when a check is wrong |
+| D1 | Scope of this change | Plan doc only | Build comes after the plan |
+| D2 | `gh pr merge` | Deny in shell. Merges go through the typed `merge_pr` tool, which needs Alex's token | Alex keeps the merge in chat, and a typed tool is easier to gate than a parsed command |
+| D3 | Where the code lives | `alex-skills/harness/` | One fewer repo. skillcheck only reads folders with a `SKILL.md` (`skillcheck/core.py:63`), so it ignores `harness/` |
+| D4 | Merge token | `MERGE-OK` in Alex's prompt: one merge of any PR in that session, within 30 minutes | Short to type, and an old prompt cannot authorize a merge hours later |
+| D5 | Recursive delete allowlist | The session scratchpad, `~/.agents/skill-workspace`, `/tmp`, and tracked or ignored paths inside the current repo. Never the repo root, never `.git` | Would have blocked the 11-21 delete |
+| D6 | Stale `HANDOFF.md` | The Stop check sends the agent back | Alex wants the handoff current at every milestone, and the cap stops a loop |
+| D7 | Worktrees | An agent never writes in a repo's main checkout. Every writing session works in its own worktree, and the ledger keeps a pointer to it. This replaced a warn-only lock | Agents stop stepping on each other and on Alex |
+| D8 | Steering fixes | In this spec, as Phase 2 | Alex picked it |
+| D9 | When a watched PR merges | Resume the session and run the next step: the todo list first, then the HANDOFF Next list. If neither has a step, notify Alex | It never invents work |
+| D10 | Stop cap | 5 send-backs per turn, then stop and say which check failed | Alex picked 5 over 3 |
+| D11 | Core runtime | TypeScript on Bun, pinned, installed on both hosts | Native to OpenCode plugins |
+| D12 | Adapters | OpenCode imports the core in-process; Claude Code spawns `bun core.ts` | One runtime and one code path |
+| D13 | Events | The 6 in the Interface table | `session.end` gives a point to record leftovers |
+| D14 | Decisions | `allow`, `deny`, `modify`, `ask`, plus an optional message | `ask` maps to a question-tool deny in OpenCode |
+| D15 | Failure mode | Closed for destructive rules, open for the rest | A broken core never deletes repos and never blocks ordinary work |
+| D16 | Ledger | SQLite per host, 30-day decision log | Several writers, queryable, in Bun |
+| D17 | Worker acceptance | A `general` spawn with no `ACCEPTANCE:` block is denied. Read-only agents are exempt | The core needs the commands to re-run them |
+| D18 | Verify result | Added as context next to the worker's reply | The parent sees the claim and the check side by side |
+| D19 | Waker | One watch per session, every 2 minutes, expires after 24 hours | An OpenCode automation can only wake the session that created it |
+| D20 | `session.end` | Kill the processes the session started, except the ones it registered with `keep` and named in its reply. Report the kept ones at the next start | The VM has little room for leftovers, and a server Alex asked for stays up only when it is named |
+| D21 | Worktree home | `~/.worktrees/<repo>/<name>` | Outside every repo, so OpenCode does not load a second copy of a skill, and one folder is easy to measure on the VM |
+| D22 | Cleanup | When a watched PR merges, the waker removes its worktree and local branch, only if the worktree is clean. The Stop check sends the agent back for unnamed running servers or scratch files over 500 MB | Disk on the VM stays bounded, and nothing with unsaved work is deleted |
+| D23 | HANDOFF protocol | `HANDOFF.md` is a protocol between agents: one section per live workstream, removed when its work merges, 150 lines at most | Agents read who does what and where. Done work is removed, so the file is the current state |
 
 ## Phase 0. Prove the unverified facts
 
-Do this first. The design depends on these facts, and the docs do not answer them.
+Do this first. The design depends on these facts, and the docs do not answer them. Each test becomes an adapter test in Phase 1.
 
 | Fact | Test | Done when |
 | --- | --- | --- |
-| OpenCode `permission.hook("evaluate")` with `effect = "deny"` stops a `shell` call, under `autoaccept` | A scratch plugin denies `echo HARNESS-PROBE`, and a session runs it | The command does not run, and the agent sees the reason |
+| OpenCode `permission.hook("evaluate")` with `effect = "deny"` stops a `shell` call under `autoaccept` | A scratch plugin denies `echo HARNESS-PROBE`, and a session runs it | The command does not run, and the agent sees the reason |
+| `bun:sqlite` loads inside OpenCode's plugin runtime | A scratch plugin opens a database and writes one row | The row is in the file |
+| OpenCode `tool.hook("execute.before")` can change a tool's input, and `execute.after` can change its output | A scratch plugin adds a line to a `subagent` prompt and to a shell result | Both changes show in the session |
 | A per-call subagent `model` overrides the agent's frontmatter `model` | Call `general` with a `model` that differs from its frontmatter, then read `session_v2.model` | The row shows the per-call model |
 | An automation or a background wait can wake an idle session (OpenCode `automation` `send`, Claude Code `Monitor` or a background shell) | Start a 1-minute watch that sends `HARNESS-WAKE`, then let the session go idle | The session resumes and answers with no prompt from Alex |
-| The OpenCode V2 event for a session that goes idle, for the Stop hook | Log every `session.hook` event name in a scratch plugin for one turn | The name is recorded in this spec |
+| The OpenCode V2 events for idle, session created and session end | Log every `session.hook` event name in a scratch plugin across one session | The names are in the Interface table |
+| A Claude Code command can read its own session ID | A `SessionStart` hook writes `session_id` to an env file, and a command reads it | The command prints the ID |
 
-If the first fails, the OpenCode adapter uses `tool.hook("execute.before")` to replace the command with one that fails with the reason. Test that the same way. If both fail, stop and bring it to Alex.
+If the deny test fails, the OpenCode adapter uses `execute.before` to replace the command with one that fails with the reason. If `bun:sqlite` does not load, the OpenCode adapter spawns `bun core.ts` like Claude Code. If the wake test fails, the waker uses the Rex or Herdr notification only. If more than one of these fails, stop and bring it to Alex.
 
-## Phase 1. Guard (closes the worst risks)
+## Phase 1. Core, ledger, adapters, guard
 
-`harness/guard.py` reads one tool call as JSON on stdin and prints a decision: `allow`, or `deny` plus a reason the agent can act on. It parses the command with `shlex` and walks `bash -c`, `sh -c`, `env`, `xargs`, `git -C` and absolute paths before it matches.
+Build the core with its first policy, the guard. This closes the worst risks, and it proves the seam with both adapters.
 
-Rules:
+Guard rules (each has a rule id, so Phase 8 can switch it off):
 
-| Rule | Denies | Reason the agent sees |
+| Rule id | Denies | Message to the agent |
 | --- | --- | --- |
-| Recursive delete | `rm -r`, `rm -rf`, `find -delete`, `rsync --delete` outside the D5 allowlist | "Recursive delete outside the allowlist. Name the exact files, or ask Alex." |
-| Merge in shell | Every `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Use the `merge_pr` tool." |
-| Destructive git | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
-| Token tamper | Any write to the token folder | "Only Alex's prompt can create a merge token." |
+| `recursive-delete` | `rm -r`, `rm -rf`, `find -delete`, `rsync --delete` outside the D5 allowlist | "Recursive delete outside the allowlist. Name the exact files, or ask Alex." |
+| `merge-in-shell` | Every `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Use the `merge_pr` tool." |
+| `destructive-git` | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
+| `ledger-write` | Any write to `~/.local/state/harness/` | "Only the harness writes its state." |
+| `main-checkout-write` | An edit or write tool on a path in a repo's main checkout, and `git commit`, `git checkout`, `git merge` or `git rebase` run there (D7) | "Work in a worktree: `harness worktree new <name>`. It records the pointer for other agents." |
 
-Merges go through one typed `merge_pr` tool (an MCP tool or an OpenCode custom tool), with `repo` and `pr` as fields. Why: Anthropic recommends a dedicated tool for hard-to-reverse actions, because the harness then sees typed arguments it can gate, log and replay, not a command string it must parse ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). The shell guard then only has to deny every merge form, which is simpler than allowing one.
+The guard parses the full command and walks `bash -c`, `sh -c`, `env`, `xargs`, `git -C` and absolute paths before it matches. Why: deny rules in both tools match only the command text.
 
-The merge token, per tool:
+**Merge.** `merge_pr` is a typed tool (an MCP tool or an OpenCode custom tool) with `repo` and `pr` fields. Why: Anthropic recommends a dedicated tool for hard-to-reverse actions, because the harness then sees typed arguments it can gate, log and replay ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). The token flow:
+1. A `prompt` event with `MERGE-OK` from Alex writes a row to `tokens`.
+2. `merge_pr` reads the row, merges one PR and deletes the row.
+3. With no valid row, `merge_pr` returns "Merge needs Alex's token."
 
-- **Claude Code:** a `UserPromptSubmit` hook sees `MERGE-OK` in Alex's prompt and writes `~/.local/state/harness/tokens/<session_id>`. The `merge_pr` tool allows one merge and deletes the file.
-- **OpenCode:** `session.hook("prompt")` sees the word and sets a flag in plugin memory for that session. `merge_pr` reads the flag, allows one merge and clears it.
-
-Why a hook writes the token: the agent can write files, so a token the agent can create proves nothing. The guard denies writes to the token folder, and the OpenCode flag lives in memory the agent cannot reach.
+Why the ledger holds the token: the agent can write files, but the `ledger-write` rule stops it from writing there, so only Alex's prompt can make a token.
 
 Done when:
-- `pytest harness/tests` passes. It has one case per rule, plus the bypass forms (`git -C . push --force`, `bash -c "rm -rf ~/x"`, `/usr/bin/gh pr merge 1`).
-- A live probe in each tool shows a denied `rm -rf <scratch outside allowlist>` with the reason, and an allowed merge on a test repo after `MERGE-OK`. The test repo is a throwaway under `~/.agents/skill-workspace/`.
+- `bun test harness/` passes. It has one case per rule, the bypass forms (`git -C . push --force`, `bash -c "rm -rf ~/x"`, `/usr/bin/gh pr merge 1`), the token expiry, and the failure mode.
+- A live probe in each tool shows a denied `rm -rf <path outside allowlist>` with the message, and a merge on a throwaway repo under `~/.agents/skill-workspace/` that works only after `MERGE-OK`.
 
 ## Phase 2. Steering: PR watcher and Stop hook
 
@@ -134,11 +195,11 @@ flowchart LR
   S -->|clean| Y[Alex: only real decisions]
 ```
 
-**PR watcher.** It also keeps state fresh: the agent reads PR state from the watcher's last poll, not from its memory of the conversation. When an agent runs `gh pr create` or pushes to a PR branch, a `PostToolUse` / `execute.after` hook registers the PR with the session ID. A watcher polls `gh pr view <n> --json state,reviewDecision,mergeable,statusCheckRollup` every 2 minutes and wakes the session on a change:
+**PR watcher (the waker).** It also keeps state fresh: the stale-state check reads PR state from the watcher's last poll in the ledger, not from the agent's memory. When an agent runs `gh pr create` or pushes to a PR branch, the core's `tool.after` policy adds a row to `watches` with the session ID. The waker polls `gh pr view <n> --json state,reviewDecision,mergeable,statusCheckRollup` every 2 minutes (D19) and wakes the session on a change:
 
 | Change | What the session gets |
 | --- | --- |
-| Merged (D9) | "PR #n merged. Run the next planned step." The next step comes from the todo list or `HANDOFF.md`. |
+| Merged (D9) | "PR #n merged. Run the next planned step." The step comes from the todo list, then the HANDOFF Next list. With neither, Alex gets a notification instead. |
 | Approved | "PR #n approved. Merge needs Alex's token." The agent never merges by itself. |
 | A check failed | The failed job name and the last 80 log lines (`gh run view --log-failed`) |
 | Conflict | "PR #n has a conflict with its base. Rebase and re-run the acceptance commands." |
@@ -146,7 +207,7 @@ flowchart LR
 - OpenCode: one `automation` with an `every` trigger and a `code` action. It returns `send: { prompt }` to the session that opened the PR, and `done: true` once the PR is closed or merged and the next step has started.
 - Claude Code: a background `Monitor` or a `gh pr checks --watch` background shell that ends the wait. Check in Phase 0 which one wakes an idle session. If neither can, use a Rex or Herdr notification, and Alex types one word.
 
-**Stop hook.** When the agent tries to end its turn, `stop_check.py` reads the turn and sends it back (Claude Code: `Stop` exit 2 with the reason; OpenCode: the session idle event, then a prompt into the session). It sends the agent back for these reasons:
+**Stop checks.** On the `stop` event, the core reads the turn and returns `deny` with a message, which sends the agent back. Each check has a rule id:
 
 | Check | Sends back when | Prompts it removes |
 | --- | --- | --- |
@@ -157,66 +218,110 @@ flowchart LR
 | State | The reply does not end with what is done, what is running, and the next step | 17 "what now?" |
 | Handoff | The repo has a `HANDOFF.md` that is older than this session's last commit (D6) | the handoff reminders |
 | Processes | A process this session started is still running and is not named in the reply | the server scavenger hunt |
+| Cleanup | Scratch files for this session are over 500 MB, or a merged worktree of this session is still on disk (D22) | disk filling on the VM |
+| Handoff protocol | A `HANDOFF.md` section this session owns is stale or its work merged, or the file is over 150 lines (D23) | handoffs that only grow |
 | Stale state | The reply says a PR is open, a review is waiting, or something waits for Alex, and the turn did not check it live (`gh pr view`, the ticket, the inbox) after the last time Alex spoke | 9 "it's already merged", "already sent" |
 | False "can't" | The reply says the agent cannot do something, or asks Alex to do it by hand, and the task is in a browser while `browse` is connected. Only login, 2FA, a passkey, a captcha or a payment confirmation go to Alex, through `handoff`. | "you can, use browser control" |
 
-The cap (D10) stops a loop: after 3 send-backs in one turn, the hook lets the agent stop and say which check failed.
+The cap (D10) stops a loop: after 5 send-backs in one turn, the core lets the agent stop and say which check failed. The `sendbacks` table counts them.
 
 **Upkeep.** Pin model and effort in each agent's frontmatter and in `settings.json`, so `/model` and `/effort` stop being needed at session start. Reload skills when a file in `~/.agents/skills` changes. Claude Code has a `FileChanged` hook event, and the existing `sync-agents-skills.sh` is the start.
 
 Done when:
 - A test PR on a throwaway repo goes from opened to merged, and the session resumes with no prompt from Alex.
 - A failed check comes back as logs in the session.
-- `pytest harness/tests` has one case per Stop check, plus the cap.
+- `bun test harness/` has one case per Stop check, plus the cap.
 - After one week of use, a re-run of the prompt count shows the steering share down from 28%.
 
-## Phase 3. Worker spawn hook
+## Phase 3. Worker lifecycle
 
-On every `subagent` call (OpenCode) and `Agent`/`Task` call (Claude Code):
+One policy covers a worker from spawn to return, so verification cannot be skipped.
 
-- Deny the call when `model` is missing. Reason: "Set `model`, see AGENTS.md Execution."
-- Add the worker contract to the prompt: load `coding` first, no git writes, flag a wrong test and do not edit it, and return the proof bundle. Skip it for `archeologist` and other read-only agents.
-
-Claude Code allows the prompt change through `updatedInput`. For OpenCode, test in Phase 0 that `tool.hook("execute.before")` can replace the input. If it cannot, deny with the contract text so the parent re-sends.
-
-Done when: a subagent call with no `model` is denied in both tools, and a worker's first message shows the contract.
-
-## Phase 4. `verify_worker.py`
-
-One command replaces the manual loop that ran in 74 sessions:
-
+```mermaid
+sequenceDiagram
+  participant P as Parent
+  participant C as Core: worker lifecycle
+  participant W as Worker
+  P->>C: subagent call (tool.before)
+  C->>C: deny if no model or no ACCEPTANCE block
+  C->>C: record base SHA, test hashes, commands
+  C->>W: prompt plus the worker contract
+  W-->>C: return (tool.after)
+  C->>C: restore tests from base, re-run commands, check allowlist
+  C-->>P: worker reply plus verified result as context
 ```
-harness/verify_worker.py --base <ref> --tests '<globs>' -- <acceptance commands>
-```
 
-It does the following:
-1. Hash the test files.
-2. Restore them from `<base>`.
-3. Run each acceptance command, and print its exit code and the last 40 lines.
-4. Print `git diff --stat` and the files outside an optional `--allow` list.
-5. Exit non-zero on any failure.
+On `tool.before` for `subagent` (OpenCode) and `Agent`/`Task` (Claude Code):
+- Deny when `model` is missing: "Set `model`, see AGENTS.md Execution."
+- Deny a `general` spawn with no `ACCEPTANCE:` block (D17). Read-only agents such as `archeologist` and `scout` are exempt.
+- Record the base SHA, the test file hashes and the acceptance commands in `workers`.
+- Add the worker contract to the prompt (`modify`): load `coding` first, no git writes, flag a wrong test and do not edit it, return the proof bundle.
 
-Add a `tool.hook("execute.after")` / `PostToolUse` on the subagent tool that prints `git status --short`. Then the parent sees the worker's changes without asking.
+On `tool.after` for the same call:
+1. Compare the test file hashes with the record.
+2. Restore the test files from the base SHA.
+3. Run each acceptance command and keep its exit code and the last 40 lines.
+4. Run `git diff --stat` and list files outside the allowlist.
+5. Add the result as context next to the worker's reply (D18).
 
-Done when: run on a seeded repo, it catches a worker that edited a test (red), and passes a clean worker (green).
+The waker also watches each background worker. With no new tool call in 10 minutes, the worker gets the nudge Alex types today: "stop exploring, run the acceptance commands once, return". When a worker finishes, Alex gets one Rex or Herdr notification. That removes the 12 "nudge it, faster" prompts and the "did it return?" questions.
 
-## Phase 5. Small fixes, no hook needed
+Done when:
+- On a seeded repo, a worker that edited a test comes back marked red, and a clean worker comes back green.
+- A spawn with no `model` or no `ACCEPTANCE:` block is denied in both tools.
+- A stalled worker gets one nudge, and a finished worker shows one notification, with no prompt from Alex.
 
-- **acastro2 pushes:** set `credential.https://github.com/acastro2.helper` in the global git config, so pushes to acastro2 repos use that account's token. This removes the 250 hand-typed helpers. The command goes in mac-bootstrap, not in a skill.
+## Phase 4. Small fixes, no hook needed
+
+- **Bun:** mac-bootstrap installs a pinned Bun on the Mac and the VM (D11).
+- **acastro2 pushes:** set `credential.https://github.com/acastro2.helper` in the global git config, so pushes to acastro2 repos use that account's token. This removes the 250 hand-typed helpers. The command goes in mac-bootstrap.
 - **Broken symlinks:** `~/.claude/commands/ub-mode.md` and `~/.config/opencode/commands/ub-mode.md` point at `/Users/acastro/...`. Make them relative, or create them from mac-bootstrap per host.
 
-Done when: `git push` in `alex-skills` works with no `-c credential.helper`, and both `ub-mode` links resolve on Linux and on the Mac.
+Done when: `bun --version` prints the pin on both hosts, `git push` in `alex-skills` works with no `-c credential.helper`, and both `ub-mode` links resolve on Linux and on the Mac.
 
-## Phase 6. Parallel sessions and workers
+## Phase 5. Worktrees, cleanup, handoff protocol
 
-- **Lock:** on session start, write `.git/harness-lock/<session_id>` with the PID and the start time. Warn when another live session holds a lock in the same repo, and name it.
-- **Done signal:** when a background worker finishes, send one Rex or Herdr notification. This answers "did the task return?" without polling.
+```mermaid
+flowchart LR
+  S[session.start] --> W[harness worktree new<br/>~/.worktrees/repo/name]
+  W --> L[(ledger: worktrees)]
+  W --> H[HANDOFF.md section:<br/>owner, worktree, state, next]
+  H --> M{PR merged?}
+  M -->|yes| C[remove worktree and branch<br/>remove HANDOFF section]
+  M -->|no| H
+  E[session.end] --> K[kill session processes<br/>except keep]
+```
 
-- **Watchdog:** when a background worker runs 10 minutes with no new tool call, send it the nudge Alex types today ("stop exploring, run the acceptance commands once, return"). This removes the 12 "nudge it, faster" prompts.
+**Worktrees (D7, D21).** `harness worktree new <name>` runs `git worktree add ~/.worktrees/<repo>/<name> -b <name>`, writes a `worktrees` row, and moves the session there (OpenCode `session.move`; Claude Code `--worktree` or `isolation: worktree` for subagents). The `main-checkout-write` rule denies writes in the main checkout. On `session.start`, the core tells the agent which worktrees are live in the repo and which session owns each one, so no two agents use the same one.
 
-Done when: two sessions in one repo see each other's ID, a finished worker shows a notification, and a stalled worker gets one nudge without Alex.
+**Cleanup (D20, D22).**
+- When a watched PR merges, the waker removes its worktree with `git worktree remove` (never `--force`) and deletes the local branch. A worktree with uncommitted changes stays, and its owner gets a message.
+- On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with `harness keep <pid>` only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
+- The Stop check sends the agent back when its scratch files are over 500 MB or a merged worktree is still on disk.
 
-## Phase 6b. Fork to a new tab
+**Handoff protocol (D23).** `HANDOFF.md` stops being a log that only grows. It holds one section per live workstream:
+
+```markdown
+## <workstream>
+Owner: <session id> · Worktree: ~/.worktrees/<repo>/<name> · Updated: <date>
+State: <one or two lines>
+Next:
+1. <step>
+Running: <process, port, PID>, or none
+```
+
+- An agent adds its section when it starts work and keeps it current at each milestone.
+- When the work merges, the agent removes the section. The decision goes to an ADR or the PR body, not to the handoff.
+- The Stop check sends the agent back when its own section is stale or its work merged, or when the file is over 150 lines.
+- The `handoff` skill changes to match: sections, owners, removal on merge, and the 150-line cap. The repo's own `docs/HANDOFF.md` is the first one to clean up.
+
+Done when:
+- Two sessions in one repo each get a worktree, and each sees the other's pointer at start.
+- A write in the main checkout is denied with the worktree command.
+- A merged PR's clean worktree and branch are gone, and its HANDOFF section is removed.
+- `session.end` kills an unkept test server and keeps a server flagged `keep`.
+
+## Phase 6. Fork to a new tab
 
 Alex often wants to explore two paths from one conversation. Today `/fork` replaces the session he is in. The goal: one command opens the fork in a new Rex tab, already running, and the original session does not stop or change.
 
@@ -243,7 +348,7 @@ Verified on 2026-11-25:
 `harness/fork_tab.sh` does the following:
 1. OpenCode: run `opencode run -s "$OPENCODE_SESSION_ID" --fork --title "<t>" --format json "<prompt>"`, read the new session ID from the events, then `rex window new -s "$REX_SESSION" "<t>" --focus=false -- opencode -s <new id>`.
 2. Claude Code: `rex window new -s "$REX_SESSION" "<t>" --focus=false -- claude --resume <id> --fork-session "<prompt>"`.
-3. With `--worktree`, the fork works in its own git worktree, so the two paths never edit the same files. That also avoids the parallel-session collisions in Phase 6. Use it whenever the paths change code.
+3. The fork always gets its own worktree through `harness worktree new` (D7), so the two paths never edit the same files.
 4. Under Herdr (`HERDR_ENV=1`), open a Herdr tab instead of a Rex tab.
 
 Entry points: an OpenCode command `/fork-tab <prompt>` and a Claude Code command or skill `/fork-tab <prompt>`. Each calls the script with its own session ID.
@@ -256,7 +361,7 @@ Done when: `/fork-tab` from a running session opens a new tab that already answe
 
 ## Phase 7. Cut the prose
 
-For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus a pointer to the guard. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
+For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus the rule id. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
 
 Done when: the line counts drop, and a short eval shows no rule loss. Run the `coding` worker eval and one merge-attempt eval before and after the cut.
 
@@ -265,9 +370,10 @@ Done when: the line counts drop, and a short eval shows no rule loss. Run the `c
 Anthropic's point: every harness part encodes a limit of the model, and a newer model can make it dead weight ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). So the harness gets the same test as a skill.
 
 - For each prose rule left after Phase 7, run one eval with the rule and one without it, on the current model.
+- Switch a harness rule off by its id for one eval run with `HARNESS_DISABLE=<rule-id>`. The decision log in the ledger shows which rule fired.
 - Remove each rule that changes nothing. Keep the eval, so the next model change re-runs it.
 - Count the MCP tools loaded in a session. Tools sit in the cached prefix, so a long or changing list costs cache hits and attention. Move rarely used servers behind Code Mode search.
-- Test Claude Code auto mode (a second model judges each shell command) as a backstop behind `guard.py`. It does not replace the guard: it is a judgment, and the guard rules have no exceptions.
+- Test Claude Code auto mode (a second model judges each shell command) as a backstop behind the guard rules. It does not replace the guard: it is a judgment, and the guard rules have no exceptions.
 
 Done when: every remaining prose rule has an eval that shows it changes the output.
 
@@ -282,8 +388,8 @@ Not in this plan. Each needs its own spec.
 
 ## Risks
 
-- **skillcheck may flag `harness/`.** It has no `SKILL.md`. Check `skillcheck/policy.py` for a non-skill folder rule before Phase 1. Add the folder to the exclusions if needed.
-- **A hook timeout lets the call through.** In Claude Code, a timed-out `PreToolUse` hook does not block. Keep `guard.py` pure Python with no network, and set a 5-second timeout.
+- **A hook timeout lets the call through.** In Claude Code, a timed-out `PreToolUse` hook does not block. The adapter applies the failure mode (D15) itself, and the core has no network calls on `tool.before`.
+- **An in-process core can crash the OpenCode plugin.** The adapter wraps each call and applies the failure mode on any exception.
 - **`--bare` skips hooks.** `claude -p --bare` runs with no hooks, so the eval harnesses run without the guard. That is fine for evals, but never use `--bare` for real work.
-- **Plugin subagents ignore `hooks`.** Put the hooks in `settings.json`, not in a plugin's agent frontmatter.
+- **Plugin subagents ignore `hooks`.** Put the Claude Code hooks in `settings.json`, not in a plugin's agent frontmatter.
 - **Another session edits the same files.** Commit each phase with a pathspec.
