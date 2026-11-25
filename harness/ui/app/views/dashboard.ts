@@ -4,7 +4,9 @@
 import { h, icon, timeEl } from "../dom.ts";
 import type { BundleRow, Ctx, JobRow, ProcessRow, SessionRow, TailKind, TailRow, ViewName, WorktreeRow } from "../ctx.ts";
 import { hashFor } from "../ctx.ts";
-import { btn, chip, stateChip, type Tone } from "../parts.ts";
+import { btn, chip, lineChart, stateChip, type Tone } from "../parts.ts";
+import { grantMergeButton } from "./changes.ts";
+import { fmtGb, fmtMem, fmtPct, memPct, reasonsBox } from "./machine.ts";
 import { onThemeChange, renderOffice, signals } from "./office.ts";
 
 // ---------------------------------------------------------------- panel frame
@@ -57,6 +59,7 @@ const procs = panel("proc", "Processes", "sessions");
 const trees = panel("wt", "Worktrees", "worktrees");
 const bundles = panel("bundles", "Proof bundles", "bundles");
 const jobs = panel("jobs", "Jobs", "jobs");
+const mach = panel("mach", "Machine", "machine");
 const figSlot = h("section", { class: "panel p-fig", "aria-label": "Office figure" }, h("h2", { class: "sr" }, "Office figure"));
 
 const col = (n: number, ...kids: HTMLElement[]) => h("div", { class: `dcol dcol-${n}` }, ...kids);
@@ -66,7 +69,7 @@ const root = h(
   h("h1", { class: "sr", id: "view-h" }, "Dashboard"),
   col(1, needs.el, health.el, jobs.el),
   col(2, sessions.el, procs.el),
-  col(3, tailP.el),
+  col(3, mach.el, tailP.el),
   col(4, figSlot, trees.el, bundles.el),
 );
 
@@ -75,9 +78,20 @@ const root = h(
 function paintNeeds(ctx: Ctx): void {
   const list = signals(ctx);
   const questions = new Map(ctx.snap.views.inbox.map((q) => [String(q.seq), q]));
-  put(needs.meta, String(list.length), () => [list.length ? chip("amber", String(list.length)) : h("span", { class: "dim" }, "none")]);
-  put(needs.body, JSON.stringify(list), () => {
-    if (!list.length) return [note("Nothing needs you. A question, a stuck session, a conflict, a red bundle, a harness change or a failed job shows here.")];
+  const ready = ctx.snap.pr_watches.filter((w) => w.state?.toUpperCase() === "OPEN" && w.review === "APPROVED" && !w.failed.length && w.pr !== null && w.session_id);
+  const total = list.length + ready.length;
+  put(needs.meta, String(total), () => [total ? chip("amber", String(total)) : h("span", { class: "dim" }, "none")]);
+  put(needs.body, JSON.stringify([list, ready.map((w) => [w.id, w.pr, w.session_id, ctx.ui.pending.has(`merge:${w.pr}:${w.session_id}`)])]), () => {
+    const mergeRows = ready.map((w) =>
+      h(
+        "div",
+        { class: "need-merge" },
+        h("span", { class: "need-head" }, chip("green", "ready to merge")),
+        h("span", { class: "need-text" }, `${w.target} is approved and its checks pass.`),
+        grantMergeButton(ctx, w.pr as number, w.session_id as string, "Grant merge"),
+      ),
+    );
+    if (!list.length) return mergeRows.length ? mergeRows : [note("Nothing needs you. A question, a stuck session, a conflict, a red bundle, a harness change or a failed job shows here.")];
     return [
       h(
         "ul",
@@ -96,6 +110,7 @@ function paintNeeds(ctx: Ctx): void {
           );
         }),
       ),
+      ...mergeRows,
     ];
   });
 }
@@ -317,6 +332,54 @@ function paintHealth(ctx: Ctx): void {
   });
 }
 
+// ---------------------------------------------------------------- machine
+
+function sparkBox(title: string, now: number | null, values: (number | null)[], what: string): HTMLElement {
+  const pk = Math.max(0, ...values.flatMap((v) => (v === null ? [] : [v])));
+  return h(
+    "div",
+    { class: "mach-spark" },
+    h("div", { class: "mach-spark-head" }, h("span", { class: "dim" }, title), h("span", { class: "mach-spark-n mono" }, fmtPct(now))),
+    h("div", { class: "mach-spark-chart" }, lineChart(values, { label: `${what} over the last 60 minutes. Peak ${pk.toFixed(0)} percent. Now ${now === null ? "not known" : `${now.toFixed(0)} percent`}.` })),
+  );
+}
+
+function paintMachine(ctx: Ctx): void {
+  const r = ctx.snap.resources ?? null;
+  put(mach.meta, JSON.stringify(r ? [r.tone, r.os] : null), () => [r ? (r.tone === "ok" ? plain("Within limits") : chip(r.tone, r.tone === "amber" ? "Needs a look" : "Over limit")) : h("span", { class: "dim" }, "no samples")]);
+  put(mach.body, JSON.stringify(r), () => {
+    if (!r) return [note("No samples yet. The machine numbers show here after the first sample.")];
+    const worst = [...r.disks].sort((a, b) => b.used_pct - a.used_pct)[0] ?? null;
+    const stat = (k: string, v: string, sub: string | null) => h("div", { class: "mach-stat" }, h("span", { class: "mach-stat-k dim" }, k), h("span", { class: "mach-stat-v mono" }, v), sub ? h("span", { class: "mach-stat-s mono dim", title: sub }, sub) : null);
+    const top = r.top_cpu.slice(0, 5);
+    return [
+      h(
+        "div",
+        { class: "mach-dash" },
+        reasonsBox(r),
+        h("div", { class: "mach-sparks" }, sparkBox("CPU use", r.cpu.total, r.series.map((p) => p.cpu), "CPU use"), sparkBox("Memory use", memPct(r), r.series.map((p) => p.mem), "Memory use")),
+        h(
+          "div",
+          { class: "mach-stats" },
+          stat("Load 1 min", r.load ? r.load.one.toFixed(2) : "n/a", `${r.cpu.count} ${r.cpu.count === 1 ? "core" : "cores"}`),
+          stat("Swap used", r.memory && r.memory.swap_total_mb > 0 ? fmtPct(r.memory.swap_pct) : "none", r.memory && r.memory.swap_total_mb > 0 ? fmtMem(r.memory.swap_used_mb) : null),
+          stat("Fullest disk", worst ? fmtPct(worst.used_pct) : "n/a", worst ? `${worst.mount}, ${fmtGb(worst.free_gb)} free` : null),
+          stat("Memory pressure", r.pressure ? fmtPct(r.pressure.memory, 1) : "n/a", r.pressure ? "10 s average" : null),
+        ),
+        top.length
+          ? h(
+              "table",
+              { class: "dt" },
+              h("caption", { class: "sr" }, "Five processes using the most CPU"),
+              h("thead", null, h("tr", null, ["PID", "CPU %", "RSS MB", "Command"].map((t, i) => h("th", { scope: "col", class: i < 3 ? "num" : undefined }, t)))),
+              h("tbody", null, top.map((p) => h("tr", null, h("td", { class: "num mono" }, String(p.pid)), h("td", { class: "num mono" }, p.cpu.toFixed(1)), h("td", { class: "num mono" }, String(Math.round(p.rss_mb))), h("td", { class: "mono cmd", title: p.args || p.comm }, p.args || p.comm)))),
+            )
+          : null,
+      ),
+    ];
+  });
+}
+
 // ---------------------------------------------------------------- processes
 
 function paintProcs(ctx: Ctx): void {
@@ -479,6 +542,7 @@ export function renderDashboard(ctx: Ctx): HTMLElement {
   paintSessions(ctx);
   paintTail(ctx);
   paintHealth(ctx);
+  paintMachine(ctx);
   paintProcs(ctx);
   paintTrees(ctx);
   paintBundles(ctx);
@@ -488,7 +552,7 @@ export function renderDashboard(ctx: Ctx): HTMLElement {
   // A detached element forgets its scroll position: put each panel back once main.ts attaches the root.
   if (returning) {
     requestAnimationFrame(() => {
-      for (const p of [needs, sessions, procs, trees, bundles, jobs, health]) p.body.scrollTop = p.scroll;
+      for (const p of [needs, sessions, procs, trees, bundles, jobs, health, mach]) p.body.scrollTop = p.scroll;
       if (follow()) toBottom();
       else tailUi.list.scrollTop = tailUi.top;
       wasConnected = root.isConnected;

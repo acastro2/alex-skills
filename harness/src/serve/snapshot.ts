@@ -5,6 +5,7 @@
 import type { Database } from "bun:sqlite";
 import { hostname } from "node:os";
 import { verifyChain } from "../ledger/journal.ts";
+import type { Resources } from "./resources.ts";
 
 export const VIEW_IDS = ["inbox", "sessions", "worktrees", "bundles", "rules", "journal", "changes", "jobs"] as const;
 export type ViewId = (typeof VIEW_IDS)[number];
@@ -244,8 +245,25 @@ export interface LedgerSnapshot {
   steeringShare7d: number | null;
 }
 
+/** A watched pull request that is not done. `state`, `review` and `checks` come from the waker's last poll. */
+export interface PrWatchRow {
+  id: string;
+  target: string;
+  /** The PR number in `target`, or null when the target has no `#n`. */
+  pr: number | null;
+  session_id: string | null;
+  session_slug: string | null;
+  state: string | null;
+  review: string | null;
+  mergeable: string | null;
+  /** Names of the failed checks at the last poll. */
+  failed: string[];
+  polled_at: number | null;
+}
+
 export interface Snapshot {
   at: number;
+  pr_watches: PrWatchRow[];
   seq: number;
   host: string;
   harness: { on: boolean; changed_at: number | null };
@@ -264,6 +282,8 @@ export interface Snapshot {
   };
   /** What the dashboard reads on top of the 8 views. */
   dash: Dash;
+  /** Machine load. buildSnapshot sets null; the server fills it from the sampler. */
+  resources: Resources | null;
 }
 
 type Params = (string | number | null)[];
@@ -667,6 +687,35 @@ function jobRows(db: Database, now: number): JobRow[] {
   });
 }
 
+// last_state is the waker's JSON ({state, review, mergeable, failed, done}); older rows hold a bare word like "open".
+function prWatchRows(db: Database, now: number, slugs: Map<string, string | null>): PrWatchRow[] {
+  const rows = all<{ id: string; session_id: string | null; target: string | null; last_state: string | null; polled_at: number | null }>(
+    db,
+    "SELECT id, session_id, target, last_state, polled_at FROM watches WHERE kind = 'pr' AND (expires_at IS NULL OR expires_at > ?) ORDER BY id DESC LIMIT 40",
+    now,
+  );
+  const out: PrWatchRow[] = [];
+  for (const w of rows) {
+    const s = parse<{ state?: string; review?: string; mergeable?: string; failed?: string[]; done?: boolean } | string | null>(w.last_state, w.last_state);
+    const o = s && typeof s === "object" ? s : {};
+    if (o.done) continue;
+    const pr = /#(\d+)$/.exec(w.target ?? "")?.[1];
+    out.push({
+      id: w.id,
+      target: w.target ?? "",
+      pr: pr ? Number(pr) : null,
+      session_id: w.session_id,
+      session_slug: w.session_id ? slugs.get(w.session_id) ?? sessionSlug(w.session_id, null) : null,
+      state: o.state ?? (typeof s === "string" ? s : null),
+      review: o.review || null,
+      mergeable: o.mergeable ?? null,
+      failed: Array.isArray(o.failed) ? o.failed : [],
+      polled_at: w.polled_at,
+    });
+  }
+  return out;
+}
+
 function harnessState(db: Database): { on: boolean; changed_at: number | null } {
   const r = one<{ event: string; time: number }>(db, "SELECT event, time FROM journal WHERE event IN (?, ?) ORDER BY seq DESC LIMIT 1", EVENTS.on, EVENTS.off);
   return { on: r?.event !== EVENTS.off, changed_at: r?.time ?? null };
@@ -828,6 +877,7 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
     at: now,
     seq,
     host: hostname().split(".")[0],
+    pr_watches: prWatchRows(db, now, slugs),
     harness,
     counts,
     alerts,
@@ -847,5 +897,6 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
       tail: tailRows(db, 120),
       health: healthState(db, now, seq),
     },
+    resources: null,
   };
 }

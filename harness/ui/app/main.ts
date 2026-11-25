@@ -1,6 +1,6 @@
 // The shell: top bar, left rail, routing, the live stream, passkey sign-in and the one action path.
 import { act as runAction, ApiError, getJSON, passkeysSupported, registerPasskey, sessionInfo, signIn, signOut, type SessionInfo } from "./api.ts";
-import type { Ctx, Route, Snapshot, UiState, ViewId, ViewName } from "./ctx.ts";
+import type { Ctx, Route, Snapshot, UiState, UiViewId, ViewId, ViewName } from "./ctx.ts";
 import { hashFor, parseHash, VIEWS, viewLabel } from "./ctx.ts";
 import { clear, clock, h, icon, mmss, refreshTimes } from "./dom.ts";
 import { askPermission, notifyChanges, permission } from "./notify.ts";
@@ -11,6 +11,7 @@ import { renderDashboard } from "./views/dashboard.ts";
 import { renderInbox } from "./views/inbox.ts";
 import { emptyJournal, renderJournal } from "./views/journal.ts";
 import { renderJobs } from "./views/jobs.ts";
+import { renderMachine } from "./views/machine.ts";
 import { onThemeChange, signals } from "./views/office.ts";
 import { renderRules } from "./views/rules.ts";
 import { renderSessions } from "./views/sessions.ts";
@@ -219,7 +220,7 @@ function paintRail(): void {
   };
   rail.append(
     item("office", "Dashboard", "office"),
-    ...VIEWS.map((v) => item(v.id, v.short, v.id, v.label, snap?.counts[v.id], snap?.alerts[v.id] ?? 0)),
+    ...VIEWS.map((v) => (v.id === "machine" ? item(v.id, v.short, "auto", v.label) : item(v.id, v.short, v.id, v.label, snap?.counts[v.id as ViewId], snap?.alerts[v.id as ViewId] ?? 0))),
   );
   // On a narrow screen the rail scrolls sideways: keep the current view in sight.
   const cur = rail.querySelector<HTMLElement>(".is-current");
@@ -251,7 +252,7 @@ function paintBanner(): void {
 
 // ---------------------------------------------------------------- main view
 
-const RENDER: Record<ViewId, (ctx: Ctx) => HTMLElement> = {
+const RENDER: Record<UiViewId, (ctx: Ctx) => HTMLElement> = {
   inbox: renderInbox,
   sessions: renderSessions,
   worktrees: renderWorktrees,
@@ -260,6 +261,7 @@ const RENDER: Record<ViewId, (ctx: Ctx) => HTMLElement> = {
   journal: renderJournal,
   changes: renderChanges,
   jobs: renderJobs,
+  machine: renderMachine,
 };
 
 function signature(): string {
@@ -267,8 +269,9 @@ function signature(): string {
   const v = route.view;
   const base = `${v}|${route.id}|${JSON.stringify(route.q)}|${uiRev}|${ui.pending.size}|${ui.sent.size}|${ui.expanded.size}`;
   // The dashboard patches itself on each snapshot, so anything the snapshot carries is part of its signature.
-  if (v === "office") return `${base}|${JSON.stringify([snap.seq, snap.counts, snap.alerts, snap.host, snap.harness, snap.views, snap.dash])}`;
+  if (v === "office") return `${base}|${JSON.stringify([snap.seq, snap.counts, snap.alerts, snap.host, snap.harness, snap.views, snap.dash, snap.resources ?? null])}`;
   if (v === "journal") return `${base}|${JSON.stringify([snap.views.sessions.map((s) => s.id), snap.views.rules.map((r) => r.id)])}`;
+  if (v === "machine") return `${base}|${JSON.stringify(snap.resources ?? null)}`;
   return `${base}|${JSON.stringify(snap.views[v])}`;
 }
 

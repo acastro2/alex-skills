@@ -130,3 +130,37 @@ export function modelId(id: string): HTMLElement {
   })
   return h("span", { class: "dim mono block model" }, ...kids)
 }
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * A line chart over the last 60 minutes, one slot a minute, newest on the right. A null value breaks the line.
+ * The x axis is fixed at 60 slots, so a young series fills from the right and the empty left side is honest.
+ */
+export function lineChart(values: (number | null)[], o: { label: string; max?: number; grid?: boolean; slots?: number }): SVGSVGElement {
+  const slots = o.slots ?? 60;
+  const max = o.max ?? 100;
+  const last = slots - 1;
+  const el = (name: string, attrs: Record<string, string>) => {
+    const n = document.createElementNS(SVG_NS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+  const svg = el("svg", { viewBox: `0 0 ${last} 100`, preserveAspectRatio: "none", class: "lc", role: "img", "aria-label": o.label }) as SVGSVGElement;
+  if (o.grid) for (const y of [25, 50, 75]) svg.append(el("line", { x1: "0", x2: String(last), y1: String(y), y2: String(y), class: "lc-grid" }));
+  const pts = values.slice(-slots).map((v, i, a) => (v === null ? null : [last - (a.length - 1 - i), 100 - Math.max(0, Math.min(max, v)) / max * 100] as [number, number]));
+  let run: [number, number][] = [];
+  const flush = () => {
+    if (run.length) {
+      const d = run.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+      svg.append(el("path", { d: `${d} L${run[run.length - 1][0]} 100 L${run[0][0]} 100 Z`, class: "lc-area" }), el("path", { d, class: "lc-line" }));
+    }
+    run = [];
+  };
+  for (const p of pts) {
+    if (p) run.push(p);
+    else flush();
+  }
+  flush();
+  return svg;
+}

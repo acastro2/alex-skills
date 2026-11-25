@@ -69,6 +69,15 @@ test("the snapshot carries what the dashboard reads: processes, journal tail, he
   expect(sessions.some((s) => s.worktree === "feat/harness-ledger")).toBe(true);
 });
 
+test("the snapshot carries pr_watches: open PR watches only, with the session slug", async () => {
+  const snap = await (await get("/api/snapshot")).json();
+  const w = snap.pr_watches as { target: string; pr: number | null; session_slug: string | null; state: string | null }[];
+  expect(w.map((r) => r.target)).toEqual(["mac-bootstrap#58"]);
+  expect(w[0].pr).toBe(58);
+  expect(w[0].session_slug).toBeTruthy();
+  expect(w[0].state).toBe("open");
+});
+
 test("a request with Host evil.example is rejected", async () => {
   const res = await fetch(`${server.url}/api/snapshot`, { headers: { cookie, host: "evil.example" } });
   expect(res.status).toBe(421);
@@ -190,5 +199,39 @@ test("a page session survives a restart, slides on use, and stops at the 7-day c
     db.close();
   } finally {
     rmSync(d, { recursive: true, force: true });
+  }
+});
+
+test("a snapshot carries `resources` with its series when a provider is set, and null when not", async () => {
+  const { createApp } = await import("../src/serve/server.ts");
+  const point = { t: 60_000, cpu: 10, mem: 40, swap: 0, load1: 1, psi_mem: 0 };
+  const res = {
+    at: 123,
+    os: "linux" as const,
+    source: "proc" as const,
+    cpu: { total: 12, cores: [10, 14], count: 2 },
+    load: { one: 1, five: 1, fifteen: 1 },
+    memory: null,
+    disks: [],
+    io: null,
+    pressure: null,
+    top_cpu: [{ pid: 1, cpu: 1, rss_mb: 1, etime: "00:01", comm: "x", args: "x", session: null, slug: null }],
+    top_rss: [],
+    series: [point],
+    tone: "ok" as const,
+    reasons: [],
+  };
+  const withRes = createApp({ db, resources: () => res });
+  const without = createApp({ db });
+  try {
+    const headers = (app: typeof withRes) => ({ host: "localhost", cookie: `harness_session=${app.auth.mintSession().token}` });
+    const a = await (await withRes.fetch(new Request("http://localhost/api/snapshot", { headers: headers(withRes) }))).json();
+    expect(a.resources.at).toBe(123);
+    expect(a.resources.series).toEqual([point]);
+    const b = await (await without.fetch(new Request("http://localhost/api/snapshot", { headers: headers(without) }))).json();
+    expect(b.resources).toBeNull();
+  } finally {
+    withRes.stop();
+    without.stop();
   }
 });

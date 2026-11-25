@@ -9,6 +9,7 @@ export type {
   JobRow,
   JournalPage,
   JournalRow,
+  PrWatchRow,
   ProcessRow,
   QuestionRow,
   RuleRow,
@@ -19,7 +20,12 @@ export type {
   WorktreeRow,
 } from "../../src/serve/snapshot.ts";
 
-export const VIEWS: { id: ViewId; label: string; short: string; blurb: string }[] = [
+export type { ProcSample, ResourcePoint, Resources, Tone as MachineTone } from "../../src/serve/resources.ts";
+
+/** The 8 ledger views, plus "machine": it reads `snap.resources`, so it has no row in the counts and alerts records. */
+export type UiViewId = ViewId | "machine";
+
+export const VIEWS: { id: UiViewId; label: string; short: string; blurb: string }[] = [
   { id: "inbox", short: "Inbox", label: "Inbox", blurb: "Questions waiting for you, oldest first." },
   { id: "sessions", short: "Sessions", label: "Sessions and workers", blurb: "Every live session, what it is doing, and its workers." },
   { id: "worktrees", short: "Worktrees", label: "Worktrees and conflicts", blurb: "Each worktree, who owns it, and whether it is in sync." },
@@ -28,10 +34,11 @@ export const VIEWS: { id: ViewId; label: string; short: string; blurb: string }[
   { id: "journal", short: "Journal", label: "Journal and replay", blurb: "The ledger's journal, paged. Replay one session step by step." },
   { id: "changes", short: "Changes", label: "Harness changes", blurb: "Changes to the harness itself, waiting for your tap." },
   { id: "jobs", short: "Jobs", label: "Jobs", blurb: "Scheduled jobs: last run, result, next run." },
+  { id: "machine", short: "Machine", label: "Machine", blurb: "How hard this machine is working: CPU, memory, disk, pressure, top processes." },
 ];
 
 /** "office" is the route of the dashboard (the home page, #/ and #/office). The 8 views are its drill-down pages. */
-export type ViewName = "office" | ViewId;
+export type ViewName = "office" | UiViewId;
 
 export interface Route {
   view: ViewName;

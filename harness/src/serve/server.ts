@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { ACTIONS, runAction, type ActionName } from "./actions.ts";
 import { Auth, AuthError, FRESH_ACTIONS, SESSION_MS, sharedPasskeyPath } from "./auth.ts";
 import { openDatabase } from "./db.ts";
-import { buildSnapshot, journalPage, maxSeq, type Snapshot } from "./snapshot.ts";
+import type { Resources } from "./resources.ts";
+import { buildSnapshot, journalPage, maxSeq, sessionSlug, type Snapshot } from "./snapshot.ts";
 import type { TlsFiles } from "./tls.ts";
 
 const UI_DIR = join(import.meta.dir, "..", "..", "ui");
@@ -52,6 +53,8 @@ export interface AppOptions {
   scheme?: "http" | "https";
   /** Read and write the shared passkey file (see auth.ts). Off by default so tests never touch the real file. */
   sharedPasskey?: string | boolean;
+  /** The newest machine sample. Default: none, so `snapshot.resources` is null. */
+  resources?: () => Resources | null;
 }
 
 export interface App {
@@ -75,12 +78,23 @@ export function createApp(opts: AppOptions): App {
   let cached: { sig: string; at: number; frame: string; snapshot: Snapshot } | null = null;
   let lastSig = "";
 
-  const signature = () => `${maxSeq(db)}:${(db.query("PRAGMA data_version").get() as { data_version: number }).data_version}`;
+  // The signature includes the sample time, so a new machine sample also sends a frame.
+  const signature = () =>
+    `${maxSeq(db)}:${(db.query("PRAGMA data_version").get() as { data_version: number }).data_version}:${opts.resources?.()?.at ?? 0}`;
+
+  function withResources(snapshot: Snapshot): Snapshot {
+    const r = opts.resources?.() ?? null;
+    if (!r) return snapshot;
+    const repos = new Map<string, string | null>();
+    for (const row of db.query("SELECT id, repo FROM sessions").all() as { id: string; repo: string | null }[]) repos.set(row.id, row.repo);
+    const fill = (p: Resources["top_cpu"][number]) => ({ ...p, slug: p.session ? sessionSlug(p.session, repos.get(p.session) ?? null) : null });
+    return { ...snapshot, resources: { ...r, top_cpu: r.top_cpu.map(fill), top_rss: r.top_rss.map(fill) } };
+  }
 
   function snapshotFrame(force = false): { frame: string; snapshot: Snapshot } {
     const sig = signature();
     if (!force && cached && cached.sig === sig && clock() - cached.at < SNAPSHOT_MAX_AGE_MS) return cached;
-    const snapshot = buildSnapshot(db, clock());
+    const snapshot = withResources(buildSnapshot(db, clock()));
     cached = { sig, at: clock(), snapshot, frame: `id: ${snapshot.seq}\nevent: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n` };
     return cached;
   }
@@ -324,12 +338,14 @@ export interface Started {
 }
 
 /** `tls` is opt-in: main.ts passes `tlsFiles()`, so tests on a host that has a cert stay on http. */
-export async function startServer(opts: { db?: Database; port?: number; tls?: TlsFiles | null; sharedPasskey?: string | boolean } = {}): Promise<Started> {
+export async function startServer(
+  opts: { db?: Database; port?: number; tls?: TlsFiles | null; sharedPasskey?: string | boolean; resources?: () => Resources | null } = {},
+): Promise<Started> {
   const db = opts.db ?? (await openDatabase()).db;
   const wanted = opts.port ?? Number(process.env.HARNESS_PORT ?? 4317);
   const tls = opts.tls ?? null;
   const scheme = tls ? "https" : "http";
-  const app = createApp({ db, scheme, sharedPasskey: opts.sharedPasskey });
+  const app = createApp({ db, scheme, sharedPasskey: opts.sharedPasskey, resources: opts.resources });
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: wanted,
