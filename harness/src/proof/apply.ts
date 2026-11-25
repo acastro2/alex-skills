@@ -81,7 +81,10 @@ export function request(db: Database, o: { session: string; sha: string; cwd?: s
   if (!repo) throw new Error(`not a git repository: ${cwd}`)
   if (git(repo, "cat-file", "-e", `${o.sha}^{commit}`).code !== 0) throw new Error(`unknown commit: ${o.sha}`)
 
-  const base = mainBase(repo, o.sha)
+  // Review against what is installed now: a diff against main alone hides every commit since the last apply.
+  const cur = getMeta(db, "current_apply")
+  const installed = cur ? (db.query("select sha from applies where id = ?").get(cur) as { sha: string } | null)?.sha : null
+  const base = installed && git(repo, "merge-base", "--is-ancestor", installed, o.sha).code === 0 ? installed : mainBase(repo, o.sha)
   const range = `${base}..${o.sha}`
   const diff = git(repo, "diff", range, "--", "harness/").out.trim()
   const status = (path: string) =>

@@ -91,6 +91,18 @@ describe("request", () => {
     expect(existsSync(settings)).toBe(false) // a dry run writes nothing
   })
 
+  // Seen live 2026-11-25: after an apply, the next review diffed only against main's merge base, which hid
+  // every commit since the installed sha. It must diff against what is installed now.
+  test("after an apply, the next review diffs against the installed sha", () => {
+    const r1 = requestAndGrant(sha1)
+    expect(apply(db, { requestId: r1.requestId })).toMatchObject({ ok: true })
+    const sha3 = commit({ "harness/src/note.txt": "three\n" })
+    const r3 = request(db, { session: "root", sha: sha3, cwd: repo })
+    expect(r3.review).toContain(`Base: ${sha1}`)
+    expect(r3.review).toContain("-one")
+    expect(r3.review).toContain("+three")
+  })
+
   test("refuses a sha that is not 40 hex characters", () => {
     expect(() => request(db, { session: "root", sha: "abc123", cwd: repo })).toThrow()
   })

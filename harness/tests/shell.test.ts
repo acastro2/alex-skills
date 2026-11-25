@@ -124,6 +124,44 @@ const denied: Array<[string, string, ShellCtx?]> = [
   ["cd /home/u/.local/state/harness && echo x > ledger.db", "ledger-write"],
   ["cd ~/.local/state/harness; touch ledger.db", "ledger-write"],
   ["cd /home/u/.claude && echo {} > settings.json", "harness-config-write"],
+  // G2 gaps: heredoc into an interpreter
+  ["python3 <<EOF\nimport shutil\nshutil.rmtree('/home/u/Developer/repos')\nEOF", "recursive-delete"],
+  ["python3 - <<'EOF'\nimport shutil\nshutil.rmtree('/home/u/Developer/repos')\nEOF", "recursive-delete"],
+  ["node <<EOF\nrequire('fs').rmSync('/home/u/Developer/repos',{recursive:true})\nEOF", "recursive-delete"],
+  ["nodejs <<EOF\nrequire('fs').rmSync('/home/u/Developer/repos',{recursive:true})\nEOF", "recursive-delete"],
+  ["perl <<EOF\nuse File::Path; rmtree(\"/home/u/Developer/repos\");\nEOF", "recursive-delete"],
+  ["ruby <<EOF\nrequire 'fileutils'; FileUtils.rm_rf('/home/u/Developer/repos')\nEOF", "recursive-delete"],
+  ["cat <<EOF | python3\nimport shutil; shutil.rmtree('/home/u/Developer/repos')\nEOF", "recursive-delete"],
+  ["python3 <<< \"import shutil; shutil.rmtree('/home/u/Developer/repos')\"", "recursive-delete"],
+  ["python3 <<EOF\nopen('/home/u/.local/state/harness/x','w').write('')\nEOF", "ledger-write"],
+  ["python3 <<EOF\nimport os\nos.system('rm -rf /home/u/Developer/repos')\nEOF", "recursive-delete"],
+  // G2 gaps: interpreter code that shells out
+  ["python3 -c \"import os; os.system('rm -rf /home/u/Developer/repos')\"", "recursive-delete"],
+  ["python3 -c \"import os; os.popen('git reset --hard')\"", "destructive-git"],
+  ["python3 -c \"import subprocess; subprocess.run(['rm','-rf','/home/u/Developer/repos'])\"", "recursive-delete"],
+  ["python3 -c \"import subprocess; subprocess.call(['rm','-rf',p])\"", "recursive-delete"],
+  ["python3 -c \"import subprocess; subprocess.Popen(['git','push','--force'])\"", "destructive-git"],
+  ["python3 -c \"import subprocess; subprocess.check_output('rm -rf /home/u/Developer/repos', shell=True)\"", "recursive-delete"],
+  ["python3 -c \"import os; os.system('rm -rf ' + p)\"", "recursive-delete"],
+  ["python3 -c \"import os; os.system(f'rm -rf {p}')\"", "recursive-delete"],
+  ["python3 -c \"import subprocess; subprocess.run(['bash','-c','harness off'])\"", "harness-self"],
+  ["python3 -c \"import os; os.system('python3 -c \\\"import os; os.system(\\'rm -rf /home/u/Developer/repos\\')\\\"')\"", "recursive-delete"],
+  ["node -e \"require('child_process').execSync('rm -rf /home/u/Developer/repos')\"", "recursive-delete"],
+  ["node -e \"require('child_process').exec('gh pr merge 1', cb)\"", "merge-in-shell"],
+  ["node -e \"require('child_process').spawnSync('rm', ['-rf', '/home/u/Developer/repos'])\"", "recursive-delete"],
+  ["nodejs -e \"require('fs').rmSync('/home/u/Developer/repos',{recursive:true})\"", "recursive-delete"],
+  ["ruby -e 'system(\"rm -rf /home/u/Developer/repos\")'", "recursive-delete"],
+  ["ruby -e '`rm -rf /home/u/Developer/repos`'", "recursive-delete"],
+  ["ruby -e 'system(\"rm\", \"-rf\", \"/home/u/Developer/repos\")'", "recursive-delete"],
+  ["perl -e 'system(\"rm -rf /home/u/Developer/repos\")'", "recursive-delete"],
+  ["perl -e 'system(\"rm\", \"-rf\", \"/home/u/Developer/repos\")'", "recursive-delete"],
+  ["perl -e 'system(\"git reset --hard\")'", "destructive-git"],
+  // G2 gaps: git config keys that hold a command
+  ["git -c core.sshCommand='rm -rf /home/u/Developer/repos' fetch", "recursive-delete"],
+  ["git -c core.pager='rm -rf /home/u/Developer/repos' log", "recursive-delete"],
+  ["git -c core.editor='gh pr merge 1' commit", "merge-in-shell"],
+  ["git -c sequence.editor='rm -rf /home/u/Developer/repos' rebase -i HEAD~2", "recursive-delete"],
+  ["git -c diff.external='rm -rf /home/u/Developer/repos' diff", "recursive-delete"],
 ]
 
 // Decoded text piped into a shell: harness-self with its own message.
@@ -137,6 +175,11 @@ const decoded = [
   "echo x | base64 -d | gunzip | dash",
   'eval "$(echo cm0gLXJmIC94 | base64 -d)"',
   'bash -c "$(base64 -d x.b64)"',
+  // process substitution of decoded text
+  "sh <(base64 -d /tmp/x.b64)",
+  "bash <(echo cm0gLXJmIC94 | base64 -d)",
+  "bash < <(base64 --decode /tmp/x.b64)",
+  "source <(xxd -r -p /tmp/x.hex)",
 ]
 
 const allowed: Array<[string, ShellCtx?]> = [
@@ -175,6 +218,17 @@ const allowed: Array<[string, ShellCtx?]> = [
   ["git -c alias.co=checkout co main"],
   ["busybox ls -la"],
   ["echo ${IFS}"],
+  // G2 gaps must not widen the net
+  ["python3 -c \"import os; print(os.getcwd())\""],
+  ["node -e \"require('child_process').execSync('ls')\""],
+  ["git -c core.pager=less log"],
+  ["python3 -c \"import subprocess; subprocess.run(['ls','-la'])\""],
+  ["python3 -c \"import os; os.system('rm -rf /tmp/x')\""],
+  ["python3 script.py <<EOF\nimport shutil; shutil.rmtree('/home/u/Developer/repos')\nEOF"],
+  ["python3 <<EOF\nprint('hi')\nEOF"],
+  ["sh <(echo ls)"],
+  ["diff <(sort a) <(sort b)"],
+  ["bash < <(echo ls)"],
 ]
 
 describe("checkShell", () => {

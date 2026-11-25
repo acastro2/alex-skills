@@ -15,9 +15,15 @@ export interface Parsed {
   redirectDirs: Dirs[] // same for each redirect
   decodedShell: boolean // decoded text (base64 -d, xxd -r, openssl enc -d) is fed to a shell
   cwd: Dirs // parser state: the cd chain at the current point of the scan
+  inline: Array<{ code: string; dirs: Dirs }> // heredoc bodies an interpreter reads as its program
+  nest: number // parser state: how many interpreter-in-interpreter levels are open
 }
 
 const MAX_DEPTH = 16
+const MAX_NEST = 3
+// Programs that run inline code (-c, -e) or a program read from stdin.
+export const INTERP_CODE = /^(python[\d.]*|bun|node|nodejs|deno|perl|ruby|php)$/
+export const INLINE_FLAG = /^(?:-[A-Za-z]*[ce]|-p|-E|--eval|--print|eval)$/
 const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*(\[[^\]]*\])?\+?=/
 const RESERVED = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until", "!", "{", "}", "esac"])
 const SHELLS = new Set(["bash", "sh", "zsh", "dash", "ksh"])
@@ -85,6 +91,184 @@ function substitution(line: string, i: number, out: Parsed, depth: number): numb
   return Math.min(end + 1, line.length)
 }
 
+// ---- interpreter code that shells out ----
+// shortcut: reads string literals next to known call names; no variables, no concatenation of two
+// variables. A non-literal part becomes $X so the rm rules treat the target as unknown. Upgrade with a real parser.
+
+const q1 = (s: string) => `'${s.replace(/'/g, "'\\''")}'`
+const UNKNOWN = '"$X"'
+const CALL = /\b(?:subprocess\.(?:run|call|Popen|check_output|check_call|getoutput|getstatusoutput)|Bun\.\$|(?:system|popen|exec|execSync|execFile|execFileSync|spawn|spawnSync|execa|shell_exec|passthru))(?![\w$])(?:\s*\(\s*|\s*(?=["'`]))/g
+const CONCAT = /^(?:[+%]|\.(?![A-Za-z_])|\.format\b)/
+
+interface Lit {
+  text: string
+  end: number
+}
+
+function skipWs(code: string, i: number): number {
+  while (i < code.length && /\s/.test(code[i])) i++
+  return i
+}
+
+// A string literal at code[i] (python r/b/f prefixes, triple quotes, backticks). Interpolations become $X.
+function strLit(code: string, i: number): Lit | null {
+  let j = i
+  let raw = false
+  let fmt = false
+  const pre = /^[rRbBfFuU]{1,2}(?=['"])/.exec(code.slice(j, j + 3))
+  if (pre) {
+    raw = /r/i.test(pre[0])
+    fmt = /f/i.test(pre[0])
+    j += pre[0].length
+  }
+  const quote = code[j]
+  if (quote !== "'" && quote !== '"' && quote !== "`") return null
+  const close = quote !== "`" && code.startsWith(quote.repeat(3), j) ? quote.repeat(3) : quote
+  j += close.length
+  let text = ""
+  while (j < code.length && !code.startsWith(close, j)) {
+    const c = code[j]
+    const e = code[j + 1]
+    if (c === "\\" && e !== undefined) {
+      if (raw) text += c + e
+      else text += e === "n" ? "\n" : e === "t" ? "\t" : "\"'`\\".includes(e) ? e : c + e
+      j += 2
+    } else if (((fmt || quote === "`") && c === "{") || (c === "$" && e === "{" && quote !== "'") || (c === "#" && e === "{" && quote === '"')) {
+      const open = c === "{" ? j : j + 1
+      const k = code.indexOf("}", open)
+      text += "$X"
+      j = k < 0 ? code.length : k + 1
+    } else {
+      text += c
+      j++
+    }
+  }
+  return { text, end: Math.min(j + close.length, code.length) }
+}
+
+// Index of the next top-level `,` or closer after an expression.
+function skipExpr(code: string, i: number): number {
+  let depth = 0
+  while (i < code.length) {
+    const c = code[i]
+    const lit = strLit(code, i)
+    if (lit) i = lit.end
+    else if ("([{".includes(c)) {
+      depth++
+      i++
+    } else if (")]}".includes(c)) {
+      if (depth === 0) return i
+      depth--
+      i++
+    } else if ((c === "," || c === ";") && depth === 0) return i
+    else i++
+  }
+  return i
+}
+
+interface Item {
+  k: "s" | "l" | "u" | "stop" // string, list, unknown, keyword argument or object (end of the command part)
+  raw: string
+  words: string[] // shell words
+  partial: boolean // a literal joined to something we cannot see
+}
+
+function listItem(code: string, i: number): { item: Item; end: number } {
+  const words: string[] = []
+  i++
+  for (let n = 0; n < 64; n++) {
+    i = skipWs(code, i)
+    if (i >= code.length || code[i] === "]") break
+    const lit = strLit(code, i)
+    let end = lit ? lit.end : i
+    const next = skipExpr(code, end)
+    if (lit) words.push(CONCAT.test(code.slice(skipWs(code, end), next).trim()) ? q1(lit.text) + UNKNOWN : q1(lit.text))
+    else words.push(UNKNOWN)
+    end = next
+    i = code[end] === "," ? end + 1 : end
+  }
+  return { item: { k: "l", raw: "", words, partial: false }, end: code[i] === "]" ? i + 1 : i }
+}
+
+function callItems(code: string, from: number): Item[] {
+  const res: Item[] = []
+  let i = from
+  for (let n = 0; n < 16; n++) {
+    i = skipWs(code, i)
+    const c = code[i]
+    if (c === undefined || c === ")" || c === ";") break
+    let item: Item
+    let end: number
+    const qw = /^qw\s*\(([^)]*)\)/.exec(code.slice(i, i + 400))
+    if (c === "[") {
+      const l = listItem(code, i)
+      item = l.item
+      end = l.end
+    } else if (qw) {
+      item = { k: "l", raw: "", words: qw[1].split(/\s+/).filter(Boolean).map(q1), partial: false }
+      end = i + qw[0].length
+    } else {
+      const lit = strLit(code, i)
+      if (lit) {
+        const next = skipExpr(code, lit.end)
+        const partial = CONCAT.test(code.slice(skipWs(code, lit.end), next).trim())
+        item = { k: "s", raw: lit.text, words: [partial ? q1(lit.text) + UNKNOWN : q1(lit.text)], partial }
+      } else {
+        const stop = c === "{" || /^[A-Za-z_]\w*\s*=(?!=)/.test(code.slice(i, i + 80))
+        item = { k: stop ? "stop" : "u", raw: "", words: [UNKNOWN], partial: false }
+      }
+      end = skipExpr(code, lit ? lit.end : i)
+    }
+    if (item.k === "stop") break
+    res.push(item)
+    i = code[end] === "," ? end + 1 : end
+    if (code[end] !== ",") break
+  }
+  return res
+}
+
+// The command line a call such as os.system("...") or subprocess.run(["rm", "-rf", x]) runs, or null.
+function callCommand(code: string, from: number): string | null {
+  const it = callItems(code, from)
+  const first = it[0]
+  if (!first || first.k === "u") return null
+  if (first.k === "l") return first.words.join(" ")
+  const second = it[1]
+  if (second && (second.k === "s" || second.k === "l")) {
+    return it.flatMap((x) => (x.k === "u" ? [UNKNOWN] : x.words)).join(" ")
+  }
+  return first.raw + (first.partial ? "$X" : "")
+}
+
+// Shell command lines that inline interpreter code runs through system(), exec(), subprocess and the like.
+function shellOuts(code: string, interp: string): string[] {
+  const found: string[] = []
+  for (const m of code.matchAll(CALL)) {
+    const cmd = callCommand(code, m.index + m[0].length)
+    if (cmd) found.push(cmd)
+  }
+  if (/^(ruby|perl|php)$/.test(interp)) {
+    for (let i = code.indexOf("`"); i >= 0; i = code.indexOf("`", i)) {
+      const lit = strLit(code, i) as Lit
+      if (lit.text.trim()) found.push(lit.text)
+      i = lit.end
+    }
+    for (const m of code.matchAll(/(?:%x|\bqx)\(([^)]*)\)/g)) found.push(m[1])
+  }
+  return found
+}
+
+// Scan the shell lines hidden in interpreter code, as if they were typed. Nesting is capped.
+function scanInline(code: string, interp: string, out: Parsed, depth: number): void {
+  if (out.nest >= MAX_NEST) return
+  out.nest++
+  try {
+    for (const cmd of shellOuts(code, interp)) scan(cmd, out, depth + 1)
+  } finally {
+    out.nest--
+  }
+}
+
 function scan(line: string, out: Parsed, depth: number): void {
   if (depth > MAX_DEPTH) return
   const savedDirs = out.cwd
@@ -96,7 +280,9 @@ function scan(line: string, out: Parsed, depth: number): void {
   const heredocs: string[] = []
   let docs: string[] = [] // heredoc bodies and here-strings of the current line
   let lineProg = out.programs.length
+  let lineCmd = out.commands.length
   let decoded = false // a decoder ran earlier in the current pipeline
+  let procDecoded = false // the current command reads a <(...) that decodes text
   const parens: Dirs[] = []
   let i = 0
 
@@ -124,17 +310,28 @@ function scan(line: string, out: Parsed, depth: number): void {
     if (seg.length) {
       const c = emit(seg, out, depth)
       if (c) {
-        if (decoded && SHELLS.has(c[0])) out.decodedShell = true
+        if ((decoded || procDecoded) && (SHELLS.has(c[0]) || c[0] === "source" || c[0] === ".")) out.decodedShell = true
         if (isDecoder(c)) decoded = true
       }
     }
+    procDecoded = false
     seg = []
   }
   // Text a shell reads from stdin runs as commands. Only when a shell program is on the line.
+  // An interpreter with no script argument reads its program from stdin: the body is its inline code.
   const flushDocs = () => {
-    if (docs.length && out.programs.slice(lineProg).some((p) => SHELLS.has(p))) for (const d of docs) scan(d, out, depth + 1)
+    if (docs.length) {
+      if (out.programs.slice(lineProg).some((p) => SHELLS.has(p))) for (const d of docs) scan(d, out, depth + 1)
+      const interp = out.commands.slice(lineCmd).find((c) => INTERP_CODE.test(c[0]) && c.slice(1).every((a) => a.startsWith("-")))
+      if (interp)
+        for (const d of docs) {
+          out.inline.push({ code: d, dirs: out.cwd })
+          scanInline(d, interp[0], out, depth)
+        }
+    }
     docs = []
     lineProg = out.programs.length
+    lineCmd = out.commands.length
   }
   const dropFd = () => {
     if (inWord && /^\d+$/.test(cur)) {
@@ -258,6 +455,15 @@ function scan(line: string, out: Parsed, depth: number): void {
         i++
         pending = "dup"
       } else pending = "out"
+    } else if (c === "<" && line[i + 1] === "(") {
+      // Process substitution: the word is a file name, the inner text runs as commands.
+      const end = balanced(line, i + 1)
+      const before = out.commands.length
+      scan(line.slice(i + 2, end), out, depth + 1)
+      if (out.commands.slice(before).some(isDecoder)) procDecoded = true
+      cur += "/dev/fd/63"
+      inWord = true
+      i = Math.min(end + 1, n)
     } else if (c === "<") {
       dropFd()
       if (line.startsWith("<<<", i)) {
@@ -302,11 +508,15 @@ const SUDO_ARGS = set("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-r", "-t"
 const XARGS_ARGS = set("-I", "-n", "-P", "-L", "-d", "-E", "-s", "-a", "--max-args", "--max-procs", "--max-lines", "--delimiter", "--arg-file", "--eof")
 const ENV_ARGS = set("-u", "-C", "--unset", "--chdir")
 const GIT_VALUE_OPTS = set("-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env")
+const GIT_CMD_KEY = /^(?:core\.(?:sshCommand|pager|editor|fsmonitor|askPass)|sequence\.editor|diff\.external|gpg\.program)=([\s\S]*)$/i
 
 function unwrap(a: string[], out: Parsed, depth: number): string[] | null | typeof DONE {
   const p = a[0]
   const rest = a.slice(1)
   const inner = (k: number) => (k < rest.length ? rest.slice(k) : null)
+
+  // Inline interpreter code (-c, -e) may shell out: scan the command lines it runs.
+  if (INTERP_CODE.test(p) && rest.some((w) => INLINE_FLAG.test(w))) scanInline(rest.join("\n"), p, out, depth)
 
   if (SHELLS.has(p)) {
     for (let k = 0; k < rest.length; k++) {
@@ -330,9 +540,10 @@ function unwrap(a: string[], out: Parsed, depth: number): string[] | null | type
       return DONE
     case "git": {
       // `git -c alias.x='!cmd' x` runs cmd as a shell line.
+      // Config keys whose value git runs as a command line (core.pager, core.sshCommand ...) are scanned too.
       for (let k = 0; k < rest.length && rest[k].startsWith("-"); k++) {
         if (rest[k] === "-c" && rest[k + 1] !== undefined) {
-          const m = /^alias\.[^=]+=!([\s\S]*)$/.exec(rest[k + 1])
+          const m = /^alias\.[^=]+=!([\s\S]*)$/.exec(rest[k + 1]) ?? GIT_CMD_KEY.exec(rest[k + 1])
           if (m) scan(m[1], out, depth + 1)
           k++
         } else if (GIT_VALUE_OPTS.has(rest[k])) k++
@@ -399,7 +610,7 @@ function emit(raw: string[], out: Parsed, depth: number): string[] | null {
 }
 
 export function parse(line: string): Parsed {
-  const out: Parsed = { commands: [], programs: [], redirects: [], dirs: [], redirectDirs: [], decodedShell: false, cwd: [] }
+  const out: Parsed = { commands: [], programs: [], redirects: [], dirs: [], redirectDirs: [], decodedShell: false, cwd: [], inline: [], nest: 0 }
   try {
     // ${IFS} and $IFS are whitespace in practice: `rm${IFS}-rf${IFS}/x` is `rm -rf /x`.
     scan(String(line ?? "").replace(/\$\{IFS\}|\$IFS(?![A-Za-z0-9_])/g, " "), out, 0)

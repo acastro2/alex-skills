@@ -1,7 +1,7 @@
 // Shell guard rules (spec: Phase 1 Guard rules, D5, D31, D36, D37, D72). Pure functions.
 // The guard stops agent mistakes, not a hostile agent (D72).
 import { posix as path } from "node:path"
-import { parse, type Dirs, type Parsed } from "./parse"
+import { INLINE_FLAG, INTERP_CODE, parse, type Dirs, type Parsed } from "./parse"
 import { CONFIG_MSG, LEDGER_MSG, inside, isHarnessConfigPath, isLedgerPath } from "./paths"
 
 export interface ShellCtx {
@@ -152,8 +152,6 @@ function codeDeletes(code: string, ctx: ShellCtx, cwd: string | null): boolean {
   return false
 }
 
-const INLINE_FLAG = /^(?:-[A-Za-z]*[ce]|-p|-E|--eval|--print|eval)$/
-
 function recursiveDelete(P: Parsed, ctx: ShellCtx): boolean {
   for (const [n, c] of P.commands.entries()) {
     const args = c.slice(1)
@@ -164,7 +162,8 @@ function recursiveDelete(P: Parsed, ctx: ShellCtx): boolean {
     // No visible target (for example `xargs rm -rf`): the real targets are unknown.
     if (targets.length === 0 || targets.some((t) => targetDenied(t, ctx, cwd))) return true
   }
-  return false
+  // A heredoc body an interpreter reads from stdin is inline code too.
+  return P.inline.some((b) => codeDeletes(b.code, ctx, effectiveCwd(b.dirs, ctx)))
 }
 
 // ---- git ----
@@ -246,7 +245,7 @@ function mergeInShell(P: Parsed, ctx: ShellCtx): boolean {
 
 const SELF_VERBS = set("off", "on", "wrong", "rollback")
 const ESCALATE = set("sudo", "su", "pkexec", "doas")
-const INTERPRETERS = /^(bun|bunx|node|deno|tsx|ts-node|npx|sh|bash|zsh|python[\d.]*)$/
+const INTERPRETERS = /^(bun|bunx|node|nodejs|deno|tsx|ts-node|npx|sh|bash|zsh|python[\d.]*)$/
 
 function harnessSelf(P: Parsed, line: string, ctx: ShellCtx): boolean {
   if (P.programs.some((p) => ESCALATE.has(p))) return true
@@ -279,7 +278,6 @@ function harnessSelf(P: Parsed, line: string, ctx: ShellCtx): boolean {
 
 const DEST_LAST = set("cp", "ln", "install", "rsync")
 const ALL_ARGS = set("mv", "rm", "touch", "truncate", "tee", "chmod", "chown", "chgrp", "mkdir", "rmdir", "unlink", "shred", "sqlite3", "sqlite")
-const INTERP_CODE = /^(python[\d.]*|bun|node|deno|perl|ruby|php)$/
 const CODE_FLAGS = set("-c", "-e", "-p", "-E", "--eval", "--print", "eval")
 
 interface Target {
@@ -294,7 +292,7 @@ interface Writes {
 
 function writes(P: Parsed): Writes {
   const all: Target[] = P.redirects.map((path, n) => ({ path, dirs: P.redirectDirs[n] }))
-  const code: string[] = []
+  const code: string[] = P.inline.map((b) => b.code)
   for (const [n, c] of P.commands.entries()) {
     const targets: string[] = []
     const prog = c[0]
