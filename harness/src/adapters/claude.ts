@@ -77,7 +77,8 @@ function toResult(name: EventName, stdin: any, d: Decision): HookResult {
           }),
         }
       }
-      return SILENT
+      // An advisory or an injection: PreToolUse additionalContext reaches the agent before the call runs.
+      return d.context ? contextOutput("PreToolUse", d.context) : SILENT
     }
     case "tool.after":
       return d.context ? contextOutput("PostToolUse", d.context) : SILENT
@@ -129,6 +130,8 @@ export async function handle(name: EventName, raw: string): Promise<HookResult> 
     stdin = raw.trim() ? JSON.parse(raw) : {}
     if (process.env.HARNESS_TEST_THROW === "1") throw new Error("HARNESS_TEST_THROW")
     const ev = fromClaude(name, stdin)
+    // The compact-state rule needs to know why the session started. HarnessEvent has no field for it.
+    if (name === "session.start" && typeof stdin?.source === "string") ev.input = { source: stdin.source }
     const d = await withTimeout(decide(ev), DECIDE_TIMEOUT_MS)
     return toResult(name, stdin, d)
   } catch {

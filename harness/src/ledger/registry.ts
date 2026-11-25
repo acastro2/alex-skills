@@ -46,6 +46,11 @@ export const RULES: Rule[] = [
   rule("spawn-model", "tool.before", "worker", "3"),
   rule("spawn-acceptance", "tool.before", "worker", "3"),
   rule("egress", "tool.before", "egress", "9", "advise"), // advisory only (D62)
+  rule("page-port", "tool.before", "pageport", "9"), // agents never reach the page (D61)
+  rule("compact-state", "session.start", "compact", "9", "inject"), // D65
+  rule("inject-ui", "tool.before", "inject", "7", "inject"),
+  rule("inject-coding", "tool.before", "inject", "7", "inject"),
+  rule("inject-links", "tool.after", "inject", "7", "inject"),
   rule("routing-hint", "prompt", "judgment", "2", "inject"),
   rule("nudge-drift", "tool.after", "worker", "3", "inject"),
   rule("nudge-wrapup", "tool.after", "worker", "3", "inject"),

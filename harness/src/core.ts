@@ -5,13 +5,17 @@ import { isOff } from "./ledger/authority.ts"
 import { openLedger } from "./ledger/db.ts"
 import { append, upsertSession } from "./ledger/journal.ts"
 import { seed } from "./ledger/registry.ts"
+import { compactState } from "./policies/compact.ts"
+import { guardEgress } from "./policies/egress.ts"
 import { guardPath, guardShell, repoOf } from "./policies/guard.ts"
+import { injections } from "./policies/inject.ts"
 import { guardMcp } from "./policies/mcp.ts"
 import { afterTool } from "./policies/nudge.ts"
+import { guardPagePort } from "./policies/pageport.ts"
 import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
 import { stopChecks } from "./policies/stop.ts"
-import { allow, q1, toolData, type Env, type Out } from "./policies/util.ts"
+import { allow, isBrowseTool, q1, toolData, type Env, type Out } from "./policies/util.ts"
 import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { guardWorktree } from "./policies/worktree.ts"
 import { takeInbox } from "./waker/deliver.ts"
@@ -106,8 +110,14 @@ async function route(env: Env, off: boolean): Promise<Out> {
       }
     }
     case "session.start": {
-      const text = joinContext([takeInbox(ev.session), ...(off ? [] : liveNeighbours(db, ev))])
-      return allow(text ? { decision: { outcome: "modify", context: text } } : {})
+      const restored = off ? null : compactState(env)
+      const text = joinContext([takeInbox(ev.session), ...(off ? [] : liveNeighbours(db, ev)), restored?.text])
+      if (!text) return allow()
+      const ruleId = restored?.ruleId
+      return allow({
+        decision: { outcome: "modify", context: text, ruleId },
+        ...(restored ? { ruleId, outcome: "inject", data: { source: "compact", chars: restored.text.length } } : {}),
+      })
     }
     case "session.end":
       db.query("update sessions set ended_at = ? where id = ?").run(ev.time, ev.session)
@@ -121,12 +131,16 @@ async function route(env: Env, off: boolean): Promise<Out> {
       }
       let o: Out | null = null
       if (!off) {
-        if (name === "shell") o = chain(() => guardShell(env), () => guardPush(env), () => guardWorktree(env))
+        if (name === "shell") {
+          o = chain(() => guardShell(env), () => guardPagePort(env), () => guardPush(env), () => guardWorktree(env), () => guardEgress(env))
+        }
         else if (name === "edit" || name === "write") o = chain(() => guardPath(env), () => guardWorktree(env))
         else if (name === "subagent") {
           o = guardSpawn(env)
           if (o?.decision.outcome !== "deny") recordWorker(env)
         } else if (name?.startsWith("mcp:harness:")) o = guardMcp(env)
+        else if (isBrowseTool(name)) o = guardPagePort(env)
+        else if (name === "webfetch" || name?.startsWith("mcp:")) o = guardEgress(env)
       }
       return { ...(o ?? allow()), data: { ...base, ...(o?.data ?? {}) } }
     }
@@ -159,7 +173,13 @@ export async function decide(ev: HarnessEvent): Promise<Decision> {
     let out: Out = await route(env, off)
     // The kill switch allows every call, and the journal says what the rules would have done.
     if (off && ev.event !== "prompt") out = { ...out, decision: ALLOW, reason: out.reason ?? "harness off" }
-    const d = out.decision
+    const base = out.decision
+
+    // Phase 7 injections ride on the call's decision. Each gets its own journal row, so "once per session" can be checked.
+    const inj = base.outcome === "deny" || base.outcome === "ask" ? [] : injections(env)
+    const sent = inj.filter((i) => !i.advise).map((i) => i.text)
+    // The outcome stays as it was: an allow that carries context is an allow with a note.
+    const d: Decision = sent.length ? { ...base, context: joinContext([base.context, ...sent]) } : base
 
     // A stop reply goes to the journal for the waker (data.reply, 4000 chars).
     const data = ev.event === "stop" ? { reply: (ev.reply ?? "").slice(0, 4000), ...(out.data ?? {}) } : out.data
@@ -168,14 +188,25 @@ export async function decide(ev: HarnessEvent): Promise<Decision> {
       turn,
       time: ev.time,
       event: out.event ?? ev.event,
-      rule_id: out.ruleId ?? d.ruleId ?? null,
-      outcome: out.outcome ?? d.outcome,
-      reason: out.reason ?? d.message ?? d.context,
+      rule_id: out.ruleId ?? base.ruleId ?? null,
+      outcome: out.outcome ?? base.outcome,
+      reason: out.reason ?? base.message ?? base.context,
       prompt_text: ev.event === "prompt" ? (ev.prompt ?? "") : undefined,
       args: ev.input,
       output: ev.output,
       data: data && Object.keys(data).length ? data : undefined,
     })
+    for (const i of inj) {
+      append(db, {
+        session_id: ev.session,
+        turn,
+        time: ev.time,
+        event: "inject",
+        rule_id: i.ruleId,
+        outcome: i.advise ? "advise" : "inject",
+        reason: i.text,
+      })
+    }
     return d
   } catch (e: any) {
     try {

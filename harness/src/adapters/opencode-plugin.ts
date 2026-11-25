@@ -71,9 +71,9 @@ export default {
       return parent
     }
 
-    async function ask(name: EventName, data: Record<string, unknown>): Promise<Decision> {
+    async function ask(name: EventName, data: Record<string, unknown>, extra: Partial<HarnessEvent> = {}): Promise<Decision> {
       const sessionID = String(data.sessionID ?? "")
-      const ev: HarnessEvent = fromOpenCode(name, { cwd, ...data, parentSession: await parentOf(sessionID) })
+      const ev: HarnessEvent = { ...fromOpenCode(name, { cwd, ...data, parentSession: await parentOf(sessionID) }), ...extra }
       return withTimeout(decide(ev), DECIDE_TIMEOUT_MS)
     }
 
@@ -156,7 +156,7 @@ export default {
     void (async () => {
       try {
         for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-          if (event?.type !== "session.execution.succeeded") continue
+          if (event?.type !== "session.execution.succeeded" && event?.type !== "session.compaction.ended") continue
           // One plugin instance loads per location: only the owner answers.
           if (event.location?.directory && event.location.directory !== ctx.location?.directory) continue
           const sessionID: string | undefined = event.data?.sessionID
@@ -164,6 +164,15 @@ export default {
           // Stop events carry no location, and every loaded instance sees every session on the service.
           // Answer only for sessions that live in this instance's location.
           if (!(await ownsSession(sessionID))) continue
+          // A finished compaction (verified in the V2 OpenAPI event schemas: data.sessionID, reason auto|manual):
+          // put the session state back from the ledger. There is no return channel here, so it goes in as synthetic text.
+          if (event.type === "session.compaction.ended") {
+            try {
+              const d = await ask("session.start", { sessionID }, { input: { source: "compact" } })
+              if (d.context) await ctx.session.synthetic({ sessionID, text: d.context })
+            } catch {}
+            continue
+          }
           try {
             let reply = ""
             try {
