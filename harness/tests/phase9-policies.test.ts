@@ -156,11 +156,15 @@ describe("page-port (D61)", () => {
     expect((await decide(sh(cmd))).outcome).not.toBe("deny")
   })
 
-  test("browse calls to the page origin are denied, other URLs pass", async () => {
-    const bad = await decide(ev({ toolName: "mcp:browse:navigate", input: { url: "http://127.0.0.1:4317/" } }))
-    expect([bad.outcome, bad.message]).toEqual(["deny", MSG])
+  // Changed 2026-11-25: agents must screenshot their UI work, so looking at the page is allowed; acting is not.
+  test("browse may look at the page (navigate, screenshot) but not act on it (click, fill, eval)", async () => {
+    const look = await decide(ev({ toolName: "mcp:browse:navigate", input: { url: "http://127.0.0.1:4317/" } }))
+    expect(look.outcome).not.toBe("deny")
+    expect((await decide(ev({ toolName: "mcp:browse:screenshot", input: { tab: "t" } }))).outcome).not.toBe("deny")
     const ref = await decide(ev({ toolName: "mcp:browse:click", input: { tab: "t", ref: "http://localhost:4317/#x" } }))
-    expect(ref.outcome).toBe("deny")
+    expect([ref.outcome, ref.message]).toEqual(["deny", MSG])
+    const ev2 = await decide(ev({ toolName: "mcp:browse:eval", input: { tab: "t", expression: "fetch('http://127.0.0.1:4317/api/action/off')" } }))
+    expect(ev2.outcome).toBe("deny")
     const ok = await decide(ev({ toolName: "mcp:browse:navigate", input: { url: "https://example.com/" } }))
     expect(ok.outcome).not.toBe("deny")
   })

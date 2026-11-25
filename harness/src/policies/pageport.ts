@@ -13,6 +13,8 @@ const CLIENTS = new Set(["curl", "wget", "nc", "ncat", "netcat", "socat", "telne
 const INTERPRETERS = new Set(["bun", "node", "deno", "python", "python3", "ruby", "perl", "php"])
 const NET_CALL = /fetch\(|urlopen|urllib\.request|requests\.|http\.client|httpx|aiohttp|socket\.|net\.connect|http\.get|https\.get|Net::HTTP|open-uri|IO::Socket|LWP|file_get_contents\(\s*['"]https?:|Bun\.connect|WebSocket/
 
+const READ_ONLY_BROWSE = new Set(["navigate", "snapshot", "screenshot", "screenshot_diff", "wait_for", "scroll", "emulate", "tabs", "status"])
+
 const ports = (): string[] => [...new Set([process.env.HARNESS_PORT?.trim() || "", "4317", "4316"].filter((p) => /^\d+$/.test(p)))]
 
 // A loopback host followed by the port: a URL, `host:port`, `nc host port` or /dev/tcp/host/port.
@@ -33,6 +35,10 @@ export function guardPagePort(env: Env): Out | null {
     return client && loopbackPort(command) ? hit(env, RULE, MESSAGE) : null
   }
   if (isBrowseTool(ev.toolName)) {
+    // Looking is allowed: an agent must screenshot its own UI work (stop-ui-proof). Acting is not: a
+    // click, fill or eval on Alex's signed-in tab is Alex's. Every grant still needs his fresh passkey tap.
+    const name = String(ev.toolName).replace(/^mcp:browse:|^browse_/, "")
+    if (READ_ONLY_BROWSE.has(name)) return null
     return loopbackPort(JSON.stringify(ev.input ?? {})) ? hit(env, RULE, MESSAGE) : null
   }
   return null
