@@ -87,16 +87,54 @@ export function toolRows(db: Database, session: string, turn: number): ToolRow[]
   return rows.map((r) => ({ seq: r.seq, data: JSON.parse(r.data_json) })).filter((r) => r.data.tool)
 }
 
-// The latest todo list this session wrote, from any row that carries data.todos.
+// Claude Code keeps todos with TaskCreate/TaskUpdate. The journal keeps each call's input in data.arg
+// (scrubbed, cut at 160 chars) but not the created task id, so ids are the creation order, 1-based.
+function tasksAfter(db: Database, session: string, afterSeq: number): { seq: number; todos: Todo[] } | null {
+  const rows = db
+    .query(
+      `select seq, data_json from journal
+       where session_id = ? and seq > ? and event = 'tool.after'
+         and (data_json like '%"taskcreate"%' or data_json like '%"taskupdate"%') order by seq`,
+    )
+    .all(session, afterSeq) as { seq: number; data_json: string }[]
+  const tasks: { content: string; status: string; gone?: boolean }[] = []
+  let last = 0
+  for (const r of rows) {
+    const d = JSON.parse(r.data_json)
+    if (d.failed || (d.tool !== "taskcreate" && d.tool !== "taskupdate")) continue
+    let input: Record<string, any> = {}
+    try {
+      input = JSON.parse(String(d.arg))
+    } catch {
+      const m = /"(subject|status|taskId)":"((?:[^"\\]|\\.)*)/.exec(String(d.arg)) // cut-off JSON: keep the first field
+      if (m) input = { [m[1]!]: m[2] }
+    }
+    last = r.seq
+    if (d.tool === "taskcreate") {
+      tasks.push({ content: String(input.subject ?? input.description ?? "").slice(0, 200), status: "pending" })
+      continue
+    }
+    const t = tasks[Number(input.taskId) - 1]
+    if (!t) continue
+    if (typeof input.subject === "string") t.content = input.subject.slice(0, 200)
+    if (input.status === "deleted") t.gone = true
+    else if (typeof input.status === "string") t.status = input.status
+  }
+  if (!last) return null
+  return { seq: last, todos: tasks.filter((t) => !t.gone).map(({ content, status }) => ({ content, status })) }
+}
+
+// The latest todo list this session wrote: data.todos rows (TodoWrite) or the task rows (Claude Code), newest wins.
 export function latestTodos(db: Database, session: string): Todo[] {
-  const r = q1<{ data_json: string }>(
+  const r = q1<{ seq: number; data_json: string }>(
     db,
-    `select data_json from journal where session_id = ? and data_json like '%"todos"%' order by seq desc limit 1`,
+    `select seq, data_json from journal where session_id = ? and data_json like '%"todos"%' order by seq desc limit 1`,
     session,
   )
-  if (!r) return []
-  const todos = JSON.parse(r.data_json).todos
-  return Array.isArray(todos) ? todos : []
+  const written = r ? JSON.parse(r.data_json).todos : null
+  const tasks = tasksAfter(db, session, 0)
+  if (tasks && (!r || tasks.seq > r.seq)) return tasks.todos
+  return Array.isArray(written) ? written : []
 }
 
 export const isBrowseTool = (tool: unknown) => typeof tool === "string" && (tool.startsWith("mcp:browse:") || tool.startsWith("browse_"))

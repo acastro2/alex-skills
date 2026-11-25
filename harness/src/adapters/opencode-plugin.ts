@@ -82,6 +82,43 @@ export default {
     const argsHidden = (action: unknown) =>
       typeof action === "string" && !["shell", "edit", "write", "read", "patch"].includes(action)
 
+    // tool.before context (egress warns) has no return channel on an allow, so it waits here and goes out
+    // with that call's execute.after result. By call id when the host gives one; else by session and tool name.
+    const PENDING_TTL_MS = 60_000
+    type Pending = { tool: string; text: string; at: number }
+    const byCall = new Map<string, Pending>()
+    const bySession = new Map<string, Pending[]>()
+    function stash(e: any, tool: string, text: string | undefined) {
+      if (!text) return
+      const p = { tool, text, at: Date.now() }
+      if (e.id) byCall.set(String(e.id), p)
+      else if (e.sessionID) bySession.set(e.sessionID, [...(bySession.get(e.sessionID) ?? []), p])
+    }
+    function take(e: any): string[] {
+      const cutoff = Date.now() - PENDING_TTL_MS
+      for (const [k, p] of byCall) if (p.at < cutoff) byCall.delete(k)
+      for (const [k, list] of bySession) {
+        const live = list.filter((p) => p.at >= cutoff)
+        if (live.length) bySession.set(k, live)
+        else bySession.delete(k)
+      }
+      const out: string[] = []
+      const id = e.id ? String(e.id) : ""
+      const hit = id ? byCall.get(id) : undefined
+      if (hit) {
+        byCall.delete(id)
+        out.push(hit.text)
+      }
+      const list = bySession.get(e.sessionID)
+      const i = list ? list.findIndex((p) => p.tool === e.tool) : -1
+      if (list && i >= 0) {
+        out.push(list[i]!.text)
+        list.splice(i, 1)
+        if (!list.length) bySession.delete(e.sessionID)
+      }
+      return out
+    }
+
     await ctx.permission.hook("evaluate", async (e: any) => {
       if (argsHidden(e.action)) return
       const resource = Array.isArray(e.resources) ? e.resources[0] : undefined
@@ -99,7 +136,7 @@ export default {
         } else if (d.outcome === "ask") {
           e.effect = "deny"
           e.message = d.message ? `${ASK_PREFIX} ${d.message}` : ASK_PREFIX
-        }
+        } else stash(e, String(e.action), d.context)
       } catch {
         if (e.action !== "shell" || typeof resource !== "string") return
         const msg = await shellFailureCheck(resource, cwd)
@@ -128,9 +165,11 @@ export default {
       // OpenCode cannot change the input here; a thrown error stops the call and the agent reads the message.
       if (d.outcome === "deny") throw new Error(d.message ?? "Blocked by the harness.")
       if (d.outcome === "ask") throw new Error(d.message ? `${ASK_PREFIX} ${d.message}` : ASK_PREFIX)
+      stash(e, e.tool, d.context)
     })
 
     await ctx.tool.hook("execute.after", async (e: any) => {
+      const texts = take(e)
       try {
         const d = await ask("tool.after", {
           sessionID: e.sessionID,
@@ -140,10 +179,11 @@ export default {
           status: e.status,
           error: e.error,
         })
-        if (!d.context || !e.result) return
-        if (!Array.isArray(e.result.content)) e.result.content = []
-        e.result.content.push({ type: "text", text: d.context })
+        if (d.context) texts.push(d.context)
       } catch {}
+      if (!texts.length || !e.result) return
+      if (!Array.isArray(e.result.content)) e.result.content = []
+      for (const text of texts) e.result.content.push({ type: "text", text })
     })
 
     await ctx.session.hook("prompt", async (e: any) => {
