@@ -59,6 +59,8 @@ function normalizeInput(tool: ToolName, raw: Obj, cwd: string, opencode: boolean
         prompt: str(raw.prompt) ?? "",
         model: str(raw.model),
         agent: str(opencode ? raw.agent : (raw.subagent_type ?? raw.agent)),
+        sessionID: str(raw.sessionID), // a follow-up to a running worker (OpenCode)
+        run_in_background: raw.run_in_background === true ? true : undefined, // Claude Code background agent
       })
     default:
       return raw

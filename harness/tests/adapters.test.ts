@@ -91,6 +91,14 @@ describe("normalize", () => {
     expect(ev.stopActive).toBe(true)
   })
 
+  // Seen live 2026-11-25: dropping sessionID made every worker follow-up look like a spawn with no model.
+  test("a subagent follow-up keeps its sessionID, and a Claude background agent keeps its flag", () => {
+    const oc = fromOpenCode("tool.before", { sessionID: "o1", tool: "subagent", input: { agent: "general", prompt: "more", sessionID: "ses_w" } })
+    expect(oc.input?.sessionID).toBe("ses_w")
+    const cc = fromClaude("tool.before", { session_id: "c1", tool_name: "Agent", tool_input: { subagent_type: "general-purpose", prompt: "p", run_in_background: true } })
+    expect(cc.input?.run_in_background).toBe(true)
+  })
+
   test("OpenCode shell, edit, subagent map to the canonical names and inputs", () => {
     const sh = fromOpenCode("tool.before", { sessionID: "o1", cwd: "/w", tool: "shell", input: { command: "ls" } })
     expect(sh.toolName).toBe("shell")
