@@ -141,7 +141,7 @@ All taken by Alex on 2026-11-25.
 | D26 | Landing | Fast-forward only. The agent rebases its worktree branch on `origin/main`. In personal repos (remote owner `acastro2`) it pushes to `main`. In work repos it opens a PR, merged by rebase or ff, never a merge commit. After each landing the harness, not the agent, runs `git merge --ff-only` in the main checkout | A straight history, and the local `main` never drifts |
 | D27 | Semantic Stop checks | Jev judges 4 checks (asks Alex something, false "can't", stale state, state footer) from a short turn summary, and sends back at 0.80 or above. If Jev is blocked or takes over 3 seconds, strict keyword rules decide and the ledger logs `jev-unavailable` | Jev can be blocked, so it never runs without a fallback |
 | D28 | Tuning | `harness wrong` marks the last send-back false, and the agent continues. A rule marked wrong 3 times in a day goes log-only until `harness on <rule>` | A bad rule cannot cost turns all day |
-| D29 | `merge_pr` | One stdio MCP server in `harness/`, loaded by both tools | One implementation of the riskiest action |
+| D29 | Harness MCP server | One stdio MCP server in `harness/`, loaded by both tools, for every action an agent takes on purpose: `merge_pr`, `worktree_new`, `keep_process`, `harness_status`. It calls the same core and ledger. Enforcement stays in hooks, and the kill switch stays the ledger flag | An MCP server only offers tools the model may call, so it cannot enforce. Typed tools are easier to gate and log than parsed shell commands |
 | D30 | Scope | Every git repo on both hosts, except the Obsidian vault and `~/.agents/skill-workspace` | The 11-21 wipe hit a work repo, so opt-in would have missed it |
 | D31 | Who runs `harness` commands | Only Alex: typed in a prompt (read by the `prompt` event, like `MERGE-OK`) or in a terminal he runs. The guard denies agent shell calls to `harness off`, `on` and `wrong` | An agent must never switch the harness off |
 
@@ -177,7 +177,7 @@ Guard rules (each has a rule id, so Phase 8 can switch it off):
 | `destructive-git` | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
 | `ledger-write` | Any write to `~/.local/state/harness/` | "Only the harness writes its state." |
 | `harness-self` | An agent shell call to `harness off`, `harness on` or `harness wrong` (D31) | "Only Alex runs harness commands." |
-| `main-checkout-write` | An edit or write tool on a path in a repo's main checkout, and `git commit`, `git checkout`, `git merge` or `git rebase` run there (D7) | "Work in a worktree: `harness worktree new <name>`. It records the pointer for other agents." |
+| `main-checkout-write` | An edit or write tool on a path in a repo's main checkout, and `git commit`, `git checkout`, `git merge` or `git rebase` run there (D7) | "Work in a worktree: call `worktree_new`. It records the pointer for other agents." |
 
 The guard parses the full command and walks `bash -c`, `sh -c`, `env`, `xargs`, `git -C` and absolute paths before it matches. Why: deny rules in both tools match only the command text.
 
@@ -310,11 +310,11 @@ flowchart LR
   E[session.end] --> K[kill session processes<br/>except keep]
 ```
 
-**Worktrees (D7, D21).** `harness worktree new <name>` runs `git worktree add ~/.worktrees/<repo>/<name> -b <name>`, writes a `worktrees` row, and moves the session there (OpenCode `session.move`; Claude Code `--worktree` or `isolation: worktree` for subagents). The `main-checkout-write` rule denies writes in the main checkout. On `session.start`, the core tells the agent which worktrees are live in the repo and which session owns each one, so no two agents use the same one.
+**Worktrees (D7, D21).** the `worktree_new` tool runs `git worktree add ~/.worktrees/<repo>/<name> -b <name>`, writes a `worktrees` row, and moves the session there (OpenCode `session.move`; Claude Code `--worktree` or `isolation: worktree` for subagents). The `main-checkout-write` rule denies writes in the main checkout. On `session.start`, the core tells the agent which worktrees are live in the repo and which session owns each one, so no two agents use the same one.
 
 **Cleanup (D20, D22).**
 - When a watched PR merges, the waker removes its worktree with `git worktree remove` (never `--force`) and deletes the local branch. A worktree with uncommitted changes stays, and its owner gets a message.
-- On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with `harness keep <pid>` only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
+- On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with the `keep_process` tool only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
 - The Stop check sends the agent back when its scratch files are over 500 MB or a merged worktree is still on disk.
 
 **Handoff protocol (D23).** `HANDOFF.md` stops being a log that only grows. It holds one section per live workstream:
