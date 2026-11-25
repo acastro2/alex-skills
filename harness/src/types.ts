@@ -27,6 +27,7 @@ export interface HarnessEvent {
   prompt?: string // prompt only
   reply?: string // stop only: the last assistant message
   stopActive?: boolean // stop only: the tool already sent the agent back this turn
+  source?: string // session.start only: "startup", "resume", "clear" or "compact"
 }
 
 export type Outcome = "allow" | "deny" | "modify" | "ask"

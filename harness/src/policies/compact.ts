@@ -6,7 +6,7 @@ import { latestTodos, q1, shortArg, type Env } from "./util.ts"
 const RULE = "compact-state"
 const CAP = 1500
 
-export const isCompact = (env: Env): boolean => env.ev.event === "session.start" && env.ev.input?.source === "compact"
+export const isCompact = (env: Env): boolean => env.ev.event === "session.start" && (env.ev.source ?? env.ev.input?.source) === "compact"
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 

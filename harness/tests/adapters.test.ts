@@ -91,6 +91,11 @@ describe("normalize", () => {
     expect(ev.stopActive).toBe(true)
   })
 
+  test("session.start carries the hook's source, so compaction can be told apart", () => {
+    expect(fromClaude("session.start", { session_id: "c1", source: "compact" }).source).toBe("compact")
+    expect(fromOpenCode("session.start", { sessionID: "o1", source: "compact" }).source).toBe("compact")
+  })
+
   // Seen live 2026-11-25: dropping sessionID made every worker follow-up look like a spawn with no model.
   test("a subagent follow-up keeps its sessionID, and a Claude background agent keeps its flag", () => {
     const oc = fromOpenCode("tool.before", { sessionID: "o1", tool: "subagent", input: { agent: "general", prompt: "more", sessionID: "ses_w" } })

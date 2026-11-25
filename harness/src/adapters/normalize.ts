@@ -102,6 +102,7 @@ export function fromClaude(name: EventName, stdin: any): HarnessEvent {
       ev.failed = s.tool_response?.is_error === true
     }
   }
+  if (name === "session.start" && str(s.source)) ev.source = str(s.source)
   if (name === "prompt") ev.prompt = str(s.prompt) ?? ""
   if (name === "stop") {
     ev.reply = str(s.last_assistant_message) ?? ""
@@ -135,6 +136,7 @@ export function fromOpenCode(name: EventName, data: any): HarnessEvent {
       ev.failed = d.failed === true || d.status === "error"
     }
   }
+  if (name === "session.start" && str(d.source)) ev.source = str(d.source)
   if (name === "prompt") ev.prompt = str(d.prompt) ?? ""
   if (name === "stop") {
     ev.reply = str(d.reply) ?? ""

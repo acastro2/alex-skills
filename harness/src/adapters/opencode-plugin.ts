@@ -168,7 +168,7 @@ export default {
           // put the session state back from the ledger. There is no return channel here, so it goes in as synthetic text.
           if (event.type === "session.compaction.ended") {
             try {
-              const d = await ask("session.start", { sessionID }, { input: { source: "compact" } })
+              const d = await ask("session.start", { sessionID, source: "compact" })
               if (d.context) await ctx.session.synthetic({ sessionID, text: d.context })
             } catch {}
             continue

@@ -131,7 +131,6 @@ export async function handle(name: EventName, raw: string): Promise<HookResult> 
     if (process.env.HARNESS_TEST_THROW === "1") throw new Error("HARNESS_TEST_THROW")
     const ev = fromClaude(name, stdin)
     // The compact-state rule needs to know why the session started. HarnessEvent has no field for it.
-    if (name === "session.start" && typeof stdin?.source === "string") ev.input = { source: stdin.source }
     const d = await withTimeout(decide(ev), DECIDE_TIMEOUT_MS)
     return toResult(name, stdin, d)
   } catch {
