@@ -181,7 +181,11 @@ export async function stopChecks(env: Env): Promise<Out> {
   if (needContinue) want.push("asks")
   if (on("stop-state") && reply.length > 400) want.push("footer")
   if (on("stop-stale-state") && !checkedLive) want.push("stale")
-  if (on("stop-false-cant") && usesBrowse(env)) want.push("cant")
+  // A step that is a passkey, login, 2FA, captcha or payment is Alex's by the rule itself, and a turn that already
+  // tried handoff did what the rule asks (seen live 2026-11-25: five false send-backs on passkey taps).
+  const alexOnly = /\b(passkey|pass key|sign[ -]?in|log[ -]?in|2fa|two-factor|captcha|payment|touch id)\b/i.test(reply)
+  const triedHandoff = rows.some((r) => /handoff/i.test(String(r.data.tool ?? "")))
+  if (on("stop-false-cant") && usesBrowse(env) && !alexOnly && !triedHandoff) want.push("cant")
   if (want.length) {
     const summary = scrub(
       [

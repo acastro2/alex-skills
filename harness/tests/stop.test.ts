@@ -148,3 +148,27 @@ describe("cap and repeat", () => {
     expect(sendbacks()).toBe(1)
   })
 })
+
+// Seen live 2026-11-25: stop-false-cant sent the agent back five times for passkey taps, which are Alex's.
+describe("stop-false-cant", () => {
+  const judged = () => {
+    const r = db.query("select data_json from journal where event in ('stop','stop.sendback') order by seq desc limit 1").get() as { data_json: string }
+    return JSON.parse(r.data_json).judged ?? {}
+  }
+  test("a passkey or sign-in step, or a turn that tried handoff, is not judged", async () => {
+    await prompt()
+    await decide(ev({ toolName: "mcp:browse:screenshot", input: { tab: "t" }, output: "ok" }))
+    await stop("Click Sign in with passkey in the open tab, then say in.")
+    expect("cant" in judged()).toBe(false)
+
+    await prompt()
+    await decide(ev({ toolName: "mcp:browse:handoff", input: { tab: "t" }, output: "client exited" }))
+    await stop("The card failed, so do the step by hand.")
+    expect("cant" in judged()).toBe(false)
+
+    await prompt()
+    await decide(ev({ toolName: "mcp:browse:screenshot", input: { tab: "t" }, output: "ok" }))
+    await stop("Please open the settings page and change the theme yourself.")
+    expect("cant" in judged()).toBe(true)
+  })
+})
