@@ -74,6 +74,19 @@ async function viaOptional(rel: string, fn: string, notYet: string, call: (f: (.
   return call(f as (...a: unknown[]) => unknown)
 }
 
+// The harness-change path runs in a fresh process each call. This server lives as long as its session, and
+// Bun keeps the modules it first loaded, so an in-process call would review and apply with stale code
+// (seen live 2026-11-25: a review diffed against the wrong base after an apply).
+function viaFresh(rel: string, fn: string, args: unknown): unknown {
+  const file = join(import.meta.dir, "..", rel)
+  const ledger = join(import.meta.dir, "..", "ledger", "db.ts")
+  const code = `const m = await import(${JSON.stringify(file)}); const { openLedger } = await import(${JSON.stringify(ledger)});
+const db = openLedger(); try { console.log(JSON.stringify(await m[${JSON.stringify(fn)}](db, JSON.parse(process.env.HARNESS_ARGS)))) } finally { db.close() }`
+  const p = Bun.spawnSync([process.execPath, "-e", code], { env: { ...process.env, HARNESS_ARGS: JSON.stringify(args) }, stdout: "pipe", stderr: "pipe" })
+  if (p.exitCode !== 0) throw new Error(p.stderr.toString().trim().split("\n").slice(-3).join(" ") || `${rel} ${fn} failed`)
+  return JSON.parse(p.stdout.toString().trim().split("\n").pop() || "null")
+}
+
 const TOOLS: Tool[] = [
   {
     name: "merge_pr",
@@ -203,9 +216,7 @@ const TOOLS: Tool[] = [
       ["sha"],
     ),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    run: (a, c) => viaOptional("proof/apply.ts", "request", "harness_request ships in Phase 1b", (f) =>
-        f(c.db, { session: c.session, sha: str(a, "sha", true), cwd: str(a, "cwd") }),
-      ),
+    run: (a, c) => viaFresh("proof/apply.ts", "request", { session: c.session, sha: str(a, "sha", true), cwd: str(a, "cwd") }),
   },
   {
     name: "harness_apply",
@@ -218,9 +229,7 @@ const TOOLS: Tool[] = [
       ["request_id"],
     ),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-    run: (a, c) => viaOptional("proof/apply.ts", "apply", "harness_apply ships in Phase 1b", (f) =>
-        f(c.db, { requestId: str(a, "request_id", true), cwd: str(a, "cwd") }),
-      ),
+    run: (a) => viaFresh("proof/apply.ts", "apply", { requestId: str(a, "request_id", true), cwd: str(a, "cwd") }),
   },
   {
     name: "jobs_status",
