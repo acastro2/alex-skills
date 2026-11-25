@@ -92,6 +92,51 @@ const denied: Array<[string, string, ShellCtx?]> = [
   ["(cd /x; rm -rf /x)", "recursive-delete"],
   ["ls | xargs -I{} rm -rf {}", "recursive-delete"],
   ["timeout 5 nohup rm -rf /x", "recursive-delete"],
+  // canary misses (D63): wrappers, ${IFS}, heredocs, aliases, cd tracking, interpreters
+  ["rm${IFS}-rf${IFS}/home/u/Developer/repos", "recursive-delete"],
+  ["rm$IFS-rf$IFS/home/u/Developer/repos", "recursive-delete"],
+  ["busybox rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["command rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["\\rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["env rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["nice rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["timeout 5 rm -rf /home/u/Developer/repos", "recursive-delete"],
+  ["bash <<EOF\nrm -rf /home/u/Developer/repos\nEOF", "recursive-delete"],
+  ["sh <<'X'\nrm -rf /home/u/Developer/repos\nX", "recursive-delete"],
+  ["cat <<EOF | sh\nrm -rf /home/u/Developer/repos\nEOF", "recursive-delete"],
+  ["bash <<< 'rm -rf /home/u/Developer/repos'", "recursive-delete"],
+  ["git -c alias.x='!rm -rf /home/u/Developer/repos' x", "recursive-delete"],
+  ["cd /home/u/Developer && rm -rf repos", "recursive-delete"],
+  ["cd / && rm -rf home", "recursive-delete"],
+  ["cd $X && rm -rf build", "recursive-delete"],
+  ["(cd /tmp && true); rm -rf build", "recursive-delete"], // the cd is scoped to the subshell
+  ["python3 -c \"import shutil; shutil.rmtree('/home/u/Developer/repos')\"", "recursive-delete"],
+  ["python3 -c \"import shutil,sys; shutil.rmtree(sys.argv[1])\" x", "recursive-delete"],
+  ["perl -e 'use File::Path; rmtree(\"/home/u/Developer/repos\")'", "recursive-delete"],
+  ["ruby -e 'require \"fileutils\"; FileUtils.rm_rf(\"/home/u/Developer/repos\")'", "recursive-delete"],
+  ["node -e \"require('fs').rmSync('/home/u/Developer/repos',{recursive:true})\"", "recursive-delete"],
+  ["bun -e \"require('fs').rmdirSync(p,{recursive:true})\"", "recursive-delete"],
+  ["git branch --delete --force feat", "destructive-git"],
+  ["git branch -d -f feat", "destructive-git"],
+  ["git branch --force -d feat", "destructive-git"],
+  ["git branch -df feat", "destructive-git"],
+  ["cd /home/u/.local/state/harness && rm ledger.db", "ledger-write"],
+  ["cd /home/u/.local/state/harness && echo x > ledger.db", "ledger-write"],
+  ["cd ~/.local/state/harness; touch ledger.db", "ledger-write"],
+  ["cd /home/u/.claude && echo {} > settings.json", "harness-config-write"],
+]
+
+// Decoded text piped into a shell: harness-self with its own message.
+const DECODED_MSG = "Running decoded text as a shell is not allowed. Run the command itself."
+const decoded = [
+  "echo cm0gLXJmIC9ob21lL2NhbmFyeS9EZXZlbG9wZXIvcmVwb3M= | base64 -d | sh",
+  "echo cm0gLXJmIC9ob21lL2NhbmFyeS9EZXZlbG9wZXIvcmVwb3M= | base64 -d | bash",
+  "echo Z2ggcHIgbWVyZ2UgMQ== | base64 --decode | sh",
+  "echo 726d202d7266202f78 | xxd -r -p | sh",
+  "openssl enc -d -base64 -in x | zsh",
+  "echo x | base64 -d | gunzip | dash",
+  'eval "$(echo cm0gLXJmIC94 | base64 -d)"',
+  'bash -c "$(base64 -d x.b64)"',
 ]
 
 const allowed: Array<[string, ShellCtx?]> = [
@@ -112,6 +157,24 @@ const allowed: Array<[string, ShellCtx?]> = [
   ["rm -rf /tmp/x 2>/dev/null"],
   ["cat ~/.local/state/harness/x"],
   ["rsync -a --delete src/ host:/data/"],
+  // Not false positives: the canary fixes must not widen the net.
+  ["python3 -c \"import shutil; shutil.rmtree('/tmp/x')\""],
+  ["node -e \"require('fs').rmSync('/tmp/x',{recursive:true})\""],
+  ["node -e \"require('fs').rmSync(p,{force:true})\""],
+  ["git branch -d feat"],
+  ["git branch --delete feat"],
+  ["git branch -f feat HEAD~1"],
+  ["cd /tmp && rm -rf build"],
+  ["cd /tmp; rm -rf build/out"],
+  ["(cd /home/u && ls); rm -rf /tmp/x"],
+  ["base64 -d file > out.bin"],
+  ["echo aGk= | base64 -d"],
+  ["echo aGk= | base64 -d | cat"],
+  ["bash script.sh"],
+  ["cat <<EOF > /tmp/x\nrm -rf /home/u/Developer/repos\nEOF"],
+  ["git -c alias.co=checkout co main"],
+  ["busybox ls -la"],
+  ["echo ${IFS}"],
 ]
 
 describe("checkShell", () => {
@@ -120,6 +183,12 @@ describe("checkShell", () => {
     const hit = checkShell(line, c)
     expect(hit?.ruleId).toBe(ruleId)
     expect(hit?.message).toBe(MSG[ruleId])
+  })
+
+  test.each(decoded.map((l) => [l, ctx] as const))("denies decoded text run as a shell: %s", (line, c) => {
+    const hit = checkShell(line, c)
+    expect(hit?.ruleId).toBe("harness-self")
+    expect(hit?.message).toBe(DECODED_MSG)
   })
 
   test.each(allowed.map(([l, c]) => [l, c ?? ctx] as const))("allows %s", (line, c) => {

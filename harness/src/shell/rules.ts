@@ -1,7 +1,7 @@
 // Shell guard rules (spec: Phase 1 Guard rules, D5, D31, D36, D37, D72). Pure functions.
 // The guard stops agent mistakes, not a hostile agent (D72).
 import { posix as path } from "node:path"
-import { parse, type Parsed } from "./parse"
+import { parse, type Dirs, type Parsed } from "./parse"
 import { CONFIG_MSG, LEDGER_MSG, inside, isHarnessConfigPath, isLedgerPath } from "./paths"
 
 export interface ShellCtx {
@@ -27,6 +27,8 @@ const MSG = {
   "ledger-write": LEDGER_MSG,
   "harness-config-write": CONFIG_MSG,
 } as const
+
+const DECODED_MSG = "Running decoded text as a shell is not allowed. Run the command itself."
 
 const set = (...s: string[]) => new Set(s)
 
@@ -62,16 +64,28 @@ const globPrefix = (p: string) => {
   return i < 0 ? p : p.slice(0, i)
 }
 
+// The directory a command runs in after the `cd`s before it. null when a `cd` target is not literal.
+function effectiveCwd(dirs: Dirs | undefined, ctx: ShellCtx): string | null {
+  let cwd: string | null = ctx.cwd
+  for (const d of dirs ?? []) {
+    const e = d === null ? null : expand(d, ctx)
+    if (e === null || e.includes("$") || e.includes("`") || (cwd === null && !e.startsWith("/"))) cwd = null
+    else cwd = path.resolve(cwd ?? "/", e)
+  }
+  return cwd
+}
+
 // Absolute path of a write target, or null if it holds a variable or substitution we cannot resolve.
-function resolveTarget(raw: string, ctx: ShellCtx): string | null {
+function resolveTarget(raw: string, ctx: ShellCtx, cwd: string | null = ctx.cwd): string | null {
   const e = expand(raw, ctx)
   if (e.includes("$") || e.includes("`")) return null
-  return path.resolve(ctx.cwd, globPrefix(e))
+  if (cwd === null && !e.startsWith("/")) return null
+  return path.resolve(cwd ?? "/", globPrefix(e))
 }
 
 // D5: allowed when inside an allow root, or tracked/ignored inside the repo. Repo root and .git never.
-function targetDenied(raw: string, ctx: ShellCtx): boolean {
-  const p = resolveTarget(raw, ctx)
+function targetDenied(raw: string, ctx: ShellCtx, cwd: string | null = ctx.cwd): boolean {
+  const p = resolveTarget(raw, ctx, cwd)
   if (p === null) return true
   const repo = ctx.repoRoot ? path.resolve(ctx.repoRoot) : null
   if (repo && (p === repo || inside(p, repo + "/.git"))) return true
@@ -110,13 +124,45 @@ function rsyncTargets(args: string[]): string[] | null {
   return [dest]
 }
 
+// Interpreter inline code that deletes a tree: python shutil.rmtree, perl rmtree/remove_tree, ruby FileUtils.rm_rf,
+// node/bun rmSync/rm/rmdirSync with `recursive`. A literal first argument gets the rm -rf allowlist; anything else is outside.
+const RM_ALWAYS = /(?:shutil\.rmtree|\brmtree|\bremove_tree|FileUtils\.(?:rm_rf|rm_r|rmtree|remove_dir|remove_entry(?:_secure)?)|\brm_rf)\s*\(?\s*/g
+const RM_NODE = /\b(?:rmSync|rmdirSync|rm|rmdir)\s*\(/g
+const RECURSIVE_ON = /recursive['"]?\s*:\s*(?!false|0\b)/
+const LITERAL_ARG = /^\s*[rbfuRBFU]{0,2}(['"`])([^'"`$\\{]*)\1\s*(?:[,)\]};]|$)/
+
+function callArgs(code: string, from: number): string {
+  let depth = 1
+  for (let j = from; j < code.length; j++) {
+    if (code[j] === "(") depth++
+    else if (code[j] === ")" && --depth === 0) return code.slice(from, j)
+  }
+  return code.slice(from)
+}
+
+function codeDeletes(code: string, ctx: ShellCtx, cwd: string | null): boolean {
+  for (const [re, needsRecursive] of [[RM_ALWAYS, false], [RM_NODE, true]] as const) {
+    for (const m of code.matchAll(re)) {
+      const start = m.index + m[0].length
+      if (needsRecursive && !RECURSIVE_ON.test(callArgs(code, start))) continue
+      const lit = LITERAL_ARG.exec(code.slice(start))
+      if (!lit || targetDenied(lit[2], ctx, cwd)) return true
+    }
+  }
+  return false
+}
+
+const INLINE_FLAG = /^(?:-[A-Za-z]*[ce]|-p|-E|--eval|--print|eval)$/
+
 function recursiveDelete(P: Parsed, ctx: ShellCtx): boolean {
-  for (const c of P.commands) {
+  for (const [n, c] of P.commands.entries()) {
     const args = c.slice(1)
+    const cwd = effectiveCwd(P.dirs[n], ctx)
+    if (INTERP_CODE.test(c[0]) && args.some((a) => INLINE_FLAG.test(a)) && codeDeletes(args.join("\n"), ctx, cwd)) return true
     const targets = c[0] === "rm" ? rmTargets(args) : c[0] === "find" ? findTargets(args) : c[0] === "rsync" ? rsyncTargets(args) : null
     if (targets === null) continue
     // No visible target (for example `xargs rm -rf`): the real targets are unknown.
-    if (targets.length === 0 || targets.some((t) => targetDenied(t, ctx))) return true
+    if (targets.length === 0 || targets.some((t) => targetDenied(t, ctx, cwd))) return true
   }
   return false
 }
@@ -164,9 +210,13 @@ function destructiveGit(P: Parsed): boolean {
         if (!staged || worktree) return true
         break
       }
-      case "branch":
-        if (before.some((a) => /^-[A-Za-z]*D[A-Za-z]*$/.test(a))) return true
+      case "branch": {
+        // -D, or a delete (-d, --delete) together with force (-f, --force).
+        const del = before.includes("--delete") || hasShort(before, "d")
+        const force = before.includes("--force") || hasShort(before, "f")
+        if (hasShort(before, "D") || (del && force)) return true
         break
+      }
     }
   }
   return false
@@ -232,15 +282,21 @@ const ALL_ARGS = set("mv", "rm", "touch", "truncate", "tee", "chmod", "chown", "
 const INTERP_CODE = /^(python[\d.]*|bun|node|deno|perl|ruby|php)$/
 const CODE_FLAGS = set("-c", "-e", "-p", "-E", "--eval", "--print", "eval")
 
+interface Target {
+  path: string
+  dirs: Dirs
+}
+
 interface Writes {
-  targets: string[]
+  targets: Target[]
   code: string[] // argv of interpreters run with inline code
 }
 
 function writes(P: Parsed): Writes {
-  const targets = [...P.redirects]
+  const all: Target[] = P.redirects.map((path, n) => ({ path, dirs: P.redirectDirs[n] }))
   const code: string[] = []
-  for (const c of P.commands) {
+  for (const [n, c] of P.commands.entries()) {
+    const targets: string[] = []
     const prog = c[0]
     const args = c.slice(1)
     if (DEST_LAST.has(prog)) {
@@ -262,9 +318,12 @@ function writes(P: Parsed): Writes {
     } else if (INTERP_CODE.test(prog) && args.some((a) => CODE_FLAGS.has(a))) {
       code.push(...args)
     }
+    for (const t of targets) all.push({ path: t, dirs: P.dirs[n] })
   }
-  return { targets, code }
+  return { targets: all, code }
 }
+
+const resolveWrite = (t: Target, ctx: ShellCtx) => resolveTarget(t.path, ctx, effectiveCwd(t.dirs, ctx))
 
 // Inline code (python -c, bun -e) that names a protected path counts as a write only when it also
 // writes something. A read-only script that loads settings.json is not a write (seen live 2026-11-25).
@@ -274,7 +333,7 @@ const writesCode = (code: string[]) => WRITE_CODE.test(code.join("\n"))
 function ledgerWrite(W: Writes, ctx: ShellCtx): boolean {
   if (W.code.some((s) => s.includes(".local/state/harness")) && writesCode(W.code)) return true
   return W.targets.some((t) => {
-    const p = resolveTarget(t, ctx)
+    const p = resolveWrite(t, ctx)
     return p !== null && isLedgerPath(p, ctx.home)
   })
 }
@@ -282,7 +341,7 @@ function ledgerWrite(W: Writes, ctx: ShellCtx): boolean {
 function harnessConfigWrite(W: Writes, ctx: ShellCtx): boolean {
   if (W.code.some((s) => /\.claude\/settings|opencode\.jsonc?|\.config\/opencode\/plugins\/harness/.test(s)) && writesCode(W.code)) return true
   return W.targets.some((t) => {
-    const p = resolveTarget(t, ctx)
+    const p = resolveWrite(t, ctx)
     return p !== null && isHarnessConfigPath(p, ctx.home)
   })
 }
@@ -294,17 +353,18 @@ export function checkShell(line: string, ctx: ShellCtx): ShellHit | null {
   let W: Writes | null = null
   const writesOf = () => (W ??= writes(P))
   // Order matters: the first match wins.
-  const rules: Array<[keyof typeof MSG, () => boolean]> = [
+  const rules: Array<[keyof typeof MSG, () => boolean, string?]> = [
     ["harness-self", () => harnessSelf(P, line, ctx)],
+    ["harness-self", () => P.decodedShell, DECODED_MSG],
     ["ledger-write", () => ledgerWrite(writesOf(), ctx)],
     ["harness-config-write", () => harnessConfigWrite(writesOf(), ctx)],
     ["destructive-git", () => destructiveGit(P)],
     ["merge-in-shell", () => mergeInShell(P, ctx)],
     ["recursive-delete", () => recursiveDelete(P, ctx)],
   ]
-  for (const [ruleId, hit] of rules) {
+  for (const [ruleId, hit, message] of rules) {
     if (ctx.only && !ctx.only.includes(ruleId)) continue
-    if (hit()) return { ruleId, message: MSG[ruleId] }
+    if (hit()) return { ruleId, message: message ?? MSG[ruleId] }
   }
   return null
 }

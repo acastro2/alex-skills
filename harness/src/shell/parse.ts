@@ -1,12 +1,20 @@
 // Shell line parser for the guard rules. Pure, never throws.
 // It is a scanner, not a full shell: it splits a line into simple commands, walks
 // substitutions and `bash -c` style wrappers, and reports redirect targets.
-// shortcut: no heredoc bodies as code, no variable expansion, no aliases or functions.
+// shortcut: heredoc bodies are code only when a shell reads them; no variable expansion (except ${IFS}),
+// no aliases or functions. `cd` is tracked within one line; `cd -`, `popd` and `cd $X` make the cwd unknown.
+
+// The `cd` arguments applied so far, in order. null means a directory we cannot resolve.
+export type Dirs = ReadonlyArray<string | null>
 
 export interface Parsed {
   commands: string[][] // simple commands, wrappers unwrapped, program basenamed
   programs: string[] // every program seen, wrappers included (sudo, env, bash...)
   redirects: string[] // targets of >, >>, >|, &>, N>
+  dirs: Dirs[] // the cd chain in force for each command, parallel to commands
+  redirectDirs: Dirs[] // same for each redirect
+  decodedShell: boolean // decoded text (base64 -d, xxd -r, openssl enc -d) is fed to a shell
+  cwd: Dirs // parser state: the cd chain at the current point of the scan
 }
 
 const MAX_DEPTH = 16
@@ -15,7 +23,23 @@ const RESERVED = new Set(["if", "then", "else", "elif", "fi", "do", "done", "whi
 const SHELLS = new Set(["bash", "sh", "zsh", "dash", "ksh"])
 const DONE = Symbol("done")
 
-type Redirect = null | "out" | "dup" | "in" | "heredoc"
+type Redirect = null | "out" | "dup" | "in" | "here" | "heredoc"
+
+const DECODE_RE = /\b(?:base64\s+(?:-[a-zA-Z]*[dD]\b|--decode)|xxd\s+-[a-zA-Z]*r|openssl\s+[^|)`]*\s-d\b)/
+const hasSubst = (s: string) => s.includes("$(") || s.includes("`")
+
+function isDecoder(c: string[]): boolean {
+  const args = c.slice(1)
+  switch (c[0]) {
+    case "base64":
+      return args.some((a) => a === "--decode" || /^-[a-zA-Z]*[dD][a-zA-Z]*$/.test(a))
+    case "xxd":
+      return args.some((a) => /^-[a-zA-Z]*r[a-zA-Z]*$/.test(a))
+    case "openssl":
+      return args.includes("-d")
+  }
+  return false
+}
 
 function baseName(p: string): string {
   const t = p.replace(/\/+$/, "")
@@ -63,12 +87,17 @@ function substitution(line: string, i: number, out: Parsed, depth: number): numb
 
 function scan(line: string, out: Parsed, depth: number): void {
   if (depth > MAX_DEPTH) return
+  const savedDirs = out.cwd
   const n = line.length
   let seg: string[] = []
   let cur = ""
   let inWord = false
   let pending: Redirect = null
   const heredocs: string[] = []
+  let docs: string[] = [] // heredoc bodies and here-strings of the current line
+  let lineProg = out.programs.length
+  let decoded = false // a decoder ran earlier in the current pipeline
+  const parens: Dirs[] = []
   let i = 0
 
   const flush = () => {
@@ -78,17 +107,34 @@ function scan(line: string, out: Parsed, depth: number): void {
     inWord = false
     const kind = pending
     pending = null
-    if (kind === "out") out.redirects.push(w)
+    if (kind === "out") addRedirect(w)
     else if (kind === "dup") {
-      if (!/^(\d+|-)$/.test(w)) out.redirects.push(w)
+      if (!/^(\d+|-)$/.test(w)) addRedirect(w)
     } else if (kind === "heredoc") heredocs.push(w)
+    else if (kind === "here") docs.push(w)
     else if (kind === null) seg.push(w)
+  }
+  const addRedirect = (w: string) => {
+    out.redirects.push(w)
+    out.redirectDirs.push(out.cwd)
   }
   const endSeg = () => {
     flush()
     pending = null
-    if (seg.length) emit(seg, out, depth)
+    if (seg.length) {
+      const c = emit(seg, out, depth)
+      if (c) {
+        if (decoded && SHELLS.has(c[0])) out.decodedShell = true
+        if (isDecoder(c)) decoded = true
+      }
+    }
     seg = []
+  }
+  // Text a shell reads from stdin runs as commands. Only when a shell program is on the line.
+  const flushDocs = () => {
+    if (docs.length && out.programs.slice(lineProg).some((p) => SHELLS.has(p))) for (const d of docs) scan(d, out, depth + 1)
+    docs = []
+    lineProg = out.programs.length
   }
   const dropFd = () => {
     if (inWord && /^\d+$/.test(cur)) {
@@ -162,19 +208,37 @@ function scan(line: string, out: Parsed, depth: number): void {
       i++
     } else if (c === "\n") {
       endSeg()
+      decoded = false
       i++
       while (heredocs.length) {
         const d = heredocs.shift() as string
+        const body: string[] = []
         while (i < n) {
           let e = line.indexOf("\n", i)
           if (e < 0) e = n
           const l = line.slice(i, e)
           i = e + 1
           if (l === d || l.replace(/^\t+/, "") === d) break
+          body.push(l)
         }
+        docs.push(body.join("\n"))
       }
-    } else if (c === ";" || c === "(" || c === ")" || c === "|") {
+      flushDocs()
+    } else if (c === "|") {
       endSeg()
+      if (line[i + 1] === "|") {
+        decoded = false
+        i += 2
+      } else i += line[i + 1] === "&" ? 2 : 1
+    } else if (c === "(" || c === ")") {
+      endSeg()
+      decoded = false
+      if (c === "(") parens.push(out.cwd)
+      else if (parens.length) out.cwd = parens.pop() as Dirs
+      i++
+    } else if (c === ";") {
+      endSeg()
+      decoded = false
       i++
     } else if (c === "&") {
       if (line[i + 1] === ">") {
@@ -183,6 +247,7 @@ function scan(line: string, out: Parsed, depth: number): void {
         pending = "out"
       } else {
         endSeg()
+        decoded = false
         i++
       }
     } else if (c === ">") {
@@ -197,7 +262,7 @@ function scan(line: string, out: Parsed, depth: number): void {
       dropFd()
       if (line.startsWith("<<<", i)) {
         i += 3
-        pending = "in"
+        pending = "here"
       } else if (line.startsWith("<<", i)) {
         i += 2
         if (line[i] === "-") i++
@@ -214,6 +279,8 @@ function scan(line: string, out: Parsed, depth: number): void {
     }
   }
   endSeg()
+  flushDocs()
+  if (depth > 0) out.cwd = savedDirs
 }
 
 // Option skipping shared by the wrappers. Returns the index of the first non-option word.
@@ -234,6 +301,7 @@ const set = (...s: string[]) => new Set(s)
 const SUDO_ARGS = set("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-r", "-t", "-U")
 const XARGS_ARGS = set("-I", "-n", "-P", "-L", "-d", "-E", "-s", "-a", "--max-args", "--max-procs", "--max-lines", "--delimiter", "--arg-file", "--eof")
 const ENV_ARGS = set("-u", "-C", "--unset", "--chdir")
+const GIT_VALUE_OPTS = set("-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env")
 
 function unwrap(a: string[], out: Parsed, depth: number): string[] | null | typeof DONE {
   const p = a[0]
@@ -245,6 +313,7 @@ function unwrap(a: string[], out: Parsed, depth: number): string[] | null | type
       const w = rest[k]
       if (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(w)) {
         if (rest[k + 1] === undefined) return null
+        if (hasSubst(rest[k + 1]) && DECODE_RE.test(rest[k + 1])) out.decodedShell = true
         scan(rest[k + 1], out, depth + 1)
         return DONE
       }
@@ -256,8 +325,24 @@ function unwrap(a: string[], out: Parsed, depth: number): string[] | null | type
   switch (p) {
     case "eval":
       if (!rest.length) return null
+      if (hasSubst(rest.join(" ")) && DECODE_RE.test(rest.join(" "))) out.decodedShell = true
       scan(rest.join(" "), out, depth + 1)
       return DONE
+    case "git": {
+      // `git -c alias.x='!cmd' x` runs cmd as a shell line.
+      for (let k = 0; k < rest.length && rest[k].startsWith("-"); k++) {
+        if (rest[k] === "-c" && rest[k + 1] !== undefined) {
+          const m = /^alias\.[^=]+=!([\s\S]*)$/.exec(rest[k + 1])
+          if (m) scan(m[1], out, depth + 1)
+          k++
+        } else if (GIT_VALUE_OPTS.has(rest[k])) k++
+      }
+      return null
+    }
+    case "busybox":
+    case "builtin":
+    case "setsid":
+      return inner(skipOpts(rest, set()))
     case "env": {
       const si = rest.findIndex((w) => w === "-S" || w === "--split-string")
       if (si >= 0 && rest[si + 1] !== undefined) {
@@ -284,27 +369,40 @@ function unwrap(a: string[], out: Parsed, depth: number): string[] | null | type
   return null
 }
 
-function emit(raw: string[], out: Parsed, depth: number): void {
+// A `cd` (or pushd) changes the directory for the commands after it. popd and `cd -` make it unknown.
+function applyCd(a: string[], out: Parsed): void {
+  if (a[0] === "popd") out.cwd = [...out.cwd, null]
+  else {
+    const pos = a.slice(1).filter((w) => w !== "--" && !/^-[LPe@]+$/.test(w))
+    out.cwd = [...out.cwd, pos[0] === "-" ? null : (pos[0] ?? "~")]
+  }
+}
+
+// Returns the final command it recorded itself, or null when wrappers handed the work to a nested scan.
+function emit(raw: string[], out: Parsed, depth: number): string[] | null {
   let a = raw.slice()
   for (;;) {
     while (a.length && (RESERVED.has(a[0]) || ASSIGN.test(a[0]))) a.shift()
-    if (!a.length) return
+    if (!a.length) return null
     a[0] = baseName(a[0])
     out.programs.push(a[0])
     const next = unwrap(a, out, depth)
-    if (next === DONE) return
+    if (next === DONE) return null
     if (next === null) {
       out.commands.push(a)
-      return
+      out.dirs.push(out.cwd)
+      if (a[0] === "cd" || a[0] === "pushd" || a[0] === "popd") applyCd(a, out)
+      return a
     }
     a = next
   }
 }
 
 export function parse(line: string): Parsed {
-  const out: Parsed = { commands: [], programs: [], redirects: [] }
+  const out: Parsed = { commands: [], programs: [], redirects: [], dirs: [], redirectDirs: [], decodedShell: false, cwd: [] }
   try {
-    scan(String(line ?? ""), out, 0)
+    // ${IFS} and $IFS are whitespace in practice: `rm${IFS}-rf${IFS}/x` is `rm -rf /x`.
+    scan(String(line ?? "").replace(/\$\{IFS\}|\$IFS(?![A-Za-z0-9_])/g, " "), out, 0)
   } catch {
     // keep what we have
   }
