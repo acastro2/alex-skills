@@ -576,7 +576,7 @@ flowchart LR
   NM[new claude-* model] --> EV[prune evals, USD 5 cap] --> MB[morning brief]
 ```
 
-- **Monitor page (D58 to D61).** Build it first in this phase: the decision inbox, the egress warnings and the steering metric all show there.
+- **Monitor page (D58 to D61).** Build it first in this phase, as designed in `docs/specs/harness-office.md`: an isometric office floor plus 8 working views. The decision inbox, the egress warnings and the steering metric all show there.
 - **Correction miner (D57)**, **red-team canary (D63)** and **new-model evals (D66)** are jobs (D69) in `harness serve`, run by in-process `Bun.cron`. Each starts `opencode run --format json` on the pinned cheap model, Cursor first; the canary runs it inside `bwrap`. The `jobs_status` and `job_run_now` MCP tools show and trigger them.
 - **Canary bypasses are tests**, so the next `bun test harness/` run fails until the guard is fixed.
 - **Flight recorder (D64)** replays from the journal (D68). **Compaction safety (D65)** reads and writes the ledger only.
