@@ -14,7 +14,9 @@ const scratchLimitMb = () => Number(process.env.HARNESS_SCRATCH_LIMIT_MB) || 500
 
 // Top-level entries under tmpdir() that this session's tool rows wrote to (rows carry data.path).
 function scratchDirs(env: Env): string[] {
-  const roots = [...new Set([tmpdir(), "/tmp"])]
+  // Longest root first, one match per path: OpenCode's tmpdir is /tmp/opencode, so under the plain /tmp root
+  // a file in it made the whole shared /tmp/opencode count as one session's scratch (seen live: 505 MB).
+  const roots = [...new Set([tmpdir(), process.env.TMPDIR?.replace(/\/+$/, ""), "/tmp"].filter(Boolean) as string[])].sort((a, b) => b.length - a.length)
   const rows = env.db
     .query("select data_json from journal where session_id = ? and event = 'tool.after' and data_json like '%\"path\"%'")
     .all(env.ev.session) as { data_json: string }[]
@@ -22,12 +24,11 @@ function scratchDirs(env: Env): string[] {
   for (const r of rows) {
     const p = JSON.parse(r.data_json).path
     if (typeof p !== "string") continue
-    for (const root of roots) {
-      const first = p.startsWith(`${root}/`) ? p.slice(root.length + 1).split("/")[0] : ""
-      if (first) tops.add(join(root, first))
-    }
+    const root = roots.find((r) => p.startsWith(`${r}/`))
+    const first = root ? p.slice(root.length + 1).split("/")[0] : ""
+    if (root && first) tops.add(join(root, first))
   }
-  return [...tops].filter((d) => existsSync(d))
+  return [...tops].filter((d) => existsSync(d) && !roots.includes(d))
 }
 
 const sizeMb = (dir: string): number => {

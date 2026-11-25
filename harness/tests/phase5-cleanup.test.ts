@@ -140,6 +140,27 @@ describe("stop-cleanup", () => {
     }
   })
 
+  // Seen live 2026-11-25: TMPDIR=/tmp/opencode, so the plain /tmp root made the whole shared folder count.
+  test("a nested temp root counts only the session's own top folder, never the root itself", async () => {
+    process.env.HARNESS_SCRATCH_LIMIT_MB = "1"
+    const shared = mkdtempSync(join(tmpdir(), "harness-p5-shared-"))
+    const prev = process.env.TMPDIR
+    process.env.TMPDIR = shared
+    try {
+      writeFileSync(join(shared, "someone-else.bin"), Buffer.alloc(3 * 1024 * 1024, 1))
+      const mine = join(shared, "mine")
+      mkdirSync(mine)
+      writeFileSync(join(mine, "small.txt"), "x")
+      await prompt()
+      await decide(ev({ toolName: "write", input: { path: join(mine, "small.txt") }, output: "ok" }))
+      expect((await stop("Wrote a small file.")).ruleId).not.toBe("stop-cleanup")
+    } finally {
+      if (prev === undefined) delete process.env.TMPDIR
+      else process.env.TMPDIR = prev
+      rmSync(shared, { recursive: true, force: true })
+    }
+  })
+
   test("sends back when a removed worktree of this session is still on disk", async () => {
     const wt = mkdtempSync(join(tmpdir(), "harness-p5-wt-"))
     try {
