@@ -4,6 +4,9 @@
 // and its arguments, used once.
 import type { Database } from "bun:sqlite";
 import { createHash, randomBytes } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -24,6 +27,41 @@ type Challenge =
   | { kind: "login"; challenge: string; exp: number }
   | { kind: "action"; challenge: string; exp: number; action: string; digest: string };
 
+/** The passkey file shared by every host, so ONE synced passkey (1Password) works on each. */
+export function sharedPasskeyPath(): string {
+  return process.env.HARNESS_PASSKEY_FILE || join(homedir(), ".config", "harness", "passkey.json");
+}
+
+export interface SharedPasskey {
+  credential_id: string;
+  public_key: string; // base64url
+  created_at: number;
+}
+
+/** Write the shared passkey file, mode 0600. */
+export function saveShared(db: Database, file = sharedPasskeyPath()): void {
+  const row = db.query("SELECT credential_id, public_key FROM page_auth LIMIT 1").get() as { credential_id: string; public_key: Uint8Array } | null;
+  if (!row) return;
+  const body: SharedPasskey = { credential_id: row.credential_id, public_key: Buffer.from(row.public_key).toString("base64url"), created_at: Date.now() };
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(file, 0o600);
+}
+
+/** Insert the shared passkey into an empty page_auth. Returns true when it did. A bad file is ignored. */
+export function loadShared(db: Database, file = sharedPasskeyPath()): boolean {
+  if (!existsSync(file)) return false;
+  if ((db.query("SELECT COUNT(*) AS n FROM page_auth").get() as { n: number }).n > 0) return false;
+  try {
+    const j = JSON.parse(readFileSync(file, "utf8")) as Partial<SharedPasskey>;
+    if (typeof j.credential_id !== "string" || typeof j.public_key !== "string" || !j.credential_id || !j.public_key) return false;
+    db.query("INSERT INTO page_auth (credential_id, public_key, sign_count, session_until) VALUES (?, ?, 0, NULL)").run(j.credential_id, Buffer.from(j.public_key, "base64url"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function argsDigest(args: unknown): string {
   const canon = (v: unknown): unknown =>
     Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v as object).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, x]) => [k, canon(x)])) : v;
@@ -39,7 +77,10 @@ export class Auth {
   constructor(
     private db: Database,
     private clock: () => number = Date.now,
-  ) {}
+    private sharedFile: string | null = null,
+  ) {
+    if (sharedFile) loadShared(db, sharedFile);
+  }
 
   hasCredential(): boolean {
     return (this.db.query("SELECT COUNT(*) AS n FROM page_auth").get() as { n: number }).n > 0;
@@ -117,7 +158,8 @@ export class Auth {
     }).catch(() => null);
     if (!v?.verified) throw new AuthError(400, "The passkey could not be verified.");
     const cred = v.registrationInfo.credential;
-    this.db.query("INSERT INTO page_auth (credential_id, public_key, sign_count, session_until) VALUES (?, ?, ?, NULL)").run(cred.id, cred.publicKey, cred.counter);
+    this.db.query("INSERT INTO page_auth (credential_id, public_key, sign_count, session_until) VALUES (?, ?, ?, NULL)").run(cred.id, cred.publicKey, 0);
+    if (this.sharedFile) saveShared(this.db, this.sharedFile);
     return this.mintSession();
   }
 
@@ -155,7 +197,7 @@ export class Auth {
   private async verifyAssertion(origin: string, challenge: string, response: unknown): Promise<void> {
     const id = (response as { id?: string } | null)?.id;
     const cred = id
-      ? (this.db.query("SELECT credential_id, public_key, sign_count FROM page_auth WHERE credential_id = ?").get(id) as { credential_id: string; public_key: Uint8Array; sign_count: number } | null)
+      ? (this.db.query("SELECT credential_id, public_key FROM page_auth WHERE credential_id = ?").get(id) as { credential_id: string; public_key: Uint8Array } | null)
       : null;
     if (!cred) throw new AuthError(401, "Unknown passkey.");
     const v = await verifyAuthenticationResponse({
@@ -164,10 +206,12 @@ export class Auth {
       expectedOrigin: origin,
       expectedRPID: RP_ID,
       requireUserVerification: true,
-      credential: { id: cred.credential_id, publicKey: new Uint8Array(cred.public_key), counter: cred.sign_count ?? 0 },
+      // A synced passkey (1Password) reports counter 0 on every host, and a counting one can differ per host.
+      // The shared file lets any host accept the credential, so the counter is never a check: pass 0.
+      // Replay is blocked by the one-time challenge.
+      credential: { id: cred.credential_id, publicKey: new Uint8Array(cred.public_key), counter: 0 },
     }).catch(() => null);
     if (!v?.verified) throw new AuthError(401, "The passkey tap did not verify.");
-    this.db.query("UPDATE page_auth SET sign_count = ? WHERE credential_id = ?").run(v.authenticationInfo.newCounter, cred.credential_id);
   }
 }
 

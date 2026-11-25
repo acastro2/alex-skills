@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# harness-tls: make the localhost cert the page serves HTTPS with (1Password passkeys need https).
+# Needs mkcert on PATH. Idempotent: prints `no change` when the cert is signed by the current mkcert CA
+# and is valid for more than 30 days, else `issued`. It never runs `mkcert -install`: trust is a separate step.
+# Usage: harness-tls            (dir: $HARNESS_TLS_DIR or ~/.config/harness/tls)
+set -euo pipefail
+
+if ! command -v mkcert >/dev/null 2>&1; then echo "harness-tls: mkcert not found on PATH" >&2; exit 1; fi
+dir=${HARNESS_TLS_DIR:-$HOME/.config/harness/tls}
+cert="$dir/localhost.pem"
+key="$dir/localhost-key.pem"
+root="$(mkcert -CAROOT)/rootCA.pem"
+if [ ! -f "$root" ]; then echo "harness-tls: no mkcert root CA at $root (run mkcert -install once)" >&2; exit 1; fi
+
+if [ -f "$cert" ] && [ -f "$key" ] \
+  && openssl verify -CAfile "$root" "$cert" >/dev/null 2>&1 \
+  && openssl x509 -in "$cert" -noout -checkend $((30 * 86400)) >/dev/null 2>&1; then
+  echo "no change: $cert"
+  exit 0
+fi
+
+mkdir -p "$dir"
+mkcert -cert-file "$cert" -key-file "$key" localhost 127.0.0.1 ::1 >/dev/null 2>&1
+chmod 600 "$key"
+echo "issued: $cert"

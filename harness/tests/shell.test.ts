@@ -14,7 +14,7 @@ const ctx: ShellCtx = {
 const ignored: ShellCtx = { ...ctx, isTrackedOrIgnored: () => true }
 
 const MSG: Record<string, string> = {
-  "recursive-delete": "Recursive delete outside the allowlist. Name the exact files, or ask Alex.",
+  "recursive-delete": "Recursive delete outside the allowlist, or of a path the harness cannot see (a $VAR or $(...)). Write the literal path, or ask Alex.",
   "merge-in-shell": "Use the `merge_pr` tool to land a PR. To update a branch, rebase: `git rebase origin/main`.",
   "destructive-git": "Destructive git is blocked. Use a safe form, or ask Alex.",
   "harness-self": "Only Alex runs harness commands. Ask Alex.",

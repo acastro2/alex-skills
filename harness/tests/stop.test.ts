@@ -89,6 +89,22 @@ describe("stop-commit", () => {
       rmSync(repo, { recursive: true, force: true })
     }
   })
+
+  // Seen live 2026-11-25: a worker whose contract forbids git writes was sent back to commit.
+  test("a worker outside its own worktree is not asked to commit or to show a bundle", async () => {
+    const repo = gitRepo()
+    try {
+      const file = join(repo, "a.txt")
+      writeFileSync(file, "one\n")
+      const w = (over: Partial<HarnessEvent>) => ev({ session: "w1", parentSession: "s1", ...over })
+      await decide(w({ event: "prompt", prompt: "go" }))
+      await decide(w({ toolName: "write", input: { path: file, content: "one\n" }, output: "ok" }))
+      const d = await decide(w({ event: "stop", reply: "STATUS: done" }))
+      expect(d.outcome).toBe("allow")
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
+  })
 })
 
 describe("stop-continue", () => {

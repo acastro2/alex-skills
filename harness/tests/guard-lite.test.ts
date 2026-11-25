@@ -20,7 +20,7 @@ test("denies a recursive delete outside the allowlist", () => {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: "Recursive delete outside the allowlist. Name the exact files, or ask Alex.",
+      permissionDecisionReason: "Recursive delete outside the allowlist, or of a path the harness cannot see (a $VAR or $(...)). Write the literal path, or ask Alex.",
     },
   })
 })

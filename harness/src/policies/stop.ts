@@ -156,10 +156,18 @@ export async function stopChecks(env: Env): Promise<Out> {
   const fired: Check[] = []
   const add = (c: Check | null) => c && on(c.id) && fired.push(c)
 
-  if (on("stop-commit")) add(commitCheck(rows))
+  // A worker outside its own worktree may not commit (its contract); the parent commits, and the harness
+  // verifies the worker on its own. So these two checks apply to a worker only inside a worktree it owns.
+  const worker = !!env.ev.parentSession
+  const ownWt = worker
+    ? (env.db.query("select path from worktrees where session_id = ? and removed_at is null").all(env.ev.session) as { path: string }[]).map((w) => w.path)
+    : []
+  const inOwn = (p: string) => ownWt.some((w) => p === w || p.startsWith(`${w}/`))
+  const commitRows = worker ? rows.filter((r) => !isEdit(r.data) || inOwn(r.data.path)) : rows
+  if (on("stop-commit")) add(commitCheck(commitRows))
   if (on("stop-links")) add(linksCheck(rows, reply))
   if (on("stop-ui-proof")) add(uiProofCheck(rows))
-  if (on("stop-proof")) add(proofCheck(env, rows, reply))
+  if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, rows, reply))
   if (on("stop-handoff")) add(handoffCheck(env, rows))
 
   // One Jev call carries every judgment this stop needs.

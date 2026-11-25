@@ -19,6 +19,11 @@ done
 if [ -z "$bun" ] && command -v mise >/dev/null 2>&1; then bun=$(mise which bun 2>/dev/null || true); fi
 if [ "$cmd" = install ] && [ ! -x "$bun" ]; then echo "harness-service: bun not found; pass --bun" >&2; exit 1; fi
 
+# The page serves https when the cert from harness-tls exists (src/serve/tls.ts).
+tlsdir=${HARNESS_TLS_DIR:-$HOME/.config/harness/tls}
+scheme=http
+if [ -f "$tlsdir/localhost.pem" ] && [ -f "$tlsdir/localhost-key.pem" ]; then scheme=https; fi
+
 label=com.alex.harness-serve
 main="$root/src/serve/main.ts"
 
@@ -47,7 +52,7 @@ EOF
       launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
       printf '%s\n' "$want" > "$plist"
       launchctl bootstrap "gui/$(id -u)" "$plist"
-      echo "installed: $plist (http://localhost:$port)" ;;
+      echo "installed: $plist ($scheme://localhost:$port)" ;;
     uninstall)
       launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
       rm -f "$plist"; echo "removed: $plist" ;;
@@ -83,7 +88,7 @@ case $cmd in
     systemctl --user daemon-reload
     systemctl --user enable --now harness-serve >/dev/null 2>&1
     systemctl --user restart harness-serve
-    echo "installed: $unit (http://localhost:$port)" ;;
+    echo "installed: $unit ($scheme://localhost:$port)" ;;
   uninstall)
     systemctl --user disable --now harness-serve >/dev/null 2>&1 || true
     rm -f "$unit"; systemctl --user daemon-reload; echo "removed: $unit" ;;

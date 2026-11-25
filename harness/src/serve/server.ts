@@ -3,9 +3,10 @@ import type { Database } from "bun:sqlite";
 import { statSync } from "node:fs";
 import { join } from "node:path";
 import { ACTIONS, runAction, type ActionName } from "./actions.ts";
-import { Auth, AuthError, FRESH_ACTIONS, SESSION_MS } from "./auth.ts";
+import { Auth, AuthError, FRESH_ACTIONS, SESSION_MS, sharedPasskeyPath } from "./auth.ts";
 import { openDatabase } from "./db.ts";
 import { buildSnapshot, journalPage, maxSeq, type Snapshot } from "./snapshot.ts";
+import type { TlsFiles } from "./tls.ts";
 
 const UI_DIR = join(import.meta.dir, "..", "..", "ui");
 const APP_DIR = join(UI_DIR, "app");
@@ -47,6 +48,10 @@ export interface AppOptions {
   db: Database;
   port?: number;
   clock?: () => number;
+  /** The scheme the page is served on. Default http. */
+  scheme?: "http" | "https";
+  /** Read and write the shared passkey file (see auth.ts). Off by default so tests never touch the real file. */
+  sharedPasskey?: string | boolean;
 }
 
 export interface App {
@@ -59,7 +64,8 @@ export interface App {
 export function createApp(opts: AppOptions): App {
   const { db } = opts;
   const clock = opts.clock ?? Date.now;
-  const auth = new Auth(db, clock);
+  const scheme = opts.scheme ?? "http";
+  const auth = new Auth(db, clock, opts.sharedPasskey ? (typeof opts.sharedPasskey === "string" ? opts.sharedPasskey : sharedPasskeyPath()) : null);
   const encoder = new TextEncoder();
 
   // One poller for every open stream. It runs only while a stream is open.
@@ -177,7 +183,7 @@ export function createApp(opts: AppOptions): App {
   const originOf = (req: Request): string | null => {
     const origin = req.headers.get("origin");
     const host = req.headers.get("host");
-    return origin && host && origin === `http://${host}` ? origin : null;
+    return origin && host && origin === `${scheme}://${host}` ? origin : null;
   };
 
   async function readJson(req: Request): Promise<Record<string, unknown>> {
@@ -199,7 +205,7 @@ export function createApp(opts: AppOptions): App {
     if (req.method === "GET") {
       if (path === "/") {
         // Passkeys need the RP ID `localhost`, which an IP address cannot be.
-        if (host !== "localhost") return Response.redirect(`http://localhost:${url.port || "80"}/`, 302);
+        if (host !== "localhost") return Response.redirect(`${scheme}://localhost:${url.port || (scheme === "https" ? "443" : "80")}/`, 302);
         return file(join(APP_DIR, "index.html"), "text/html; charset=utf-8");
       }
       if (path === "/app.js") return clientBundle();
@@ -317,18 +323,22 @@ export interface Started {
   app: App;
 }
 
-export async function startServer(opts: { db?: Database; port?: number } = {}): Promise<Started> {
+/** `tls` is opt-in: main.ts passes `tlsFiles()`, so tests on a host that has a cert stay on http. */
+export async function startServer(opts: { db?: Database; port?: number; tls?: TlsFiles | null; sharedPasskey?: string | boolean } = {}): Promise<Started> {
   const db = opts.db ?? (await openDatabase()).db;
   const wanted = opts.port ?? Number(process.env.HARNESS_PORT ?? 4317);
-  const app = createApp({ db });
+  const tls = opts.tls ?? null;
+  const scheme = tls ? "https" : "http";
+  const app = createApp({ db, scheme, sharedPasskey: opts.sharedPasskey });
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: wanted,
     idleTimeout: 30,
+    ...(tls ? { tls: { cert: Bun.file(tls.cert), key: Bun.file(tls.key) } } : {}),
     fetch: (req, srv) => app.fetch(req, srv),
   });
   return {
-    url: `http://localhost:${server.port}`,
+    url: `${scheme}://localhost:${server.port}`,
     port: server.port as number,
     app,
     stop() {
