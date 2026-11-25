@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# fork-tab: fork the current OpenCode or Claude Code session into a new Rex tab.
+# Usage: fork-tab [--tool opencode|claude] [--session ID] [--title T] [--dry-run] -- <prompt...>
+# In a git repo the fork runs in its own worktree: ~/.worktrees/<repo>/<slug>.
+set -eu
+
+tool= session= title= dry=0
+while [ $# -gt 0 ]; do
+  case $1 in
+    --tool) tool=${2:?fork-tab: --tool needs a value}; shift 2 ;;
+    --session) session=${2:?fork-tab: --session needs a value}; shift 2 ;;
+    --title) title=${2:?fork-tab: --title needs a value}; shift 2 ;;
+    --dry-run) dry=1; shift ;;
+    --) shift; break ;;
+    *) echo "fork-tab: unknown option: $1 (put the prompt after --)" >&2; exit 2 ;;
+  esac
+done
+[ $# -gt 0 ] || { echo "fork-tab: no prompt after --" >&2; exit 2; }
+prompt=$*
+
+if [ -z "$tool" ]; then
+  if [ -n "${OPENCODE_SESSION_ID:-}" ]; then tool=opencode; else tool=claude; fi
+fi
+case $tool in
+  opencode) session=${session:-${OPENCODE_SESSION_ID:-}} ;;
+  claude) session=${session:-${CLAUDE_SESSION_ID:-}} ;;
+  *) echo "fork-tab: --tool must be opencode or claude" >&2; exit 2 ;;
+esac
+[ -n "$session" ] || { echo "fork-tab: no session id: pass --session or run inside a session" >&2; exit 2; }
+
+if [ -z "$title" ]; then
+  title=$(printf '%s' "$prompt" | tr -s '[:space:]' ' ' | sed 's/^ *//; s/ *$//' | cut -d' ' -f1-4)
+fi
+[ -n "$title" ] || title=fork
+slug=$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-//; s/-$//')
+[ -n "$slug" ] || slug=fork
+
+herdr=0
+[ "${HERDR_ENV:-}" = 1 ] && herdr=1
+if [ "$herdr" = 0 ] && [ "$dry" = 0 ] && [ -z "${REX_SESSION:-}" ]; then
+  echo "fork-tab: not in Rex (REX_SESSION unset) and not in Herdr (HERDR_ENV unset)" >&2
+  exit 1
+fi
+rex_sid=${REX_SESSION:-<REX_SESSION>}
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+work=$PWD
+wt= branch= excl=
+if [ -n "$repo_root" ]; then
+  base=$HOME/.worktrees/$(basename "$repo_root")
+  name=$slug
+  n=2
+  while [ -e "$base/$name" ] || git -C "$repo_root" show-ref --verify --quiet "refs/heads/fork/$name"; do
+    name=$slug-$n
+    n=$((n + 1))
+  done
+  wt=$base/$name
+  branch=fork/$name
+  work=$wt
+  # info/exclude lives in the common git dir, so every worktree of this repo shares it.
+  excl=$(git -C "$repo_root" rev-parse --git-path info/exclude)
+  case $excl in /*) ;; *) excl=$repo_root/$excl ;; esac
+fi
+
+show() { printf '+'; printf ' %q' "$@"; printf '\n'; }
+
+if [ -n "$wt" ]; then
+  if [ "$dry" = 1 ]; then
+    show git -C "$repo_root" worktree add -b "$branch" "$wt" HEAD
+    echo "+ add .harness/ to $excl"
+  else
+    git -C "$repo_root" worktree add -b "$branch" "$wt" HEAD
+    mkdir -p "$(dirname "$excl")"
+    grep -qxF '.harness/' "$excl" 2>/dev/null || echo '.harness/' >> "$excl"
+  fi
+fi
+
+new=pending
+if [ "$tool" = opencode ]; then
+  if [ "$dry" = 1 ]; then
+    new='<new-session>'
+    printf '+ (cd %q &&' "$work"
+    printf ' %q' opencode run -s "$session" --fork --title "$title" --format json "$prompt"
+    printf ' )\n'
+  else
+    out=$(cd "$work" && opencode run -s "$session" --fork --title "$title" --format json "$prompt")
+    new=$(printf '%s\n' "$out" | grep -o 'ses_[A-Za-z0-9]*' | grep -vxF -- "$session" | head -n 1 || true)
+    [ -n "$new" ] || { echo "fork-tab: no new session id in opencode output" >&2; exit 1; }
+  fi
+  inner="cd $(printf '%q' "$work") && opencode -s $new"
+else
+  inner=$(printf 'cd %q && claude --resume %q --fork-session %q' "$work" "$session" "$prompt")
+  new="(claude fork, id set when its tab starts)"
+fi
+
+if [ "$herdr" = 1 ]; then
+  echo "herdr: open a Herdr tab and run: $inner"
+elif [ "$dry" = 1 ]; then
+  show rex window new -s "$rex_sid" "$title" --focus=false -- sh -c "$inner"
+else
+  rex window new -s "$REX_SESSION" "$title" --focus=false -- sh -c "$inner"
+fi
+
+[ "$dry" = 1 ] || echo "forked: $new in $work"
