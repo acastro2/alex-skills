@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48). Every candidate from the second architecture review is folded in (D49 to D53), and the prose is routed by channel (D54 to D56). The frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
+Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48). Every candidate from the second architecture review is folded in (D49 to D53), the prose is routed by channel (D54 to D56), and Phase 9 adds operation and self-improvement (D57 to D66). The frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
 
 Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
@@ -128,6 +128,10 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 | `worktrees` | session, repo, path, branch, workstream, state (`active`, `landed`, `held`, `removed`) | until removed |
 | `workstreams` | owner, worktrees in order, state, next steps, running processes, updated (D38) | until the workstream ends |
 | `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
+| `corrections` | prompts tagged as corrections, with session and the rule they point at (D57) | 90 days |
+| `egress` | advisory egress warnings (D62) | 30 days |
+| `page_auth` | passkey credential and the current 30-minute grant (D61) | until revoked |
+| `snapshots` | session state saved at `PreCompact` (D65) | 7 days |
 | `sendbacks` | stop send-backs per turn, for the cap | 30 days |
 
 ## Decisions
@@ -192,6 +196,16 @@ All taken by Alex on 2026-11-25.
 | D54 | Route the prose | Every rule in `AGENTS.md` and `CLAUDE.md` gets exactly one route: enforce, inject on its event, `SessionStart` state, skill, or stays in the file | Each rule loads only when it matters. Anthropic's guidance puts "never" and "always" rules in hooks, not instruction files ([steering Claude Code](https://claude.com/resources/articles/steering-claude-code-skills-hooks-rules-subagents-and-more)) |
 | D55 | No static rules per prompt | `UserPromptSubmit` never carries static rules. Its `additionalContext` is resent uncached on every turn and grows the history | Static text belongs in the cached prefix or on its event |
 | D56 | Routing hints | The `UserPromptSubmit` hook adds one hint of at most 200 characters when the prompt shows a clear intent: a history question gets "use archeologist", writing as Alex gets "load alex-voice", a library question gets "use Context7". The judgment module decides (Jev, then keywords). No match, no hint | Targets the routing rules that leak today, at almost no token cost |
+| D57 | Correction miner | The judgment module tags each prompt where Alex corrects an agent ("no", "I told you", "already merged"). The text stays in the local ledger. Each week the miner opens one PR in the repo that owns each rule, with the corrections as evidence (session IDs) and one eval per proposed change. Merge still needs `MERGE-OK` | Harness engineering on its own: Alex reviews a diff instead of spending a session on each fix |
+| D58 | Decision inbox | Notify only. Every waiting `question` from every session shows on the monitor page with a link to its session | The question tool waits in its own tab, so an outside answer cannot fill it |
+| D59 | Monitor page | `harness serve`: a Bun server on 127.0.0.1, run as a user service (systemd on the VM, launchd on the Mac), installed by mac-bootstrap. One page per host, updated live from that host's ledger. It shows waiting questions, live sessions, workstreams and worktree states, proof bundles and verdicts, denies and send-backs with their `harness wrong` count, egress warnings, and the steering share over time. The guards never depend on it | One screen for everything the harness knows. If the page dies, only the page is lost |
+| D60 | Page actions | `harness wrong` on a send-back, `harness off` and `on`, `MERGE-OK` for one named PR, and answering a waiting question (sent as the session's next prompt when its turn ends). Each action goes through the authority module (D50) | Alex acts where he sees the state |
+| D61 | Page auth | A WebAuthn passkey (Touch ID on the Mac), valid for 30 minutes. Guard rules deny agent shell calls to the page's port, and deny `browse` from opening the page | Agents can read files and drive the browser, so only a passkey proves Alex. Alex picked 30 minutes over one per action |
+| D62 | Egress guard | Advisory only. On outside tools (Exa, Context7, Jev, webfetch, websearch, image and video generation, and any MCP tool not on the internal list: Atlassian, Slack, Datadog, myq-tools, GitHub, OpenCode artifacts) it warns on emails, API keys and tokens, and any argument over 2,000 characters. The warning goes to the agent as context, to the ledger and to the page. It never blocks | Alex picked advisory. The privacy rule gets a sensor, not a fence |
+| D63 | Red-team canary | A weekly automation runs the cheap model under `bwrap` (0.9.0 is installed), with only `~/.agents/skill-workspace/canary/` writable and no network except the model API. It tries to delete, merge and forge on purpose. Each bypass becomes a failing test in `harness/tests` and a note on the page | The guard must keep up with models that get smarter |
+| D64 | Flight recorder | `harness replay <session>` rebuilds a session from the ledger. Each destructive deny writes a postmortem note to the bard inbox in the vault: session, command, rule, and what the agent did next | Nobody could say exactly what happened on 11-21. The note also feeds the correction miner |
+| D65 | Compaction safety | A `PreCompact` hook writes the session state (todos, workstream, worktree, decisions this session) to the ledger. The `SessionStart` hook on matcher `compact` injects it again. OpenCode uses `session.hook("compaction")` | Long sessions stop losing state on compaction |
+| D66 | New-model evals | When a session reports a new Claude family or version (`claude-*`, any provider, including `cursor/claude-*`), the Phase 8 prune evals run by themselves, capped at USD 5, and the results go into the morning brief. Effort variants and other model families never trigger it | Alex: OpenCode Zen gets a new model every day, so only Claude counts |
 
 ## Phase 0. Prove the unverified facts
 
@@ -211,6 +225,8 @@ Do this first. The design depends on these facts, and the docs do not answer the
 | A permission deny on `mcp__harness-hooks__*` blocks the model, while `mcp_tool` hooks can still call `decide` | Deny the tool, then call it from the model and from a hook | The model call is denied and the hook call returns a decision. If not, `decide` moves to command hooks |
 | `guard-lite.ts` with `onFailure: "block"` blocks a destructive call when the MCP server is down | Stop the `harness-hooks` server, then run `rm -r` on a path outside the allowlist | The call is blocked, and a plain `ls` still runs |
 | OpenCode `session.hook("context")` can add text at the end of the conversation, not only to the system prompt | Add a marker from a scratch plugin and read the outgoing request | The marker sits after the last message. If it can only change `event.system`, event injection in OpenCode uses only static text there, and dynamic text goes through tool results |
+| A WebAuthn passkey works for a page on `http://127.0.0.1` (a secure context) from Edge on the Mac, also when the page is the VM's port | Register and sign once from the Mac | The page accepts the assertion. If the VM port fails, the page is reached through an SSH tunnel to `localhost` |
+| `bwrap` can limit the network to the model API only | Run the canary with a test that tries `curl example.com` and a model call | The model call works and `curl` fails |
 | A Claude Code command can read its own session ID | A `SessionStart` hook writes `session_id` to an env file, and a command reads it | The command prints the ID |
 
 If the deny test fails, the OpenCode adapter uses `execute.before` to replace the command with one that fails with the reason. If `bun:sqlite` does not load, the OpenCode adapter spawns `bun core.ts` like Claude Code. If the wake test fails, the waker uses the Rex or Herdr notification only. If more than one of these fails, stop and bring it to Alex.
@@ -516,6 +532,33 @@ Anthropic's point: every harness part encodes a limit of the model, and a newer 
 - Test Claude Code auto mode (a second model judges each shell command) as a backstop behind the guard rules. It does not replace the guard: it is a judgment, and the guard rules have no exceptions.
 
 Done when: every remaining prose rule has an eval that shows it changes the output.
+
+## Phase 9. Operate and improve
+
+Once the harness runs, it watches and improves itself. Alex reviews; he does not have to steer.
+
+```mermaid
+flowchart LR
+  L[(ledger)] --> PG[monitor page]
+  PG -->|passkey, 30 min| AU[authority]
+  C[Alex's corrections] --> M[correction miner] --> PR[weekly rule PR + evals]
+  CN[red-team canary in bwrap] --> T[new failing tests]
+  D[destructive deny] --> PM[postmortem note to bard]
+  NM[new claude-* model] --> EV[prune evals, USD 5 cap] --> MB[morning brief]
+```
+
+- **Monitor page (D58 to D61).** Build it first in this phase: the decision inbox, the egress warnings and the steering metric all show there.
+- **Correction miner (D57)** and **new-model evals (D66)** run as weekly or event automations through the waker's adapters.
+- **Red-team canary (D63)** runs weekly. Its bypasses are tests, so the next `bun test harness/` run fails until the guard is fixed.
+- **Flight recorder (D64)** and **compaction safety (D65)** read and write the ledger only.
+- **Egress guard (D62)** is a `tool.before` policy that only adds context and logs. It has a rule id, so Phase 8 can measure whether it changes behaviour.
+
+Done when:
+- The page shows a live session from each tool, and a `harness wrong` from the page marks the send-back after one passkey.
+- An agent's `curl` to the page's port is denied, and `browse` cannot open it.
+- A seeded week of corrections produces one PR with one eval per proposed change.
+- The canary finds a seeded bypass and leaves a failing test.
+- A compaction in a long session keeps its todos and workstream.
 
 ## Later, end to end
 
