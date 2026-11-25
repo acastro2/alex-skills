@@ -13,3 +13,5 @@ Rules in code, not prose: hooks for Claude Code and a plugin for OpenCode that c
 | `guard-lite.ts` | the destructive rules alone, for when the core fails |
 
 Run the tests with `bun test` from this folder.
+
+Merges land through the `merge_pr` tool after a fresh passkey tap on the page, or `MERGE-OK <pr>` as the first line of a prompt.
