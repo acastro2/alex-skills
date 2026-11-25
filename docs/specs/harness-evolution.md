@@ -6,7 +6,7 @@ Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
 - OpenCode features: `ses_dec5c94cdffe1v7zVO7K45B0Q3`. Checked on OpenCode v2.4.1.
 - Claude Code features: `ses_dec5c74ffffeXTLt2kV33YEDxE`. Checked on Claude Code 2.1.332.
-- Practice: `ses_dec5c5a5affeXDt64DMht0sGg7`.
+- Practice: `ses_dec5c5a5affeXDt64DMht0sGg7`, plus Anthropic's [3 patterns for harnessing Claude's intelligence](https://claude.com/resources/articles/harnessing-claudes-intelligence) (April 2026), added after Alex asked.
 
 ## Why
 
@@ -52,7 +52,7 @@ Why one script: two copies drift. Why thin adapters: each tool's hook API change
 | # | Decision | Answer | Why |
 | --- | --- | --- | --- |
 | D1 | Scope of this change | Plan doc only | Alex picked it, 2026-11-25 |
-| D2 | `gh pr merge` | Deny, unless Alex's prompt has a one-time token | Alex picked it over a hard deny. He keeps the merge in chat. |
+| D2 | `gh pr merge` | Deny, unless Alex's prompt has a one-time token | Alex picked it over a hard deny. He keeps the merge in chat. The token is checked by a typed `merge_pr` tool, not by shell parsing (see Phase 1). |
 | D3 | Where the code lives | `alex-skills/harness/` | Alex picked it over a new repo. One fewer repo. |
 | D4 | Token word and lifetime | Open. Proposal: `MERGE-OK`, one merge, then gone | |
 | D5 | Recursive `rm` allowlist | Open. Proposal: the scratchpad, `~/.agents/skill-workspace`, and paths inside the current git repo that git tracks or ignores | |
@@ -79,14 +79,16 @@ Rules:
 | Rule | Denies | Reason the agent sees |
 | --- | --- | --- |
 | Recursive delete | `rm -r`, `rm -rf`, `find -delete`, `rsync --delete` outside the D5 allowlist | "Recursive delete outside the allowlist. Name the exact files, or ask Alex." |
-| Merge | `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Merge needs Alex's token in this session (D2)." |
+| Merge in shell | Every `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Use the `merge_pr` tool." |
 | Destructive git | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
 | Token tamper | Any write to the token folder | "Only Alex's prompt can create a merge token." |
 
+Merges go through one typed `merge_pr` tool (an MCP tool or an OpenCode custom tool), with `repo` and `pr` as fields. Why: Anthropic recommends a dedicated tool for hard-to-reverse actions, because the harness then sees typed arguments it can gate, log and replay, not a command string it must parse ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). The shell guard then only has to deny every merge form, which is simpler than allowing one.
+
 The merge token, per tool:
 
-- **Claude Code:** a `UserPromptSubmit` hook sees `MERGE-OK` in Alex's prompt and writes `~/.local/state/harness/tokens/<session_id>`. The `PreToolUse` guard allows one merge and deletes the file.
-- **OpenCode:** `session.hook("prompt")` sees the word and sets a flag in plugin memory for that session. `permission.hook("evaluate")` allows one merge and clears it.
+- **Claude Code:** a `UserPromptSubmit` hook sees `MERGE-OK` in Alex's prompt and writes `~/.local/state/harness/tokens/<session_id>`. The `merge_pr` tool allows one merge and deletes the file.
+- **OpenCode:** `session.hook("prompt")` sees the word and sets a flag in plugin memory for that session. `merge_pr` reads the flag, allows one merge and clears it.
 
 Why a hook writes the token: the agent can write files, so a token the agent can create proves nothing. The guard denies writes to the token folder, and the OpenCode flag lives in memory the agent cannot reach.
 
@@ -144,6 +146,17 @@ Done when: two sessions in one repo see each other's ID, and a finished worker s
 For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus a pointer to the guard. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
 
 Done when: the line counts drop, and a short eval shows no rule loss. Run the `coding` worker eval and one merge-attempt eval before and after the cut.
+
+## Phase 7. Prune by eval
+
+Anthropic's point: every harness part encodes a limit of the model, and a newer model can make it dead weight ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). So the harness gets the same test as a skill.
+
+- For each prose rule left after Phase 6, run one eval with the rule and one without it, on the current model.
+- Remove each rule that changes nothing. Keep the eval, so the next model change re-runs it.
+- Count the MCP tools loaded in a session. Tools sit in the cached prefix, so a long or changing list costs cache hits and attention. Move rarely used servers behind Code Mode search.
+- Test Claude Code auto mode (a second model judges each shell command) as a backstop behind `guard.py`. It does not replace the guard: it is a judgment, and the guard rules have no exceptions.
+
+Done when: every remaining prose rule has an eval that shows it changes the output.
 
 ## Later, end to end
 
