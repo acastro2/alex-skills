@@ -145,6 +145,59 @@ describe("worker lifecycle", () => {
     expect(JSON.parse(v.data_json).workerId).toBe(w.id)
     expect(rows("select verdict from bundles where worker_id = ?", w.id)).toEqual([{ verdict: "green" }])
   }, 30_000)
+
+  // Seen live 2026-11-25: OpenCode subagents return at launch, and the verify ran before the worker did anything.
+  test("a background spawn defers the verify to the worker session's stop", async () => {
+    const r = repo()
+    const input = { ...spawnInput(r), prompt: `${spawnInput(r).prompt}\n\nHARNESS-CONTRACT v1` } // OpenCode denies a spawn without it
+    await decide(ev({ tool: "opencode", toolName: "subagent", input, cwd: r }))
+    const out = "The subagent is working in the background (sessionID: ses_child1). You will receive a message."
+    const d = await decide(ev({ tool: "opencode", event: "tool.after", toolName: "subagent", input, output: out, cwd: r }))
+    const [w] = rows("select id, worker_session_id, last_activity from workers")
+    expect(w.worker_session_id).toBe("ses_child1")
+    expect(w.last_activity).toBeNull()
+    expect(d.context).toContain("Its verify runs when it finishes")
+    await Bun.sleep(300)
+    expect(rows("select 1 from journal where event = 'worker.verified'")).toHaveLength(0)
+
+    const child = (over: Partial<HarnessEvent>) => ev({ tool: "opencode", session: "ses_child1", parentSession: "s1", cwd: r, ...over })
+    await decide(child({ event: "stop", reply: "nothing yet" })) // no tool calls this round: no verify
+    expect(rows("select last_activity from workers")[0].last_activity).toBeNull()
+    await decide(child({ toolName: "shell", input: { command: "ls", cwd: r } }))
+    await decide(child({ event: "stop", reply: "finished" }))
+    expect(await waitFor(() => rows("select 1 from journal where event = 'worker.verified'").length > 0, 20_000)).toBe(true)
+    expect(rows("select verdict from bundles where worker_id = ?", w.id)).toEqual([{ verdict: "green" }])
+  }, 30_000)
+
+  // Seen live: a follow-up to a running worker carries a sessionID and no model, and was denied.
+  test("a follow-up to a running worker is not a spawn", async () => {
+    const d = await decide(ev({ tool: "opencode", toolName: "subagent", input: { agent: "general", sessionID: "ses_child1", prompt: "one more note" } }))
+    expect(d.outcome).toBe("allow")
+    expect(rows("select 1 from workers")).toHaveLength(0)
+  })
+})
+
+// Seen live: prose criteria under ACCEPTANCE: were stored as commands and would run as shell.
+describe("parseAcceptance", () => {
+  test("keeps commands, drops prose", async () => {
+    const { parseAcceptance } = await import("../src/policies/worker.ts")
+    const prompt = [
+      "ACCEPTANCE:",
+      "- `cd $W && python3 scripts/check.py` exits 0.",
+      "- all pass.",
+      "- tests → `bun test`",
+      "cd ~/x && bun test tests/a.test.ts",
+      "../tool/detect --json a.css (must print [])",
+      "Plus: screenshots you READ at 2560x1440.",
+      "Unified diffs of every edited file.",
+    ].join("\n")
+    expect(parseAcceptance(prompt)).toEqual([
+      "cd $W && python3 scripts/check.py",
+      "bun test",
+      "cd ~/x && bun test tests/a.test.ts",
+      "../tool/detect --json a.css",
+    ])
+  })
 })
 
 describe("main-checkout-write", () => {

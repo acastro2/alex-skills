@@ -16,6 +16,8 @@ export const isGeneral = (agent: unknown) => agent === "general" || agent === "g
 
 export function guardSpawn(env: Env): Out | null {
   const i = env.ev.input ?? {}
+  // A follow-up to a running worker (sessionID set) steers it; it is not a new spawn.
+  if (typeof i.sessionID === "string" && i.sessionID) return null
   const prompt = String(i.prompt ?? "")
   const model = i.model
 

@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# harness-service: run `harness serve` (the page, the waker, the jobs) as a user service (D59).
+# systemd --user on Linux, a LaunchAgent on macOS. Idempotent: a re-run with no change restarts nothing.
+# Usage: harness-service install|uninstall|status [--bun <path>] [--port <n>]
+set -euo pipefail
+
+cmd=${1:-status}
+shift || true
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+bun=$(command -v bun 2>/dev/null || true)
+port=${HARNESS_PORT:-4317}
+while [ $# -gt 0 ]; do
+  case $1 in
+    --bun) bun=$2; shift 2 ;;
+    --port) port=$2; shift 2 ;;
+    *) echo "harness-service: unknown argument $1" >&2; exit 2 ;;
+  esac
+done
+if [ -z "$bun" ] && command -v mise >/dev/null 2>&1; then bun=$(mise which bun 2>/dev/null || true); fi
+if [ "$cmd" = install ] && [ ! -x "$bun" ]; then echo "harness-service: bun not found; pass --bun" >&2; exit 1; fi
+
+label=com.alex.harness-serve
+main="$root/src/serve/main.ts"
+
+if [ "$(uname)" = Darwin ]; then
+  plist="$HOME/Library/LaunchAgents/$label.plist"
+  want=$(cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key><array><string>$bun</string><string>$main</string></array>
+  <key>EnvironmentVariables</key><dict><key>HARNESS_PORT</key><string>$port</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$HOME/Library/Logs/harness-serve.log</string>
+  <key>StandardErrorPath</key><string>$HOME/Library/Logs/harness-serve.log</string>
+</dict></plist>
+EOF
+)
+  case $cmd in
+    install)
+      mkdir -p "$(dirname "$plist")"
+      if [ -f "$plist" ] && [ "$(cat "$plist")" = "$want" ] && launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1; then
+        echo "no change: $plist"; exit 0
+      fi
+      launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
+      printf '%s\n' "$want" > "$plist"
+      launchctl bootstrap "gui/$(id -u)" "$plist"
+      echo "installed: $plist (http://localhost:$port)" ;;
+    uninstall)
+      launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
+      rm -f "$plist"; echo "removed: $plist" ;;
+    status) launchctl print "gui/$(id -u)/$label" 2>/dev/null | grep -E "state|pid" || echo "not running" ;;
+    *) echo "usage: harness-service install|uninstall|status" >&2; exit 2 ;;
+  esac
+  exit 0
+fi
+
+unit="$HOME/.config/systemd/user/harness-serve.service"
+want=$(cat <<EOF
+[Unit]
+Description=harness serve: page, waker and jobs (D59)
+
+[Service]
+ExecStart=$bun $main
+Environment=HARNESS_PORT=$port
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+)
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+case $cmd in
+  install)
+    mkdir -p "$(dirname "$unit")"
+    if [ -f "$unit" ] && [ "$(cat "$unit")" = "$want" ] && systemctl --user is-active --quiet harness-serve; then
+      echo "no change: $unit"; exit 0
+    fi
+    printf '%s\n' "$want" > "$unit"
+    systemctl --user daemon-reload
+    systemctl --user enable --now harness-serve >/dev/null 2>&1
+    systemctl --user restart harness-serve
+    echo "installed: $unit (http://localhost:$port)" ;;
+  uninstall)
+    systemctl --user disable --now harness-serve >/dev/null 2>&1 || true
+    rm -f "$unit"; systemctl --user daemon-reload; echo "removed: $unit" ;;
+  status) systemctl --user is-active harness-serve || true ;;
+  *) echo "usage: harness-service install|uninstall|status" >&2; exit 2 ;;
+esac

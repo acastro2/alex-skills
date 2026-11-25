@@ -10,6 +10,7 @@ import { buildSnapshot, journalPage, maxSeq, type Snapshot } from "./snapshot.ts
 const UI_DIR = join(import.meta.dir, "..", "..", "ui");
 const APP_DIR = join(UI_DIR, "app");
 const OFFICE_DIST = join(UI_DIR, "office", "dist", "office.js");
+const OFFICE_CSS = join(UI_DIR, "office", "dist", "office.css");
 const OFFICE_MODEL = join(import.meta.dir, "..", "ui", "office-model.ts");
 
 const POLL_MS = 500;
@@ -206,6 +207,7 @@ export function createApp(opts: AppOptions): App {
       if (path === "/theme.js") return file(join(APP_DIR, "theme.js"), "text/javascript; charset=utf-8");
       if (path === "/favicon.svg") return file(join(APP_DIR, "favicon.svg"), "image/svg+xml");
       if (path === "/office/office.js") return file(OFFICE_DIST, "text/javascript; charset=utf-8");
+      if (path === "/office/office.css") return file(OFFICE_CSS, "text/css; charset=utf-8");
       if (path === "/office/model.js") return officeModelBundle();
     }
 

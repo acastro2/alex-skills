@@ -12,7 +12,7 @@ import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
 import { stopChecks } from "./policies/stop.ts"
 import { allow, q1, toolData, type Env, type Out } from "./policies/util.ts"
-import { guardPush, recordWorker, startVerify } from "./policies/worker.ts"
+import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { guardWorktree } from "./policies/worktree.ts"
 import { takeInbox } from "./waker/deliver.ts"
 import { ALLOW, type Decision, type HarnessEvent } from "./types.ts"
@@ -140,7 +140,9 @@ async function route(env: Env, off: boolean): Promise<Out> {
       return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId } }
     }
     case "stop":
-      return off ? allow({ data: { reply: (ev.reply ?? "").slice(0, 4000) } }) : stopChecks(env)
+      if (off) return allow({ data: { reply: (ev.reply ?? "").slice(0, 4000) } })
+      verifyFinishedWorker(env)
+      return stopChecks(env)
   }
 }
 

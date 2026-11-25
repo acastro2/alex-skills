@@ -1,0 +1,21 @@
+/* Office figure styles. build.mjs puts the anatomy kit stylesheet in front of this file. */
+.of-figure{margin:0}
+.of-stage{position:relative}
+.of-svg{touch-action:pan-y}
+.of-target{cursor:pointer;outline:none}
+.of-hit-fill{fill:transparent;stroke:none;pointer-events:all}
+.of-hit{fill:none;stroke:none;pointer-events:none;stroke-width:1.1px;stroke-linejoin:round;stroke-dasharray:3 3}
+.of-target:hover>.of-hit,.of-target:focus-visible>.of-hit{stroke:var(--anatomy-lit)}
+.of-target[data-tour]>.of-hit{stroke:var(--anatomy-mid)}
+.of-dim{opacity:.42}
+.of-screen{fill:var(--anatomy-shade-0);stroke:var(--anatomy-lo);stroke-width:.5px}
+.of-cursor{fill:var(--anatomy-hi);animation:of-blink 1.2s steps(1,end) infinite}
+.of-t[data-tone="red"],.iso-face-text[data-tone="red"]{fill:var(--anatomy-red)}
+.of-job{fill:var(--anatomy-blue);stroke:none}
+.of-sign{letter-spacing:.14em}
+.of-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
+.iso-solid[data-tone-fill="red"]>.iso-top{fill:var(--anatomy-red)}
+@keyframes of-blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.of-cursor{animation:none}}
+.of-root .iso-plate{padding:46px 14px 40px}
+@media (max-width:560px){.of-root .iso-plate{padding:40px 4px 56px}}

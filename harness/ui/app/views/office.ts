@@ -12,6 +12,7 @@ declare global {
 }
 
 type LedgerSnapshot_ = import("../ctx.ts").Snapshot["ledger"];
+type PageSnapshot = import("../ctx.ts").Snapshot;
 
 /** What an office part reports on click. The figure names a view and an item; `kind` is accepted as a fallback. */
 export interface OfficeTarget {
@@ -26,7 +27,7 @@ export interface MountOpts {
 }
 type Mounted = void | { update?(state: unknown): void; destroy?(): void; setTheme?(t: string): void };
 type MountFn = (el: HTMLElement, state: unknown, opts: MountOpts) => Mounted;
-type StateFn = (snap: LedgerSnapshot_, prev?: unknown) => unknown;
+type StateFn = (snap: PageSnapshot, prev?: unknown) => unknown;
 
 const KIND_TO_VIEW: Record<string, ViewName> = {
   session: "sessions", desk: "sessions", worker: "sessions", flag: "sessions", rack: "sessions",
@@ -38,6 +39,10 @@ const KIND_TO_VIEW: Record<string, ViewName> = {
   change: "changes",
   job: "jobs", clock: "jobs",
   bell: "inbox",
+  jobs: "jobs",
+  grants: "journal",
+  rules: "rules",
+  steering: "journal",
 };
 
 export function targetToHash(t: OfficeTarget | string): string {
@@ -46,7 +51,7 @@ export function targetToHash(t: OfficeTarget | string): string {
   const view = raw && (raw === "office" || ["inbox", "sessions", "worktrees", "bundles", "rules", "journal", "changes", "jobs"].includes(raw)) ? (raw as ViewName) : "office";
   const q: Record<string, string> = {};
   // A click on the ticker or stamp opens the journal, filtered to what that part shows.
-  if (view === "journal" && (o.kind === "stamp" || o.kind === "grant")) q.event = "grant";
+  if (view === "journal" && (o.kind === "stamp" || o.kind === "grant" || o.kind === "grants")) q.event = "grant";
   return hashFor(view, view === "office" ? null : o.id ?? null, q);
 }
 
@@ -68,7 +73,7 @@ async function loadFigure(): Promise<void> {
     try {
       const [o, m] = await Promise.all([import(/* @vite-ignore */ officeUrl), import(/* @vite-ignore */ modelUrl)]);
       const mount = (o as { mountOffice?: MountFn }).mountOffice;
-      const state = (m as { officeState?: StateFn }).officeState;
+      const state = (m as { officeStateFromServer?: StateFn }).officeStateFromServer;
       figure = typeof mount === "function" && typeof state === "function" ? { mount, state } : "missing";
     } catch (e) {
       figure = "missing";
@@ -163,10 +168,16 @@ function signalList(ctx: Ctx): HTMLElement {
 async function paintFigure(ctx: Ctx): Promise<void> {
   await loadFigure();
   const theme = window.harnessTheme?.resolved() ?? "light";
-  const opts: MountOpts = { theme, onSelect: (t) => ctx.go(targetToHash(t)) };
+  // The in-tray names a session; the inbox view names a question.
+  const pick = (t: OfficeTarget | string): OfficeTarget | string => {
+    if (typeof t === "string" || t.kind !== "inbox" || !t.id) return t;
+    const q = ctx.snap.views.inbox.find((x) => x.session_id === t.id);
+    return q ? { view: "inbox", id: String(q.seq) } : { view: "inbox" };
+  };
+  const opts: MountOpts = { theme, onSelect: (t) => ctx.go(targetToHash(pick(t))) };
   try {
     if (figure && figure !== "missing") {
-      const state = figure.state(ctx.snap.ledger, prevState);
+      const state = figure.state(ctx.snap, prevState);
       prevState = state;
       if (mounted && mountedTheme === theme && typeof mounted.update === "function") mounted.update(state);
       else {

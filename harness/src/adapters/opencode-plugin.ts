@@ -77,7 +77,13 @@ export default {
       return withTimeout(decide(ev), DECIDE_TIMEOUT_MS)
     }
 
+    // The permission event shows no arguments for subagent and MCP calls (seen live 2026-11-25), so their
+    // rules run in execute.before below, which sees the real input.
+    const argsHidden = (action: unknown) =>
+      typeof action === "string" && !["shell", "edit", "write", "read", "patch"].includes(action)
+
     await ctx.permission.hook("evaluate", async (e: any) => {
+      if (argsHidden(e.action)) return
       const resource = Array.isArray(e.resources) ? e.resources[0] : undefined
       const input =
         e.action === "shell"
@@ -106,11 +112,22 @@ export default {
 
     // The permission event carries no MCP arguments, so the session binding happens here (D29):
     // every call to the harness MCP server gets the caller's real session, whatever the model wrote.
-    await ctx.tool.hook("execute.before", (e: any) => {
-      if (typeof e.tool !== "string" || !e.tool.startsWith("harness_") || !e.sessionID) return
+    await ctx.tool.hook("execute.before", async (e: any) => {
+      if (typeof e.tool !== "string" || !argsHidden(e.tool) || !e.sessionID) return
       const input = e.input && typeof e.input === "object" ? e.input : {}
-      input.session = e.sessionID // in place, in case the host keeps its own reference
-      e.input = input
+      if (e.tool.startsWith("harness_")) {
+        input.session = e.sessionID // in place, in case the host keeps its own reference
+        e.input = input
+      }
+      let d: Decision
+      try {
+        d = await ask("tool.before", { sessionID: e.sessionID, tool: e.tool, input })
+      } catch {
+        return // fail open: only the destructive shell rules fail closed, and they run in evaluate
+      }
+      // OpenCode cannot change the input here; a thrown error stops the call and the agent reads the message.
+      if (d.outcome === "deny") throw new Error(d.message ?? "Blocked by the harness.")
+      if (d.outcome === "ask") throw new Error(d.message ? `${ASK_PREFIX} ${d.message}` : ASK_PREFIX)
     })
 
     await ctx.tool.hook("execute.after", async (e: any) => {
