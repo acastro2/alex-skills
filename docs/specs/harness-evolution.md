@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D82, in the appendix).
+Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D87, in the appendix).
 
 **Ask:** approve Phase 0. Then the phases run in order as one plan (D73), each ending with its Done-when.
 
@@ -140,13 +140,21 @@ Why this shape (from two architecture reviews):
 
 ### Ledger
 
-The proposed columns and keys are in `docs/specs/harness-ledger.erd.json` (an Archify ERD: 20 tables, one domain per module). Phase 1 turns it into the first migration.
+The columns and keys are in `docs/specs/harness-ledger.erd.json` (an Archify ERD: 17 tables, one domain per module). Phase 1 turns it into the first migration.
+
+**Ledger model (D83 to D87).**
+- **Keys:** text primary keys are ULIDs, so rows sort by creation time and concurrent hooks never collide. Busy tables (`journal`, `processes`, `snapshots`) keep INTEGER keys. Times are Unix milliseconds.
+- **Journal:** one row per event and the decision it got. It is append-only: `harness wrong` writes a new row that points at the send-back it marks. Rows carry `turn`, for the per-turn caps, and `data_json`, for each feature's extra fields. Prompt text is scrubbed of known secret patterns before it is stored.
+- **Views, not tables:** `sendbacks`, `nudges`, `corrections` and `egress` are SQL views over the journal, so no copy can drift from its source (D68).
+- **Retention:** links to pruned journal rows become `NULL` (`ON DELETE SET NULL`). Before each prune, the newest pruned row's hash goes into `schema_meta` as the chain anchor, so `harness status` verifies the chain from there. A daily job prunes and runs `PRAGMA incremental_vacuum`.
+- **Detail stays JSON:** bundle detail (`did_json`, `works_json`, `verified_json`) is JSON text with `CHECK (json_valid(...))`, because bundles are written once and read whole. Workstream steps get their own table, `workstream_steps`, because agents change them one at a time and the next step after a merge (D9) is a query.
+- **Setup:** WAL mode, `busy_timeout = 5000`, `foreign_keys = ON`. Forward-only migrations in `harness/migrations/NNN.sql`, with the version in `schema_meta`. Indexes: `journal(session_id, seq)`, `journal(rule_id, time)`, `journal(event, time)`, `worktrees(repo, state)`, `watches(expires_at)`. `sessions.parent_session_id` links a subagent to its parent for the nudges.
 
 One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun:sqlite` in WAL mode, so several sessions can write at once. It is private storage, not an interface: each module in the Shape table owns its tables and offers domain operations (D53). Only those modules import the storage. The guard denies agent writes to it. It is per host: a merge token on the Mac does not work on the VM.
 
 | Table | Holds | Kept |
 | --- | --- | --- |
-| `journal` | every event in and decision out: session, event, rule id, outcome, reason, prompt text, tool args and output as hashes. Each row holds the hash of the row before it (D68) | 90 days |
+| `journal` | one row per event and its decision: session, turn, event, rule id, outcome, reason, scrubbed prompt text, tool args and output as hashes, `data_json`. Each row holds the hash of the row before it (D68, D84) | 90 days |
 | `rules` | rule id, event, owning module, mode, `harness wrong` count today (D67) | permanent |
 | `jobs` | job name, schedule, last run, last result (D69) | permanent |
 | `bundles` | proof bundles: did, works, verified (D41) | 30 days, and the PR body and git note keep the summary |
@@ -155,14 +163,15 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 | `workers` | each spawn: base SHA, test file hashes, acceptance commands, last activity | 30 days |
 | `sessions` | live sessions per repo | until `session.end` |
 | `worktrees` | session, repo, path, branch, workstream, state (`active`, `landed`, `held`, `removed`), sync state (`current`, `behind`, `conflict`) with the conflicting files (D79) | until removed |
-| `workstreams` | owner, worktrees in order, state, next steps, running processes, updated (D38) | until the workstream ends |
+| `workstreams` | owner, repo, title, state, updated (D38) | until the workstream ends |
+| `workstream_steps` | ordered steps per workstream: text, state, the bundle that proved it (D9, D86) | until the workstream ends |
 | `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
-| `corrections` | prompts tagged as corrections, with session and the rule they point at (D57) | 90 days |
-| `egress` | advisory egress warnings (D62) | 30 days |
+| `corrections` (view over `journal`) | prompts tagged as corrections, with session and the rule they point at (D57) | 90 days |
+| `egress` (view over `journal`) | advisory egress warnings (D62) | 30 days |
 | `page_auth` | passkey credential and the current 30-minute grant (D61) | until revoked |
 | `snapshots` | session state saved at `PreCompact` (D65) | 7 days |
-| `sendbacks` | stop send-backs per turn, for the cap | 30 days |
-| `nudges` | drift, wrap-up and stall nudges per turn, for the cap (D78) | 30 days |
+| `sendbacks` (view over `journal`) | stop send-backs per turn, for the cap | 30 days |
+| `nudges` (view over `journal`) | drift, wrap-up and stall nudges per turn, for the cap (D78) | 30 days |
 | `requests` | `harness_request` rows: SHA, digest, rendered review (Phase 1b) | 90 days |
 | `applies` | each apply: SHA, tree hash, schema version, rollback time (Phase 1b) | permanent |
 | `schema_meta` | the ledger schema version | permanent |
@@ -677,6 +686,11 @@ All taken by Alex on 2026-11-25.
 | D80 | Auto-rebase | Behind with no conflict: if the worktree is clean and its owner is not mid-turn, the harness rebases it, runs `verify`, and tells the owner | Branches stay current with no agent effort, never mid-edit |
 | D81 | Conflict autofix | The owner session wakes with the files and the main commits behind them, and resolves, then runs `verify`. With no live owner, a resolver worker on the strong model does it. A green bundle is still needed to land, and 3 failures go to Alex | The agent that wrote the code fixes it, orphans still get fixed, and nothing lands without proof |
 | D82 | Cross-worktree overlap | `merge-tree` between live branches in one repo; both owners are told which files overlap | Parallel agents learn they collide while it is cheap |
+| D83 | Ledger keys | ULID text keys; INTEGER on `journal`, `processes`, `snapshots`; Unix-ms times | Time-ordered with no shared counter across hook processes |
+| D84 | Journal rows | One row per event and its decision, append-only, with `turn` and `data_json`. Prompt text scrubbed of known secrets | Half the rows, one chain link per call, and no pasted key on disk for 90 days |
+| D85 | Projections as views | `sendbacks`, `nudges`, `corrections`, `egress` are views over the journal | One source of truth (D68); 4 fewer tables to migrate |
+| D86 | JSON vs tables | Bundle detail stays JSON with `json_valid`; workstream steps get `workstream_steps` | Bundles are read whole; steps change one at a time |
+| D87 | Retention and chain | `ON DELETE SET NULL` on journal links, a chain anchor in `schema_meta` at each prune, daily prune and vacuum | Pruning never cascades into live state, and the chain stays checkable |
 
 ## Risks
 
