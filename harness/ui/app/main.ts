@@ -220,7 +220,7 @@ function paintRail(): void {
   };
   rail.append(
     item("office", "Dashboard", "office"),
-    ...VIEWS.map((v) => (v.id === "machine" ? item(v.id, v.short, "auto", v.label) : item(v.id, v.short, v.id, v.label, snap?.counts[v.id as ViewId], snap?.alerts[v.id as ViewId] ?? 0))),
+    ...VIEWS.map((v) => (v.id === "machine" ? item(v.id, v.short, "machine", v.label) : item(v.id, v.short, v.id, v.label, snap?.counts[v.id as ViewId], snap?.alerts[v.id as ViewId] ?? 0))),
   );
   // On a narrow screen the rail scrolls sideways: keep the current view in sight.
   const cur = rail.querySelector<HTMLElement>(".is-current");
