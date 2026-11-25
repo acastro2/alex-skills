@@ -13,7 +13,8 @@ const CLIENTS = new Set(["curl", "wget", "nc", "ncat", "netcat", "socat", "telne
 const INTERPRETERS = new Set(["bun", "node", "deno", "python", "python3", "ruby", "perl", "php"])
 const NET_CALL = /fetch\(|urlopen|urllib\.request|requests\.|http\.client|httpx|aiohttp|socket\.|net\.connect|http\.get|https\.get|Net::HTTP|open-uri|IO::Socket|LWP|file_get_contents\(\s*['"]https?:|Bun\.connect|WebSocket/
 
-const READ_ONLY_BROWSE = new Set(["navigate", "snapshot", "screenshot", "screenshot_diff", "wait_for", "scroll", "emulate", "tabs", "status"])
+// handoff only shows Alex a card on the tab: it is how a passkey tap reaches him (seen live 2026-11-25: blocked).
+const READ_ONLY_BROWSE = new Set(["navigate", "snapshot", "screenshot", "screenshot_diff", "wait_for", "scroll", "emulate", "tabs", "status", "handoff"])
 
 const ports = (): string[] => [...new Set([process.env.HARNESS_PORT?.trim() || "", "4317", "4316"].filter((p) => /^\d+$/.test(p)))]
 

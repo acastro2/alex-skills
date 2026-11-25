@@ -161,6 +161,8 @@ describe("page-port (D61)", () => {
     const look = await decide(ev({ toolName: "mcp:browse:navigate", input: { url: "http://127.0.0.1:4317/" } }))
     expect(look.outcome).not.toBe("deny")
     expect((await decide(ev({ toolName: "mcp:browse:screenshot", input: { tab: "t" } }))).outcome).not.toBe("deny")
+    // A passkey tap reaches Alex through handoff on the page's own tab.
+    expect((await decide(ev({ toolName: "mcp:browse:handoff", input: { tab: "t", message: "tap https://localhost:4317" } }))).outcome).not.toBe("deny")
     const ref = await decide(ev({ toolName: "mcp:browse:click", input: { tab: "t", ref: "http://localhost:4317/#x" } }))
     expect([ref.outcome, ref.message]).toEqual(["deny", MSG])
     const ev2 = await decide(ev({ toolName: "mcp:browse:eval", input: { tab: "t", expression: "fetch('http://127.0.0.1:4317/api/action/off')" } }))
