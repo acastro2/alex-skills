@@ -82,6 +82,14 @@ Gotchas:
 - Real repos deploy the same SHA many times: cli/cli has 10 distinct SHAs in 40 deploys. `cd_audit.py` collapses the repeats.
 - `per_page=100` on the jobs API returns HTTP 502 for runs with many jobs. `ci_audit.py` uses 50.
 
+## harness (plan only)
+
+State: spec done and reviewed 2026-11-25, nothing built. `docs/specs/harness-evolution.md` (`de8e40c`): one Bun core behind hooks and an OpenCode plugin, SQLite ledger and journal, MCP tools for deliberate actions, D1 to D74. Threat model D72: guard against agent mistakes, tamper-evident, not a wall (this user has passwordless sudo). One plan, phases 0 to 9 in order (D73). Explainer page source: `~/.agents/skill-workspace/alex-skills/harness/explainer-harness-evolution-20261125/`.
+
+Next:
+1. Alex approves Phase 0. Step 0 installs the pinned Bun (not on the VM yet).
+2. Run the 18 Phase 0 probes and write each result into the spec before Phase 1.
+
 ## Other open items
 
 Not re-checked; each was true when it was written:
