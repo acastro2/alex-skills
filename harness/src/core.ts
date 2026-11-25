@@ -12,6 +12,7 @@ import { injections } from "./policies/inject.ts"
 import { guardMcp } from "./policies/mcp.ts"
 import { afterTool } from "./policies/nudge.ts"
 import { guardPagePort } from "./policies/pageport.ts"
+import { endSessionProcesses, keptProcessLine, registerShellProcesses } from "./policies/processes.ts"
 import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
 import { stopChecks } from "./policies/stop.ts"
@@ -19,6 +20,7 @@ import { allow, isBrowseTool, q1, toolData, type Env, type Out } from "./policie
 import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { guardWorktree } from "./policies/worktree.ts"
 import { takeInbox } from "./waker/deliver.ts"
+import { writeLive } from "./worktree/handoff.ts"
 import { ALLOW, type Decision, type HarnessEvent } from "./types.ts"
 
 const LIVE_MS = 30 * 60_000
@@ -68,6 +70,38 @@ function liveNeighbours(db: Database, ev: HarnessEvent): string[] {
   return rows.map((r) => `Session ${r.id} (${r.tool}) is also working in ${repo}. Use a worktree to change code.`)
 }
 
+// D38: render the live handoff of a repo with active worktrees; say so when another live session works there.
+function liveHandoffLine(db: Database, ev: HarnessEvent): string | null {
+  const s = q1<{ repo: string | null; cwd: string | null }>(db, "select repo, cwd from sessions where id = ?", ev.session)
+  const main = q1<{ repo: string }>(
+    db,
+    "select repo from worktrees where state = 'active' and (repo = ? or path = ? or substr(?, 1, length(path) + 1) = path || '/') limit 1",
+    s?.repo ?? "",
+    s?.repo ?? "",
+    s?.cwd ?? "",
+  )?.repo
+  if (!main) return null
+  writeLive(db, main)
+  const other = q1(
+    db,
+    `select s.id from sessions s
+     where s.ended_at is null and s.id != ? and coalesce(s.parent_session_id, '') != ?
+       and s.id != coalesce((select parent_session_id from sessions where id = ?), '')
+       and (s.repo = ? or s.id in (select session_id from worktrees where repo = ? and state = 'active')
+            or s.id in (select owner_session_id from workstreams where repo = ? and coalesce(state, '') != 'done'))
+       and coalesce((select max(time) from journal where session_id = s.id), 0) > ?
+     limit 1`,
+    ev.session,
+    ev.session,
+    ev.session,
+    main,
+    main,
+    main,
+    ev.time - LIVE_MS,
+  )
+  return other ? `Other sessions work in ${main}. Read .harness/HANDOFF.live.md (in each worktree) to see who does what, and update your own entry with \`workstream_update\`.` : null
+}
+
 const joinContext = (parts: (string | null | undefined)[]): string | undefined => {
   const t = parts.filter(Boolean).join("\n")
   return t || undefined
@@ -111,7 +145,13 @@ async function route(env: Env, off: boolean): Promise<Out> {
     }
     case "session.start": {
       const restored = off ? null : compactState(env)
-      const text = joinContext([takeInbox(ev.session), ...(off ? [] : liveNeighbours(db, ev)), restored?.text])
+      const text = joinContext([
+        takeInbox(ev.session),
+        ...(off ? [] : liveNeighbours(db, ev)),
+        off ? null : liveHandoffLine(db, ev),
+        off ? null : keptProcessLine(db, ev.session, ev.time),
+        restored?.text,
+      ])
       if (!text) return allow()
       const ruleId = restored?.ruleId
       return allow({
@@ -119,9 +159,12 @@ async function route(env: Env, off: boolean): Promise<Out> {
         ...(restored ? { ruleId, outcome: "inject", data: { source: "compact", chars: restored.text.length } } : {}),
       })
     }
-    case "session.end":
+    case "session.end": {
       db.query("update sessions set ended_at = ? where id = ?").run(ev.time, ev.session)
-      return allow()
+      // D20: the unkept processes die with the session. The kill switch leaves them alone.
+      const killed = off ? [] : await endSessionProcesses(db, ev.session, ev.time)
+      return allow(killed.length ? { data: { killed } } : {})
+    }
     case "tool.before": {
       const name = ev.toolName
       const base = toolData(ev)
@@ -149,6 +192,9 @@ async function route(env: Env, off: boolean): Promise<Out> {
       // The verify starts first: it is quick, and afterTool may wait on a judgment call.
       const worker = ev.toolName === "subagent" ? startVerify(env) : null
       const o = await afterTool(env)
+      try {
+        registerShellProcesses(env)
+      } catch {} // a failed lookup must never block the tool call
       if (!worker) return o
       const context = joinContext([o.decision.context, worker.context])
       return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId } }

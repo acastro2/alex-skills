@@ -46,7 +46,12 @@ function compact<T extends Obj>(o: T): T {
 function normalizeInput(tool: ToolName, raw: Obj, cwd: string, opencode: boolean): Record<string, unknown> {
   switch (tool) {
     case "shell":
-      return compact({ command: str(raw.command) ?? "", cwd: str(raw.cwd) ?? str(raw.workdir) ?? cwd })
+      return compact({
+        command: str(raw.command) ?? "",
+        cwd: str(raw.cwd) ?? str(raw.workdir) ?? cwd,
+        // A backgrounded process must be registered so session.end can kill it (Phase 5).
+        run_in_background: raw.run_in_background === true || raw.background === true ? true : undefined,
+      })
     case "edit":
     case "write":
     case "read":

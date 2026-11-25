@@ -4,6 +4,8 @@ import { existsSync } from "node:fs"
 import { judge, type Question } from "../judgment.ts"
 import { mode } from "../ledger/registry.ts"
 import { scrub } from "../ledger/journal.ts"
+import { cleanupCheck, handoffProtocolCheck } from "./cleanup.ts"
+import { processCheck } from "./processes.ts"
 import { allow, git, hit, isBrowseTool, latestTodos, q1, toolRows, type Env, type Out, type ToolRow } from "./util.ts"
 
 export const SENDBACK_CAP = 5
@@ -169,6 +171,9 @@ export async function stopChecks(env: Env): Promise<Out> {
   if (on("stop-ui-proof")) add(uiProofCheck(rows))
   if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, rows, reply))
   if (on("stop-handoff")) add(handoffCheck(env, rows))
+  if (on("stop-processes")) add(processCheck(env, reply))
+  if (on("stop-cleanup")) add(cleanupCheck(env))
+  if (on("stop-handoff-protocol")) add(handoffProtocolCheck(env))
 
   // One Jev call carries every judgment this stop needs.
   const want: string[] = []
