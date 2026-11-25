@@ -84,7 +84,7 @@ Gotchas:
 
 ## harness (plan only)
 
-State: spec done and reviewed 2026-11-25, nothing built. `docs/specs/harness-evolution.md` (`de8e40c`): one Bun core behind hooks and an OpenCode plugin, SQLite ledger and journal, MCP tools for deliberate actions, D1 to D74. Threat model D72: guard against agent mistakes, tamper-evident, not a wall (this user has passwordless sudo). One plan, phases 0 to 9 in order (D73). Explainer page source: `~/.agents/skill-workspace/alex-skills/harness/explainer-harness-evolution-20261125/`.
+State: spec done and reviewed 2026-11-25, nothing built. `docs/specs/harness-evolution.md` (`a705625`): one Bun core behind hooks and an OpenCode plugin, SQLite ledger and journal, MCP tools for deliberate actions, D1 to D74. Threat model D72: guard against agent mistakes, tamper-evident, not a wall (this user has passwordless sudo). One plan, phases 0 to 9 in order (D73). Explainer page source: `~/.agents/skill-workspace/alex-skills/harness/explainer-harness-evolution-20261125/`.
 
 Next:
 1. Alex approves Phase 0. Step 0 installs the pinned Bun (not on the VM yet).
