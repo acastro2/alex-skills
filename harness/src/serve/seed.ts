@@ -88,14 +88,25 @@ export function seedLedger(stateDir: string, now = Date.now()): string {
   j(s5, 23, "prompt", { turn: 1, prompt_text: "Write the harness serve routes and the 8 views." });
 
   const tools = ["Read", "Grep", "Edit", "Shell", "Write"];
-  for (let i = 0; i < 70; i++) {
+  const args: Record<string, string[]> = {
+    Read: ["harness/src/serve/snapshot.ts", "harness/ui/app/app.css", "docs/specs/harness-office.md", "harness/src/ledger/journal.ts"],
+    Grep: ["verifyChain", "sync_state", "originOf", "outcome = 'deny'"],
+    Edit: ["harness/ui/app/views/dashboard.ts", "harness/src/serve/seed.ts", "mac-bootstrap/bun-pin.sh", "tofu/log_bucket.tf"],
+    Shell: ["bun test tests/serve.test.ts", "git diff --stat", "tofu plan -out=tfplan", "bun run typecheck"],
+    Write: ["harness/ui/app/views/dashboard.ts", "docs/notes/pin-bun.md", "harness/tests/ledger.test.ts"],
+  };
+  // 160 tool rows over the last hour, a little denser toward now, so the sparkline has a shape.
+  for (let i = 0; i < 160; i++) {
     const sid = [s1, s2, s3, s4, s5][i % 5];
-    j(sid, 58 - i * 0.7, i % 2 ? "tool.after" : "tool.before", {
-      turn: 1 + Math.floor(i / 25),
-      outcome: i % 17 === 5 ? "deny" : "allow",
-      reason: i % 17 === 5 ? "recursive-delete: path outside the allowlist" : null,
-      rule_id: i % 17 === 5 ? "recursive-delete" : null,
-      data: { tool: tools[i % tools.length] },
+    const tool = tools[(i >> 1) % tools.length];
+    const deny = i % 17 === 5;
+    const advise = !deny && i % 23 === 9;
+    j(sid, 58 - Math.pow(i / 159, 0.8) * 54, i % 2 ? "tool.after" : "tool.before", {
+      turn: 1 + Math.floor(i / 55),
+      outcome: deny ? "deny" : advise ? "advise" : "allow",
+      reason: deny ? "recursive-delete: path outside the allowlist" : advise ? "egress-guard: argument over 2000 characters" : null,
+      rule_id: deny ? "recursive-delete" : advise ? "egress-guard" : null,
+      data: { tool, arg: args[tool][(i >> 1) % args[tool].length] },
     });
   }
   const sb1 = j(s5, 30, "stop.sendback", { turn: 1, rule_id: "stop-needs-proof", outcome: "deny", reason: "No test output shown for the claim 'tests pass'." });
@@ -116,6 +127,15 @@ export function seedLedger(stateDir: string, now = Date.now()): string {
     data: { question: "The VM has no Bun in its PATH after login. Which way do you want me to pin it?", options: ["Add ~/.bun/bin to the login shell profile", "Install Bun under /usr/local with mise", "Stop and let me look at the VM first"] },
   });
   void q;
+
+  // Processes the harness knows about: two kept on purpose, three live, one that just ended.
+  const proc = db.query("INSERT INTO processes (session_id, pid, command, port, keep, started_at, ended_at, reported_at) VALUES (?,?,?,?,?,?,?,?)");
+  proc.run(s1, 49120, "caddy run --config Caddyfile", 8443, 1, now - 130 * MIN, null, now - 20 * 1000);
+  proc.run(s5, 48211, "bun src/serve/main.ts", 4318, 1, now - 23 * MIN, null, now - 20 * 1000);
+  proc.run(s2, 51877, "vite --port 5173", 5173, 0, now - 18 * MIN, null, now - 20 * 1000);
+  proc.run(s3, 50233, "bun test --watch tests/ledger.test.ts", null, 0, now - 40 * MIN, null, now - 20 * 1000);
+  proc.run(s4, 52010, "tofu plan -out=tfplan", null, 0, now - 7 * MIN, null, now - 20 * 1000);
+  proc.run(s5, 47001, "bun build ui/app/main.ts --outdir /tmp/ui", null, 0, now - 9 * MIN, now - 4 * MIN, now - 4 * MIN);
 
   // Worktrees, workstreams, workers.
   const ws = ulid(now - 150 * MIN, 91);
@@ -168,6 +188,26 @@ export function seedLedger(stateDir: string, now = Date.now()): string {
     ["new-model-evals", "0 5 1 * *", null, null],
   ];
   for (const jb of jobs) db.query("INSERT INTO jobs (name, schedule, last_run_at, last_result, last_seq) VALUES (?,?,?,?,?)").run(jb[0], jb[1], jb[2], jb[3], null);
+
+  // The last three minutes, in time order, so the newest end of the tail reads like a live log.
+  const recent: [string, number, string, string | null, string | null, string | null, { tool: string; arg: string } | null][] = [
+    [s5, 2.9, "tool.before", "allow", null, null, { tool: "Edit", arg: "harness/ui/app/views/dashboard.ts" }],
+    [s5, 2.8, "tool.after", "allow", null, null, { tool: "Edit", arg: "harness/ui/app/views/dashboard.ts" }],
+    [s1, 2.6, "tool.before", "allow", null, null, { tool: "Shell", arg: "git diff --stat" }],
+    [s1, 2.5, "tool.after", "allow", null, null, { tool: "Shell", arg: "git diff --stat" }],
+    [s3, 2.3, "nudge", "inject", "drift-nudge", "Drift from goal, nudge 5 of 5", null],
+    [s4, 2.1, "tool.before", "deny", "recursive-delete", "recursive-delete: path outside the allowlist", { tool: "Shell", arg: "rm -rf .terraform/modules" }],
+    [s2, 1.9, "tool.before", "allow", null, null, { tool: "Read", arg: "mac-bootstrap/bun-pin.sh" }],
+    [s2, 1.8, "tool.after", "allow", null, null, { tool: "Read", arg: "mac-bootstrap/bun-pin.sh" }],
+    [s5, 1.5, "tool.before", "allow", null, null, { tool: "Shell", arg: "bun test tests/serve.test.ts" }],
+    [s5, 1.2, "tool.after", "allow", null, null, { tool: "Shell", arg: "bun test tests/serve.test.ts" }],
+    [s1, 0.9, "tool.before", "allow", null, null, { tool: "Grep", arg: "verifyChain" }],
+    [s1, 0.8, "tool.after", "allow", null, null, { tool: "Grep", arg: "verifyChain" }],
+    [s4, 0.6, "tool.before", "advise", "egress-guard", "egress-guard: argument over 2000 characters", { tool: "exa_web_search_exa", arg: "opentofu s3 log bucket lifecycle rules" }],
+    [s5, 0.4, "tool.before", "allow", null, null, { tool: "Edit", arg: "harness/ui/app/app.css" }],
+    [s3, 0.2, "tool.before", "allow", null, null, { tool: "Read", arg: "harness/src/ledger/db.ts" }],
+  ];
+  for (const [sid, ago, event, outcome, rule, reason, data] of recent) j(sid, ago, event, { turn: 3, outcome, rule_id: rule, reason, data });
 
   void [sb1, s6];
   db.close();

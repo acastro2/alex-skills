@@ -50,6 +50,25 @@ test("GET /api/snapshot from a seeded ledger returns the data of all 8 views", a
   expect(snap.ledger.questions).toHaveLength(1);
 });
 
+test("the snapshot carries what the dashboard reads: processes, journal tail, health series, last tool and worktree", async () => {
+  const snap = await (await get("/api/snapshot")).json();
+
+  expect(snap.dash.processes.length).toBeGreaterThan(0);
+  expect(snap.dash.processes.some((p: { ended_at: number | null }) => p.ended_at === null)).toBe(true);
+  expect(snap.dash.tail.length).toBeGreaterThan(0);
+  expect(snap.dash.tail[0].seq).toBeGreaterThan(snap.dash.tail[1].seq);
+  expect(snap.dash.tail.some((r: { kind: string | null }) => r.kind === "deny")).toBe(true);
+  expect(snap.dash.tail.some((r: { kind: string | null }) => r.kind === "sendback")).toBe(true);
+  expect(snap.dash.health.series).toHaveLength(60);
+  expect(snap.dash.health.series.every((n: unknown) => typeof n === "number")).toBe(true);
+  expect(snap.dash.health.chain_ok).toBe(true);
+  expect(snap.dash.health.deny_1h).toBeGreaterThan(0);
+
+  const sessions = snap.views.sessions as { slug: string; last_tool: { name: string } | null; worktree: string | null }[];
+  expect(sessions.some((s) => s.last_tool?.name)).toBe(true);
+  expect(sessions.some((s) => s.worktree === "feat/harness-ledger")).toBe(true);
+});
+
 test("a request with Host evil.example is rejected", async () => {
   const res = await fetch(`${server.url}/api/snapshot`, { headers: { cookie, host: "evil.example" } });
   expect(res.status).toBe(421);

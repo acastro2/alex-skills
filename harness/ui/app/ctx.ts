@@ -9,9 +9,13 @@ export type {
   JobRow,
   JournalPage,
   JournalRow,
+  ProcessRow,
   QuestionRow,
   RuleRow,
   SessionRow,
+  TailKind,
+  TailRow,
+  ToolCall,
   WorktreeRow,
 } from "../../src/serve/snapshot.ts";
 
@@ -26,6 +30,7 @@ export const VIEWS: { id: ViewId; label: string; short: string; blurb: string }[
   { id: "jobs", short: "Jobs", label: "Jobs", blurb: "Scheduled jobs: last run, result, next run." },
 ];
 
+/** "office" is the route of the dashboard (the home page, #/ and #/office). The 8 views are its drill-down pages. */
 export type ViewName = "office" | ViewId;
 
 export interface Route {
@@ -69,7 +74,7 @@ export interface Ctx {
   toggle(key: string): void;
 }
 
-export const viewLabel = (id: ViewName) => (id === "office" ? "Office" : VIEWS.find((v) => v.id === id)?.label ?? id);
+export const viewLabel = (id: ViewName) => (id === "office" ? "Dashboard" : VIEWS.find((v) => v.id === id)?.label ?? id);
 
 export function parseHash(hash: string): Route {
   const raw = hash.replace(/^#\/?/, "");

@@ -7,10 +7,11 @@ import { askPermission, notifyChanges, permission } from "./notify.ts";
 import { btn, skeleton } from "./parts.ts";
 import { renderBundles } from "./views/bundles.ts";
 import { renderChanges } from "./views/changes.ts";
+import { renderDashboard } from "./views/dashboard.ts";
 import { renderInbox } from "./views/inbox.ts";
 import { emptyJournal, renderJournal } from "./views/journal.ts";
 import { renderJobs } from "./views/jobs.ts";
-import { onThemeChange, renderOffice, signals } from "./views/office.ts";
+import { onThemeChange, signals } from "./views/office.ts";
 import { renderRules } from "./views/rules.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderWorktrees } from "./views/worktrees.ts";
@@ -107,7 +108,11 @@ async function act(key: string, action: string, args: Record<string, unknown>, d
 
 // ---------------------------------------------------------------- top bar and rail
 
-const themeNext: Record<string, string> = { system: "light", light: "dark", dark: "system" };
+const THEMES: { id: string; label: string; icon: string }[] = [
+  { id: "system", label: "Auto", icon: "auto" },
+  { id: "light", label: "Light", icon: "sun" },
+  { id: "dark", label: "Dark", icon: "moon" },
+];
 
 let topSig = "";
 let railSig = "";
@@ -124,7 +129,7 @@ function paintTopbar(): void {
   clear(topbar);
 
   topbar.append(
-    h("a", { class: "brand", href: hashFor("office"), "aria-label": "harness, back to the office" }, h("span", { class: "brand-mark", "aria-hidden": "true" }, "h"), h("span", { class: "brand-name" }, "harness")),
+    h("a", { class: "brand", href: hashFor("office"), "aria-label": "harness, back to the dashboard" }, h("span", { class: "brand-mark", "aria-hidden": "true" }, "h"), h("span", { class: "brand-name" }, "harness")),
     h("span", { class: "host mono", title: "Host" }, snap?.host ?? location.hostname),
     h("span", { class: "spacer" }),
   );
@@ -158,13 +163,30 @@ function paintTopbar(): void {
   );
 }
 
+/** Three buttons, one per choice. Each label names what its click sets, and the current one is pressed. */
 function themeButton(choice: string): HTMLElement {
-  const next = themeNext[choice] ?? "system";
   return h(
-    "button",
-    { type: "button", class: "icon-btn", "aria-label": `Theme: ${choice}. Switch to ${next}.`, title: `Theme: ${choice}. Click for ${next}.`, onClick: () => { window.harnessTheme?.set(next); paintTopbar(); } },
-    icon(choice === "dark" ? "moon" : choice === "light" ? "sun" : "auto", 16),
-    h("span", { class: "btn-text" }, choice === "system" ? "Auto" : choice === "dark" ? "Dark" : "Light"),
+    "span",
+    { class: "theme-seg", role: "group", "aria-label": "Theme" },
+    THEMES.map((t) =>
+      h(
+        "button",
+        {
+          type: "button",
+          class: "icon-btn",
+          "data-theme-choice": t.id,
+          "aria-pressed": String(choice === t.id),
+          title: t.id === "system" ? "Follow the system theme" : `Use the ${t.label.toLowerCase()} theme`,
+          onClick: () => {
+            window.harnessTheme?.set(t.id);
+            paintTopbar();
+            topbar.querySelector<HTMLElement>(`[data-theme-choice="${t.id}"]`)?.focus({ preventScroll: true });
+          },
+        },
+        icon(t.icon, 16),
+        h("span", { class: "btn-text" }, t.label),
+      ),
+    ),
   );
 }
 
@@ -196,7 +218,7 @@ function paintRail(): void {
     );
   };
   rail.append(
-    item("office", "Office", "office"),
+    item("office", "Dashboard", "office"),
     ...VIEWS.map((v) => item(v.id, v.short, v.id, v.label, snap?.counts[v.id], snap?.alerts[v.id] ?? 0)),
   );
   // On a narrow screen the rail scrolls sideways: keep the current view in sight.
@@ -244,7 +266,8 @@ function signature(): string {
   if (!snap) return `loading:${loadError ?? ""}`;
   const v = route.view;
   const base = `${v}|${route.id}|${JSON.stringify(route.q)}|${uiRev}|${ui.pending.size}|${ui.sent.size}|${ui.expanded.size}`;
-  if (v === "office") return `${base}|${JSON.stringify([snap.counts, snap.alerts, snap.host, snap.harness, snap.views.sessions.map((s) => [s.id, s.state]), signals({ snap, route, now: 0, ui } as Ctx)])}`;
+  // The dashboard patches itself on each snapshot, so anything the snapshot carries is part of its signature.
+  if (v === "office") return `${base}|${JSON.stringify([snap.seq, snap.counts, snap.alerts, snap.host, snap.harness, snap.views, snap.dash])}`;
   if (v === "journal") return `${base}|${JSON.stringify([snap.views.sessions.map((s) => s.id), snap.views.rules.map((r) => r.id)])}`;
   return `${base}|${JSON.stringify(snap.views[v])}`;
 }
@@ -309,9 +332,11 @@ function paint(force = false): void {
   let view: HTMLElement;
   const ctx = makeCtx();
   if (!ctx) view = loadingView();
-  else if (route.view === "office") view = renderOffice(ctx);
+  else if (route.view === "office") view = renderDashboard(ctx);
   else view = RENDER[route.view](ctx);
-  viewSlot.replaceChildren(view);
+  main.classList.toggle("is-dash", route.view === "office");
+  // The dashboard root persists between paints: keep it where it is, so its scroll positions and focus stay.
+  if (view.parentElement !== viewSlot || viewSlot.childElementCount !== 1) viewSlot.replaceChildren(view);
   refreshTimes(viewSlot, now());
   restoreFocus(focus);
 
@@ -371,7 +396,7 @@ function paintGate(): void {
       "section",
       { class: "gate plate" },
       h("h1", { id: "view-h" }, registered ? "Sign in to harness" : "Register a passkey"),
-      h("p", { class: "gate-text" }, registered ? "Use your passkey to open the page. The session lasts 30 minutes. Actions that change things ask for a fresh tap." : "No passkey is registered on this host yet. Register one now: Touch ID or a security key. It stays on this host."),
+      h("p", { class: "gate-text" }, registered ? "Use your passkey to open the page. The session lasts 30 minutes. Actions that change things ask for a fresh tap." : "No passkey is registered yet. Register one, in 1Password so every host shares it."),
       supported ? null : h("p", { class: "inline-error", role: "alert" }, "This browser has no passkey support. Open the page in Edge or Chrome, as localhost."),
       gateMessage ? h("p", { class: "inline-error", role: "alert" }, gateMessage) : null,
       btn(registered ? "Sign in with passkey" : "Register passkey", { tone: "primary", icon: "key", busy: gateBusy, disabled: !supported, onClick: () => void run() }),

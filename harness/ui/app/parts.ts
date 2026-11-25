@@ -15,7 +15,7 @@ export function viewHeader(ctx: Ctx, view: ViewName, extra?: Child): HTMLElement
   return h(
     "header",
     { class: "view-head" },
-    h("div", { class: "view-title" }, h("a", { class: "back", href: hashFor("office"), "aria-label": "Back to the office" }, icon("back", 15), h("span", null, "Office")), h("h1", { id: "view-h" }, meta?.label ?? "Office")),
+    h("div", { class: "view-title" }, h("a", { class: "back", href: hashFor("office"), "aria-label": "Back to the dashboard" }, icon("back", 15), h("span", null, "Dashboard")), h("h1", { id: "view-h" }, meta?.label ?? "Dashboard")),
     h("p", { class: "view-blurb" }, meta?.blurb ?? ""),
     extra ? h("div", { class: "view-tools" }, extra) : null,
   );

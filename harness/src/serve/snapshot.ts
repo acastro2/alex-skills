@@ -4,6 +4,7 @@
 // harness.off, harness.review. Where the ledger lane names one differently, change it in EVENTS.
 import type { Database } from "bun:sqlite";
 import { hostname } from "node:os";
+import { verifyChain } from "../ledger/journal.ts";
 
 export const VIEW_IDS = ["inbox", "sessions", "worktrees", "bundles", "rules", "journal", "changes", "jobs"] as const;
 export type ViewId = (typeof VIEW_IDS)[number];
@@ -50,6 +51,64 @@ export interface SessionRow {
   running: boolean;
   last_event_at: number | null;
   workers: number;
+  /** The newest tool row of this session: what it is doing, or did last. */
+  last_tool: ToolCall | null;
+  /** Branch of the worktree this session owns, if any. */
+  worktree: string | null;
+}
+
+export interface ToolCall {
+  name: string;
+  arg: string | null;
+  event: string;
+  outcome: string | null;
+  time: number;
+}
+
+export interface ProcessRow {
+  id: number;
+  session_id: string | null;
+  session_slug: string | null;
+  pid: number | null;
+  command: string | null;
+  port: number | null;
+  keep: boolean;
+  started_at: number | null;
+  ended_at: number | null;
+}
+
+/** deny: outcome deny. advise: the rule spoke but did not block (advise, warn, inject, modify). sendback: a stop that went back. */
+export type TailKind = "deny" | "advise" | "sendback";
+
+export interface TailRow {
+  seq: number;
+  time: number;
+  event: string;
+  session_id: string | null;
+  session_slug: string | null;
+  rule_id: string | null;
+  outcome: string | null;
+  text: string;
+  tool: string | null;
+  kind: TailKind | null;
+}
+
+export interface Health {
+  /** null until the chain was checked once. */
+  chain_ok: boolean | null;
+  chain_bad_seq: number | null;
+  chain_checked_at: number | null;
+  deny_1h: number;
+  advise_1h: number;
+  sendback_1h: number;
+  /** Journal rows per minute, oldest first, the last 60 minutes. The last bucket is the current minute. */
+  series: number[];
+}
+
+export interface Dash {
+  processes: ProcessRow[];
+  tail: TailRow[];
+  health: Health;
 }
 
 export interface QuestionRow {
@@ -203,6 +262,8 @@ export interface Snapshot {
     changes: ChangeRow[];
     jobs: JobRow[];
   };
+  /** What the dashboard reads on top of the 8 views. */
+  dash: Dash;
 }
 
 type Params = (string | number | null)[];
@@ -307,8 +368,21 @@ function deriveSessions(db: Database, now: number): SessionRow[] {
       running,
       last_event_at: lastEvent,
       workers: workerCount.get(s.id) ?? 0,
+      last_tool: lastTool(db, s.id),
+      worktree: one<{ branch: string | null }>(db, "SELECT branch FROM worktrees WHERE session_id = ? AND removed_at IS NULL ORDER BY created_at DESC LIMIT 1", s.id)?.branch ?? null,
     };
   });
+}
+
+function lastTool(db: Database, sessionId: string): ToolCall | null {
+  const r = one<{ event: string; time: number; outcome: string | null; data_json: string | null }>(
+    db,
+    "SELECT event, time, outcome, data_json FROM journal WHERE session_id = ? AND event IN ('tool.before', 'tool.after') ORDER BY seq DESC LIMIT 1",
+    sessionId,
+  );
+  if (!r) return null;
+  const d = parse<{ tool?: string; arg?: string }>(r.data_json, {});
+  return { name: d.tool ?? "tool", arg: d.arg ? d.arg.slice(0, 200) : null, event: r.event, outcome: r.outcome, time: r.time };
 }
 
 function sessionGoal(db: Database, sessionId: string, goalSeq: number | undefined): string | null {
@@ -565,6 +639,91 @@ function harnessState(db: Database): { on: boolean; changed_at: number | null } 
   return { on: r?.event !== EVENTS.off, changed_at: r?.time ?? null };
 }
 
+function processRows(db: Database, now: number, slugs: Map<string, string | null>): ProcessRow[] {
+  return all<{ id: number; session_id: string | null; pid: number | null; command: string | null; port: number | null; keep: number | null; started_at: number | null; ended_at: number | null }>(
+    db,
+    `SELECT id, session_id, pid, command, port, keep, started_at, ended_at FROM processes
+     WHERE ended_at IS NULL OR ended_at > ? ORDER BY ended_at IS NOT NULL, started_at DESC LIMIT 40`,
+    now - 10 * MIN,
+  ).map((p) => ({
+    id: p.id,
+    session_id: p.session_id,
+    session_slug: p.session_id ? slugs.get(p.session_id) ?? sessionSlug(p.session_id, null) : null,
+    pid: p.pid,
+    command: p.command,
+    port: p.port,
+    keep: Boolean(p.keep),
+    started_at: p.started_at,
+    ended_at: p.ended_at,
+  }));
+}
+
+const ADVISE = new Set(["advise", "warn", "inject", "modify"]);
+
+export function tailKind(event: string, outcome: string | null): TailKind | null {
+  if (event === EVENTS.sendback) return "sendback";
+  if (outcome === "deny") return "deny";
+  if (outcome && ADVISE.has(outcome)) return "advise";
+  return null;
+}
+
+function tailRows(db: Database, limit: number): TailRow[] {
+  return journalPage(db, { limit }).rows.map((r) => {
+    const d = (r.data && typeof r.data === "object" ? r.data : {}) as { tool?: string; arg?: string };
+    return {
+      seq: r.seq,
+      time: r.time,
+      event: r.event,
+      session_id: r.session_id,
+      session_slug: r.session_slug,
+      rule_id: r.rule_id,
+      outcome: r.outcome,
+      text: firstLine(r.reason ?? r.prompt_text ?? d.arg ?? null, 220) ?? "",
+      tool: d.tool ?? null,
+      kind: tailKind(r.event, r.outcome),
+    };
+  });
+}
+
+// verifyChain reads the whole journal. Check at most every 30 s, and less often when a check is slow.
+const chainCache = new WeakMap<Database, { at: number; ms: number; ok: boolean; bad: number | null }>();
+
+function chainState(db: Database, now: number): { ok: boolean; bad: number | null; at: number } {
+  const c = chainCache.get(db);
+  if (c && now - c.at < Math.max(30_000, c.ms * 20)) return { ok: c.ok, bad: c.bad, at: c.at };
+  const t0 = Date.now();
+  const r = verifyChain(db);
+  const next = { at: now, ms: Date.now() - t0, ok: r.ok, bad: r.badSeq ?? null };
+  chainCache.set(db, next);
+  return { ok: next.ok, bad: next.bad, at: next.at };
+}
+
+function healthState(db: Database, now: number, seq: number): Health {
+  const window = Math.max(seq - 50_000, 0);
+  const c = one<{ deny: number | null; advise: number | null; sendback: number | null }>(
+    db,
+    `SELECT SUM(outcome = 'deny') AS deny, SUM(outcome IN ('advise', 'warn', 'inject', 'modify')) AS advise, SUM(event = ?) AS sendback
+     FROM journal WHERE seq > ? AND time >= ?`,
+    EVENTS.sendback, window, now - 60 * MIN,
+  );
+  const series = new Array<number>(60).fill(0);
+  for (const b of all<{ ago: number; n: number }>(
+    db,
+    "SELECT CAST((? - time) / 60000 AS INTEGER) AS ago, COUNT(*) AS n FROM journal WHERE seq > ? AND time >= ? GROUP BY ago",
+    now, window, now - 60 * MIN,
+  )) series[59 - Math.min(Math.max(b.ago, 0), 59)] += b.n;
+  const chain = chainState(db, now);
+  return {
+    chain_ok: chain.ok,
+    chain_bad_seq: chain.bad,
+    chain_checked_at: chain.at,
+    deny_1h: c?.deny ?? 0,
+    advise_1h: c?.advise ?? 0,
+    sendback_1h: c?.sendback ?? 0,
+    series,
+  };
+}
+
 export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
   const seq = maxSeq(db);
   const sessions = deriveSessions(db, now);
@@ -649,6 +808,11 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
       journal: { ...journal, per_min: perMin },
       changes,
       jobs,
+    },
+    dash: {
+      processes: processRows(db, now, slugs),
+      tail: tailRows(db, 120),
+      health: healthState(db, now, seq),
     },
   };
 }
