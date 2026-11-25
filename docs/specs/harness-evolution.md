@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D74, in the appendix).
+Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D78, in the appendix).
 
 **Ask:** approve Phase 0. Then the phases run in order as one plan (D73), each ending with its Done-when.
 
@@ -140,6 +140,8 @@ Why this shape (from two architecture reviews):
 
 ### Ledger
 
+The proposed columns and keys are in `docs/specs/harness-ledger.erd.json` (an Archify ERD: 20 tables, one domain per module). Phase 1 turns it into the first migration.
+
 One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun:sqlite` in WAL mode, so several sessions can write at once. It is private storage, not an interface: each module in the Shape table owns its tables and offers domain operations (D53). Only those modules import the storage. The guard denies agent writes to it. It is per host: a merge token on the Mac does not work on the VM.
 
 | Table | Holds | Kept |
@@ -160,6 +162,10 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 | `page_auth` | passkey credential and the current 30-minute grant (D61) | until revoked |
 | `snapshots` | session state saved at `PreCompact` (D65) | 7 days |
 | `sendbacks` | stop send-backs per turn, for the cap | 30 days |
+| `nudges` | drift, wrap-up and stall nudges per turn, for the cap (D78) | 30 days |
+| `requests` | `harness_request` rows: SHA, digest, rendered review (Phase 1b) | 90 days |
+| `applies` | each apply: SHA, tree hash, schema version, rollback time (Phase 1b) | permanent |
+| `schema_meta` | the ledger schema version | permanent |
 
 ## Phase 0. Prove the unverified facts
 
@@ -375,7 +381,15 @@ sequenceDiagram
 
 **The main session too (D47).** The Stop check sends the orchestrator back when it says "done", "fixed" or "works" with no green bundle in that turn.
 
-The waker also watches each background worker. With no new tool call in 10 minutes, the worker gets the nudge Alex types today: "stop exploring, run the acceptance commands once, return". When a worker finishes, Alex gets one Rex or Herdr notification.
+**Nudges (D75 to D78).** Agents and subagents get three kinds of nudge, so they finish the work instead of following tangents:
+
+| Nudge | When | Delivered by |
+| --- | --- | --- |
+| Drift | Every 20 tool calls or 10 minutes of a turn, the judgment module compares a summary of the recent calls with the session's goal (the worker contract's objective, else the current todo, else the workstream's next step). Off-task at 0.80 or above. No goal on record: no check | the core on `tool.after`, as context, in the same turn |
+| Wrap-up | A worker passes its time budget: 30 minutes, or the contract's `BUDGET:` line | the core on `tool.after` |
+| Stall | 10 minutes with no tool call. For a worker, always. For a main session, only when a todo is pending and the last reply did not ask Alex anything | the waker, which wakes the session |
+
+The drift nudge says: "You are drifting from <goal>. Wrap up: finish <next step>, run the acceptance commands, report." After 5 nudges in one turn with no progress, the harness stops nudging, marks the session `stuck` on the page, and sends Alex one notification. When a worker finishes, Alex gets one Rex or Herdr notification.
 
 Done when:
 - On a seeded repo, a worker that edited a test comes back red, a worker with uncommitted changes comes back partial, and a clean worker comes back green.
@@ -644,6 +658,10 @@ All taken by Alex on 2026-11-25.
 | D72 | Threat model | Guard against agent mistakes, not a hostile agent. Grants are exact and bound to what Alex saw. The journal makes tampering visible. Agent `sudo`, `su`, `pkexec` and `docker run -v` are denied as mistakes, not as a wall. No separate OS user | Everything runs locally as Alex's user, who has passwordless `sudo`. Alex: "don't overdo the security" |
 | D73 | Plan shape | One plan, all phases in order, each with its Done-when. No MVP slices | Alex picked one plan over M1 to M3 slices |
 | D74 | Claude managed settings | mac-bootstrap writes the Claude Code harness hook and MCP entries to `/etc/claude-code/managed-settings.json` (Linux) or `/Library/Application Support/ClaudeCode/managed-settings.json` (Mac). OpenCode has no managed layer, so `harness-config-write` covers its config | `disableAllHooks` or a project settings file in user space cannot switch the harness off |
+| D75 | Drift nudge | Every 20 tool calls or 10 minutes of a turn, for main sessions and subagents, the judgment module checks the recent calls against the session's goal and nudges at 0.80 or above. No goal on record, no check | Alex: agents must keep doing the work and wrap it up, not go on tangents |
+| D76 | Wrap-up budget | Workers only: 30 minutes, or the contract's `BUDGET:` line. Past it, the worker is told to finish the step, commit and report | Alex picked workers only; main sessions run as long as he drives them |
+| D77 | Stall nudge | Workers after 10 minutes with no tool call. Main sessions too, but only with a todo pending and no question waiting for Alex | A session waiting on Alex is never poked |
+| D78 | Nudge cap | 5 nudges in one turn with no progress: stop, mark `stuck` on the page, notify Alex once. Counted in `nudges` | Alex picked 5 over 3 |
 
 ## Risks
 

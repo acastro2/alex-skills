@@ -1,0 +1,1063 @@
+{
+ "schema_version": 1,
+ "diagram_type": "erd",
+ "meta": {
+  "title": "Harness ledger (ledger.db): proposed SQLite schema",
+  "subtitle": "Proposed columns, not yet in the spec. One domain per module (D53). SQLite storage classes; time columns are Unix ms. Every table has session_id and most have journal_seq: those links are in the columns but only the key ones are drawn.",
+  "locale": "en",
+  "output": "harness-ledger.html",
+  "quality_profile": "standard",
+  "views": [
+   {
+    "id": "chain",
+    "label": "Journal hub",
+    "focus": [
+     "journal",
+     "sessions",
+     "rules",
+     "bundles",
+     "tokens",
+     "requests"
+    ],
+    "note": "Every decision lands in the journal; grants, bundles and send-backs point back at their journal row."
+   },
+   {
+    "id": "auth",
+    "label": "Authority",
+    "focus": [
+     "requests",
+     "tokens",
+     "applies",
+     "page_auth",
+     "journal"
+    ],
+    "note": "A request is rendered and journaled, a token approves it once, an apply spends the token."
+   },
+   {
+    "id": "work",
+    "label": "Work and proof",
+    "focus": [
+     "workers",
+     "bundles",
+     "worktrees",
+     "workstreams",
+     "watches"
+    ],
+    "note": "A worker works in a worktree; its bundle lands the worktree; the waker watches both."
+   }
+  ]
+ },
+ "layout": {
+  "mode": "grid",
+  "gapX": 56,
+  "gapY": 34
+ },
+ "entities": [
+  {
+   "id": "sessions",
+   "label": "sessions",
+   "tag": "core",
+   "row": 0,
+   "col": 0,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "tool",
+     "type": "TEXT"
+    },
+    {
+     "name": "repo",
+     "type": "TEXT"
+    },
+    {
+     "name": "cwd",
+     "type": "TEXT"
+    },
+    {
+     "name": "model",
+     "type": "TEXT"
+    },
+    {
+     "name": "interactive",
+     "type": "INTEGER"
+    },
+    {
+     "name": "started_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "ended_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "live until session.end"
+  },
+  {
+   "id": "journal",
+   "label": "journal",
+   "tag": "core",
+   "row": 1,
+   "col": 0,
+   "attributes": [
+    {
+     "name": "seq",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "time",
+     "type": "INTEGER"
+    },
+    {
+     "name": "kind",
+     "type": "TEXT"
+    },
+    {
+     "name": "event",
+     "type": "TEXT"
+    },
+    {
+     "name": "rule_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "rules.id"
+    },
+    {
+     "name": "outcome",
+     "type": "TEXT"
+    },
+    {
+     "name": "reason",
+     "type": "TEXT"
+    },
+    {
+     "name": "prompt_text",
+     "type": "TEXT"
+    },
+    {
+     "name": "args_hash",
+     "type": "TEXT"
+    },
+    {
+     "name": "output_hash",
+     "type": "TEXT"
+    },
+    {
+     "name": "prev_hash",
+     "type": "TEXT"
+    },
+    {
+     "name": "row_hash",
+     "type": "TEXT",
+     "key": "uk"
+    }
+   ],
+   "sublabel": "hash-chained, 90 days"
+  },
+  {
+   "id": "rules",
+   "label": "rules",
+   "tag": "core",
+   "row": 2,
+   "col": 0,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "event",
+     "type": "TEXT"
+    },
+    {
+     "name": "module",
+     "type": "TEXT"
+    },
+    {
+     "name": "mode",
+     "type": "TEXT"
+    },
+    {
+     "name": "default_mode",
+     "type": "TEXT"
+    },
+    {
+     "name": "ships_in",
+     "type": "TEXT"
+    },
+    {
+     "name": "wrong_today",
+     "type": "INTEGER"
+    },
+    {
+     "name": "updated_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "registry, permanent"
+  },
+  {
+   "id": "schema_meta",
+   "label": "schema_meta",
+   "tag": "core",
+   "row": 3,
+   "col": 0,
+   "attributes": [
+    {
+     "name": "key",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "value",
+     "type": "TEXT"
+    }
+   ],
+   "sublabel": "schema version"
+  },
+  {
+   "id": "requests",
+   "label": "requests",
+   "tag": "authority",
+   "row": 0,
+   "col": 1,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "sha",
+     "type": "TEXT"
+    },
+    {
+     "name": "digest",
+     "type": "TEXT"
+    },
+    {
+     "name": "review_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "state",
+     "type": "TEXT"
+    },
+    {
+     "name": "created_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "harness_request"
+  },
+  {
+   "id": "tokens",
+   "label": "tokens",
+   "tag": "authority",
+   "row": 1,
+   "col": 1,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "kind",
+     "type": "TEXT"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "grant_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "request_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "requests.id"
+    },
+    {
+     "name": "pr",
+     "type": "INTEGER"
+    },
+    {
+     "name": "expires_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "used_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "30 min, used once"
+  },
+  {
+   "id": "applies",
+   "label": "applies",
+   "tag": "authority",
+   "row": 2,
+   "col": 1,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "request_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "requests.id"
+    },
+    {
+     "name": "token_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "tokens.id"
+    },
+    {
+     "name": "sha",
+     "type": "TEXT"
+    },
+    {
+     "name": "tree_hash",
+     "type": "TEXT"
+    },
+    {
+     "name": "schema_version",
+     "type": "INTEGER"
+    },
+    {
+     "name": "applied_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "rolled_back_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "applied/<sha>/"
+  },
+  {
+   "id": "page_auth",
+   "label": "page_auth",
+   "tag": "authority",
+   "row": 3,
+   "col": 1,
+   "attributes": [
+    {
+     "name": "credential_id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "public_key",
+     "type": "BLOB"
+    },
+    {
+     "name": "sign_count",
+     "type": "INTEGER"
+    },
+    {
+     "name": "session_until",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "passkey"
+  },
+  {
+   "id": "processes",
+   "label": "processes",
+   "tag": "session state",
+   "row": 0,
+   "col": 2,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "pid",
+     "type": "INTEGER"
+    },
+    {
+     "name": "command",
+     "type": "TEXT"
+    },
+    {
+     "name": "port",
+     "type": "INTEGER"
+    },
+    {
+     "name": "keep",
+     "type": "INTEGER"
+    },
+    {
+     "name": "started_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "ended_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "reported_at",
+     "type": "INTEGER"
+    }
+   ]
+  },
+  {
+   "id": "snapshots",
+   "label": "snapshots",
+   "tag": "session state",
+   "row": 1,
+   "col": 2,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "state_json",
+     "type": "TEXT"
+    },
+    {
+     "name": "created_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "PreCompact, 7 days"
+  },
+  {
+   "id": "sendbacks",
+   "label": "sendbacks",
+   "tag": "session state",
+   "row": 2,
+   "col": 2,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "journal_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "rule_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "rules.id"
+    },
+    {
+     "name": "turn",
+     "type": "INTEGER"
+    },
+    {
+     "name": "marked_wrong",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "cap of 5 per turn"
+  },
+  {
+   "id": "workers",
+   "label": "workers",
+   "tag": "workers and proof",
+   "row": 0,
+   "col": 3,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "parent_session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "worker_session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "worktree_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "worktrees.id"
+    },
+    {
+     "name": "model",
+     "type": "TEXT"
+    },
+    {
+     "name": "base_sha",
+     "type": "TEXT"
+    },
+    {
+     "name": "test_hashes",
+     "type": "TEXT"
+    },
+    {
+     "name": "acceptance",
+     "type": "TEXT"
+    },
+    {
+     "name": "ladder_round",
+     "type": "INTEGER"
+    },
+    {
+     "name": "last_activity",
+     "type": "INTEGER"
+    }
+   ]
+  },
+  {
+   "id": "bundles",
+   "label": "bundles",
+   "tag": "workers and proof",
+   "row": 1,
+   "col": 3,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "worker_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "workers.id"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "journal_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "head_sha",
+     "type": "TEXT"
+    },
+    {
+     "name": "did_json",
+     "type": "TEXT"
+    },
+    {
+     "name": "works_json",
+     "type": "TEXT"
+    },
+    {
+     "name": "verified_json",
+     "type": "TEXT"
+    },
+    {
+     "name": "verdict",
+     "type": "TEXT"
+    },
+    {
+     "name": "advisory",
+     "type": "REAL"
+    },
+    {
+     "name": "summary",
+     "type": "TEXT"
+    },
+    {
+     "name": "known_gaps",
+     "type": "TEXT"
+    }
+   ],
+   "sublabel": "recomputable from journal"
+  },
+  {
+   "id": "workstreams",
+   "label": "workstreams",
+   "tag": "worktrees",
+   "row": 0,
+   "col": 4,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "owner_session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "repo",
+     "type": "TEXT"
+    },
+    {
+     "name": "title",
+     "type": "TEXT"
+    },
+    {
+     "name": "state",
+     "type": "TEXT"
+    },
+    {
+     "name": "next_json",
+     "type": "TEXT"
+    },
+    {
+     "name": "updated_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "renders HANDOFF.live.md"
+  },
+  {
+   "id": "worktrees",
+   "label": "worktrees",
+   "tag": "worktrees",
+   "row": 1,
+   "col": 4,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "workstream_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "workstreams.id"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "landed_bundle_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "bundles.id"
+    },
+    {
+     "name": "repo",
+     "type": "TEXT"
+    },
+    {
+     "name": "path",
+     "type": "TEXT",
+     "key": "uk"
+    },
+    {
+     "name": "branch",
+     "type": "TEXT"
+    },
+    {
+     "name": "state",
+     "type": "TEXT"
+    },
+    {
+     "name": "created_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "removed_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "active, landed, held, removed"
+  },
+  {
+   "id": "watches",
+   "label": "watches",
+   "tag": "waker and jobs",
+   "row": 0,
+   "col": 5,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "worker_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "workers.id"
+    },
+    {
+     "name": "kind",
+     "type": "TEXT"
+    },
+    {
+     "name": "target",
+     "type": "TEXT"
+    },
+    {
+     "name": "last_state",
+     "type": "TEXT"
+    },
+    {
+     "name": "polled_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "expires_at",
+     "type": "INTEGER"
+    }
+   ],
+   "sublabel": "every 2 min, 24 h"
+  },
+  {
+   "id": "jobs",
+   "label": "jobs",
+   "tag": "waker and jobs",
+   "row": 1,
+   "col": 5,
+   "attributes": [
+    {
+     "name": "name",
+     "type": "TEXT",
+     "key": "pk"
+    },
+    {
+     "name": "schedule",
+     "type": "TEXT"
+    },
+    {
+     "name": "last_run_at",
+     "type": "INTEGER"
+    },
+    {
+     "name": "last_result",
+     "type": "TEXT"
+    },
+    {
+     "name": "last_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    }
+   ],
+   "sublabel": "Bun.cron in harness serve"
+  },
+  {
+   "id": "corrections",
+   "label": "corrections",
+   "tag": "phase 9",
+   "row": 0,
+   "col": 6,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "journal_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "rule_hint",
+     "type": "TEXT"
+    },
+    {
+     "name": "confidence",
+     "type": "REAL"
+    },
+    {
+     "name": "pr_url",
+     "type": "TEXT"
+    }
+   ],
+   "sublabel": "90 days"
+  },
+  {
+   "id": "egress",
+   "label": "egress",
+   "tag": "phase 9",
+   "row": 1,
+   "col": 6,
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "journal_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "tool",
+     "type": "TEXT"
+    },
+    {
+     "name": "finding",
+     "type": "TEXT"
+    }
+   ],
+   "sublabel": "advisory, 30 days"
+  },
+  {
+   "id": "nudges",
+   "label": "nudges",
+   "tag": "session state",
+   "row": 3,
+   "col": 2,
+   "sublabel": "cap of 5 per turn",
+   "attributes": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "key": "pk"
+    },
+    {
+     "name": "session_id",
+     "type": "TEXT",
+     "key": "fk",
+     "references": "sessions.id"
+    },
+    {
+     "name": "journal_seq",
+     "type": "INTEGER",
+     "key": "fk",
+     "references": "journal.seq"
+    },
+    {
+     "name": "kind",
+     "type": "TEXT"
+    },
+    {
+     "name": "goal",
+     "type": "TEXT"
+    },
+    {
+     "name": "turn",
+     "type": "INTEGER"
+    },
+    {
+     "name": "progress",
+     "type": "INTEGER"
+    }
+   ]
+  }
+ ],
+ "relationships": [
+  {
+   "id": "journal_session_id",
+   "from": "journal",
+   "to": "sessions",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "label": "records"
+  },
+  {
+   "id": "journal_rule_id",
+   "from": "journal",
+   "to": "rules",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true
+  },
+  {
+   "id": "tokens_grant_seq",
+   "from": "tokens",
+   "to": "journal",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true
+  },
+  {
+   "id": "tokens_request_id",
+   "from": "tokens",
+   "to": "requests",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "approves"
+  },
+  {
+   "id": "applies_request_id",
+   "from": "applies",
+   "to": "requests",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "executes"
+  },
+  {
+   "id": "applies_token_id",
+   "from": "applies",
+   "to": "tokens",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "label": "spends"
+  },
+  {
+   "id": "sendbacks_journal_seq",
+   "from": "sendbacks",
+   "to": "journal",
+   "fromCardinality": "many",
+   "toCardinality": "one"
+  },
+  {
+   "id": "sendbacks_rule_id",
+   "from": "sendbacks",
+   "to": "rules",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "label": "by rule"
+  },
+  {
+   "id": "workers_parent_session_id",
+   "from": "workers",
+   "to": "sessions",
+   "fromCardinality": "many",
+   "toCardinality": "one"
+  },
+  {
+   "id": "workers_worktree_id",
+   "from": "workers",
+   "to": "worktrees",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "works in"
+  },
+  {
+   "id": "bundles_worker_id",
+   "from": "bundles",
+   "to": "workers",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "proves"
+  },
+  {
+   "id": "bundles_journal_seq",
+   "from": "bundles",
+   "to": "journal",
+   "fromCardinality": "many",
+   "toCardinality": "one"
+  },
+  {
+   "id": "workstreams_owner_session_id",
+   "from": "workstreams",
+   "to": "sessions",
+   "fromCardinality": "many",
+   "toCardinality": "one"
+  },
+  {
+   "id": "worktrees_workstream_id",
+   "from": "worktrees",
+   "to": "workstreams",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "label": "step of"
+  },
+  {
+   "id": "worktrees_landed_bundle_id",
+   "from": "worktrees",
+   "to": "bundles",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "landed by"
+  },
+  {
+   "id": "watches_worker_id",
+   "from": "watches",
+   "to": "workers",
+   "fromCardinality": "many",
+   "toCardinality": "one",
+   "toOptional": true,
+   "label": "watches"
+  }
+ ]
+}
