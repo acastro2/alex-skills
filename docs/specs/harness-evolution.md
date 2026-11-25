@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex twice; the frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
+Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48); the frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
 
 Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
@@ -98,12 +98,14 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 
 | Table | Holds | Kept |
 | --- | --- | --- |
-| `decisions` | every decision: session, event, rule id, outcome, reason | 30 days |
+| `decisions` | every decision: session, event, rule id, outcome, reason. Each row holds the hash of the row before it (D46) | 30 days |
+| `bundles` | proof bundles: did, works, verified (D41) | 30 days, and the PR body and git note keep the summary |
 | `tokens` | merge grants from Alex's prompts | until used or 30 minutes |
 | `watches` | PRs and workers the waker polls, with the last state seen | until done or 24 hours |
 | `workers` | each spawn: base SHA, test file hashes, acceptance commands, last activity | 30 days |
 | `sessions` | live sessions per repo | until `session.end` |
-| `worktrees` | session, repo, path, branch, state (active, merged, removed) | until removed |
+| `worktrees` | session, repo, path, branch, workstream, state (`active`, `landed`, `held`, `removed`) | until removed |
+| `workstreams` | owner, worktrees in order, state, next steps, running processes, updated (D38) | until the workstream ends |
 | `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
 | `sendbacks` | stop send-backs per turn, for the cap | 30 days |
 
@@ -135,7 +137,7 @@ All taken by Alex on 2026-11-25.
 | D20 | `session.end` | Kill the processes the session started, except the ones it registered with `keep` and named in its reply. Report the kept ones at the next start | The VM has little room for leftovers, and a server Alex asked for stays up only when it is named |
 | D21 | Worktree home | `~/.worktrees/<repo>/<name>` | Outside every repo, so OpenCode does not load a second copy of a skill, and one folder is easy to measure on the VM |
 | D22 | Cleanup | When a watched PR merges, the waker removes its worktree and local branch, only if the worktree is clean. The Stop check sends the agent back for unnamed running servers or scratch files over 500 MB | Disk on the VM stays bounded, and nothing with unsaved work is deleted |
-| D23 | HANDOFF protocol | `HANDOFF.md` is a protocol between agents: one section per live workstream, removed when its work merges, 150 lines at most | Agents read who does what and where. Done work is removed, so the file is the current state |
+| D23 | HANDOFF protocol | Agents coordinate through the `workstreams` table and the rendered `HANDOFF.live.md` (D38). The committed `HANDOFF.md` keeps only lasting context, 150 lines at most | Agents read who does what and where, and done work is removed, so the file stays current |
 | D24 | Rollout | Every rule is live from day one. No shadow week | Alex wants the time savings at once. `harness wrong` (D28) is the safety valve |
 | D25 | Kill switch | `harness off` and `harness on`: one global flag in the ledger that only Alex can set | One command recovers every session if the core has a bug |
 | D26 | Landing | Fast-forward only. The agent rebases its worktree branch on `origin/main`. In personal repos (remote owner `acastro2`) it pushes to `main`. In work repos it opens a PR, merged by rebase or ff, never a merge commit. After each landing the harness, not the agent, runs `git merge --ff-only` in the main checkout | A straight history, and the local `main` never drifts |
@@ -150,6 +152,17 @@ All taken by Alex on 2026-11-25.
 | D35 | Grants channel | `MERGE-OK` and `harness off`, `on`, `wrong` are read only by the command `UserPromptSubmit` hook (OpenCode: the in-process `prompt` hook), never through MCP | The one channel an agent cannot reach |
 | D36 | Config protection | `harness-config-write` denies agent changes to the hook and MCP entries in `~/.claude/settings.json` and `~/.config/opencode/opencode.jsonc`, and to the harness plugin files. Edit and Write tool changes elsewhere in those files are parsed and allowed. Any shell write to those files is denied | Without it, an agent can delete the hooks. The core cannot parse a `sed -i` |
 | D37 | Installing the harness | Only mac-bootstrap installs the harness: it pins Bun and runs `bun harness/install.ts`, which writes the entries. Alex runs mac-bootstrap; nothing else installs or changes the entries (Alex, 2026-11-25). `harness-self` also denies agent calls to `install.ts`. The core registers any worktree under `~/.worktrees/` on its first write, so `worktree_new` is a shortcut, not a gate | One reviewed path changes the harness, and a dead MCP server cannot block all writes |
+| D38 | Live handoff | Live coordination lives in the ledger `workstreams` table. The harness renders it into a read-only `HANDOFF.live.md` in every worktree at `session.start` and after each change. Agents update it with the `workstream_update` MCP tool | With one worktree per session, a committed file is invisible to other agents until it lands, and parallel edits conflict |
+| D39 | Worktree per branch | One worktree per branch (one PR or one ff landing). A workstream owns several worktrees in order | Removing a worktree on landing (D22) never kills ongoing work |
+| D40 | Worktree states | `active`, `landed`, `held`, `removed`. The lifecycle module does each transition's work: fast-forward `main`, remove the worktree and branch, close the workstream entry. A `held` worktree messages its owner; after 24 hours with no live owner, Alex gets one notification | Landing steps stop being prose, and uncommitted work is never deleted |
+| D41 | Proof bundle | Hooks record "did" (commits, diff, tool-call log with hashes, test file hashes) and "works" (claimed runs, screenshots taken after the last edit). The agent writes only `summary` and `known_gaps`. "Verified" is the harness's own re-run | Vendors let the agent make its own evidence; the harness must not |
+| D42 | Where the re-run happens | In the worker's own worktree, with test files restored from base. The worktree must be clean first; if not, the verdict is `partial: uncommitted changes` | Alex picked the worker's worktree. The clean check stops a pass that depends on files that never land |
+| D43 | Verdict | Code sets green, red or partial from exit codes. Jev scores the raw evidence as advice only and never sees the agent's pass claim | Verifiers shown the pass signal accept more hacks ([arXiv 2511.21654](https://arxiv.org/html/2511.21654)) |
+| D44 | Push gate | No bundle for the head commit: push denied. Red or partial: only to a PR branch, labelled in the PR body. Green: may land anywhere. The verdict goes in git notes (`refs/notes/harness`) and the PR body, not a commit trailer | Nothing reaches `main` without the harness's own green. A trailer would change the SHA it proves |
+| D45 | Failure ladder | 3 red verdicts in a row on one branch: round 1 back to the worker, round 2 on the strong model, round 3 inline, then stop and ask Alex. No skipped flaky tests, no retries | Matches the existing escalation rule, now enforced from the ledger |
+| D46 | Ledger integrity | Hash-chain the `decisions` and `bundles` rows; `harness status` checks the chain. No signing | Every agent runs as Alex's user, so it could read any signing key. The `ledger-write` rule is the real control |
+| D47 | Proof for the main session | A Stop check sends the orchestrator back when it says "done", "fixed" or "works" with no green bundle in that turn for the change it means | Done means shown, not claimed, for every session |
+| D48 | Bundle in the PR | The PR body gets 6 lines: head SHA, verdict, acceptance table, screenshot links, bundle ID, and `known_gaps` | A reviewer sees the harness's proof, not the agent's story |
 
 ## Phase 0. Prove the unverified facts
 
@@ -183,6 +196,7 @@ Guard rules (each has a rule id, so Phase 8 can switch it off):
 | `recursive-delete` | `rm -r`, `rm -rf`, `find -delete`, `rsync --delete` outside the D5 allowlist | "Recursive delete outside the allowlist. Name the exact files, or ask Alex." |
 | `merge-in-shell` | Every `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Use the `merge_pr` tool." |
 | `destructive-git` | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
+| `push-gate` | A `git push` of a head commit with no bundle, or a red or partial bundle pushed to `main` (D44) | "Verify first: the harness needs a green bundle for this exact commit to land on main." |
 | `ledger-write` | Any write to `~/.local/state/harness/` | "Only the harness writes its state." |
 | `harness-self` | An agent shell call to `harness off`, `harness on`, `harness wrong` or `harness/install.ts` (D31, D37) | "Only Alex runs harness commands." |
 | `harness-config-write` | A change to the hook or MCP entries in `settings.json` or `opencode.jsonc`, a change to the harness plugin files, or any shell write to those files (D36) | "Change the harness source in a worktree. mac-bootstrap installs it." |
@@ -241,10 +255,11 @@ flowchart LR
 | Continue | The todo list has a pending item and the reply does not ask Alex anything | 31 "continue", 35 automatic "Continue." |
 | UI proof | The turn changed UI files and has no `browse` screenshot after the last change | most of the 41 screenshots |
 | State | The reply does not end with what is done, what is running, and the next step | 17 "what now?" |
-| Handoff | The repo has a `HANDOFF.md` that is older than this session's last commit (D6) | the handoff reminders |
+| Handoff | This session's `workstreams` entry was not updated since its last commit (D6, D38) | the handoff reminders |
+| Proof | The reply says "done", "fixed" or "works" with no green bundle in this turn for that change (D47) | claims that are not shown |
 | Processes | A process this session started is still running and is not named in the reply | the server scavenger hunt |
 | Cleanup | Scratch files for this session are over 500 MB, or a merged worktree of this session is still on disk (D22) | disk filling on the VM |
-| Handoff protocol | A `HANDOFF.md` section this session owns is stale or its work merged, or the file is over 150 lines (D23) | handoffs that only grow |
+| Handoff protocol | The committed `HANDOFF.md` is over 150 lines, or holds live workstream state that belongs in the ledger (D23) | handoffs that only grow |
 | Stale state | The reply says a PR is open, a review is waiting, or something waits for Alex, and the turn did not check it live (`gh pr view`, the ticket, the inbox) after the last time Alex spoke | 9 "it's already merged", "already sent" |
 | False "can't" | The reply says the agent cannot do something, or asks Alex to do it by hand, and the task is in a browser while `browse` is connected. Only login, 2FA, a passkey, a captcha or a payment confirmation go to Alex, through `handoff`. | "you can, use browser control" |
 
@@ -260,42 +275,72 @@ Done when:
 - `bun test harness/` has one case per Stop check, plus the cap.
 - After one week of use, a re-run of the prompt count shows the steering share down from 28%.
 
-## Phase 3. Worker lifecycle
+## Phase 3. Worker lifecycle and proof of work
 
-One policy covers a worker from spawn to return, so verification cannot be skipped.
+One policy covers a worker from spawn to return, and every change ends in a proof bundle the agent cannot fake. The research behind this: `/tmp/claude-502/-home-acastro20-guest--agents-skills/2dd99377-ceae-4a96-b0d9-f4df8b62dd57/scratchpad/proof-of-work.md` (scratch), from the [Claude Code team on verification](https://claude.dev/blog/how-the-claude-code-team-thinks-about-verification/), [Anthropic on long-running harnesses](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) and [agent receipts](https://github.com/danielmeppiel/agent-contracts/blob/main/spec/receipt.md).
 
 ```mermaid
 sequenceDiagram
   participant P as Parent
   participant C as Core: worker lifecycle
   participant W as Worker
+  participant L as Ledger
   P->>C: subagent call (tool.before)
   C->>C: deny if no model or no ACCEPTANCE block
-  C->>C: record base SHA, test hashes, commands
+  C->>L: base SHA, test hashes, commands
   C->>W: prompt plus the worker contract
-  W-->>C: return (tool.after)
-  C->>C: restore tests from base, re-run commands, check allowlist
-  C-->>P: worker reply plus verified result as context
+  W->>C: every tool call (tool.after)
+  C->>L: did: commits, diff, tool log. works: claimed runs, screenshots
+  W-->>C: return with summary and known_gaps
+  C->>C: clean check, restore tests, re-run, real run
+  C->>L: verified: verdict green, red or partial
+  C-->>P: worker reply plus the bundle as context
 ```
 
-On `tool.before` for `subagent` (OpenCode) and `Agent`/`Task` (Claude Code):
-- Deny when `model` is missing: "Set `model`, see AGENTS.md Execution."
-- Deny a `general` spawn with no `ACCEPTANCE:` block (D17). Read-only agents such as `archeologist` and `scout` are exempt.
-- Record the base SHA, the test file hashes and the acceptance commands in `workers`.
-- Add the worker contract to the prompt (`modify`): load `coding` first, no git writes, flag a wrong test and do not edit it, return the proof bundle.
+**Spawn** (`tool.before` on `subagent`, `Agent` or `Task`):
+- Deny when `model` is missing, or a `general` spawn has no `ACCEPTANCE:` block (D17). Read-only agents are exempt.
+- Record the base SHA, test file hashes and acceptance commands in `workers`.
+- Add the worker contract to the prompt (`modify`): load `coding` first, no git writes outside its worktree, flag a wrong test and do not edit it, end with `summary` and `known_gaps`.
 
-On `tool.after` for the same call:
-1. Compare the test file hashes with the record.
-2. Restore the test files from the base SHA.
-3. Run each acceptance command and keep its exit code and the last 40 lines.
-4. Run `git diff --stat` and list files outside the allowlist.
-5. Add the result as context next to the worker's reply (D18).
+**Proof bundle (D41).** Each field has one owner, so the agent writes only what it cannot fake:
 
-The waker also watches each background worker. With no new tool call in 10 minutes, the worker gets the nudge Alex types today: "stop exploring, run the acceptance commands once, return". When a worker finishes, Alex gets one Rex or Herdr notification. That removes the 12 "nudge it, faster" prompts and the "did it return?" questions.
+| Level | Field | Captured by |
+| --- | --- | --- |
+| Did | `session`, `model`, `effort`, `base_sha`, `head_sha`, `commits[]`, `diff_stat`, `outside_allowlist[]` | hooks |
+| Did | `tool_calls[]`: tool, args hash, exit code, output hash, time | hooks |
+| Did | test file hashes before and after | hooks |
+| Works | `runs[]` the agent ran, tagged "claimed" | hooks |
+| Works | `ui_proof[]`: `browse` screenshots taken after the last edit | hooks |
+| Verified | `clean`: the worktree had no uncommitted changes (D42) | harness |
+| Verified | `rerun[]`: each acceptance command with test files restored from base | harness |
+| Verified | `real_run`: the command that runs the real thing, from the contract | harness |
+| Verified | `verdict`: green, red or partial, set by code (D43) | harness |
+| Verified | `advisory`: Jev's score on the raw evidence, never the claim | harness |
+| Agent | `summary`, `known_gaps` | agent |
+
+**Verify on return** (`tool.after`):
+1. If the worktree is not clean, stop: verdict `partial: uncommitted changes`.
+2. Compare the test file hashes with the record, then restore the test files from the base SHA.
+3. Run each acceptance command and the real run. Keep each exit code and the last 40 lines.
+4. Set the verdict by code, ask Jev for its advisory score, and write the bundle to `bundles`.
+5. Add the bundle to the worker's reply as context (D18), so the parent sees the claim and the proof side by side.
+
+**Where the proof goes:**
+- The full bundle stays in the ledger, hash-chained (D46).
+- The verdict goes in git notes (`refs/notes/harness`) on the head commit, and the 6-line summary in the PR body (D48).
+- The `push-gate` rule denies a push with no bundle, and keeps red or partial off `main` (D44).
+- The workstream entry links the bundle ID, so `HANDOFF.live.md` shows it.
+
+**Failure ladder (D45).** After a red verdict, round 1 goes back to the worker, round 2 runs on the strong model, round 3 is done inline by the orchestrator. After 3 reds in a row on one branch, the work stops and Alex is asked. No skipped flaky tests and no retries along the way.
+
+**The main session too (D47).** The Stop check sends the orchestrator back when it says "done", "fixed" or "works" with no green bundle in that turn.
+
+The waker also watches each background worker. With no new tool call in 10 minutes, the worker gets the nudge Alex types today: "stop exploring, run the acceptance commands once, return". When a worker finishes, Alex gets one Rex or Herdr notification.
 
 Done when:
-- On a seeded repo, a worker that edited a test comes back marked red, and a clean worker comes back green.
-- A spawn with no `model` or no `ACCEPTANCE:` block is denied in both tools.
+- On a seeded repo, a worker that edited a test comes back red, a worker with uncommitted changes comes back partial, and a clean worker comes back green.
+- A push with no bundle is denied, and a red bundle cannot fast-forward to `main`.
+- `harness status` detects a hand-edited `bundles` row through the hash chain.
 - A stalled worker gets one nudge, and a finished worker shows one notification, with no prompt from Alex.
 
 ## Phase 4. Small fixes, no hook needed
@@ -306,46 +351,47 @@ Done when:
 
 Done when: `bun --version` prints the pin on both hosts, `git push` in `alex-skills` works with no `-c credential.helper`, and both `ub-mode` links resolve on Linux and on the Mac.
 
-## Phase 5. Worktrees, cleanup, handoff protocol
+## Phase 5. Worktree lifecycle, cleanup, live handoff
+
+One worktree lifecycle module owns every worktree from creation to removal, so landing steps are code, not prose.
 
 ```mermaid
-flowchart LR
-  S[session.start] --> W[worktree_new tool<br/>~/.worktrees/repo/name]
-  W --> L[(ledger: worktrees)]
-  W --> H[HANDOFF.md section:<br/>owner, worktree, state, next]
-  H --> M{PR merged?}
-  M -->|yes| C[remove worktree and branch<br/>remove HANDOFF section]
-  M -->|no| H
-  E[session.end] --> K[kill session processes<br/>except keep]
+stateDiagram-v2
+  [*] --> active: worktree_new or first write under ~/.worktrees
+  active --> landed: green ff push to main, or PR merged
+  landed --> removed: worktree clean
+  landed --> held: uncommitted changes
+  held --> removed: owner cleans it
+  removed --> [*]
 ```
 
-**Worktrees (D7, D21).** the `worktree_new` tool runs `git worktree add ~/.worktrees/<repo>/<name> -b <name>`, writes a `worktrees` row, and moves the session there (OpenCode `session.move`; Claude Code `--worktree` or `isolation: worktree` for subagents). The `main-checkout-write` rule denies writes in the main checkout. On `session.start`, the core tells the agent which worktrees are live in the repo and which session owns each one, so no two agents use the same one.
+**Worktrees (D7, D21, D39).** One worktree per branch, at `~/.worktrees/<repo>/<name>`. The `worktree_new` MCP tool creates it, records it, and moves the session there (OpenCode `session.move`; Claude Code `--worktree` or `isolation: worktree` for subagents). A worktree made by hand under `~/.worktrees/` is registered on its first write (D37). The `main-checkout-write` rule denies agent writes in the main checkout.
+
+**Transitions (D40).** The lifecycle module does each step itself:
+
+| Transition | What the module does |
+| --- | --- |
+| `active` to `landed` | Runs `git merge --ff-only origin/main` in the main checkout (D26), links the bundle, and marks the workstream step done |
+| `landed` to `removed` | `git worktree remove` (never `--force`), deletes the local branch, updates `HANDOFF.live.md` |
+| `landed` to `held` | Messages the owner session. After 24 hours with no live owner, notifies Alex once |
+
+If the main checkout has uncommitted changes of its own (Alex editing by hand), the fast-forward is skipped and Alex gets a notice.
+
+**Live handoff (D23, D38).**
+- The `workstreams` table holds each live workstream: owner, worktrees in order, state, next steps, running processes, updated.
+- The harness renders it into a read-only `HANDOFF.live.md` in every worktree at `session.start` and after each change. Agents read it to see who does what, and where.
+- Agents change their own entry with the `workstream_update` MCP tool, never by editing the file.
+- The committed `HANDOFF.md` keeps only lasting context: repo gotchas and long-running items, 150 lines at most. The `handoff` skill changes to match, and the repo's own `docs/HANDOFF.md` is the first one to clean up.
 
 **Cleanup (D20, D22).**
-- When a watched PR merges, the waker removes its worktree with `git worktree remove` (never `--force`) and deletes the local branch. A worktree with uncommitted changes stays, and its owner gets a message.
 - On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with the `keep_process` tool only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
-- The Stop check sends the agent back when its scratch files are over 500 MB or a merged worktree is still on disk.
-
-**Handoff protocol (D23).** `HANDOFF.md` stops being a log that only grows. It holds one section per live workstream:
-
-```markdown
-## <workstream>
-Owner: <session id> · Worktree: ~/.worktrees/<repo>/<name> · Updated: <date>
-State: <one or two lines>
-Next:
-1. <step>
-Running: <process, port, PID>, or none
-```
-
-- An agent adds its section when it starts work and keeps it current at each milestone.
-- When the work merges, the agent removes the section. The decision goes to an ADR or the PR body, not to the handoff.
-- The Stop check sends the agent back when its own section is stale or its work merged, or when the file is over 150 lines.
-- The `handoff` skill changes to match: sections, owners, removal on merge, and the 150-line cap. The repo's own `docs/HANDOFF.md` is the first one to clean up.
+- The Stop check sends the agent back when its scratch files are over 500 MB or a removed worktree is still on disk.
 
 Done when:
-- Two sessions in one repo each get a worktree, and each sees the other's pointer at start.
-- A write in the main checkout is denied with the worktree command.
-- A merged PR's clean worktree and branch are gone, and its HANDOFF section is removed.
+- Two sessions in one repo each get a worktree, and each sees the other in `HANDOFF.live.md` at start.
+- A write in the main checkout is denied with the worktree message.
+- A green ff landing fast-forwards the main checkout, removes the clean worktree and its branch, and updates the live file.
+- A landing with uncommitted changes goes to `held`, and the owner gets the message.
 - `session.end` kills an unkept test server and keeps a server flagged `keep`.
 
 ## Phase 6. Fork to a new tab
