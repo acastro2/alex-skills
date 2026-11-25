@@ -149,7 +149,7 @@ All taken by Alex on 2026-11-25.
 | D34 | Two MCP servers | `harness-hooks` serves only `decide`, and the model is denied it (`mcp__harness-hooks__*`). `harness` serves the 4 agent tools, with `codemode: false` in OpenCode. OpenCode keeps the in-process core and does not load `harness-hooks` | If the model could call `decide`, it could fake a prompt with `MERGE-OK` |
 | D35 | Grants channel | `MERGE-OK` and `harness off`, `on`, `wrong` are read only by the command `UserPromptSubmit` hook (OpenCode: the in-process `prompt` hook), never through MCP | The one channel an agent cannot reach |
 | D36 | Config protection | `harness-config-write` denies agent changes to the hook and MCP entries in `~/.claude/settings.json` and `~/.config/opencode/opencode.jsonc`, and to the harness plugin files. Edit and Write tool changes elsewhere in those files are parsed and allowed. Any shell write to those files is denied | Without it, an agent can delete the hooks. The core cannot parse a `sed -i` |
-| D37 | Installing the harness | Only `bun harness/install.ts` writes the entries, run by Alex or mac-bootstrap. `harness-self` also denies agent calls to `install.ts`. The core registers any worktree under `~/.worktrees/` on its first write, so `worktree_new` is a shortcut, not a gate | One reviewed path changes the harness, and a dead MCP server cannot block all writes |
+| D37 | Installing the harness | Only mac-bootstrap installs the harness: it pins Bun and runs `bun harness/install.ts`, which writes the entries. Alex runs mac-bootstrap; nothing else installs or changes the entries (Alex, 2026-11-25). `harness-self` also denies agent calls to `install.ts`. The core registers any worktree under `~/.worktrees/` on its first write, so `worktree_new` is a shortcut, not a gate | One reviewed path changes the harness, and a dead MCP server cannot block all writes |
 
 ## Phase 0. Prove the unverified facts
 
@@ -185,7 +185,7 @@ Guard rules (each has a rule id, so Phase 8 can switch it off):
 | `destructive-git` | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
 | `ledger-write` | Any write to `~/.local/state/harness/` | "Only the harness writes its state." |
 | `harness-self` | An agent shell call to `harness off`, `harness on`, `harness wrong` or `harness/install.ts` (D31, D37) | "Only Alex runs harness commands." |
-| `harness-config-write` | A change to the hook or MCP entries in `settings.json` or `opencode.jsonc`, a change to the harness plugin files, or any shell write to those files (D36) | "Change the harness source in a worktree. Alex installs it with `install.ts`." |
+| `harness-config-write` | A change to the hook or MCP entries in `settings.json` or `opencode.jsonc`, a change to the harness plugin files, or any shell write to those files (D36) | "Change the harness source in a worktree. mac-bootstrap installs it." |
 | `main-checkout-write` | An edit or write tool on a path in a repo's main checkout, and `git commit`, `git checkout`, `git merge` or `git rebase` run there (D7) | "Work in a worktree: call `worktree_new`. It records the pointer for other agents." |
 
 The guard parses the full command and walks `bash -c`, `sh -c`, `env`, `xargs`, `git -C` and absolute paths before it matches. Why: deny rules in both tools match only the command text.
