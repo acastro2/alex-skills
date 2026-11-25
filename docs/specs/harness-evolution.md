@@ -216,6 +216,44 @@ Done when: `git push` in `alex-skills` works with no `-c credential.helper`, and
 
 Done when: two sessions in one repo see each other's ID, a finished worker shows a notification, and a stalled worker gets one nudge without Alex.
 
+## Phase 6b. Fork to a new tab
+
+Alex often wants to explore two paths from one conversation. Today `/fork` replaces the session he is in. The goal: one command opens the fork in a new Rex tab, already running, and the original session does not stop or change.
+
+```mermaid
+sequenceDiagram
+  participant A as Alex
+  participant O as Original session
+  participant F as fork_tab.sh
+  participant R as Rex
+  participant N as Forked session
+  A->>O: /fork-tab try the plugin route
+  O->>F: session ID, prompt, optional worktree
+  F->>N: fork with full history, send the prompt
+  F->>R: rex window new --focus=false -- open N
+  R-->>A: new tab, still in the original
+  O-->>A: original keeps working
+```
+
+Verified on 2026-11-25:
+- **OpenCode:** `opencode run -s <session> --fork --title <t> --format json "<prompt>"` made a new session with the full history. It answered a question about this conversation, while the original session kept running. The JSON events carry the new `sessionID`. `--worktree <name>` also exists on `opencode run`.
+- **Claude Code:** `claude --resume <id> --fork-session` exists in `claude --help` (2.1.332). Not run yet.
+- **Rex:** `rex window new -s SESSION LABEL --focus=false -- COMMAND` opens a tab and keeps Alex's current tab active.
+
+`harness/fork_tab.sh` does the following:
+1. OpenCode: run `opencode run -s "$OPENCODE_SESSION_ID" --fork --title "<t>" --format json "<prompt>"`, read the new session ID from the events, then `rex window new -s "$REX_SESSION" "<t>" --focus=false -- opencode -s <new id>`.
+2. Claude Code: `rex window new -s "$REX_SESSION" "<t>" --focus=false -- claude --resume <id> --fork-session "<prompt>"`.
+3. With `--worktree`, the fork works in its own git worktree, so the two paths never edit the same files. That also avoids the parallel-session collisions in Phase 6. Use it whenever the paths change code.
+4. Under Herdr (`HERDR_ENV=1`), open a Herdr tab instead of a Rex tab.
+
+Entry points: an OpenCode command `/fork-tab <prompt>` and a Claude Code command or skill `/fork-tab <prompt>`. Each calls the script with its own session ID.
+
+Open questions for Phase 0:
+- How does a Claude Code command read its own session ID? Hooks get `session_id` on stdin. A `SessionStart` hook can write it to an env file. Not verified.
+- Does `claude --resume <id> --fork-session "<prompt>"` start the fork with the prompt in the interactive TUI? Not run yet.
+
+Done when: `/fork-tab` from a running session opens a new tab that already answers the prompt with the full history, Alex's tab stays focused, and the original turn goes on with no change.
+
 ## Phase 7. Cut the prose
 
 For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus a pointer to the guard. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
