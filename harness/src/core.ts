@@ -6,11 +6,14 @@ import { openLedger } from "./ledger/db.ts"
 import { append, upsertSession } from "./ledger/journal.ts"
 import { seed } from "./ledger/registry.ts"
 import { guardPath, guardShell, repoOf } from "./policies/guard.ts"
+import { guardMcp } from "./policies/mcp.ts"
 import { afterTool } from "./policies/nudge.ts"
 import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
 import { stopChecks } from "./policies/stop.ts"
 import { allow, q1, toolData, type Env, type Out } from "./policies/util.ts"
+import { guardPush, recordWorker, startVerify } from "./policies/worker.ts"
+import { guardWorktree } from "./policies/worktree.ts"
 import { takeInbox } from "./waker/deliver.ts"
 import { ALLOW, type Decision, type HarnessEvent } from "./types.ts"
 
@@ -66,6 +69,22 @@ const joinContext = (parts: (string | null | undefined)[]): string | undefined =
   return t || undefined
 }
 
+// Runs the policies for one tool call in order. The first deny ends the chain and wins; else the first
+// hit that names a rule leads. Every policy's data goes to the journal row.
+function chain(...policies: (() => Out | null)[]): Out | null {
+  const outs: Out[] = []
+  for (const p of policies) {
+    const o = p()
+    if (!o) continue
+    outs.push(o)
+    if (o.decision.outcome === "deny") break
+  }
+  if (!outs.length) return null
+  const lead = outs.find((o) => o.decision.outcome === "deny") ?? outs.find((o) => o.ruleId) ?? outs[0]
+  const data = Object.assign({}, ...outs.map((o) => o.data ?? {}))
+  return { ...lead, data: Object.keys(data).length ? data : undefined }
+}
+
 async function route(env: Env, off: boolean): Promise<Out> {
   const { db, ev } = env
   switch (ev.event) {
@@ -102,14 +121,24 @@ async function route(env: Env, off: boolean): Promise<Out> {
       }
       let o: Out | null = null
       if (!off) {
-        if (name === "shell") o = guardShell(env)
-        else if (name === "edit" || name === "write") o = guardPath(env)
-        else if (name === "subagent") o = guardSpawn(env)
+        if (name === "shell") o = chain(() => guardShell(env), () => guardPush(env), () => guardWorktree(env))
+        else if (name === "edit" || name === "write") o = chain(() => guardPath(env), () => guardWorktree(env))
+        else if (name === "subagent") {
+          o = guardSpawn(env)
+          if (o?.decision.outcome !== "deny") recordWorker(env)
+        } else if (name?.startsWith("mcp:harness:")) o = guardMcp(env)
       }
       return { ...(o ?? allow()), data: { ...base, ...(o?.data ?? {}) } }
     }
-    case "tool.after":
-      return off ? allow({ data: toolData(ev) }) : afterTool(env)
+    case "tool.after": {
+      if (off) return allow({ data: toolData(ev) })
+      // The verify starts first: it is quick, and afterTool may wait on a judgment call.
+      const worker = ev.toolName === "subagent" ? startVerify(env) : null
+      const o = await afterTool(env)
+      if (!worker) return o
+      const context = joinContext([o.decision.context, worker.context])
+      return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId } }
+    }
     case "stop":
       return off ? allow({ data: { reply: (ev.reply ?? "").slice(0, 4000) } }) : stopChecks(env)
   }

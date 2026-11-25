@@ -70,9 +70,22 @@ export function builtinJobs(db: Database): JobDef[] {
   ]
 }
 
+// The MCP tool reads the table directly: the running `harness serve` owns the schedule and the run state.
+export function status(db: Database): Omit<JobStatus, "running">[] {
+  return db.query("select name, schedule, last_run_at, last_result from jobs order by name").all() as Omit<JobStatus, "running">[]
+}
+
+// The agent cannot run a job itself. It journals a request, and `harness serve` picks it up (startJobs polls).
+export function requestRun(db: Database, name: string): { requested: string } {
+  const known = new Set([...builtinJobs(db).map((j) => j.name), ...status(db).map((j) => j.name)])
+  if (!known.has(name)) throw new Error(`unknown job: ${name} (known: ${[...known].sort().join(", ")})`)
+  append(db, { session_id: null, event: "job.requested", data: { job: name } })
+  return { requested: name }
+}
+
 export function startJobs(
   db: Database,
-  opts: { jobs?: JobDef[] } = {},
+  opts: { jobs?: JobDef[]; pollMs?: number } = {},
 ): { stop(): void; status(): JobStatus[]; runNow(name: string): Promise<string> } {
   const defs = new Map<string, JobDef>()
   for (const j of [...builtinJobs(db), ...(opts.jobs ?? [])]) defs.set(j.name, j)
@@ -103,13 +116,25 @@ export function startJobs(
 
   const crons = [...defs.values()].map((j) => Bun.cron(j.schedule, () => void runNow(j.name)))
 
+  // A job.requested row newer than the job's last run means an agent asked for a run (job_run_now).
+  const pending = db.query(
+    `select 1 as x from journal j join jobs b on b.name = ?
+     where j.event = 'job.requested' and json_extract(j.data_json, '$.job') = ? and j.time > coalesce(b.last_run_at, 0) limit 1`,
+  )
+  const poll = setInterval(() => {
+    try {
+      for (const name of defs.keys()) if (!running.has(name) && pending.get(name, name)) void runNow(name)
+    } catch {
+      // a locked or closed ledger: try again on the next tick
+    }
+  }, opts.pollMs ?? 10_000)
+
   return {
-    stop: () => crons.forEach((c) => c.stop()),
-    status: () =>
-      (db.query("select name, schedule, last_run_at, last_result from jobs order by name").all() as Omit<JobStatus, "running">[]).map((r) => ({
-        ...r,
-        running: running.has(r.name),
-      })),
+    stop: () => {
+      crons.forEach((c) => c.stop())
+      clearInterval(poll)
+    },
+    status: () => status(db).map((r) => ({ ...r, running: running.has(r.name) })),
     runNow,
   }
 }

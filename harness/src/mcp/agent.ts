@@ -7,6 +7,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 import { isOff } from "../ledger/authority.ts"
+import { requestRun, status as jobsStatus } from "../jobs/jobs.ts"
 import { openLedger } from "../ledger/db.ts"
 import { verifyChain } from "../ledger/journal.ts"
 import { RULES, mode, seed } from "../ledger/registry.ts"
@@ -223,17 +224,17 @@ const TOOLS: Tool[] = [
   },
   {
     name: "jobs_status",
-    description: "List the scheduled harness jobs with their last run and result. Ships with the jobs lane.",
+    description: "List the scheduled harness jobs with their last run and result.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    run: () => viaOptional("jobs/jobs.ts", "status", "jobs_status ships with the jobs lane", (f) => f()),
+    run: (_a, c) => ({ jobs: jobsStatus(c.db) }),
   },
   {
     name: "job_run_now",
-    description: "Run one scheduled harness job now, outside its schedule. Ships with the jobs lane.",
+    description: "Ask the running `harness serve` to run one scheduled job now, outside its schedule. It starts within about 10 seconds; read the result with jobs_status.",
     inputSchema: schema({ name: { type: "string", description: "Job name from jobs_status" } }, ["name"]),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-    run: (a) => viaOptional("jobs/jobs.ts", "runNow", "job_run_now ships with the jobs lane", (f) => f(str(a, "name", true))),
+    run: (a, c) => requestRun(c.db, str(a, "name", true)),
   },
 ]
 

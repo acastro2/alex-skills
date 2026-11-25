@@ -72,6 +72,40 @@ function uiProofCheck(rows: ToolRow[]): Check | null {
     : { id: "stop-ui-proof", message: `UI files changed (${ui[ui.length - 1].data.path}) with no browse screenshot after the last edit. Take one and show it.` }
 }
 
+const DONE_CLAIM = /\b(done|fixed|works|working|complete|implemented)\b/i
+const GIT_COMMIT = /\bgit\s+(?:-C\s+\S+\s+)?commit\b/
+
+// D47: a "done" claim after a code edit needs a green bundle from this turn.
+function proofCheck(env: Env, rows: ToolRow[], reply: string): Check | null {
+  if (!rows.some((r) => isEdit(r.data) && !/\.md$/i.test(r.data.path))) return null
+  if (!DONE_CLAIM.test(reply)) return null
+  const green = q1(
+    env.db,
+    `select 1 as x from journal where session_id = ? and event = 'bundle' and outcome = 'green'
+       and seq > coalesce((select min(seq) from journal where session_id = ? and turn = ?), 0) limit 1`,
+    env.ev.session,
+    env.ev.session,
+    env.turn,
+  )
+  return green ? null : { id: "stop-proof", message: "You said it is done, but this turn has no green proof bundle. Call the `verify` tool with the commands that prove it." }
+}
+
+// D6, D38: a commit after the workstream entry was last touched means the handoff is stale.
+function handoffCheck(env: Env, rows: ToolRow[]): Check | null {
+  const ws = q1<{ t: number | null }>(
+    env.db,
+    "select max(updated_at) as t from workstreams where owner_session_id = ? and coalesce(state, '') != 'done'",
+    env.ev.session,
+  )
+  if (ws?.t == null) return null
+  const stale = rows.some((r) => {
+    if (r.data.tool !== "shell" || r.data.failed || !GIT_COMMIT.test(String(r.data.arg ?? ""))) return false
+    const at = q1<{ time: number }>(env.db, "select time from journal where seq = ?", r.seq)?.time ?? 0
+    return at > ws.t!
+  })
+  return stale ? { id: "stop-handoff", message: "Update your workstream entry with `workstream_update`: state and next steps." } : null
+}
+
 // ---- judgment checks: fallbacks are strict, so Jev being down never adds send-backs ----
 
 const tail = (s: string, n: number) => s.slice(-n)
@@ -125,6 +159,8 @@ export async function stopChecks(env: Env): Promise<Out> {
   if (on("stop-commit")) add(commitCheck(rows))
   if (on("stop-links")) add(linksCheck(rows, reply))
   if (on("stop-ui-proof")) add(uiProofCheck(rows))
+  if (on("stop-proof")) add(proofCheck(env, rows, reply))
+  if (on("stop-handoff")) add(handoffCheck(env, rows))
 
   // One Jev call carries every judgment this stop needs.
   const want: string[] = []

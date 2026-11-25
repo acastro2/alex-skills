@@ -12,7 +12,7 @@ export const CONTRACT = [
   "- End your reply with SUMMARY: and KNOWN_GAPS: sections.",
 ].join("\n")
 
-const isGeneral = (agent: unknown) => agent === "general" || agent === "general-purpose"
+export const isGeneral = (agent: unknown) => agent === "general" || agent === "general-purpose"
 
 export function guardSpawn(env: Env): Out | null {
   const i = env.ev.input ?? {}
