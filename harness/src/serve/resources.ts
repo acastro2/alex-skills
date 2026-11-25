@@ -259,7 +259,15 @@ const mb = (kb: number) => Math.round((kb / 1024) * 10) / 10;
 /** The sampler's own `ps` call: it always shows near 100 % CPU, so it never counts. */
 const SELF_PS = /^ps -eo pid=,pcpu=/;
 
-export function procRows(all: PsRow[], sessions: Map<number, string>, home = process.env.HOME ?? ""): { top_cpu: ProcSample[]; top_rss: ProcSample[] } {
+// A session's own process names its id: `claude --resume <uuid>`, `opencode -s ses_…`, `--session <id>`.
+const ARG_SESSION = /(?:--resume|--session|--session-id|(?:^|\s)-s)[= ]+((?:ses_)?[A-Za-z0-9-]{8,})/
+
+export function sessionFromArgs(args: string, known: Set<string>): string | null {
+  const m = ARG_SESSION.exec(args)
+  return m && known.has(m[1]) ? m[1] : null
+}
+
+export function procRows(all: PsRow[], sessions: Map<number, string>, home = process.env.HOME ?? "", known: Set<string> = new Set()): { top_cpu: ProcSample[]; top_rss: ProcSample[] } {
   const rows = all.filter((r) => !SELF_PS.test(r.args));
   // `~` for the home folder, so the command column shows the program, not the path to it.
   const short = (s: string) => (home ? s.split(home).join("~") : s);
@@ -270,13 +278,21 @@ export function procRows(all: PsRow[], sessions: Map<number, string>, home = pro
     etime: r.etime,
     comm: r.comm,
     args: short(r.args).slice(0, 200),
-    session: sessions.get(r.pid) ?? null,
+    session: sessions.get(r.pid) ?? sessionFromArgs(r.args, known),
     slug: null,
   });
   return {
     top_cpu: [...rows].sort((a, b) => b.cpu - a.cpu).slice(0, 8).map(conv),
     top_rss: [...rows].sort((a, b) => b.rss_kb - a.rss_kb).slice(0, 8).map(conv),
   };
+}
+
+function knownSessions(db: Database): Set<string> {
+  try {
+    return new Set((db.query("SELECT id FROM sessions WHERE ended_at IS NULL").all() as { id: string }[]).map((r) => r.id))
+  } catch {
+    return new Set()
+  }
 }
 
 function sessionPids(db: Database): Map<number, string> {
@@ -354,7 +370,7 @@ export function startSampler(db: Database, opts: { intervalMs?: number; clock?: 
       : null;
     const pressure = psiC || psiM || psiI ? { cpu: parsePressure(psiC), memory: parsePressure(psiM), io: parsePressure(psiI) } : null;
     const lo = parseLoadavg(load);
-    const procs = procRows(parsePs(ps), sessionPids(db));
+    const procs = procRows(parsePs(ps), sessionPids(db), undefined, knownSessions(db));
     samples.push(sampleOf(now, total, memory, lo?.one ?? null, pressure?.memory ?? null));
     return finish(now, "linux", "proc", total, cores, cur.cores.length, lo, memory, dk, io, pressure, procs);
   }
@@ -391,7 +407,7 @@ export function startSampler(db: Database, opts: { intervalMs?: number; clock?: 
       : null;
     const rows = parsePs(ps);
     const total = Math.min(100, rows.reduce((a, r) => a + r.cpu, 0) / ncpu);
-    const procs = procRows(rows, sessionPids(db));
+    const procs = procRows(rows, sessionPids(db), undefined, knownSessions(db));
     samples.push(sampleOf(now, total, memory, load?.one ?? null, null));
     return finish(now, "macos", "macos-fallback", total, [], ncpu, load, memory, dk, null, null, procs);
   }

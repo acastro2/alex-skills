@@ -136,3 +136,13 @@ test("procRows drops the sampler's own ps call and shortens the home folder to ~
   expect(top_cpu[0].args).toBe("~/.local/bin/rex serve --port 1");
   expect(top_cpu[0].session).toBe("ses_X");
 });
+
+// Seen live 2026-11-25: every `claude --resume <id>` process showed Session "none".
+test("a process that names a live session id in its arguments is tagged with it", async () => {
+  const { sessionFromArgs } = await import("../src/serve/resources.ts")
+  const known = new Set(["d54889e1-66bd-4a71-b9be-137983d2287d", "ses_deb863596ffe2kJCya1E9Kw9k2"])
+  expect(sessionFromArgs("claude --resume d54889e1-66bd-4a71-b9be-137983d2287d", known)).toBe("d54889e1-66bd-4a71-b9be-137983d2287d")
+  expect(sessionFromArgs("opencode -s ses_deb863596ffe2kJCya1E9Kw9k2", known)).toBe("ses_deb863596ffe2kJCya1E9Kw9k2")
+  expect(sessionFromArgs("claude --resume 00000000-0000-0000-0000-000000000000", known)).toBeNull()
+  expect(sessionFromArgs("tofu test -no-color", known)).toBeNull()
+})
