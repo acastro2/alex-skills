@@ -68,6 +68,20 @@ Next:
 Blockers:
 - huggingface.co is blocked on every network. Alex must AirDrop the models.
 
+## improve-cicd (was improve-ci)
+
+State: CI half done 2026-11-24, CD half and rename 2026-11-25. A fresh-context review found two Blockers, both fixed: the Go `-race` cache claim was wrong (a second run on 1.27.4 printed `(cached)`), and "promote the saved plan" contradicted the OpenTofu re-plan rule. Evals are in `improve-cicd/evals/behaviour/` (5 cases, skill vs no skill, Opus, 3 runs), and results are in `~/.agents/skill-workspace/alex-skills/improve-cicd/iter-1`. After the grader fix (it now strips YAML comments and accepts `cancel-in-progress: ${{ ... pull_request }}`): ci 1.0 vs 0.67, helm 1.0 vs 0.92, tofu ties at 1.0, cd 0.86 vs 0.91, approval low-signal. Scripts: `ci_audit.py` was checked on astral-sh/uv (120 runs), and `cd_audit.py` on cli/cli plus a synthetic rollback check.
+
+Next:
+1. cd case: the skill reply put the rollback in a workflow step and left the ECS circuit breaker and alarms as "needs you". The no-skill reply named the circuit breaker. Make B3's rollback row give the exact ECS setting (from `references/aws.md`), then re-run `--only cd`.
+2. approval case: both configs keep the gate, so the case does not tell them apart, and the Jev question returns UNSURE (0.6 to 0.8). Split it into two questions, or drop the case.
+3. Re-run: `python3 improve-cicd/tests/behaviour/run_behaviour.py <iter> --runs 3 [--only names]`, then `grade.py <iter>`.
+
+Gotchas:
+- The no-skill config tries `Skill(improve-cicd)` and is blocked. The grader only counts loads that ran.
+- Real repos deploy the same SHA many times: cli/cli has 10 distinct SHAs in 40 deploys. `cd_audit.py` collapses the repeats.
+- `per_page=100` on the jobs API returns HTTP 502 for runs with many jobs. `ci_audit.py` uses 50.
+
 ## Other open items
 
 Not re-checked; each was true when it was written:

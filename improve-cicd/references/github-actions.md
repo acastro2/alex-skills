@@ -31,6 +31,14 @@ concurrency:
 
 Keep the group per ref, so merge queue refs and other branches never cancel each other. A cancelled run is not a pass ([concurrency](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency)).
 
+**Cancel only PR runs.** A second push to main must not cancel a running deploy or a main build that seeds the caches, and a merge queue run must finish:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+```
+
 ## Merge queue: the full suite before main
 
 ```yaml

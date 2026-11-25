@@ -1,0 +1,1 @@
+ECS Fargate service behind an ALB, rolling deploys, no alarms on the service. Merge to production takes about 25 minutes. No GitHub environments are configured, so GitHub records no deployments. Last quarter two bad deploys were rolled back by hand, taking 50 and 80 minutes.

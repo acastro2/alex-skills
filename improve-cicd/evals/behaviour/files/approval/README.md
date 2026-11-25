@@ -1,0 +1,1 @@
+Merge-to-production lead time p50 is 26 hours. Almost all of it is the `production` environment's required reviewer: every deploy waits for an approval that the company's change process requires (a change record must be approved before a production change). The approver usually approves within a day.

@@ -1,0 +1,1 @@
+One Kubernetes Deployment from `./chart`, no readiness probe, Datadog APM on the service. No Argo CD in the cluster, and the team does not want to add it this quarter. The deploy job is always green, but twice last month pods crash-looped after a green deploy.

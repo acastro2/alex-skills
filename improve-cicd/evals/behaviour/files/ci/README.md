@@ -1,0 +1,1 @@
+Python service, `pyproject.toml` + `requirements-dev.txt` (pytest, pytest-rerunfailures, flake8, black, mypy). The audit of the last 150 runs: waiting p50 9 s, setup p50 74 s (pip install), running p50 210 s. PR wall time p50 6.1 min, p95 11.4 min. The test job flakes about 1 run in 12 and the reruns hide it.

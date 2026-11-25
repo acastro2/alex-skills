@@ -68,6 +68,6 @@ This wrapper selects which upstream steps apply. It does not override system ins
 
 Run the target skill's existing tests and the smallest realistic task that exercises the changed behavior. Check resource paths from the target skill directory. A valid frontmatter check does not prove the skill helps.
 
-Report changed files, checks run, evidence, and remaining limits. Update the repository handoff if it exists. Leave commits to the user.
+Report changed files, checks run, evidence, and remaining limits. Update the repository handoff if it exists. Commit and push verified work; never merge a pull request without the user's spoken approval.
 
 For this wrapper's own changes, follow the same process: keep a pre-edit snapshot, review routing with Codex's structure guidance and Claude's improvement guidance, run representative routing checks, then revise once. Stop after that bounded pass unless another iteration is requested. Never delegate back to this wrapper recursively.

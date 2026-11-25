@@ -1,0 +1,1 @@
+One OpenTofu root `infra/` with 1,400 resources (network, RDS, ECS, IAM) in one S3 state with a DynamoDB lock table. A plan takes about 9 minutes with refresh, so someone added `-refresh=false` to make it 2 minutes. This repo is a personal project, not a work repo: there is no platform team workflow.

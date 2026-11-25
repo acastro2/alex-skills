@@ -1,0 +1,16 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: v4.3.1 }
+      - run: echo "$KUBECONFIG_B64" | base64 -d > kubeconfig
+        env: { KUBECONFIG_B64: "${{ secrets.KUBECONFIG_B64 }}" }
+      - run: helm upgrade --install app ./chart --set image.tag=${{ github.sha }} --timeout 2m
+        env: { KUBECONFIG: kubeconfig }

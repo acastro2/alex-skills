@@ -1,6 +1,6 @@
 # Python
 
-Default tools for the budgets in `improve-ci`. Checked 2026-11-24 (uv 0.13.9, ruff 0.17.6, pytest-xdist 3.8.0). Check each command against the installed version before you use it.
+Default tools for the budgets in `improve-cicd`. Checked 2026-11-24 (uv 0.13.9, ruff 0.17.6, pytest-xdist 3.8.0). Check each command against the installed version before you use it.
 
 | Job | Command | Notes |
 | --- | --- | --- |
