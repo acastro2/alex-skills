@@ -75,6 +75,7 @@ const denied: Array<[string, string, ShellCtx?]> = [
   // harness-config-write
   ["sed -i s/a/b/ ~/.claude/settings.json", "harness-config-write"],
   ["echo {} > .claude/settings.local.json", "harness-config-write"],
+  ["python3 -I -c \"import json; d=json.load(open('/home/u/.claude/settings.json')); json.dump(d, open('/home/u/.claude/settings.json','w'))\"", "harness-config-write"],
   ["mv x opencode.jsonc", "harness-config-write"],
   ["touch ~/.config/opencode/plugins/harness.ts", "harness-config-write"],
   // bypass forms
@@ -94,6 +95,9 @@ const denied: Array<[string, string, ShellCtx?]> = [
 ]
 
 const allowed: Array<[string, ShellCtx?]> = [
+  // Seen live: a read-only script that loads settings.json was denied as a config write.
+  ["python3 -I -c \"import json; d=json.load(open('/home/u/.claude/settings.json')); print(len(d['hooks']))\""],
+  ["bun -e \"console.log(require('fs').readFileSync('/home/u/.local/state/harness/ledger.db').length)\""],
   ["rm -rf /tmp/build"],
   ["rm -rf node_modules", ignored],
   ["rm file.txt"],

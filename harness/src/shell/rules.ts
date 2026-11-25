@@ -266,8 +266,13 @@ function writes(P: Parsed): Writes {
   return { targets, code }
 }
 
+// Inline code (python -c, bun -e) that names a protected path counts as a write only when it also
+// writes something. A read-only script that loads settings.json is not a write (seen live 2026-11-25).
+const WRITE_CODE = /open\([^)]*,\s*['"][^'"]*[wax+]|\.write(?:_text|_bytes|File|FileSync)?\(|Bun\.write|json\.dump\(|appendFile|unlink|rmSync|\brename|shutil\.|os\.(?:remove|replace)|truncate|writelines/
+const writesCode = (code: string[]) => WRITE_CODE.test(code.join("\n"))
+
 function ledgerWrite(W: Writes, ctx: ShellCtx): boolean {
-  if (W.code.some((s) => s.includes(".local/state/harness"))) return true
+  if (W.code.some((s) => s.includes(".local/state/harness")) && writesCode(W.code)) return true
   return W.targets.some((t) => {
     const p = resolveTarget(t, ctx)
     return p !== null && isLedgerPath(p, ctx.home)
@@ -275,7 +280,7 @@ function ledgerWrite(W: Writes, ctx: ShellCtx): boolean {
 }
 
 function harnessConfigWrite(W: Writes, ctx: ShellCtx): boolean {
-  if (W.code.some((s) => /\.claude\/settings|opencode\.jsonc?|\.config\/opencode\/plugins\/harness/.test(s))) return true
+  if (W.code.some((s) => /\.claude\/settings|opencode\.jsonc?|\.config\/opencode\/plugins\/harness/.test(s)) && writesCode(W.code)) return true
   return W.targets.some((t) => {
     const p = resolveTarget(t, ctx)
     return p !== null && isHarnessConfigPath(p, ctx.home)
