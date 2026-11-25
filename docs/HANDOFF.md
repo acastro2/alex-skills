@@ -1,6 +1,6 @@
 # HANDOFF: alex-skills
 
-Updated: 2026-11-22 (bard specs lane; gather Slack from 2026-11-20 kept)
+Updated: 2026-11-25 15:20 CST, HEAD 0b996f8 (harness live on the VM)
 
 ## gather Slack
 
@@ -82,13 +82,20 @@ Gotchas:
 - Real repos deploy the same SHA many times: cli/cli has 10 distinct SHAs in 40 deploys. `cd_audit.py` collapses the repeats.
 - `per_page=100` on the jobs API returns HTTP 502 for runs with many jobs. `ci_audit.py` uses 50.
 
-## harness (plan only)
+## harness (live on this VM)
 
-State: spec done and reviewed 2026-11-25, nothing built. `docs/specs/harness-evolution.md` (`a705625`): one Bun core behind hooks and an OpenCode plugin, SQLite ledger and journal, MCP tools for deliberate actions, D1 to D74. Threat model D72: guard against agent mistakes, tamper-evident, not a wall (this user has passwordless sudo). One plan, phases 0 to 9 in order (D73). Explainer page source: `~/.agents/skill-workspace/alex-skills/harness/explainer-harness-evolution-20261125/`.
+State: built and installed globally 2026-11-25. Hooks in `~/.claude/settings.json` (backup `settings.json.harness-bak-*`), OpenCode plugin `~/.config/opencode/plugins/harness.ts`, `harness` MCP server in both tools (user/global), `harness serve` as systemd unit `harness-serve` on :4317. `bun test` in `harness/`: 219 pass. Proven live in both tools: shell denies, MCP session binding, verify bundles with git notes, stop-commit and stop-proof send-backs. The pre-live ledger is in `~/.agents/skill-workspace/alex-skills/harness/ledger-pre-live-*`. Checked 2026-11-25 by `bun test` and the live journal.
 
 Next:
-1. Alex approves Phase 0. Step 0 installs the pinned Bun (not on the VM yet).
-2. Run the 18 Phase 0 probes and write each result into the spec before Phase 1.
+1. Lane D2 (`ses_deba5ff75ffeRST7HVW5ilBkJ3`) is turning `#/` into a full dashboard for 27-32" monitors. Review its proof, commit `ui/app/**` and `src/serve/*`.
+2. Alex registers the page passkey at http://localhost:4317 (Touch ID); the real passkey flow is not yet exercised.
+3. Run the mac-bootstrap `harness` phase on the Mac (`den up --only=harness`).
+
+Gotchas and dead ends:
+- OpenCode's permission event has no arguments for subagent or MCP calls. Their rules run in `execute.before`, where a thrown error blocks the call. The plugin hot-reloads on edit; no service restart.
+- OpenCode stop events carry no location. The plugin checks the session's own directory, or every instance journals every session.
+- `opencode run --standalone` exits before the async stop handler runs. Test stop checks through the shared service.
+- Uninstall: `bun harness/src/install.ts --uninstall` and `harness/bin/harness-service uninstall`. Kill switch: type `harness off` as a prompt.
 
 ## Other open items
 
@@ -103,7 +110,8 @@ Not re-checked; each was true when it was written:
 
 ## Running processes
 
-None.
+- harness serve, port 4317, systemd user unit `harness-serve`, workstream harness. Keep running. Stop: `harness/bin/harness-service uninstall`.
+- Static page servers, ports 8791 (PID 4151335), 8792 (PID 4151336), 8793 (PID 4188722), workstream harness (explainer, reviews, ERD). Kill when Alex says done: `kill 4151335 4151336 4188722`.
 
 
 ## Pointers
