@@ -117,7 +117,7 @@ export default {
         for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
           if (event?.type !== "session.execution.succeeded") continue
           // One plugin instance loads per location: only the owner answers.
-          if (event.location?.directory !== ctx.location?.directory) continue
+          if (event.location?.directory && event.location.directory !== ctx.location?.directory) continue
           const sessionID: string | undefined = event.data?.sessionID
           if (!sessionID) continue
           try {
