@@ -70,6 +70,9 @@ POLICY: dict[str, Policy] = {
     # anatomy is copied from wheresryan22/anatomy and refreshed from it: a local restyle is
     # undone by the next pull, so the style rules skip it.
     "anatomy": Policy(upstream=frozenset({"SKILL.md", "references/"})),
+    # mcp-builder is copied from anthropics/skills and refreshed from it: a local restyle is
+    # undone by the next pull, so the style rules skip it.
+    "mcp-builder": Policy(upstream=frozenset({"SKILL.md", "reference/"})),
     # archeologist points at the m365 CLI reference, which lives in the m365 skill, and
     # ships its Jev gates as a reference loaded alone.
     "archeologist": Policy(

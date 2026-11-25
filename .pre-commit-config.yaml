@@ -12,12 +12,12 @@ repos:
         exclude: ^autoresearch/tests/test_screen_cmd\.sh$
       - id: end-of-file-fixer
         # upstream copies stay byte-identical; see README "Upstream provenance"
-        exclude: ^(skill-creator/vendor|archify|anatomy)/
+        exclude: ^(skill-creator/vendor|archify|anatomy|mcp-builder)/
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: trailing-whitespace
         # upstream copies stay byte-identical; see README "Upstream provenance"
-        exclude: ^(skill-creator/vendor|archify|anatomy)/
+        exclude: ^(skill-creator/vendor|archify|anatomy|mcp-builder)/
         args: [--markdown-linebreak-ext=md]
 
   - repo: local
