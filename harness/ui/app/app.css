@@ -69,6 +69,9 @@ code, pre { font-family: var(--mono); }
 .skip { position: absolute; left: 8px; top: -48px; z-index: 20; background: var(--ink); color: var(--page); padding: 8px 12px; border-radius: 2px; }
 .skip:focus { top: 8px; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.model { min-width: 0; }
+.model > span { white-space: nowrap; }
+.stack { display: flex; flex-direction: column; min-width: 0; }
 .dim { color: var(--muted); }
 .block { display: block; }
 .strong { color: var(--ink); font-weight: 600; }

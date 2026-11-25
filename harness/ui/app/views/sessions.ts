@@ -1,6 +1,6 @@
 import { h, firstLine, timeEl } from "../dom.ts";
 import type { Ctx, SessionRow } from "../ctx.ts";
-import { dataTable, empty, journalLink, stateChip, td, viewHeader } from "../parts.ts";
+import { dataTable, empty, journalLink, modelId, stateChip, td, viewHeader } from "../parts.ts";
 
 const RANK: Record<string, number> = { waiting: 0, stuck: 0, running: 1, idle: 2, ended: 3 };
 
@@ -37,7 +37,7 @@ export function renderSessions(ctx: Ctx): HTMLElement {
         s.workers ? h("span", { class: "dim" }, ` · ${s.workers} worker${s.workers === 1 ? "" : "s"}`) : null,
       ),
       td("State", null, stateChip(s)),
-      td("Tool and model", null, h("span", null, s.tool ?? "unknown"), h("span", { class: "dim mono block" }, s.model ?? "model not recorded")),
+      td("Tool and model", null, h("span", { class: "stack" }, h("span", null, s.tool ?? "unknown"), s.model ? modelId(s.model) : h("span", { class: "dim mono block" }, "model not recorded"))),
       td("Goal", "c-goal", s.goal ? firstLine(s.goal, 140) : h("span", { class: "dim" }, "No goal recorded")),
       td("Turn", "num", String(s.turn)),
       td("Nudges", "num", s.nudges ? h("span", { class: s.nudges >= 5 ? "warn-text" : "" }, `${s.nudges} of 5`) : h("span", { class: "dim" }, "0")),

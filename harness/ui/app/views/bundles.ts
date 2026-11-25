@@ -1,6 +1,6 @@
 import { h, sha, timeEl } from "../dom.ts";
 import type { BundleRow, CommandRun, Ctx } from "../ctx.ts";
-import { chip, dataTable, detailRow, empty, expandToggle, sessionLink, td, viewHeader, type Tone } from "../parts.ts";
+import { chip, dataTable, detailRow, empty, expandToggle, modelId, sessionLink, td, viewHeader, type Tone } from "../parts.ts";
 
 function verdictChip(v: string | null) {
   const tone: Tone = v === "green" ? "green" : v === "red" ? "red" : "neutral";
@@ -45,7 +45,7 @@ export function renderBundles(ctx: Ctx): HTMLElement {
         td("Verdict", null, verdictChip(b.verdict)),
         td("Head", "c-session", expandToggle(ctx, key, sha(b.head_sha), open, h("span", { class: "mono strong" }, sha(b.head_sha, 10)))),
         td("What it did", "c-goal", b.summary ?? h("span", { class: "dim" }, "No summary")),
-        td("Session", null, sessionLink(ctx, b.session_slug, b.session_id), b.worker_model ? h("span", { class: "dim mono block" }, b.worker_model) : null),
+        td("Session", null, h("span", { class: "stack" }, sessionLink(ctx, b.session_slug, b.session_id), b.worker_model ? modelId(b.worker_model) : null)),
         td("Push gate", null, b.gate ? chip(b.gate.outcome === "allow" || /pass/.test(b.gate.reason ?? "") ? "green" : "red", b.gate.reason ?? b.gate.outcome ?? "recorded") : h("span", { class: "dim" }, "not run")),
         td("Age", null, timeEl(b.time, ctx.now)),
       ),

@@ -119,3 +119,14 @@ export function detailRow(cols: number, ...kids: Child[]): HTMLTableRowElement {
 export function kv(pairs: [string, Child][]): HTMLElement {
   return h("dl", { class: "kv" }, pairs.flatMap(([k, v]) => [h("dt", null, k), h("dd", null, v)]));
 }
+
+/** A model id like `cursor/claude-haiku-5-5`: it may break after a `/`, never inside a name. */
+export function modelId(id: string): HTMLElement {
+  const parts = id.split("/")
+  const kids: Child[] = []
+  parts.forEach((p, i) => {
+    kids.push(h("span", null, i < parts.length - 1 ? `${p}/` : p))
+    if (i < parts.length - 1) kids.push(h("wbr"))
+  })
+  return h("span", { class: "dim mono block model" }, ...kids)
+}
