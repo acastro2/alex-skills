@@ -1,3 +1,69 @@
+---
+name: Harness
+description: Plain, dense, quiet paper-and-ink dashboard for the harness, with one amber accent that means "needs Alex".
+colors:
+  page: "#f2f2ef"
+  plate: "#fbfbfa"
+  rail: "#ebebe7"
+  ink: "#18181a"
+  text: "#3f3f43"
+  muted: "#5f5f63"
+  rule: "#d8d8d3"
+  rule-strong: "#b9b9b2"
+  amber: "#e8a010"
+  amber-ink: "#6f4300"
+  amber-wash: "#fbefd0"
+  red: "#b3261e"
+  red-wash: "#fbe5e2"
+  green: "#1d6b39"
+  green-wash: "#e1f1e6"
+  page-dark: "#0b0b0b"
+  plate-dark: "#131313"
+  rail-dark: "#0f0f0f"
+  ink-dark: "#ececec"
+  text-dark: "#c4c4c8"
+  muted-dark: "#8f8f94"
+  rule-dark: "#2a2a2a"
+  rule-strong-dark: "#424242"
+  amber-dark: "#f2b530"
+  amber-ink-dark: "#f2b530"
+  amber-wash-dark: "#2a2109"
+  red-dark: "#ff8078"
+  red-wash-dark: "#2c1513"
+  green-dark: "#62d084"
+  green-wash-dark: "#102418"
+typography:
+  headline:
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: "28px"
+    letterSpacing: "-0.01em"
+  title:
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif"
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.45
+  body:
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.45
+  label:
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif"
+    fontSize: "12px"
+    fontWeight: 600
+  mono:
+    fontFamily: "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    fontSize: "12.5px"
+    fontWeight: 400
+  stat:
+    fontFamily: "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+    fontSize: "30px"
+    fontWeight: 600
+    lineHeight: 1.05
+---
+
 # Design
 
 The look of the harness dashboard (the home route) and the 8 working views behind it. Source of truth is `ui/app/app.css`. The palette and type match the anatomy office figure (O12).
@@ -23,9 +89,47 @@ Paper and ink. One lit accent, amber, and it means only "this needs Alex". Red m
 
 Text is tinted, never pure black or white. Light and dark follow the system. The top bar has three buttons (Auto, Light, Dark); each label names what its click sets, and the current one is pressed. The choice is stored in `localStorage`.
 
+## Colors
+
+The palette is paper and ink with one lit accent. The frontmatter holds the values: light keys have no suffix, and every `-dark` key is the dark-theme value of the same name, taken from the `[data-theme="dark"]` block in `ui/app/app.css`.
+
+### Neutral
+- **Page** (`page`): the page background.
+- **Plate** (`plate`): tables, cards and the top bar.
+- **Rail** (`rail`): the left rail and expanded detail rows.
+- **Ink** (`ink`): headings, strong text and the solid primary button.
+- **Text** (`text`): body copy.
+- **Muted** (`muted`): labels, times and hints.
+- **Rule** (`rule`) and **Rule strong** (`rule-strong`): hairlines, and the borders of chips, buttons and the table header.
+
+### Accent
+- **Amber** (`amber`): only "this needs Alex": the alert badge, a waiting or stuck session wash, the selection highlight.
+- **Amber ink** (`amber-ink`): amber text, such as warnings, the low timer and send-back outcomes. Dark theme keeps it equal to amber.
+- **Amber wash** (`amber-wash`): the fill behind amber chips and the needs-you wash.
+
+### Status
+- **Red** (`red`) and **Red wash** (`red-wash`): failed, denied or blocked, on text, chips and outcomes.
+- **Green** (`green`) and **Green wash** (`green-wash`): a passing proof, a sent answer, and "now" times.
+
+**The One Lit Accent Rule.** Amber means only "needs Alex". Do not use it for decoration or for plain emphasis.
+
 ## Type
 
 System sans for text, system mono for ids, times and code. Numbers use tabular figures. Page title 20px, body 14px, labels 12px. The dashboard keeps rows at 13 to 14px and the one question text at 16px; the health counts are 30px mono. No display type.
+
+## Typography
+
+**Text font:** system sans (`--sans`). **Mono font:** system mono (`--mono`) for ids, times and code. Both stacks are in the frontmatter. There is no web font and no display face.
+
+### Hierarchy
+- **Headline** (600, 20px, 28px line, -0.01em): the page title in each view.
+- **Title** (400, 16px, 1.45): the one question text on the dashboard and the health state, at max 68ch.
+- **Body** (400, 14px, 1.45): the base text and the dashboard panels.
+- **Label** (600, 12px): table headers and section labels in the views. Muted colour.
+- **Mono** (400, 12.5px): ids, times, file lists and tail rows. Tabular figures.
+- **Stat** (600, 30px, 1.05 line, mono): the health counts.
+
+**The No Display Type Rule.** The working views have no display type. Hierarchy comes from weight 600 and ink colour, not from size.
 
 ## Shape and depth
 
