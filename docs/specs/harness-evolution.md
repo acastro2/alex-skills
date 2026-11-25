@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48). Every candidate from the second architecture review is folded in (D49 to D53). The frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
+Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48). Every candidate from the second architecture review is folded in (D49 to D53), and the prose is routed by channel (D54 to D56). The frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
 
 Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
@@ -189,6 +189,9 @@ All taken by Alex on 2026-11-25.
 | D51 | Destructive rules module | `classify(command, cwd)` holds the shell parser and the D5 allowlist. The core, `guard-lite.ts` and the OpenCode failure path all call it. `guard-lite.ts` is about 20 lines | Folded from review 2. The fallback can never protect less than the main path |
 | D52 | Judgment module | `judge(questions, summary)` sends all of a stop's semantic questions to Jev in one call, applies the 3-second timeout and the keyword fallback, and logs `jev-unavailable` | Folded from review 2. One Jev round trip per stop, and the fallback is written once |
 | D53 | Ledger interface | The ledger is private storage. Each module owns its tables and offers domain operations, such as `grant` and `consume` in authority, and `register` and `land` in the worktree lifecycle | Folded from review 2. Schema and expiry stay with their owner |
+| D54 | Route the prose | Every rule in `AGENTS.md` and `CLAUDE.md` gets exactly one route: enforce, inject on its event, `SessionStart` state, skill, or stays in the file | Each rule loads only when it matters. Anthropic's guidance puts "never" and "always" rules in hooks, not instruction files ([steering Claude Code](https://claude.com/resources/articles/steering-claude-code-skills-hooks-rules-subagents-and-more)) |
+| D55 | No static rules per prompt | `UserPromptSubmit` never carries static rules. Its `additionalContext` is resent uncached on every turn and grows the history | Static text belongs in the cached prefix or on its event |
+| D56 | Routing hints | The `UserPromptSubmit` hook adds one hint of at most 200 characters when the prompt shows a clear intent: a history question gets "use archeologist", writing as Alex gets "load alex-voice", a library question gets "use Context7". The judgment module decides (Jev, then keywords). No match, no hint | Targets the routing rules that leak today, at almost no token cost |
 
 ## Phase 0. Prove the unverified facts
 
@@ -207,6 +210,7 @@ Do this first. The design depends on these facts, and the docs do not answer the
 | Jev answers inside 3 seconds from a hook, and the fallback runs when it does not | Call Jev from a scratch Stop adapter, then once with the network blocked | A typed answer, then a `jev-unavailable` row |
 | A permission deny on `mcp__harness-hooks__*` blocks the model, while `mcp_tool` hooks can still call `decide` | Deny the tool, then call it from the model and from a hook | The model call is denied and the hook call returns a decision. If not, `decide` moves to command hooks |
 | `guard-lite.ts` with `onFailure: "block"` blocks a destructive call when the MCP server is down | Stop the `harness-hooks` server, then run `rm -r` on a path outside the allowlist | The call is blocked, and a plain `ls` still runs |
+| OpenCode `session.hook("context")` can add text at the end of the conversation, not only to the system prompt | Add a marker from a scratch plugin and read the outgoing request | The marker sits after the last message. If it can only change `event.system`, event injection in OpenCode uses only static text there, and dynamic text goes through tool results |
 | A Claude Code command can read its own session ID | A `SessionStart` hook writes `session_id` to an env file, and a command reads it | The command prints the ID |
 
 If the deny test fails, the OpenCode adapter uses `execute.before` to replace the command with one that fails with the reason. If `bun:sqlite` does not load, the OpenCode adapter spawns `bun core.ts` like Claude Code. If the wake test fails, the waker uses the Rex or Herdr notification only. If more than one of these fails, stop and bring it to Alex.
@@ -458,17 +462,54 @@ Open questions for Phase 0:
 
 Done when: `/fork-tab` from a running session opens a new tab that already answers the prompt with the full history, Alex's tab stays focused, and the original turn goes on with no change.
 
-## Phase 7. Cut the prose
+## Phase 7. Route the prose
 
-For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus the rule id. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
+Every rule in `AGENTS.md` and `CLAUDE.md` gets exactly one route (D54). The test for each rule: when must the model know it, and can code enforce it?
 
-Done when: the line counts drop, and a short eval shows no rule loss. Run the `coding` worker eval and one merge-attempt eval before and after the cut.
+```mermaid
+flowchart LR
+  R[A rule] --> Q{What kind?}
+  Q -->|must always hold| E[Enforce: guard rule or Stop check]
+  Q -->|matters at one moment| I[Inject on that event]
+  Q -->|live state| S[SessionStart additionalContext]
+  Q -->|a procedure| K[Skill]
+  Q -->|taste, every turn| F[Stays in the file]
+```
+
+| Route | Channel | Cache and cost |
+| --- | --- | --- |
+| Enforce | Guard rules, Stop checks, spawn rules | No context cost. Only a deny message enters the context |
+| Inject on event | `PreToolUse` / `PostToolUse` `additionalContext` (Claude Code); `execute.before` / `execute.after` (OpenCode) | Sent only when that event fires |
+| Session state | `SessionStart` `additionalContext`, also on matcher `compact` | Cached for the session. Subagents do not get it. 10,000-character cap |
+| Skill | the skill's `SKILL.md` | Only the description loads until the skill runs |
+| Stays in the file | `AGENTS.md`, `CLAUDE.md` | Cached prefix, but every subagent pays it again |
+
+Examples:
+
+| Rule today | Route |
+| --- | --- |
+| Links on every outward change | Inject on `git push`, `gh pr create` and ticket or page writes, plus the Links Stop check |
+| Set a model on every subagent call | Enforce: the spawn deny |
+| Load `coding` before code work | Inject at worker spawn (the contract) and on the first edit in a session |
+| Web UI and accessibility rules | Inject when a UI file is edited |
+| Handoff, running processes, worktrees | Session state, from the ledger |
+| "Find something" goes to archeologist | Routing hint (D56) |
+| STE100, why-first, "call me out", diagrams | Stays in the file |
+
+Rules for the routes:
+- Static rules never go into `UserPromptSubmit` (D55). Only the routing hint does (D56).
+- Every injected text has a rule id, so Phase 8 can switch it off, and the decision log shows when it fired.
+- In OpenCode, dynamic text goes at the end of the conversation, never into the system prompt, so the cache holds (Phase 0).
+
+Target: both files under 70 lines, holding only taste plus one line of why per routed rule.
+
+Done when: the line counts drop, and a short eval shows no rule loss. Run the `coding` worker eval, one merge-attempt eval, and one links eval before and after.
 
 ## Phase 8. Prune by eval
 
 Anthropic's point: every harness part encodes a limit of the model, and a newer model can make it dead weight ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). So the harness gets the same test as a skill.
 
-- For each prose rule left after Phase 7, run one eval with the rule and one without it, on the current model.
+- For each rule left in the files and each injected text after Phase 7, run one eval with it and one without it, on the current model.
 - Switch a harness rule off by its id for one eval run with `HARNESS_DISABLE=<rule-id>`. The decision log in the ledger shows which rule fired.
 - Remove each rule that changes nothing. Keep the eval, so the next model change re-runs it.
 - Count the MCP tools loaded in a session. Tools sit in the cached prefix, so a long or changing list costs cache hits and attention. Move rarely used servers behind Code Mode search.
