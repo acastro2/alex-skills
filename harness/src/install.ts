@@ -1,5 +1,6 @@
 // Writes the harness hook entries (manifest.ts) into Claude Code settings and the OpenCode plugin dir.
 // Usage: bun src/install.ts [--dry-run] [--dev] [--uninstall] [--claude-settings <path>] [--opencode-plugins <dir>] [--bun <path>]
+//        [--no-mcp] [--mcp-project <dir>]
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
@@ -14,6 +15,8 @@ export interface Options {
   opencodePlugins: string
   bun: string
   root: string
+  mcp: boolean // register the `harness` MCP server (agent tools) through each tool's own CLI
+  mcpProject: string | null // null = user/global scope; a dir = that project only (scratch tests)
 }
 
 const ROOT = resolve(dirname(import.meta.path), "..")
@@ -175,7 +178,64 @@ export function run(opts: Options): { report: string; changed: boolean } {
     }
   } else lines.push(`no change: ${pluginPath}`)
 
+  if (opts.mcp) for (const l of mcpSteps(opts)) lines.push(l), (changed ||= l.startsWith("ran:") || l.startsWith("would run:"))
+
   return { report: lines.join("\n"), changed }
+}
+
+type Runner = (argv: string[], cwd?: string) => { code: number; out: string }
+const sh: Runner = (argv, cwd) => {
+  try {
+    const r = Bun.spawnSync(argv, { cwd, stdout: "pipe", stderr: "pipe" })
+    return { code: r.exitCode ?? 1, out: (r.stdout.toString() + r.stderr.toString()).trim() }
+  } catch (e) {
+    return { code: 127, out: (e as Error).message }
+  }
+}
+
+/** The commands that register (or remove) the agent MCP server. Each CLI owns its config file. */
+export function mcpCommands(opts: Options): { tool: string; check: string[]; add: string[]; remove: string[]; cwd?: string }[] {
+  const server = [opts.bun, join(opts.root, "src/mcp/agent.ts")]
+  const cwd = opts.mcpProject ?? undefined
+  const ccScope = opts.mcpProject ? "local" : "user"
+  return [
+    {
+      tool: "claude",
+      cwd,
+      check: ["claude", "mcp", "get", "harness"],
+      add: ["claude", "mcp", "add-json", "-s", ccScope, "harness", JSON.stringify({ type: "stdio", command: server[0], args: server.slice(1) })],
+      remove: ["claude", "mcp", "remove", "-s", ccScope, "harness"],
+    },
+    {
+      tool: "opencode",
+      cwd,
+      check: ["opencode", "mcp", "list"],
+      add: ["opencode", "mcp", "add", ...(opts.mcpProject ? [] : ["--global"]), "harness", "--", ...server],
+      remove: [], // opencode has no `mcp remove`; uninstall prints the manual step
+    },
+  ]
+}
+
+export function mcpSteps(opts: Options, run: Runner = sh): string[] {
+  const out: string[] = []
+  for (const c of mcpCommands(opts)) {
+    const have = run(c.check, c.cwd)
+    const present = c.tool === "claude" ? have.code === 0 : /\bharness\b/.test(have.out)
+    if (opts.uninstall) {
+      if (!present) out.push(`no change: ${c.tool} mcp harness`)
+      else if (!c.remove.length) out.push(`manual: remove the "harness" entry under "mcp" in the ${c.tool} config`)
+      else if (opts.dryRun) out.push(`would run: ${c.remove.join(" ")}`)
+      else out.push(run(c.remove, c.cwd).code === 0 ? `ran: ${c.remove.join(" ")}` : `failed: ${c.remove.join(" ")}`)
+      continue
+    }
+    if (present) out.push(`no change: ${c.tool} mcp harness`)
+    else if (opts.dryRun) out.push(`would run: ${c.add.join(" ")}`)
+    else {
+      const r = run(c.add, c.cwd)
+      out.push(r.code === 0 ? `ran: ${c.add.join(" ")}` : `failed (${r.code}): ${c.add.join(" ")}: ${r.out.slice(0, 200)}`)
+    }
+  }
+  return out
 }
 
 export function parseArgs(argv: string[]): Options {
@@ -186,6 +246,8 @@ export function parseArgs(argv: string[]): Options {
     opencodePlugins: join(homedir(), ".config/opencode/plugins"),
     bun: process.execPath,
     root: ROOT,
+    mcp: true,
+    mcpProject: null,
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -201,8 +263,15 @@ export function parseArgs(argv: string[]): Options {
     } else if (a === "--claude-settings") o.claudeSettings = val()
     else if (a === "--opencode-plugins") o.opencodePlugins = val()
     else if (a === "--bun") o.bun = val()
+    else if (a === "--no-mcp") o.mcp = false
+    else if (a === "--mcp-project") o.mcpProject = val()
     else throw new Error(`unknown argument: ${a}`)
   }
+  // A custom settings or plugin path means a test or scratch install: never touch the real MCP config
+  // unless the caller names a project dir for it.
+  const custom = argv.includes("--claude-settings") || argv.includes("--opencode-plugins")
+  if (custom && !o.mcpProject) o.mcp = false
+  if (process.env.HARNESS_NO_MCP) o.mcp = false
   return o
 }
 

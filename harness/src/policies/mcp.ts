@@ -10,6 +10,9 @@ export function guardMcp(env: Env): Out | null {
   if (!ev.toolName?.startsWith("mcp:harness:") || !ev.session) return null
   const input = ev.input ?? {}
   if (input.session === ev.session) return null
+  // OpenCode's permission event shows no MCP arguments, only `resources`. The plugin's execute.before
+  // binds the session there, so there is nothing to check here.
+  if (ev.tool === "opencode" && !("session" in input) && "resources" in input) return null
 
   // The rule joins the registry in a later change; until then the binding is always enforced.
   const ruleId = RULES.some((r) => r.id === RULE) ? RULE : undefined

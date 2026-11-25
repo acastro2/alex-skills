@@ -11,7 +11,7 @@ const ASK_PREFIX = "Ask Alex with the question tool, then retry."
 type Ctx = {
   location?: { directory?: string }
   permission: { hook: (name: "evaluate", fn: (e: any) => any) => Promise<unknown> }
-  tool: { hook: (name: "execute.after", fn: (e: any) => any) => Promise<unknown> }
+  tool: { hook: (name: "execute.before" | "execute.after", fn: (e: any) => any) => Promise<unknown> }
   session: {
     hook: (name: "prompt", fn: (e: any) => any) => Promise<unknown>
     get: (input: { sessionID: string }) => Promise<any>
@@ -87,6 +87,15 @@ export default {
           e.message = msg
         }
       }
+    })
+
+    // The permission event carries no MCP arguments, so the session binding happens here (D29):
+    // every call to the harness MCP server gets the caller's real session, whatever the model wrote.
+    await ctx.tool.hook("execute.before", (e: any) => {
+      if (typeof e.tool !== "string" || !e.tool.startsWith("harness_") || !e.sessionID) return
+      const input = e.input && typeof e.input === "object" ? e.input : {}
+      input.session = e.sessionID // in place, in case the host keeps its own reference
+      e.input = input
     })
 
     await ctx.tool.hook("execute.after", async (e: any) => {
