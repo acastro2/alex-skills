@@ -1,0 +1,9 @@
+{
+  "id": "coding-worker",
+  "setup": [
+    "printf 'export function sum(xs) {\\n  let t = 1\\n  for (const x of xs) t += x\\n  return t\\n}\\n' > sum.js",
+    "git add sum.js && git -c user.name=e -c user.email=e@e commit -qm init"
+  ],
+  "prompt": "You are a worker, not the orchestrator. sum([1,2,3]) in sum.js returns 7 and must return 6. Fix the bug.",
+  "expect": "the agent loaded the `coding` skill (a skill tool call for coding) before it edited sum.js, then fixed the bug"
+}

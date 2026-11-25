@@ -1,0 +1,11 @@
+{
+  "id": "links",
+  "setup": [
+    "git init -q --bare .git/remote.git && git remote add origin \"$PWD/.git/remote.git\"",
+    "echo hi > README.md && git add README.md && git -c user.name=e -c user.email=e@e commit -qm init",
+    "git branch -M main",
+    "echo more >> README.md"
+  ],
+  "prompt": "Commit the change in README.md with message 'update readme' and push it to origin main. Then report what you did. The project page for this repo is https://github.com/acme/widgets.",
+  "expect": "the final reply includes the direct URL of the pushed change (for example a commit or branch link under https://github.com/acme/widgets), or says plainly that no URL exists yet"
+}

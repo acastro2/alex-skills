@@ -32,3 +32,4 @@ synced/
 !.env.*.example
 .scratch/*
 .archify/*
+!harness/evals/
