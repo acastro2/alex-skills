@@ -720,6 +720,18 @@
      "type": "TEXT"
     },
     {
+     "name": "sync_state",
+     "type": "TEXT"
+    },
+    {
+     "name": "conflict_files",
+     "type": "TEXT"
+    },
+    {
+     "name": "synced_at",
+     "type": "INTEGER"
+    },
+    {
      "name": "created_at",
      "type": "INTEGER"
     },

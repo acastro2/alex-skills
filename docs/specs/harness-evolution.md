@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D78, in the appendix).
+Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (D1 to D82, in the appendix).
 
 **Ask:** approve Phase 0. Then the phases run in order as one plan (D73), each ending with its Done-when.
 
@@ -16,7 +16,7 @@ Status: plan only, ready to build. Written and grilled with Alex on 2026-11-25 (
 | 2 | Waker (PR watch), 7 Stop checks, routing hints | 1, 1b | test PR resumes the session with no prompt |
 | 3 | Worker lifecycle, `verify`, proof bundles, `push-gate`, Proof check | 2 | seeded red, partial and green workers |
 | 4 | acastro2 credential helper, `ub-mode` links | 0 | `git push` works with no helper flag |
-| 5 | Worktree lifecycle, `main-checkout-write`, live handoff, Handoff, Processes, Cleanup checks | 3 | two sessions see each other in `.harness/HANDOFF.live.md` |
+| 5 | Worktree lifecycle, `main-checkout-write`, live handoff, conflict watch and autofix, Handoff, Processes, Cleanup checks | 3 | two sessions see each other in `.harness/HANDOFF.live.md` |
 | 6 | `/fork-tab` | 5 | fork opens in a new Rex tab and worktree |
 | 7 | Route the prose | 2, 5 | both files under 70 lines, evals show no loss |
 | 8 | Prune by eval | 7 | each remaining rule has an eval that changes output |
@@ -154,7 +154,7 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 | `watches` | PRs and workers the waker polls, with the last state seen | until done or 24 hours |
 | `workers` | each spawn: base SHA, test file hashes, acceptance commands, last activity | 30 days |
 | `sessions` | live sessions per repo | until `session.end` |
-| `worktrees` | session, repo, path, branch, workstream, state (`active`, `landed`, `held`, `removed`) | until removed |
+| `worktrees` | session, repo, path, branch, workstream, state (`active`, `landed`, `held`, `removed`), sync state (`current`, `behind`, `conflict`) with the conflicting files (D79) | until removed |
 | `workstreams` | owner, worktrees in order, state, next steps, running processes, updated (D38) | until the workstream ends |
 | `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
 | `corrections` | prompts tagged as corrections, with session and the rule they point at (D57) | 90 days |
@@ -438,6 +438,16 @@ If the main checkout has uncommitted changes of its own (Alex editing by hand), 
 - Agents change their own entry with the `workstream_update` MCP tool, never by editing the file.
 - The committed `HANDOFF.md` keeps only lasting context: repo gotchas and long-running items, 150 lines at most. The `handoff` skill changes to match, and the repo's own `docs/HANDOFF.md` is the first one to clean up.
 
+**Conflict watch (D79 to D82).** Agents in many worktrees keep hitting merge conflicts, so the waker watches for them and fixes them:
+
+| Check | Every 5 minutes, per `active` worktree | Then |
+| --- | --- | --- |
+| Behind, no conflict | `git fetch`, then `git merge-tree --write-tree origin/main HEAD` exits 0 | If the worktree is clean and its owner is not mid-turn, the harness rebases it, runs `verify` so the bundle matches the new head, and tells the owner |
+| Conflict with main | `merge-tree` reports conflicts | The owner session wakes with the conflicting files and the main commits behind them, and is told to rebase, resolve and run `verify`. With no live owner, a resolver worker on the strong model gets the same task under a normal contract |
+| Overlap with another worktree | `merge-tree` between two live branches in one repo reports conflicts | Both owners are told which files overlap, so they can agree on order or split the work |
+
+`merge-tree` tests the merge with no checkout, so the watch never touches a worktree. A resolved branch still needs a green bundle to land (D44). After 3 failed resolve attempts on one branch, the failure ladder (D45) sends it to Alex. Git 2.56 is on the VM, and `git merge-tree --write-tree` ran there on 2026-11-25.
+
 **Cleanup (D20, D22).**
 - On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with the `keep_process` tool only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
 - The Stop check sends the agent back when its scratch files are over 500 MB or a removed worktree is still on disk.
@@ -448,6 +458,7 @@ Done when:
 - A green ff landing fast-forwards the main checkout, removes the clean worktree and its branch, and updates the live file.
 - A landing with uncommitted changes goes to `held`, and the owner gets the message.
 - `session.end` kills an unkept test server and keeps a server flagged `keep`.
+- A seeded conflict on a worktree wakes its owner with the file list, a behind-but-clean worktree is rebased and re-verified on its own, and an ownerless conflict gets a resolver worker.
 
 ## Phase 6. Fork to a new tab
 
@@ -662,6 +673,10 @@ All taken by Alex on 2026-11-25.
 | D76 | Wrap-up budget | Workers only: 30 minutes, or the contract's `BUDGET:` line. Past it, the worker is told to finish the step, commit and report | Alex picked workers only; main sessions run as long as he drives them |
 | D77 | Stall nudge | Workers after 10 minutes with no tool call. Main sessions too, but only with a todo pending and no question waiting for Alex | A session waiting on Alex is never poked |
 | D78 | Nudge cap | 5 nudges in one turn with no progress: stop, mark `stuck` on the page, notify Alex once. Counted in `nudges` | Alex picked 5 over 3 |
+| D79 | Conflict watch | Every 5 minutes, for every `active` worktree, the waker runs `git fetch` and `git merge-tree --write-tree origin/main HEAD`, and records `current`, `behind` or `conflict` with the files | Alex keeps hitting merge conflicts across many worktrees. `merge-tree` checks with no checkout |
+| D80 | Auto-rebase | Behind with no conflict: if the worktree is clean and its owner is not mid-turn, the harness rebases it, runs `verify`, and tells the owner | Branches stay current with no agent effort, never mid-edit |
+| D81 | Conflict autofix | The owner session wakes with the files and the main commits behind them, and resolves, then runs `verify`. With no live owner, a resolver worker on the strong model does it. A green bundle is still needed to land, and 3 failures go to Alex | The agent that wrote the code fixes it, orphans still get fixed, and nothing lands without proof |
+| D82 | Cross-worktree overlap | `merge-tree` between live branches in one repo; both owners are told which files overlap | Parallel agents learn they collide while it is cheap |
 
 ## Risks
 
