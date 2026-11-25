@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
-import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync, statSync } from "node:fs"
+import { closeSync, existsSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 import { append, upsertSession } from "../ledger/journal.ts"
 import { ulid } from "../ledger/ulid.ts"
 import { digestOf, type Bundle, type Rerun, type Verdict, type Verified } from "./bundle.ts"
@@ -168,6 +168,7 @@ export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
   try {
     gitOk(o.cwd, "worktree", "add", "--detach", wt, head)
     if (base && restore.length) gitOk(wt, "checkout", base, "--", ...restore)
+    linkDeps(o.cwd, wt)
     const commands = [...o.commands]
     const committed = repoVerify(wt)
     if (committed && !commands.includes(committed)) commands.push(committed)
@@ -181,4 +182,23 @@ export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
     ? { clean, reruns, verdict: reruns.every((r) => r.exit === 0) ? "green" : "red" }
     : { clean, reruns, verdict: "partial", reason: "no acceptance commands" }
   return store(db, o, head, verified.verdict, did, verified)
+}
+
+// The re-run worktree has only tracked files. Link the source checkout's installed
+// dependencies (node_modules at the repo root and one level down) so acceptance
+// commands that need them can run. Read-only use: the links point at the source.
+function linkDeps(cwd: string, wt: string): void {
+  const top = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd, stdout: "pipe", stderr: "ignore" })
+  const root = top.exitCode === 0 ? top.stdout.toString().trim() : cwd
+  const dirs = [root]
+  try {
+    for (const e of readdirSync(root, { withFileTypes: true })) if (e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules") dirs.push(join(root, e.name))
+  } catch {}
+  for (const d of dirs) {
+    const nm = join(d, "node_modules")
+    const target = join(wt, relative(root, d), "node_modules")
+    if (existsSync(nm) && existsSync(join(target, "..")) && !existsSync(target)) {
+      try { symlinkSync(nm, target, "dir") } catch {}
+    }
+  }
 }
