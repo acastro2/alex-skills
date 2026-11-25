@@ -166,12 +166,12 @@ One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun
 | `workstreams` | owner, repo, title, state, updated (D38) | until the workstream ends |
 | `workstream_steps` | ordered steps per workstream: text, state, the bundle that proved it (D9, D86) | until the workstream ends |
 | `processes` | processes a session started, with a `keep` flag | until killed, or reported at the next `session.start` |
-| `corrections` (view over `journal`) | prompts tagged as corrections, with session and the rule they point at (D57) | 90 days |
-| `egress` (view over `journal`) | advisory egress warnings (D62) | 30 days |
+| `corrections` (view over `journal`) | prompts tagged as corrections, with session and the rule they point at (D57) | as long as the journal rows (90 days) |
+| `egress` (view over `journal`) | advisory egress warnings (D62) | as long as the journal rows (90 days) |
 | `page_auth` | passkey credential and the current 30-minute grant (D61) | until revoked |
 | `snapshots` | session state saved at `PreCompact` (D65) | 7 days |
-| `sendbacks` (view over `journal`) | stop send-backs per turn, for the cap | 30 days |
-| `nudges` (view over `journal`) | drift, wrap-up and stall nudges per turn, for the cap (D78) | 30 days |
+| `sendbacks` (view over `journal`) | stop send-backs per turn, for the cap | as long as the journal rows (90 days) |
+| `nudges` (view over `journal`) | drift, wrap-up and stall nudges per turn, for the cap (D78) | as long as the journal rows (90 days) |
 | `requests` | `harness_request` rows: SHA, digest, rendered review (Phase 1b) | 90 days |
 | `applies` | each apply: SHA, tree hash, schema version, rollback time (Phase 1b) | permanent |
 | `schema_meta` | the ledger schema version | permanent |
