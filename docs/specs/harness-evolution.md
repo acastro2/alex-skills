@@ -1,6 +1,6 @@
 # Harness evolution: rules in code, not prose
 
-Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48); the frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
+Status: plan only. Nothing is built. Written 2026-11-25. Grilled with Alex four times, the last on the worktree lifecycle and proof of work (D38 to D48). Every candidate from the second architecture review is folded in (D49 to D53). The frontier is empty. Every decision is taken (see Decisions), including Alex's later additions on worktrees, cleanup and the HANDOFF protocol (D7, D20 to D23). The design was reviewed with `improve-codebase-architecture` and grilled with Alex on 2026-11-25: the policies now sit behind one core module with one ledger, not in separate scripts.
 
 Evidence (scratch, not durable):
 - Archeologist briefing, session `ses_dec5cba8bffeG7XseU2P5tAuyM`. It covers 2026-11-19 to 2026-11-25 only: this Linux box has 6 days of history and no Mac stores.
@@ -44,29 +44,50 @@ The practice behind this is harness engineering: when an agent makes a mistake, 
 
 ## Shape
 
-One core module holds every policy behind one interface. One ledger module holds every piece of state. Each tool gets one thin adapter. The prose files keep only the why.
+One core holds every policy behind one interface, `decide(event) → decision`. Inside it, six modules each own one concern and their own ledger tables. Each tool gets one thin adapter, and one manifest says how each adapter is wired. The prose files keep only the why.
 
 ```mermaid
 flowchart LR
+  MF[install manifest] --> CC
+  MF --> OC
   CC[Claude Code adapter<br/>mcp_tool hooks + guard-lite] -. seam .-> CORE
   OC[OpenCode adapter<br/>plugin imports core] -. seam .-> CORE
   subgraph CORE[harness core: decide event to decision]
-    G[guard rules]
-    S[stop checks]
-    W[worker lifecycle]
-    T[merge token]
+    AU[authority]
+    DR[destructive rules]
+    ST[stop checks]
+    WL[worker lifecycle and proof]
+    WT[worktree lifecycle]
+    JU[judgment]
   end
-  CORE --> L[(ledger<br/>~/.local/state/harness/ledger.db)]
-  K[waker<br/>one watch per session] --> L
+  ST --> JU
+  GL[guard-lite.ts] --> DR
+  CORE --> L[(ledger storage<br/>private to the modules)]
+  K[waker] --> WL
+  K --> WT
   K -. seam .-> KA[OpenCode automation<br/>Claude Monitor<br/>Rex or Herdr notify]
   CORE --> P[AGENTS.md / CLAUDE.md<br/>why only]
 ```
 
-Why this shape (from the architecture review):
-- **Core, not 8 scripts.** In the first draft, each policy read its tool's raw hook JSON. A change in a tool's hook format then leaked into 8 modules, and OpenCode V2 already renamed every hook once. Now only the 2 adapters know the tool formats. Two adapters make the seam real.
-- **Ledger, not 9 stores.** The first draft kept state in token files, plugin memory, `.git` lock files, automation state and more. The merge token alone had two designs, and plugin memory is lost when the OpenCode server restarts.
-- **Worker lifecycle, not a command to remember.** A `verify_worker.py` that the parent must call is the same prose-rule failure this spec removes. The core now verifies on every worker return.
-- **One waker.** The PR watcher, the done signal and the watchdog all poll something and wake a session. One module writes the fallback once.
+| Module | Interface | Owns |
+| --- | --- | --- |
+| Authority (D50) | `fromAlex(prompt)`, `holds(session, grant)`, `protects(toolCall)` | merge and other grants, the kill switch, `harness wrong`, and every rule that stops an agent acting as Alex |
+| Destructive rules (D51) | `classify(command, cwd) → deny reason or none` | the shell parser, the D5 allowlist, recursive delete, merge in shell, destructive git. No ledger, no network |
+| Stop checks | `check(turn) → send back or pass` | the Stop check table |
+| Worker lifecycle and proof | `onSpawn(call)`, `onReturn(call)` | `workers`, `bundles`, the failure ladder |
+| Worktree lifecycle | `onEvent(worktree event)` | `worktrees`, `workstreams`, landing and cleanup |
+| Judgment (D52) | `judge(questions, summary) → answers with source` | the Jev call, its 3-second timeout and the keyword fallback |
+
+Why this shape (from two architecture reviews):
+- **Core, not 8 scripts.** In the first draft, each policy read its tool's raw hook JSON, so a hook format change leaked into 8 modules. Only the 2 adapters know the tool formats now. Two adapters make the seam real.
+- **Ledger storage, not 9 stores.** One SQLite file holds all state, so the OpenCode server restart loses nothing.
+- **Worker lifecycle, not a command to remember.** The core verifies on every worker return.
+- **One waker.** The PR watcher, the done signal and the watchdog share one poll-and-wake module.
+- **Authority in one module.** Everything only Alex can do was checked in 9 places, and the forged-prompt hole (D35) came from that spread. One module means one test suite for "an agent cannot act as Alex".
+- **Destructive rules shared.** `guard-lite.ts` would otherwise be a second copy of the shell parser and the allowlist, and the fallback would drift from the main path.
+- **Install manifest.** The Claude Code adapter uses 4 transports, and D36 must know which config entries are the harness's. One manifest feeds the installer, the adapters and D36.
+- **Judgment in one module.** One Jev call per stop instead of 4, and the fallback is written once.
+- **Domain interfaces on the ledger.** A generic `record` and `query` would make every caller know each table's columns and expiry. Each module owns its tables instead.
 
 ### Interface
 
@@ -94,7 +115,7 @@ Why this shape (from the architecture review):
 
 ### Ledger
 
-One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun:sqlite` in WAL mode, so several sessions can write at once. The guard denies agent writes to it. It is per host: a merge token on the Mac does not work on the VM.
+One SQLite file per host at `~/.local/state/harness/ledger.db`, opened with `bun:sqlite` in WAL mode, so several sessions can write at once. It is private storage, not an interface: each module in the Shape table owns its tables and offers domain operations (D53). Only those modules import the storage. The guard denies agent writes to it. It is per host: a merge token on the Mac does not work on the VM.
 
 | Table | Holds | Kept |
 | --- | --- | --- |
@@ -163,6 +184,11 @@ All taken by Alex on 2026-11-25.
 | D46 | Ledger integrity | Hash-chain the `decisions` and `bundles` rows; `harness status` checks the chain. No signing | Every agent runs as Alex's user, so it could read any signing key. The `ledger-write` rule is the real control |
 | D47 | Proof for the main session | A Stop check sends the orchestrator back when it says "done", "fixed" or "works" with no green bundle in that turn for the change it means | Done means shown, not claimed, for every session |
 | D48 | Bundle in the PR | The PR body gets 6 lines: head SHA, verdict, acceptance table, screenshot links, bundle ID, and `known_gaps` | A reviewer sees the harness's proof, not the agent's story |
+| D49 | Install manifest | One manifest lists each event, its transport, matcher, `onFailure` and an entry id. `install.ts` writes both tools' config from it, the adapters route by it, and `harness-config-write` protects exactly the entries it names | Folded from review 2. D36 gets a precise target, and the installed config cannot drift from the source |
+| D50 | Authority module | `fromAlex`, `holds` and `protects` own every grant, switch and anti-forgery rule (`ledger-write`, `harness-self`, `harness-config-write`, the `decide` deny). The prompt hook in both tools, `cli.ts` and `merge_pr` all call it | Folded from review 2. The security story is one module and one test suite |
+| D51 | Destructive rules module | `classify(command, cwd)` holds the shell parser and the D5 allowlist. The core, `guard-lite.ts` and the OpenCode failure path all call it. `guard-lite.ts` is about 20 lines | Folded from review 2. The fallback can never protect less than the main path |
+| D52 | Judgment module | `judge(questions, summary)` sends all of a stop's semantic questions to Jev in one call, applies the 3-second timeout and the keyword fallback, and logs `jev-unavailable` | Folded from review 2. One Jev round trip per stop, and the fallback is written once |
+| D53 | Ledger interface | The ledger is private storage. Each module owns its tables and offers domain operations, such as `grant` and `consume` in authority, and `register` and `land` in the worktree lifecycle | Folded from review 2. Schema and expiry stay with their owner |
 
 ## Phase 0. Prove the unverified facts
 
@@ -187,9 +213,9 @@ If the deny test fails, the OpenCode adapter uses `execute.before` to replace th
 
 ## Phase 1. Core, ledger, adapters, guard
 
-Build the core with its first policy, the guard. This closes the worst risks, and it proves the seam with both adapters.
+Build the core, the install manifest (D49), the authority module (D50) and the destructive rules module (D51) first. Together they close the worst risks and hold the whole security story, and they prove the seam with both adapters.
 
-Guard rules (each has a rule id, so Phase 8 can switch it off):
+Guard rules (each has a rule id, so Phase 8 can switch it off). `recursive-delete`, `merge-in-shell` and `destructive-git` live in the destructive rules module. `harness-self`, `harness-config-write` and `ledger-write` live in the authority module:
 
 | Rule id | Denies | Message to the agent |
 | --- | --- | --- |
@@ -216,7 +242,7 @@ The guard parses the full command and walks `bash -c`, `sh -c`, `env`, `xargs`, 
 Why the ledger holds the token: the agent can write files, but the `ledger-write` rule stops it from writing there, so only Alex's prompt can make a token.
 
 Done when:
-- `bun test harness/` passes. It has one case per rule, the bypass forms (`git -C . push --force`, `bash -c "rm -rf ~/x"`, `/usr/bin/gh pr merge 1`), the token expiry, the failure mode, the kill switch, and an agent call to `harness off` that is denied.
+- `bun test harness/` passes. The authority suite tries every forgery path: an agent calls `decide` with a fake prompt, writes the ledger, runs `harness off` or `install.ts`, and edits a manifest entry; each one is denied. The destructive rules suite runs once and covers the core, `guard-lite.ts` and the OpenCode failure path. The suites also have one case per rule, the bypass forms (`git -C . push --force`, `bash -c "rm -rf ~/x"`, `/usr/bin/gh pr merge 1`), the token expiry, the failure mode, the kill switch, and an agent call to `harness off` that is denied.
 - A live probe in each tool shows a denied `rm -rf <path outside allowlist>` with the message, and a merge on a throwaway repo under `~/.agents/skill-workspace/` that works only after `MERGE-OK`.
 
 ## Phase 2. Steering: PR watcher and Stop hook
@@ -263,7 +289,7 @@ flowchart LR
 | Stale state | The reply says a PR is open, a review is waiting, or something waits for Alex, and the turn did not check it live (`gh pr view`, the ticket, the inbox) after the last time Alex spoke | 9 "it's already merged", "already sent" |
 | False "can't" | The reply says the agent cannot do something, or asks Alex to do it by hand, and the task is in a browser while `browse` is connected. Only login, 2FA, a passkey, a captcha or a payment confirmation go to Alex, through `handoff`. | "you can, use browser control" |
 
-The four judgment checks (ask Alex something, false "can't", stale state, state footer) go to Jev with a short turn summary and send back at 0.80 or above (D27). The summary holds no transcript, no secrets and no file contents. When Jev is blocked or slow, strict keyword rules decide.
+The four judgment checks (ask Alex something, false "can't", stale state, state footer) go through the judgment module (D52): one Jev call per stop with a short turn summary, and a send-back at 0.80 or above (D27). The summary holds no transcript, no secrets and no file contents. When Jev is blocked or slow, strict keyword rules decide.
 
 The cap (D10) stops a loop: after 5 send-backs in one turn, the core lets the agent stop and say which check failed. The `sendbacks` table counts them.
 
