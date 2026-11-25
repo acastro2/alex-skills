@@ -48,7 +48,7 @@ One core module holds every policy behind one interface. One ledger module holds
 
 ```mermaid
 flowchart LR
-  CC[Claude Code adapter<br/>hooks run bun core.ts] -. seam .-> CORE
+  CC[Claude Code adapter<br/>mcp_tool hooks + guard-lite] -. seam .-> CORE
   OC[OpenCode adapter<br/>plugin imports core] -. seam .-> CORE
   subgraph CORE[harness core: decide event to decision]
     G[guard rules]
@@ -76,9 +76,9 @@ Why this shape (from the architecture review):
 | --- | --- | --- |
 | `tool.before` | `PreToolUse` | `permission.hook("evaluate")`, `tool.hook("execute.before")` |
 | `tool.after` | `PostToolUse` | `tool.hook("execute.after")` |
-| `prompt` | `UserPromptSubmit` | `session.hook("prompt")` |
+| `prompt` | `UserPromptSubmit` (command hook, D35) | `session.hook("prompt")` |
 | `stop` | `Stop` | session idle event (name to confirm in Phase 0) |
-| `session.start` | `SessionStart` | session created event (Phase 0) |
+| `session.start` | `SessionStart` (command hook) | session created event (Phase 0) |
 | `session.end` | `SessionEnd` | equivalent to confirm in Phase 0 |
 
 | Decision | Claude Code | OpenCode |
@@ -90,7 +90,7 @@ Why this shape (from the architecture review):
 
 **Failure mode.** If the core crashes or times out, the adapter denies calls that match a destructive rule (recursive delete, merge, destructive git) and allows everything else. Why: a timed-out Claude Code `PreToolUse` hook lets the call through, so the adapter must enforce this itself.
 
-**Runtime.** TypeScript on Bun. mac-bootstrap installs a pinned Bun on the Mac and the VM. Claude Code hooks run `bun harness/core.ts <event>`. The OpenCode plugin imports the core in-process, because OpenCode runs plugins on Bun, so each call costs nothing extra. Tests run with `bun test harness/`, and `scripts/check.sh` runs them in CI.
+**Runtime.** TypeScript on Bun. mac-bootstrap installs a pinned Bun on the Mac and the VM. In Claude Code, the `harness-hooks` MCP server hosts the core, and `mcp_tool` hooks call its `decide` tool (D32). `SessionStart` and `UserPromptSubmit` are command hooks, and `guard-lite.ts` backs up the destructive rules (D33). The OpenCode plugin imports the core in-process, because OpenCode runs plugins on Bun, so each call costs nothing extra. Tests run with `bun test harness/`, and `scripts/check.sh` runs them in CI.
 
 ### Ledger
 
@@ -144,6 +144,12 @@ All taken by Alex on 2026-11-25.
 | D29 | Harness MCP server | One stdio MCP server in `harness/`, loaded by both tools, for every action an agent takes on purpose: `merge_pr`, `worktree_new`, `keep_process`, `harness_status`. It calls the same core and ledger. Enforcement stays in hooks, and the kill switch stays the ledger flag | An MCP server only offers tools the model may call, so it cannot enforce. Typed tools are easier to gate and log than parsed shell commands |
 | D30 | Scope | Every git repo on both hosts, except the Obsidian vault and `~/.agents/skill-workspace` | The 11-21 wipe hit a work repo, so opt-in would have missed it |
 | D31 | Who runs `harness` commands | Only Alex: typed in a prompt (read by the `prompt` event, like `MERGE-OK`) or in a terminal he runs. The guard denies agent shell calls to `harness off`, `on` and `wrong` | An agent must never switch the harness off |
+| D32 | Claude Code adapter | `tool.before`, `tool.after` and `stop` are `mcp_tool` hooks that call `decide` on the `harness-hooks` MCP server, with `onFailure: "continue"`. `SessionStart` and `UserPromptSubmit` are command hooks. This replaces the Claude half of D12 | A warm process and no spawn cost per call. `mcp_tool` hooks are skipped at launch `SessionStart` ([hooks](https://code.claude.com/docs/en/hooks)) |
+| D33 | Fail closed with MCP | Next to the main hook, a command hook `bun guard-lite.ts` checks only the destructive patterns, with `onFailure: "block"` (Claude Code 2.1.328 or later) | If the MCP server dies, deletes, merges and destructive git are still blocked, and other work goes on (D15) |
+| D34 | Two MCP servers | `harness-hooks` serves only `decide`, and the model is denied it (`mcp__harness-hooks__*`). `harness` serves the 4 agent tools, with `codemode: false` in OpenCode. OpenCode keeps the in-process core and does not load `harness-hooks` | If the model could call `decide`, it could fake a prompt with `MERGE-OK` |
+| D35 | Grants channel | `MERGE-OK` and `harness off`, `on`, `wrong` are read only by the command `UserPromptSubmit` hook (OpenCode: the in-process `prompt` hook), never through MCP | The one channel an agent cannot reach |
+| D36 | Config protection | `harness-config-write` denies agent changes to the hook and MCP entries in `~/.claude/settings.json` and `~/.config/opencode/opencode.jsonc`, and to the harness plugin files. Edit and Write tool changes elsewhere in those files are parsed and allowed. Any shell write to those files is denied | Without it, an agent can delete the hooks. The core cannot parse a `sed -i` |
+| D37 | Installing the harness | Only `bun harness/install.ts` writes the entries, run by Alex or mac-bootstrap. `harness-self` also denies agent calls to `install.ts`. The core registers any worktree under `~/.worktrees/` on its first write, so `worktree_new` is a shortcut, not a gate | One reviewed path changes the harness, and a dead MCP server cannot block all writes |
 
 ## Phase 0. Prove the unverified facts
 
@@ -160,6 +166,8 @@ Do this first. The design depends on these facts, and the docs do not answer the
 | Each tool's todo list can be read by the core at `stop` | Log the todo items a scratch adapter sees in one turn, in both tools | The pending items show in the log |
 | What counts as `session.end` in OpenCode when the TUI closes but the session stays on the server | Close a TUI on a session with a test server running, and log the events | The event name is in the Interface table, and its timing is recorded |
 | Jev answers inside 3 seconds from a hook, and the fallback runs when it does not | Call Jev from a scratch Stop adapter, then once with the network blocked | A typed answer, then a `jev-unavailable` row |
+| A permission deny on `mcp__harness-hooks__*` blocks the model, while `mcp_tool` hooks can still call `decide` | Deny the tool, then call it from the model and from a hook | The model call is denied and the hook call returns a decision. If not, `decide` moves to command hooks |
+| `guard-lite.ts` with `onFailure: "block"` blocks a destructive call when the MCP server is down | Stop the `harness-hooks` server, then run `rm -r` on a path outside the allowlist | The call is blocked, and a plain `ls` still runs |
 | A Claude Code command can read its own session ID | A `SessionStart` hook writes `session_id` to an env file, and a command reads it | The command prints the ID |
 
 If the deny test fails, the OpenCode adapter uses `execute.before` to replace the command with one that fails with the reason. If `bun:sqlite` does not load, the OpenCode adapter spawns `bun core.ts` like Claude Code. If the wake test fails, the waker uses the Rex or Herdr notification only. If more than one of these fails, stop and bring it to Alex.
@@ -176,7 +184,8 @@ Guard rules (each has a rule id, so Phase 8 can switch it off):
 | `merge-in-shell` | Every `gh pr merge`, `gh api .../merge`, `git merge` into `main` or `master`, `git push` of a merge to `main` that has no PR | "Use the `merge_pr` tool." |
 | `destructive-git` | `git reset --hard`, `git clean`, `git push --force` and `-f`, `git checkout -- .` | Same rules as today's `opencode.jsonc` deny list, now in both tools |
 | `ledger-write` | Any write to `~/.local/state/harness/` | "Only the harness writes its state." |
-| `harness-self` | An agent shell call to `harness off`, `harness on` or `harness wrong` (D31) | "Only Alex runs harness commands." |
+| `harness-self` | An agent shell call to `harness off`, `harness on`, `harness wrong` or `harness/install.ts` (D31, D37) | "Only Alex runs harness commands." |
+| `harness-config-write` | A change to the hook or MCP entries in `settings.json` or `opencode.jsonc`, a change to the harness plugin files, or any shell write to those files (D36) | "Change the harness source in a worktree. Alex installs it with `install.ts`." |
 | `main-checkout-write` | An edit or write tool on a path in a repo's main checkout, and `git commit`, `git checkout`, `git merge` or `git rebase` run there (D7) | "Work in a worktree: call `worktree_new`. It records the pointer for other agents." |
 
 The guard parses the full command and walks `bash -c`, `sh -c`, `env`, `xargs`, `git -C` and absolute paths before it matches. Why: deny rules in both tools match only the command text.
@@ -301,7 +310,7 @@ Done when: `bun --version` prints the pin on both hosts, `git push` in `alex-ski
 
 ```mermaid
 flowchart LR
-  S[session.start] --> W[harness worktree new<br/>~/.worktrees/repo/name]
+  S[session.start] --> W[worktree_new tool<br/>~/.worktrees/repo/name]
   W --> L[(ledger: worktrees)]
   W --> H[HANDOFF.md section:<br/>owner, worktree, state, next]
   H --> M{PR merged?}
@@ -366,7 +375,7 @@ Verified on 2026-11-25:
 `harness/fork_tab.sh` does the following:
 1. OpenCode: run `opencode run -s "$OPENCODE_SESSION_ID" --fork --title "<t>" --format json "<prompt>"`, read the new session ID from the events, then `rex window new -s "$REX_SESSION" "<t>" --focus=false -- opencode -s <new id>`.
 2. Claude Code: `rex window new -s "$REX_SESSION" "<t>" --focus=false -- claude --resume <id> --fork-session "<prompt>"`.
-3. The fork always gets its own worktree through `harness worktree new` (D7), so the two paths never edit the same files.
+3. The fork always gets its own worktree through the `worktree_new` tool (D7), so the two paths never edit the same files.
 4. Under Herdr (`HERDR_ENV=1`), open a Herdr tab instead of a Rex tab.
 
 Entry points: an OpenCode command `/fork-tab <prompt>` and a Claude Code command or skill `/fork-tab <prompt>`. Each calls the script with its own session ID.
@@ -406,6 +415,7 @@ Not in this plan. Each needs its own spec.
 
 ## Risks
 
+- **The `harness-hooks` server is down.** The main hooks continue, and `guard-lite.ts` still blocks the destructive calls (D33). The Stop checks and the worker lifecycle do not run until it is back, and `harness status` shows it.
 - **A hook timeout lets the call through.** In Claude Code, a timed-out `PreToolUse` hook does not block. The adapter applies the failure mode (D15) itself, and the core has no network calls on `tool.before`.
 - **An in-process core can crash the OpenCode plugin.** The adapter wraps each call and applies the failure mode on any exception.
 - **`--bare` skips hooks.** `claude -p --bare` runs with no hooks, so the eval harnesses run without the guard. That is fine for evals, but never use `--bare` for real work.
