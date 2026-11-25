@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Out-of-band rollback (D71, Phase 1b): restore the previous applied harness SHA from a terminal.
+# It does not use the hooks or any harness code that is installed now, so it works when they are broken.
+# It reads the ledger, checks the tree hash of applied/<sha>/, and runs that copy's install.ts.
+# Env: HARNESS_STATE_DIR, BUN, HARNESS_CLAUDE_SETTINGS, HARNESS_OPENCODE_PLUGINS.
+set -euo pipefail
+
+STATE="${HARNESS_STATE_DIR:-$HOME/.local/state/harness}"
+BUN="${BUN:-$(command -v bun || true)}"
+if [ -z "$BUN" ] && command -v mise >/dev/null 2>&1; then BUN="$(mise which bun 2>/dev/null || true)"; fi
+[ -n "$BUN" ] || { echo "harness-rollback: bun not found (set BUN)" >&2; exit 1; }
+[ -f "$STATE/ledger.db" ] || { echo "harness-rollback: no ledger at $STATE/ledger.db" >&2; exit 1; }
+export STATE
+SELF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export SELF_ROOT
+
+# Step 1 reads the ledger and checks the tree hash. Step 2 records the rollback.
+# The tree hash code is a copy of treeHash() in src/proof/apply.ts, on purpose.
+read -r -d '' JS <<'EOF' || true
+const { Database } = require("bun:sqlite")
+const { createHash } = require("node:crypto")
+const fs = require("node:fs")
+const path = require("node:path")
+const state = process.env.STATE
+const db = new Database(path.join(state, "ledger.db"))
+db.exec("PRAGMA busy_timeout = 5000")
+const sha256 = (b) => createHash("sha256").update(b).digest("hex")
+const die = (m) => { console.error("harness-rollback: " + m); process.exit(1) }
+function treeHash(root) {
+  const entries = []
+  const walk = (dir, rel) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === "node_modules") continue
+      const p = path.join(dir, e.name)
+      const r = rel ? rel + "/" + e.name : e.name
+      if (e.isDirectory()) walk(p, r)
+      else entries.push([r, fs.lstatSync(p).isSymbolicLink() ? sha256("link:" + fs.readlinkSync(p)) : sha256(fs.readFileSync(p))])
+    }
+  }
+  walk(root, "")
+  entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+  return sha256(entries.map(([r, h]) => r + "\0" + h + "\n").join(""))
+}
+const meta = db.query("select value from schema_meta where key = 'current_apply'").get()
+if (!meta) die("nothing applied")
+const prev = db.query(
+  "select id, sha, tree_hash from applies where rowid < (select rowid from applies where id = ?) and rolled_back_at is null order by rowid desc limit 1",
+).get(meta.value)
+if (!prev) die("no previous apply")
+const dir = path.join(state, "applied", prev.sha)
+if (!fs.existsSync(path.join(dir, "harness"))) die("missing " + dir)
+if (treeHash(path.join(dir, "harness")) !== prev.tree_hash) die("tree hash mismatch for " + prev.sha)
+if (process.env.STEP === "plan") {
+  console.log(dir + "\t" + prev.sha)
+} else {
+  db.query("update applies set rolled_back_at = ? where id = ?").run(Date.now(), meta.value)
+  db.query("update schema_meta set value = ? where key = 'current_apply'").run(prev.id)
+  try {
+    // The restored copy's journal code first, else the copy this script sits in (its tree may be older).
+    const mods = [path.join(dir, "harness", "src", "ledger", "journal.ts"), path.join(process.env.SELF_ROOT, "src", "ledger", "journal.ts")]
+    const found = mods.find((m) => fs.existsSync(m))
+    if (!found) throw new Error("no journal.ts found")
+    const { append } = require(found)
+    append(db, { session_id: null, event: "harness.rollback", outcome: "allow", data: { from_apply: meta.value, to_apply: prev.id, sha: prev.sha, via: "bin/harness-rollback" } })
+  } catch (e) {
+    console.error("harness-rollback: restored, but the journal row failed: " + e.message)
+  }
+}
+EOF
+
+PLAN="$(STEP=plan "$BUN" -e "$JS")"
+DIR="${PLAN%%$'\t'*}"
+SHA="${PLAN##*$'\t'}"
+
+ARGS=()
+[ -n "${HARNESS_CLAUDE_SETTINGS:-}" ] && ARGS+=(--claude-settings "$HARNESS_CLAUDE_SETTINGS")
+[ -n "${HARNESS_OPENCODE_PLUGINS:-}" ] && ARGS+=(--opencode-plugins "$HARNESS_OPENCODE_PLUGINS")
+
+"$BUN" "$DIR/harness/src/install.ts" ${ARGS[@]+"${ARGS[@]}"}
+STEP=commit "$BUN" -e "$JS"
+echo "harness-rollback: restored $SHA"
