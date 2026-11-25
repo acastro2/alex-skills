@@ -18,7 +18,7 @@ let plugins: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "harness-install-"))
   settings = join(dir, "settings.json")
-  plugins = join(dir, "opencode", "plugins")
+  plugins = join(dir, "plugins")
   writeFileSync(settings, JSON.stringify(ORIGINAL, null, 2) + "\n")
 })
 
@@ -88,20 +88,5 @@ describe("install", () => {
     await install("--uninstall")
     expect(read()).toEqual(ORIGINAL)
     expect(existsSync(join(plugins, "harness.ts"))).toBe(false)
-  })
-
-  // Seen live 2026-11-25: /fork-tab did not exist in OpenCode, because nothing linked the command files.
-  test("links /fork-tab into both commands dirs, idempotently, and uninstall removes the links", async () => {
-    const { readlinkSync, lstatSync } = await import("node:fs")
-    await install()
-    const cc = join(dir, "commands", "fork-tab.md") // next to the settings file
-    const oc = join(dir, "opencode", "commands", "fork-tab.md")
-    expect(lstatSync(cc).isSymbolicLink() && lstatSync(oc).isSymbolicLink()).toBe(true)
-    expect(readFileSync(cc, "utf8")).toContain("--tool claude")
-    expect(readFileSync(oc, "utf8")).toContain("--tool opencode")
-    expect(await install()).toContain("no change: " + cc)
-    await install("--uninstall")
-    expect(existsSync(cc) || existsSync(oc)).toBe(false)
-    void readlinkSync
   })
 })

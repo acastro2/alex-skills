@@ -1,9 +1,9 @@
 // Writes the harness hook entries (manifest.ts) into Claude Code settings and the OpenCode plugin dir.
 // Usage: bun src/install.ts [--dry-run] [--dev] [--uninstall] [--claude-settings <path>] [--opencode-plugins <dir>] [--bun <path>]
 //        [--no-mcp] [--mcp-project <dir>]
-import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync, copyFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from "node:fs"
 import { homedir } from "node:os"
-import { dirname, join, relative, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { HARNESS_ID_FLAG, MANIFEST, type ManifestEntry } from "./manifest.ts"
 
 type Json = Record<string, any>
@@ -178,47 +178,9 @@ export function run(opts: Options): { report: string; changed: boolean } {
     }
   } else lines.push(`no change: ${pluginPath}`)
 
-  for (const l of commandSteps(opts)) lines.push(l), (changed ||= l.startsWith("linked:") || l.startsWith("would link:") || l.startsWith("removed:"))
   if (opts.mcp) for (const l of mcpSteps(opts)) lines.push(l), (changed ||= l.startsWith("ran:") || l.startsWith("would run:"))
 
   return { report: lines.join("\n"), changed }
-}
-
-/** The harness slash commands (/fork-tab), linked into each tool's commands dir next to its settings. */
-export function commandLinks(opts: Options): { link: string; target: string }[] {
-  const claudeDir = join(dirname(opts.claudeSettings), "commands")
-  const opencodeDir = join(dirname(opts.opencodePlugins), "commands")
-  return [
-    { link: join(claudeDir, "fork-tab.md"), target: join(opts.root, "commands/fork-tab.claude.md") },
-    { link: join(opencodeDir, "fork-tab.md"), target: join(opts.root, "commands/fork-tab.opencode.md") },
-  ]
-}
-
-function commandSteps(opts: Options): string[] {
-  const out: string[] = []
-  for (const { link, target } of commandLinks(opts)) {
-    const rel = relative(dirname(link), target)
-    let have: string | null = null
-    try {
-      have = lstatSync(link).isSymbolicLink() ? readlinkSync(link) : "(a file)"
-    } catch {}
-    if (opts.uninstall) {
-      if (have === rel) {
-        if (!opts.dryRun) rmSync(link)
-        out.push(`${opts.dryRun ? "would remove" : "removed"}: ${link}`)
-      }
-      continue
-    }
-    if (have === rel) out.push(`no change: ${link}`)
-    else if (have !== null) out.push(`skipped: ${link} exists and is not the harness link`)
-    else if (opts.dryRun) out.push(`would link: ${link} -> ${rel}`)
-    else {
-      mkdirSync(dirname(link), { recursive: true })
-      symlinkSync(rel, link)
-      out.push(`linked: ${link} -> ${rel}`)
-    }
-  }
-  return out
 }
 
 type Runner = (argv: string[], cwd?: string) => { code: number; out: string }
