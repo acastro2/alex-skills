@@ -214,6 +214,10 @@ export interface ChangeRow {
   session_slug: string | null;
   review: string | null;
   apply: { id: string; applied_at: number | null; rolled_back_at: number | null; tree_hash: string | null } | null;
+  /** A live, unused passkey grant for this request: the tap worked, the session has not run harness_apply yet. */
+  granted: { until: number } | null;
+  /** An open request whose sha is the current applied sha or an ancestor of it: a newer apply replaced it. */
+  superseded: boolean;
 }
 
 export type JobResult = "ok" | "failed" | "never" | "unknown";
@@ -253,6 +257,8 @@ export interface PrWatchRow {
   pr: number | null;
   session_id: string | null;
   session_slug: string | null;
+  /** A live, unused merge grant for this PR and session. */
+  granted: { until: number } | null;
   state: string | null;
   review: string | null;
   mergeable: string | null;
@@ -648,7 +654,34 @@ export function journalPage(db: Database, q: JournalQuery = {}): JournalPage {
   return { rows: page, has_more, next_cursor: has_more && page.length ? page[page.length - 1].seq : null };
 }
 
-function changeRows(db: Database, slugs: Map<string, string | null>): ChangeRow[] {
+// git is slow next to the snapshot loop, and the answer never changes for the same three strings.
+const ancestorCache = new Map<string, boolean>();
+function isAncestor(repo: string | null, sha: string, tip: string): boolean {
+  if (sha === tip) return true;
+  if (!repo) return false;
+  const key = `${repo}|${sha}|${tip}`;
+  let hit = ancestorCache.get(key);
+  if (hit === undefined) {
+    try {
+      hit = Bun.spawnSync(["git", "merge-base", "--is-ancestor", sha, tip], { cwd: repo, stdout: "ignore", stderr: "ignore" }).exitCode === 0;
+    } catch {
+      hit = false;
+    }
+    ancestorCache.set(key, hit);
+  }
+  return hit;
+}
+
+function changeRows(db: Database, slugs: Map<string, string | null>, now: number): ChangeRow[] {
+  const cur = one<{ value: string }>(db, "SELECT value FROM schema_meta WHERE key = 'current_apply'")?.value;
+  const tip = cur ? one<{ sha: string }>(db, "SELECT sha FROM applies WHERE id = ? AND rolled_back_at IS NULL", cur)?.sha ?? null : null;
+  const grants = new Map(
+    all<{ request_id: string; until: number }>(
+      db,
+      "SELECT request_id, MAX(expires_at) AS until FROM tokens WHERE kind = 'harness' AND request_id IS NOT NULL AND used_at IS NULL AND expires_at > ? GROUP BY request_id",
+      now,
+    ).map((g) => [g.request_id, g.until]),
+  );
   return all<{
     id: string; session_id: string | null; sha: string; digest: string; review_seq: number | null; state: string; created_at: number;
     review: string | null; apply_id: string | null; applied_at: number | null; rolled_back_at: number | null; tree_hash: string | null;
@@ -669,6 +702,10 @@ function changeRows(db: Database, slugs: Map<string, string | null>): ChangeRow[
       session_slug: r.session_id ? slugs.get(r.session_id) ?? sessionSlug(r.session_id, null) : null,
       review: r.review,
       apply: r.apply_id ? { id: r.apply_id, applied_at: r.applied_at, rolled_back_at: r.rolled_back_at, tree_hash: r.tree_hash } : null,
+      granted: status === "pending" && grants.has(r.id) ? { until: grants.get(r.id)! } : null,
+      superseded:
+        status === "pending" && tip !== null &&
+        isAncestor(one<{ value: string }>(db, "SELECT value FROM schema_meta WHERE key = ?", `request_repo:${r.id}`)?.value ?? null, r.sha, tip),
     };
   });
 }
@@ -694,6 +731,13 @@ function prWatchRows(db: Database, now: number, slugs: Map<string, string | null
     "SELECT id, session_id, target, last_state, polled_at FROM watches WHERE kind = 'pr' AND (expires_at IS NULL OR expires_at > ?) ORDER BY id DESC LIMIT 40",
     now,
   );
+  const grants = new Map(
+    all<{ pr: number; session_id: string; until: number }>(
+      db,
+      "SELECT pr, session_id, MAX(expires_at) AS until FROM tokens WHERE kind = 'merge' AND pr IS NOT NULL AND session_id IS NOT NULL AND used_at IS NULL AND expires_at > ? GROUP BY pr, session_id",
+      now,
+    ).map((g) => [`${g.pr}:${g.session_id}`, g.until]),
+  );
   const out: PrWatchRow[] = [];
   for (const w of rows) {
     const s = parse<{ state?: string; review?: string; mergeable?: string; failed?: string[]; done?: boolean } | string | null>(w.last_state, w.last_state);
@@ -706,6 +750,7 @@ function prWatchRows(db: Database, now: number, slugs: Map<string, string | null
       pr: pr ? Number(pr) : null,
       session_id: w.session_id,
       session_slug: w.session_id ? slugs.get(w.session_id) ?? sessionSlug(w.session_id, null) : null,
+      granted: pr && w.session_id && grants.has(`${pr}:${w.session_id}`) ? { until: grants.get(`${pr}:${w.session_id}`)! } : null,
       state: o.state ?? (typeof s === "string" ? s : null),
       review: o.review || null,
       mergeable: o.mergeable ?? null,
@@ -818,7 +863,7 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
   const bundles = bundleRows(db);
   const rules = ruleRows(db, now, slugs);
   const journal = journalPage(db, { limit: 50 });
-  const changes = changeRows(db, slugs);
+  const changes = changeRows(db, slugs, now);
   const jobs = jobRows(db, now);
   const harness = harnessState(db);
 
@@ -840,7 +885,7 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
     bundles: bundles.length,
     rules: rules.length,
     journal: hourCount,
-    changes: changes.filter((c) => c.status === "pending").length,
+    changes: changes.filter((c) => c.status === "pending" && !c.superseded && !c.granted).length,
     jobs: jobs.length,
   };
   const alerts: Record<ViewId, number> = {

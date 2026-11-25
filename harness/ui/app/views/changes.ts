@@ -1,6 +1,6 @@
 import { h, sha, timeEl } from "../dom.ts";
 import type { ChangeRow, Ctx, PrWatchRow } from "../ctx.ts";
-import { btn, chip, dataTable, detailRow, empty, expandToggle, td, viewHeader, type Tone } from "../parts.ts";
+import { appliedChip, btn, chip, dataTable, detailRow, empty, expandToggle, grantChip, grantUntil, rememberGrant, td, viewHeader, type Tone } from "../parts.ts";
 
 const STATUS: Record<ChangeRow["status"], [Tone, string]> = {
   pending: ["amber", "waiting for your tap"],
@@ -10,14 +10,24 @@ const STATUS: Record<ChangeRow["status"], [Tone, string]> = {
 };
 
 /** The one merge grant button. The page asks for a passkey tap; the server mints `MERGE-OK <pr>` for that session. */
-export function grantMergeButton(ctx: Ctx, pr: number, sessionId: string, label = "Grant merge with passkey"): HTMLButtonElement {
+export function grantMergeButton(ctx: Ctx, pr: number, sessionId: string, granted: { until: number } | null, label = "Grant merge with passkey"): HTMLElement {
   const key = `merge:${pr}:${sessionId}`;
+  const until = grantUntil(key, granted);
+  if (until !== null) return grantChip("merge", until, ctx.now);
   return btn(label, {
     tone: "primary",
     icon: "key",
     busy: ctx.ui.pending.has(key),
-    onClick: () => void ctx.act(key, "merge", { pr, session_id: sessionId }, "Merge granted for 30 minutes. The session lands it with `merge_pr`."),
+    onClick: () => void tap(ctx, key, "merge", { pr, session_id: sessionId }, "Merge granted for 30 minutes. The session lands it with `merge_pr`."),
   });
+}
+
+/** Run a passkey action; on success show the grant chip at once. The next snapshot confirms it. */
+async function tap(ctx: Ctx, key: string, action: string, args: Record<string, unknown>, done: string, chipKey = key): Promise<void> {
+  if (await ctx.act(key, action, args, done)) {
+    rememberGrant(chipKey);
+    ctx.rerender();
+  }
 }
 
 const PR_CAP = 8;
@@ -39,7 +49,7 @@ function watchedPrs(ctx: Ctx): HTMLElement | null {
       w.review === "APPROVED" ? chip("green", "approved") : h("span", { class: "dim pr-state" }, [w.state?.toLowerCase(), w.review?.replace(/_/g, " ").toLowerCase()].filter(Boolean).join(" · ") || "unknown"),
       w.failed.length ? chip("red", `${w.failed.length} failed`) : null,
       h("span", { class: "mono dim pr-by" }, w.session_slug ?? "no session"),
-      w.pr !== null && w.session_id ? grantMergeButton(ctx, w.pr, w.session_id) : h("span", { class: "dim" }, "no PR number"),
+      w.pr !== null && w.session_id ? grantMergeButton(ctx, w.pr, w.session_id, w.granted) : h("span", { class: "dim" }, "no PR number"),
     ),
   );
   return h(
@@ -76,7 +86,7 @@ function mergeForm(ctx: Ctx): HTMLElement {
         onSubmit: (e: Event) => {
           e.preventDefault();
           if (!ready) return;
-          void ctx.act(key, "merge", { pr: prNum, session_id: chosen }, "Merge granted for 30 minutes. The session lands it with `merge_pr`.");
+          void tap(ctx, key, "merge", { pr: prNum, session_id: chosen }, "Merge granted for 30 minutes. The session lands it with `merge_pr`.", `merge:${prNum}:${chosen}`);
         },
       },
       h(
@@ -102,22 +112,24 @@ function mergeForm(ctx: Ctx): HTMLElement {
   );
 }
 
-export function renderChanges(ctx: Ctx): HTMLElement {
-  const rows = ctx.snap.views.changes;
+const SUPERSEDED_KEY = "changes:superseded";
+
+function changeRows(ctx: Ctx, rows: ChangeRow[]): HTMLElement[] {
   const body: HTMLElement[] = [];
   for (const c of rows) {
     const key = `change:${c.id}`;
-    const selected = ctx.route.id === c.id;
-    const open = ctx.ui.expanded.has(key) || selected || c.status === "pending";
-    const [tone, text] = STATUS[c.status];
     const applyKey = `apply:${c.id}`;
     const rollKey = `rollback:${c.id}`;
+    const selected = ctx.route.id === c.id;
+    const until = c.status === "pending" ? grantUntil(applyKey, c.granted) : null;
+    const open = ctx.ui.expanded.has(key) || selected || (c.status === "pending" && until === null && !c.superseded);
+    const [tone, text] = until !== null ? (["green", "approved"] as [Tone, string]) : STATUS[c.status];
     body.push(
       h(
         "tr",
         { class: `${selected ? "selected" : ""}${open ? " is-open" : ""}`, "data-selected": selected ? "true" : undefined, "aria-current": selected ? "true" : undefined },
         td("Change", "c-session", expandToggle(ctx, key, sha(c.sha), open, h("span", { class: "mono strong" }, `${sha(c.sha)} · ${sha(c.digest)}`))),
-        td("Status", null, chip(tone, text)),
+        td("Status", null, c.status === "applied" ? appliedChip(sha(c.sha)) : chip(tone, text)),
         td("Asked by", null, c.session_slug ? h("span", { class: "mono" }, c.session_slug) : h("span", { class: "dim" }, "unknown")),
         td("Asked", null, timeEl(c.created_at, ctx.now)),
         td("Applied", null, c.apply?.applied_at ? timeEl(c.apply.applied_at, ctx.now) : h("span", { class: "dim" }, "not applied")),
@@ -125,7 +137,9 @@ export function renderChanges(ctx: Ctx): HTMLElement {
           "",
           "c-act",
           c.status === "pending"
-            ? btn("Approve with passkey", { tone: "primary", icon: "key", busy: ctx.ui.pending.has(applyKey), onClick: () => void ctx.act(applyKey, "apply", { request_id: c.id }, "Approved for 30 minutes. The change applies when the session runs `harness apply`.") })
+            ? until !== null
+              ? grantChip("harness", until, ctx.now)
+              : btn("Approve with passkey", { tone: "primary", icon: "key", busy: ctx.ui.pending.has(applyKey), onClick: () => void tap(ctx, applyKey, "apply", { request_id: c.id }, "Approved for 30 minutes. The change applies when the session runs `harness apply`.") })
             : c.status === "applied"
               ? btn("Roll back with passkey", { icon: "key", busy: ctx.ui.pending.has(rollKey), onClick: () => void ctx.act(rollKey, "rollback", { request_id: c.id }, "Rollback requested.") })
               : null,
@@ -143,13 +157,32 @@ export function renderChanges(ctx: Ctx): HTMLElement {
       );
     }
   }
+  return body;
+}
+
+export function renderChanges(ctx: Ctx): HTMLElement {
+  const rows = ctx.snap.views.changes;
+  const live = rows.filter((c) => !c.superseded);
+  const old = rows.filter((c) => c.superseded);
+  const showOld = ctx.ui.expanded.has(SUPERSEDED_KEY);
+  const cols = [{ label: "Change" }, { label: "Status" }, { label: "Asked by" }, { label: "Asked" }, { label: "Applied" }, { label: "Actions", cls: "c-act" }];
   return h(
     "section",
     { class: "view" },
     viewHeader(ctx, "changes"),
     rows.length
-      ? dataTable([{ label: "Change" }, { label: "Status" }, { label: "Asked by" }, { label: "Asked" }, { label: "Applied" }, { label: "Actions", cls: "c-act" }], body, "Harness changes")
+      ? live.length
+        ? dataTable(cols, changeRows(ctx, live), "Harness changes")
+        : empty("Nothing waits for you.", "Every open change is superseded by a newer applied one.")
       : empty("No harness changes.", "A change shows here when a session asks to change the harness itself. It waits for your passkey tap."),
+    old.length
+      ? h(
+          "div",
+          { class: "superseded" },
+          btn(`Superseded (${old.length})`, { tone: "quiet", ariaExpanded: showOld, onClick: () => ctx.toggle(SUPERSEDED_KEY), title: "Open requests that a newer applied change replaced" }),
+          showOld ? dataTable(cols, changeRows(ctx, old), "Superseded harness changes") : null,
+        )
+      : null,
     mergeForm(ctx),
   );
 }

@@ -78,6 +78,25 @@ test("the snapshot carries pr_watches: open PR watches only, with the session sl
   expect(w[0].state).toBe("open");
 });
 
+test("a harness change with a live unused grant has granted set; an applied one is never offered", async () => {
+  type C = { id: string; status: string; granted: { until: number } | null };
+  const before = (await (await get("/api/snapshot")).json()).views.changes as C[];
+  const pending = before.find((c) => c.status === "pending")!;
+  const applied = before.find((c) => c.status === "applied")!;
+  expect(pending.granted).toBeNull();
+
+  // A second connection, as the real MCP process does: the server's cache sees it through PRAGMA data_version.
+  const writer = new Database(join(dir, "ledger.db"), { readwrite: true });
+  const until = Date.now() + 28 * 60_000;
+  writer.query("INSERT INTO tokens (id, kind, session_id, request_id, expires_at) VALUES (?,?,?,?,?)").run("01TESTGRANTLIVE", "harness", null, pending.id, until);
+  writer.query("INSERT INTO tokens (id, kind, session_id, request_id, expires_at) VALUES (?,?,?,?,?)").run("01TESTGRANTSPENT", "harness", null, applied.id, until);
+  const after = (await (await get("/api/snapshot")).json()).views.changes as C[];
+  expect(after.find((c) => c.id === pending.id)!.granted).toEqual({ until });
+  expect(after.find((c) => c.id === applied.id)!.granted).toBeNull();
+  writer.query("DELETE FROM tokens WHERE id IN ('01TESTGRANTLIVE','01TESTGRANTSPENT')").run();
+  writer.close();
+});
+
 test("a request with Host evil.example is rejected", async () => {
   const res = await fetch(`${server.url}/api/snapshot`, { headers: { cookie, host: "evil.example" } });
   expect(res.status).toBe(421);

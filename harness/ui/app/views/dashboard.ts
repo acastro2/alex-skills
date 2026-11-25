@@ -4,7 +4,7 @@
 import { h, icon, timeEl } from "../dom.ts";
 import type { BundleRow, Ctx, JobRow, ProcessRow, SessionRow, TailKind, TailRow, ViewName, WorktreeRow } from "../ctx.ts";
 import { hashFor } from "../ctx.ts";
-import { btn, chip, lineChart, stateChip, type Tone } from "../parts.ts";
+import { btn, chip, grantUntil, lineChart, stateChip, type Tone } from "../parts.ts";
 import { grantMergeButton } from "./changes.ts";
 import { fmtGb, fmtMem, fmtPct, memPct, reasonsBox } from "./machine.ts";
 import { onThemeChange, renderOffice, signals } from "./office.ts";
@@ -76,19 +76,21 @@ const root = h(
 // ---------------------------------------------------------------- needs you
 
 function paintNeeds(ctx: Ctx): void {
-  const list = signals(ctx);
+  const done = new Set(ctx.snap.views.changes.filter((c) => c.superseded || grantUntil(`apply:${c.id}`, c.granted) !== null).map((c) => c.id));
+  const list = signals(ctx).filter((s) => !(s.view === "changes" && s.id && done.has(s.id)));
   const questions = new Map(ctx.snap.views.inbox.map((q) => [String(q.seq), q]));
   const ready = ctx.snap.pr_watches.filter((w) => w.state?.toUpperCase() === "OPEN" && w.review === "APPROVED" && !w.failed.length && w.pr !== null && w.session_id);
-  const total = list.length + ready.length;
+  const grantedUntil = (w: (typeof ready)[number]) => grantUntil(`merge:${w.pr}:${w.session_id}`, w.granted);
+  const total = list.length + ready.filter((w) => grantedUntil(w) === null).length;
   put(needs.meta, String(total), () => [total ? chip("amber", String(total)) : h("span", { class: "dim" }, "none")]);
-  put(needs.body, JSON.stringify([list, ready.map((w) => [w.id, w.pr, w.session_id, ctx.ui.pending.has(`merge:${w.pr}:${w.session_id}`)])]), () => {
+  put(needs.body, JSON.stringify([list, ready.map((w) => [w.id, w.pr, w.session_id, ctx.ui.pending.has(`merge:${w.pr}:${w.session_id}`), grantedUntil(w) === null ? null : Math.ceil(((grantedUntil(w) as number) - ctx.now) / 60_000)])]), () => {
     const mergeRows = ready.map((w) =>
       h(
         "div",
         { class: "need-merge" },
         h("span", { class: "need-head" }, chip("green", "ready to merge")),
         h("span", { class: "need-text" }, `${w.target} is approved and its checks pass.`),
-        grantMergeButton(ctx, w.pr as number, w.session_id as string, "Grant merge"),
+        grantMergeButton(ctx, w.pr as number, w.session_id as string, w.granted, "Grant merge"),
       ),
     );
     if (!list.length) return mergeRows.length ? mergeRows : [note("Nothing needs you. A question, a stuck session, a conflict, a red bundle, a harness change or a failed job shows here.")];

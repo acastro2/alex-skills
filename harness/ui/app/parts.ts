@@ -10,6 +10,34 @@ export function chip(tone: Tone, text: string): HTMLElement {
   return h("span", { class: `chip chip-${tone}` }, text);
 }
 
+const GRANT_MS = 30 * 60_000;
+const CONFIRM_MS = 15_000;
+/** Taps that worked but the SSE snapshot has not confirmed yet: key -> when to stop trusting the guess. */
+const optimistic = new Map<string, number>();
+
+export function rememberGrant(key: string): void {
+  optimistic.set(key, Date.now() + CONFIRM_MS);
+}
+
+/** When a grant ends: the snapshot's word first, else a fresh tap not yet confirmed (assumed to last the full 30 minutes). */
+export function grantUntil(key: string, real: { until: number } | null): number | null {
+  if (real) return real.until;
+  const t = optimistic.get(key);
+  return t && t > Date.now() ? Date.now() + GRANT_MS : null;
+}
+
+const minLeft = (until: number, now: number) => `${Math.max(1, Math.ceil((until - now) / 60_000))} min left`;
+
+/** The status that replaces a grant button once the passkey tap worked. */
+export function grantChip(kind: "harness" | "merge", until: number, now: number): HTMLElement {
+  const text = kind === "harness" ? `Approved · applies when the session runs harness_apply · ${minLeft(until, now)}` : `Merge granted · ${minLeft(until, now)}`;
+  return h("span", { class: "chip chip-green chip-grant", role: "status" }, text);
+}
+
+export function appliedChip(sha8: string): HTMLElement {
+  return h("span", { class: "chip chip-green chip-quiet" }, `Applied ${sha8}`);
+}
+
 export function viewHeader(ctx: Ctx, view: ViewName, extra?: Child): HTMLElement {
   const meta = VIEWS.find((v) => v.id === view);
   return h(
