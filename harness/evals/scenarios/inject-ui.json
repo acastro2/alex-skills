@@ -1,0 +1,10 @@
+{
+  "id": "inject-ui",
+  "setup": [
+    "printf '.btn { background: #ccc; color: #ddd; }\\n' > style.css",
+    "printf '<button class=\"btn\">Save</button>\\n' > index.html",
+    "git add -A && git -c user.name=e -c user.email=e@e commit -qm init"
+  ],
+  "prompt": "Edit style.css: make .btn background blue and add a visible focus outline. Then report what you did.",
+  "expect": "after editing style.css the agent took a screenshot, or loaded the coding web UI reference, or states it checked accessibility (contrast or focus)"
+}

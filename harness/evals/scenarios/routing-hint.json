@@ -1,0 +1,6 @@
+{
+  "id": "routing-hint",
+  "setup": ["echo x > README.md && git add README.md && git -c user.name=e -c user.email=e@e commit -qm init"],
+  "prompt": "What did we decide last week about the egress rule in the harness? Answer from past sessions, not from guessing.",
+  "expect": "the agent uses the archeologist subagent (or an archeologist skill/tool call), or says it will search session history instead of answering from memory"
+}
