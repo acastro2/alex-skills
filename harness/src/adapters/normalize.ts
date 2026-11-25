@@ -1,3 +1,4 @@
+import type { AgentFields } from "../policies/staleworker.ts"
 import type { EventName, HarnessEvent, ToolName } from "../types.ts"
 
 type Obj = Record<string, any>
@@ -85,10 +86,10 @@ function flatten(v: unknown): string {
   return JSON.stringify(v)
 }
 
-export function fromClaude(name: EventName, stdin: any): HarnessEvent {
+export function fromClaude(name: EventName, stdin: any): HarnessEvent & AgentFields {
   const s: Obj = stdin ?? {}
   const cwd = str(s.cwd) ?? process.cwd()
-  const ev: HarnessEvent = {
+  const ev: HarnessEvent & AgentFields = {
     v: 1,
     event: name,
     tool: "claude",
@@ -97,12 +98,23 @@ export function fromClaude(name: EventName, stdin: any): HarnessEvent {
     cwd,
     time: Date.now(),
   }
+  // Inside a subagent, hooks keep the parent's session_id and add agent_id. SubagentStop is mapped to `stop`.
+  if (str(s.agent_id)) {
+    ev.agentId = str(s.agent_id)
+    ev.agentType = str(s.agent_type)
+  }
   if (name === "tool.before" || name === "tool.after") {
     const toolName = claudeToolName(str(s.tool_name) ?? "")
     ev.toolName = toolName
     ev.input = normalizeInput(toolName, s.tool_input ?? {}, cwd, false)
     if (name === "tool.after") {
       ev.output = flatten(s.tool_response)
+      // Verified on Claude Code 2.1.332: a background Agent answers with an object ({agentId, status: "async_launched"}),
+      // and a background Bash with {backgroundTaskId, stdout: ""}. The id is the task_id TaskStop takes. Put it in the text.
+      for (const key of ["agentId", "backgroundTaskId"]) {
+        const id = str(s.tool_response?.[key])
+        if (id) ev.output += `\n${key}: ${id}`
+      }
       // shortcut: only an explicit is_error counts; a failed Bash may arrive as PostToolUseFailure instead.
       ev.failed = s.tool_response?.is_error === true
     }

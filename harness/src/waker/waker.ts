@@ -2,6 +2,8 @@ import type { Database } from "bun:sqlite"
 import { append } from "../ledger/journal.ts"
 import { mode } from "../ledger/registry.ts"
 import { ulid } from "../ledger/ulid.ts"
+import { endSessionProcesses } from "../policies/processes.ts"
+import { ABORT_AFTER_MS, THROTTLE_MS, abortRequest, nudgedRecently, recordStale, staleText, staleWorkers } from "../policies/staleworker.ts"
 import { deliver as realDeliver, run, type Deliver, type Runner } from "./deliver.ts"
 
 const WATCH_TTL_MS = 24 * 3600_000
@@ -180,10 +182,60 @@ async function stallNudges(db: Database, send: Deliver, now: number): Promise<vo
   }
 }
 
+const PARENT_IDLE_MS = 2 * 60_000
+
+// The parent is idle when its last real event (not an agent's, not a harness row) is a stop, or it is silent.
+function parentIdle(db: Database, parent: string, now: number): boolean {
+  const last = db
+    .query(
+      `select event, time from journal where session_id = ? and json_extract(data_json, '$.agent_id') is null
+         and (event in ('prompt', 'stop', 'stop.sendback', 'session.start') or event like 'tool.%') order by seq desc limit 1`,
+    )
+    .get(parent) as { event: string; time: number } | null
+  return !last || last.event === "stop" || last.time < now - PARENT_IDLE_MS
+}
+
+// Stale background workers (stale-worker): nudge an idle parent, and abort an orphaned OpenCode child.
+// Claude Code agents are never killed from outside; their shells die at the parent's session.end.
+async function staleWorkerWake(db: Database, send: Deliver, runCmd: Runner, now: number): Promise<void> {
+  const m = mode(db, "stale-worker")
+  if (m === "off") return
+  for (const w of staleWorkers(db, now)) {
+    if (w.parentEnded) {
+      if (w.tool !== "opencode" || m === "advise" || now - w.idleSince < ABORT_AFTER_MS) continue
+      const tries = db.query("select outcome, time from journal where event = 'worker.aborted' and json_extract(data_json, '$.worker_id') = ?").all(w.id) as { outcome: string; time: number }[]
+      if (tries.some((t) => t.outcome === "ok") || tries.length >= 3 || tries.some((t) => t.time > now - THROTTLE_MS)) continue
+      const r = await runCmd(abortRequest(w.session))
+      append(db, {
+        session_id: w.parent,
+        time: now,
+        event: "worker.aborted",
+        rule_id: "stale-worker",
+        outcome: r.code === 0 ? "ok" : "failed",
+        reason: r.code === 0 ? undefined : r.stderr.trim().slice(0, 200) || r.stdout.trim().slice(0, 200),
+        data: { worker_id: w.id, worker_session: w.session, idle_since: w.idleSince, via: "opencode api" },
+      })
+      if (r.code === 0) {
+        db.query("update sessions set ended_at = ? where id = ? and ended_at is null").run(now, w.session)
+        await endSessionProcesses(db, w.session, now)
+      }
+      continue
+    }
+    if (nudgedRecently(db, w.id, now) || !parentIdle(db, w.parent, now)) continue
+    if (m === "advise") {
+      recordStale(db, w, now, "advise", "waker")
+      continue
+    }
+    const r = await send({ session: w.parent, tool: sessionTool(db, w.parent), kind: "worker.stale", text: staleText(w) })
+    recordStale(db, w, now, r.ok ? "delivered" : "failed", "waker")
+  }
+}
+
 export interface WakerOpts {
   every?: number
   deliver?: Deliver
   gh?: Runner
+  run?: Runner // the opencode CLI (abort of a stale child); defaults to the real process runner
   now?: () => number
 }
 
@@ -193,6 +245,7 @@ export async function wakerTick(db: Database, opts: WakerOpts = {}): Promise<voi
   const now = (opts.now ?? Date.now)()
   await pollPrs(db, gh, send, now)
   await stallNudges(db, send, now)
+  await staleWorkerWake(db, send, opts.run ?? run, now)
   db.query("delete from watches where expires_at <= ?").run(now)
 }
 

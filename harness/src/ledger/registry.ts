@@ -55,6 +55,7 @@ export const RULES: Rule[] = [
   rule("nudge-drift", "tool.after", "worker", "3", "inject"),
   rule("nudge-wrapup", "tool.after", "worker", "3", "inject"),
   rule("nudge-stall", "stop", "waker", "3", "inject"),
+  rule("stale-worker", "tool.after", "staleworker", "5", "inject"),
 ]
 
 const WRONG_LIMIT = 3

@@ -15,6 +15,7 @@ import { guardPagePort } from "./policies/pageport.ts"
 import { endSessionProcesses, keptProcessLine, registerShellProcesses } from "./policies/processes.ts"
 import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
+import { agentData, agentOf, endWorkerProcesses, lastProcId, staleInjections, workerStartData } from "./policies/staleworker.ts"
 import { stopChecks } from "./policies/stop.ts"
 import { allow, isBrowseTool, q1, toolData, type Env, type Out } from "./policies/util.ts"
 import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
@@ -162,7 +163,8 @@ async function route(env: Env, off: boolean): Promise<Out> {
     case "session.end": {
       db.query("update sessions set ended_at = ? where id = ?").run(ev.time, ev.session)
       // D20: the unkept processes die with the session. The kill switch leaves them alone.
-      const killed = off ? [] : await endSessionProcesses(db, ev.session, ev.time)
+      // Its background workers die with it: their shells too (stale-worker). Claude never kills an agent from outside.
+      const killed = off ? [] : [...(await endSessionProcesses(db, ev.session, ev.time)), ...(await endWorkerProcesses(db, ev.session, ev.time))]
       return allow(killed.length ? { data: { killed } } : {})
     }
     case "tool.before": {
@@ -197,7 +199,7 @@ async function route(env: Env, off: boolean): Promise<Out> {
       } catch {} // a failed lookup must never block the tool call
       if (!worker) return o
       const context = joinContext([o.decision.context, worker.context])
-      return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId } }
+      return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId, ...workerStartData(env, worker.workerId) } }
     }
     case "stop":
       if (off) return allow({ data: { reply: (ev.reply ?? "").slice(0, 4000) } })
@@ -216,19 +218,22 @@ export async function decide(ev: HarnessEvent): Promise<Decision> {
     const off = isOff(db)
     const env: Env = { db, ev, turn }
 
+    const procMark = agentOf(ev) && ev.event === "tool.after" ? lastProcId(db) : 0
     let out: Out = await route(env, off)
     // The kill switch allows every call, and the journal says what the rules would have done.
     if (off && ev.event !== "prompt") out = { ...out, decision: ALLOW, reason: out.reason ?? "harness off" }
     const base = out.decision
 
     // Phase 7 injections ride on the call's decision. Each gets its own journal row, so "once per session" can be checked.
-    const inj = base.outcome === "deny" || base.outcome === "ask" ? [] : injections(env)
+    const inj = base.outcome === "deny" || base.outcome === "ask" ? [] : [...injections(env), ...staleInjections(env)]
     const sent = inj.filter((i) => !i.advise).map((i) => i.text)
     // The outcome stays as it was: an allow that carries context is an allow with a note.
     const d: Decision = sent.length ? { ...base, context: joinContext([base.context, ...sent]) } : base
 
     // A stop reply goes to the journal for the waker (data.reply, 4000 chars).
-    const data = ev.event === "stop" ? { reply: (ev.reply ?? "").slice(0, 4000), ...(out.data ?? {}) } : out.data
+    const stopData = ev.event === "stop" ? { reply: (ev.reply ?? "").slice(0, 4000), ...(out.data ?? {}) } : out.data
+    const tag = agentData(db, ev, procMark)
+    const data = Object.keys(tag).length ? { ...(stopData ?? {}), ...tag } : stopData
     append(db, {
       session_id: ev.session,
       turn,
