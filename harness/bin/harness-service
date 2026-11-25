@@ -8,7 +8,9 @@ cmd=${1:-status}
 shift || true
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 bun=$(command -v bun 2>/dev/null || true)
-port=${HARNESS_PORT:-4317}
+# The Mac defaults to 4316: Lima forwards the VM's page to the Mac's localhost:4317, and two
+# pages on one port would clash. The passkey binds to the host name, not the port, so both work.
+if [ "$(uname)" = Darwin ]; then port=${HARNESS_PORT:-4316}; else port=${HARNESS_PORT:-4317}; fi
 while [ $# -gt 0 ]; do
   case $1 in
     --bun) bun=$2; shift 2 ;;
