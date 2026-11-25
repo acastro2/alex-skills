@@ -44,6 +44,21 @@ export default {
     const parents = new Map<string, string | null>()
     const sentBack = new Set<string>()
 
+    const owners = new Map<string, boolean>()
+    async function ownsSession(sessionID: string): Promise<boolean> {
+      const here = ctx.location?.directory
+      if (!here) return true
+      if (owners.has(sessionID)) return owners.get(sessionID)!
+      let dir: string | undefined
+      try {
+        const info = await ctx.session.get({ sessionID })
+        dir = info?.location?.directory ?? info?.directory
+      } catch {}
+      const mine = dir === undefined ? false : dir === here
+      if (dir !== undefined) owners.set(sessionID, mine)
+      return mine
+    }
+
     async function parentOf(sessionID: string): Promise<string | null> {
       if (!sessionID) return null
       if (parents.has(sessionID)) return parents.get(sessionID)!
@@ -129,6 +144,9 @@ export default {
           if (event.location?.directory && event.location.directory !== ctx.location?.directory) continue
           const sessionID: string | undefined = event.data?.sessionID
           if (!sessionID) continue
+          // Stop events carry no location, and every loaded instance sees every session on the service.
+          // Answer only for sessions that live in this instance's location.
+          if (!(await ownsSession(sessionID))) continue
           try {
             let reply = ""
             try {
