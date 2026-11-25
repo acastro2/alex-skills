@@ -111,6 +111,7 @@ export function refreshTimes(root: ParentNode, now: number): void {
 
 export function mmss(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
+  if (s >= 3600) return `${Math.floor(s / 3600)}h ${pad(Math.floor((s % 3600) / 60))}m`;
   return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 }
 

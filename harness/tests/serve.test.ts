@@ -166,3 +166,29 @@ test("session names use the repo's last path part, and a worker goal skips the c
   expect(goalLine("HARNESS-CONTRACT v1\n- Load the `coding` skill first.\nFix the parser bug")).toBe("Fix the parser bug");
   expect(goalLine("Load the coding skill.\n\nOBJECTIVE: the harness MCP server\nmore")).toBe("the harness MCP server");
 });
+
+// Alex asked for a stickier session: it must survive a restart and slide while it is used.
+test("a page session survives a restart, slides on use, and stops at the 7-day cap", async () => {
+  const { openLedger } = await import("../src/ledger/db.ts");
+  const { Auth, SESSION_MS, SESSION_MAX_MS } = await import("../src/serve/auth.ts");
+  const d = mkdtempSync(join(tmpdir(), "harness-sess-"));
+  try {
+    const db = openLedger(join(d, "ledger.db"));
+    let t = 1_000_000;
+    const clock = () => t;
+    const { token } = new Auth(db, clock).mintSession();
+    const req = () => new Request("https://localhost/", { headers: { cookie: `harness_session=${token}` } });
+    const restarted = new Auth(db, clock); // a new process: no in-memory sessions
+    t += SESSION_MS - 60_000;
+    const s = restarted.session(req());
+    expect(s).not.toBeNull();
+    expect(s!.until).toBe(t + SESSION_MS); // slid forward
+    t += SESSION_MS - 60_000;
+    expect(new Auth(db, clock).session(req())).not.toBeNull(); // still alive after another near-full idle
+    t = 1_000_000 + SESSION_MAX_MS + 1;
+    expect(new Auth(db, clock).session(req())).toBeNull();
+    db.close();
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+  }
+});

@@ -14,7 +14,13 @@ import {
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
 
-export const SESSION_MS = 30 * 60_000;
+// A page session slides: each authenticated request moves its end to now + SESSION_MS, up to
+// SESSION_MAX_MS after sign-in. It is stored in the ledger (hashed token), so a restart keeps it.
+// Actions that change things still need a fresh passkey tap (FRESH_ACTIONS).
+export const SESSION_MS = 12 * 60 * 60_000;
+export const SESSION_MAX_MS = 7 * 24 * 60 * 60_000;
+const SLIDE_STEP_MS = 60_000; // write the new end at most once a minute
+const tokenKey = (t: string) => `page_session:${createHash("sha256").update(t).digest("hex")}`;
 const CHALLENGE_MS = 2 * 60_000;
 export const RP_ID = "localhost";
 export const COOKIE = "harness_session";
@@ -89,8 +95,10 @@ export class Auth {
   /** Start a session. Called after a verified login, and by tests that build the app in-process. */
   mintSession(): { token: string; until: number } {
     const t = token();
-    const until = this.clock() + SESSION_MS;
+    const now = this.clock();
+    const until = now + SESSION_MS;
     this.sessions.set(t, until);
+    this.store(t, { since: now, until });
     this.db.query("UPDATE page_auth SET session_until = ?").run(until);
     return { token: t, until };
   }
@@ -100,21 +108,44 @@ export class Auth {
     const m = raw.split(/;\s*/).find((c) => c.startsWith(`${COOKIE}=`));
     if (!m) return null;
     const t = m.slice(COOKIE.length + 1);
-    const until = this.sessions.get(t);
-    if (!until) return null;
-    if (until <= this.clock()) {
+    if (!t) return null;
+    const rec = this.load(t);
+    const now = this.clock();
+    if (!rec || rec.until <= now || now - rec.since > SESSION_MAX_MS) {
       this.sessions.delete(t);
+      if (rec) this.db.query("DELETE FROM schema_meta WHERE key = ?").run(tokenKey(t));
       return null;
     }
-    return { token: t, until };
+    const until = Math.min(now + SESSION_MS, rec.since + SESSION_MAX_MS);
+    if (until - rec.until >= SLIDE_STEP_MS) this.store(t, { since: rec.since, until });
+    this.sessions.set(t, Math.max(until, rec.until));
+    return { token: t, until: Math.max(until, rec.until) };
   }
 
   endSession(req: Request): void {
     const s = this.session(req);
-    if (s) this.sessions.delete(s.token);
+    if (!s) return;
+    this.sessions.delete(s.token);
+    this.db.query("DELETE FROM schema_meta WHERE key = ?").run(tokenKey(s.token));
   }
 
-  cookieHeader(t: string, maxAgeMs = SESSION_MS): string {
+  private store(t: string, rec: { since: number; until: number }): void {
+    this.db.query("INSERT INTO schema_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(tokenKey(t), JSON.stringify(rec));
+  }
+
+  private load(t: string): { since: number; until: number } | null {
+    const mem = this.sessions.get(t);
+    const row = this.db.query("SELECT value FROM schema_meta WHERE key = ?").get(tokenKey(t)) as { value: string } | null;
+    if (!row) return mem ? { since: this.clock(), until: mem } : null;
+    try {
+      const v = JSON.parse(row.value);
+      return typeof v.until === "number" && typeof v.since === "number" ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  cookieHeader(t: string, maxAgeMs = SESSION_MAX_MS): string {
     return `${COOKIE}=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(maxAgeMs / 1000)}`;
   }
 

@@ -396,7 +396,7 @@ function paintGate(): void {
       "section",
       { class: "gate plate" },
       h("h1", { id: "view-h" }, registered ? "Sign in to harness" : "Register a passkey"),
-      h("p", { class: "gate-text" }, registered ? "Use your passkey to open the page. The session lasts 30 minutes. Actions that change things ask for a fresh tap." : "No passkey is registered yet. Register one, in 1Password so every host shares it."),
+      h("p", { class: "gate-text" }, registered ? "Use your passkey to open the page. The session stays open while you use it, up to 7 days, and survives restarts. Actions that change things ask for a fresh tap." : "No passkey is registered yet. Register one, in 1Password so every host shares it."),
       supported ? null : h("p", { class: "inline-error", role: "alert" }, "This browser has no passkey support. Open the page in Edge or Chrome, as localhost."),
       gateMessage ? h("p", { class: "inline-error", role: "alert" }, gateMessage) : null,
       btn(registered ? "Sign in with passkey" : "Register passkey", { tone: "primary", icon: "key", busy: gateBusy, disabled: !supported, onClick: () => void run() }),
@@ -526,7 +526,11 @@ setInterval(() => {
   const el = document.getElementById("timer-value");
   if (el) el.textContent = mmss(left);
   document.getElementById("timer")?.classList.toggle("is-low", left < 5 * 60_000);
-  if (left <= 0) void endSession("Your 30-minute session ended. Sign in again.");
+  // The server slides the session on use; refresh our copy of its end every 5 minutes.
+  if (tick % 300 === 0 || left <= 0) void sessionInfo().then((s) => {
+    if (!s.authenticated) return endSession("Your session ended. Sign in again.");
+    if (info) info.until = s.until;
+  }).catch(() => {});
   if (tick % 5 === 0) {
     refreshTimes(document.body, now());
     paintBanner();
