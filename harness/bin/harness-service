@@ -24,6 +24,9 @@ tlsdir=${HARNESS_TLS_DIR:-$HOME/.config/harness/tls}
 scheme=http
 if [ -f "$tlsdir/localhost.pem" ] && [ -f "$tlsdir/localhost-key.pem" ]; then scheme=https; fi
 
+# The service gets the installer's PATH: jobs shell out to gh, git and opencode, and a
+# user unit's default PATH has no Homebrew or mise (seen live: the waker failed on gh).
+svc_path=$(dirname "$bun"):$PATH
 label=com.alex.harness-serve
 main="$root/src/serve/main.ts"
 
@@ -35,7 +38,7 @@ if [ "$(uname)" = Darwin ]; then
 <plist version="1.0"><dict>
   <key>Label</key><string>$label</string>
   <key>ProgramArguments</key><array><string>$bun</string><string>$main</string></array>
-  <key>EnvironmentVariables</key><dict><key>HARNESS_PORT</key><string>$port</string></dict>
+  <key>EnvironmentVariables</key><dict><key>HARNESS_PORT</key><string>$port</string><key>PATH</key><string>$svc_path</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>$HOME/Library/Logs/harness-serve.log</string>
@@ -70,6 +73,7 @@ Description=harness serve: page, waker and jobs (D59)
 [Service]
 ExecStart=$bun $main
 Environment=HARNESS_PORT=$port
+Environment="PATH=$svc_path"
 Restart=on-failure
 RestartSec=5
 

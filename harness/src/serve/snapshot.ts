@@ -297,7 +297,8 @@ export function ulidTime(id: string): number {
 
 export function sessionSlug(id: string | null, repo: string | null): string | null {
   if (!id) return null;
-  return `${repo ?? "session"}·${id.slice(-4).toLowerCase()}`;
+  const name = repo ? repo.replace(/\/+$/, "").split("/").pop() || repo : "session";
+  return `${name}·${id.slice(-4).toLowerCase()}`;
 }
 
 function startOfToday(now: number): number {
@@ -396,7 +397,18 @@ function sessionGoal(db: Database, sessionId: string, goalSeq: number | undefine
   const objective = firstLine(parse<{ objective?: string }>(worker?.acceptance, {}).objective ?? null);
   if (objective) return objective;
   const p = one<{ prompt_text: string | null }>(db, "SELECT prompt_text FROM journal WHERE session_id = ? AND event = ? ORDER BY seq LIMIT 1", sessionId, EVENTS.prompt);
-  return firstLine(p?.prompt_text ?? null);
+  return goalLine(p?.prompt_text ?? null);
+}
+
+// A worker prompt may start with the contract or a skill load. Prefer an OBJECTIVE: line, else the
+// first line that says what the task is.
+export function goalLine(text: string | null): string | null {
+  if (!text) return null;
+  const obj = /^\s*(?:#+\s*)?objective\s*[:\-]?\s*(.+)$/im.exec(text)?.[1];
+  if (obj?.trim()) return firstLine(obj);
+  const skip = /^(HARNESS-CONTRACT|- |\s*$|load the |no git |new request from |update from the parent|heads-up from the parent)/i;
+  const line = text.split("\n").find((l) => !skip.test(l.trim()) && l.trim().length > 3);
+  return firstLine(line ?? text);
 }
 
 function pendingQuestions(db: Database, sessions: SessionRow[]): QuestionRow[] {

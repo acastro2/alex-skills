@@ -158,3 +158,11 @@ test("the snapshot reads rows written by the real modules: a verify bundle and a
     rmSync(d, { recursive: true, force: true });
   }
 });
+
+// Seen live 2026-11-25: full paths as session names, and "HARNESS-CONTRACT v1" as a worker's goal.
+test("session names use the repo's last path part, and a worker goal skips the contract", async () => {
+  const { sessionSlug, goalLine } = await import("../src/serve/snapshot.ts");
+  expect(sessionSlug("ses_abcdWXYZ", "/home/u/Developer/org/builder-hub")).toBe("builder-hub·wxyz");
+  expect(goalLine("HARNESS-CONTRACT v1\n- Load the `coding` skill first.\nFix the parser bug")).toBe("Fix the parser bug");
+  expect(goalLine("Load the coding skill.\n\nOBJECTIVE: the harness MCP server\nmore")).toBe("the harness MCP server");
+});

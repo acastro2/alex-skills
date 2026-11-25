@@ -34,6 +34,7 @@ afterEach(() => {
   else process.env.HOME = home
   delete process.env.HARNESS_STATE_DIR
   delete process.env.HARNESS_JUDGE
+  delete process.env.HARNESS_SCRATCH_ROOTS
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -208,7 +209,16 @@ describe("parseAcceptance", () => {
 })
 
 describe("main-checkout-write", () => {
+  // Seen live: a scratch clone under /tmp produced most of the advise rows.
+  test("a clone under the temp dir is not a main checkout", async () => {
+    setMode(db, "main-checkout-write", "enforce")
+    const r = repo() // repo() lives under tmpdir()
+    const d = await decide(ev({ toolName: "edit", input: { path: join(r, "a.ts") }, cwd: r }))
+    expect(d.outcome).toBe("allow")
+  })
+
   test("a write in the main checkout is denied only when the rule is enforced; a linked worktree is free", async () => {
+    process.env.HARNESS_SCRATCH_ROOTS = "/nonexistent-scratch" // this test's repos live under tmpdir()
     const r = repo()
     const file = join(r, "a.ts")
     const edit = (path: string) => decide(ev({ toolName: "edit", input: { path }, cwd: r }))

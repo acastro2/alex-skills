@@ -1,5 +1,6 @@
 // tool.before: lazy worktree registration (D37) and the main-checkout-write rule (Phase 5).
 import { existsSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, resolve, sep } from "node:path"
 import { mode } from "../ledger/registry.ts"
 import { parse } from "../shell/parse.ts"
@@ -17,7 +18,15 @@ function existingDir(p: string): string | null {
 }
 
 // The main checkout is the one whose git dir is also the common git dir. A linked worktree has its own.
+// A clone under a temp or scratch folder is throwaway work, not a main checkout (seen live: 34 of 51 advise rows).
+function scratch(dir: string): boolean {
+  const home = process.env.HOME ?? ""
+  const roots = (process.env.HARNESS_SCRATCH_ROOTS?.split(":") ?? [tmpdir(), "/tmp", process.env.TMPDIR, `${home}/.agents/skill-workspace`]).filter(Boolean) as string[]
+  return roots.some((r) => dir === r || dir.startsWith(r.endsWith("/") ? r : `${r}/`))
+}
+
 function inMainCheckout(dir: string): boolean {
+  if (scratch(resolve(dir))) return false
   const r = git(["rev-parse", "--path-format=absolute", "--is-inside-work-tree", "--git-dir", "--git-common-dir"], dir)
   const [inside, gitDir, common] = r.out.split("\n")
   return r.ok && inside === "true" && !!gitDir && gitDir === common
