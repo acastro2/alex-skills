@@ -169,6 +169,13 @@ describe("worker lifecycle", () => {
     expect(rows("select verdict from bundles where worker_id = ?", w.id)).toEqual([{ verdict: "green" }])
   }, 30_000)
 
+  // Seen live: a READ-ONLY review spawn was denied 6 times for a missing ACCEPTANCE: block.
+  test("a read-only worker needs no ACCEPTANCE: block or contract", async () => {
+    const d = await decide(ev({ tool: "opencode", toolName: "subagent", input: { agent: "general", model: "cursor/claude-haiku-5-5", prompt: "READ-ONLY code review. Change nothing." } }))
+    expect(d.outcome).toBe("allow")
+    expect(rows("select 1 from workers")).toHaveLength(0) // nothing to verify, so no verdict message later
+  })
+
   // Seen live: a follow-up to a running worker carries a sessionID and no model, and was denied.
   test("a follow-up to a running worker is not a spawn", async () => {
     const d = await decide(ev({ tool: "opencode", toolName: "subagent", input: { agent: "general", sessionID: "ses_child1", prompt: "one more note" } }))

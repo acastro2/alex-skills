@@ -5,7 +5,7 @@ import { ulid } from "../ledger/ulid.ts"
 import { upsertSession } from "../ledger/journal.ts"
 import { pushGate } from "../proof/gate.ts"
 import { git, hit, q1, type Env, type Out } from "./util.ts"
-import { isGeneral } from "./spawn.ts"
+import { isGeneral, isReadOnly } from "./spawn.ts"
 
 export const TEST_GLOBS = ["tests/**", "**/*.test.*", "**/test_*.py"]
 
@@ -63,7 +63,7 @@ function testHashes(cwd: string): Record<string, string> {
 export function recordWorker(env: Env): void {
   const { db, ev } = env
   const i = ev.input ?? {}
-  if (!isGeneral(i.agent) || (typeof i.sessionID === "string" && i.sessionID)) return
+  if (!isGeneral(i.agent) || (typeof i.sessionID === "string" && i.sessionID) || isReadOnly(String(i.prompt ?? ""))) return
   try {
     const cwd = String(i.cwd ?? ev.cwd)
     const head = git(["rev-parse", "HEAD"], cwd)

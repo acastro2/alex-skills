@@ -12,6 +12,10 @@ export const CONTRACT = [
   "- End your reply with SUMMARY: and KNOWN_GAPS: sections.",
 ].join("\n")
 
+// A worker told to change nothing (a review, a read) has no acceptance commands to prove.
+export const isReadOnly = (prompt: string) =>
+  /\bread[- ]only\b|\bchange nothing\b|\bdo not (?:edit|change|write)\b|\bno (?:file )?(?:edits|writes|changes)\b/i.test(prompt)
+
 export const isGeneral = (agent: unknown) => agent === "general" || agent === "general-purpose"
 
 export function guardSpawn(env: Env): Out | null {
@@ -27,6 +31,7 @@ export function guardSpawn(env: Env): Out | null {
   }
   if (!isGeneral(i.agent)) return null
 
+  if (isReadOnly(prompt)) return null
   if (!/^ACCEPTANCE:/m.test(prompt)) {
     const o = hit(env, "spawn-acceptance", "Add an ACCEPTANCE: block with the exact commands that prove the work.")
     if (o) return o
