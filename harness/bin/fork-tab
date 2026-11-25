@@ -79,13 +79,20 @@ new=pending
 if [ "$tool" = opencode ]; then
   if [ "$dry" = 1 ]; then
     new='<new-session>'
+    printf '+ opencode api post /api/session/%s/fork\n' "$session"
+    printf '+ opencode api post /api/session/<new-session>/move {"directory":%q}\n' "$work"
     printf '+ (cd %q &&' "$work"
-    printf ' %q' opencode run -s "$session" --fork --title "$title" --format json "$prompt"
+    printf ' %q' opencode run -s '<new-session>' --title "$title" --format json "$prompt"
     printf ' )\n'
   else
-    out=$(cd "$work" && opencode run -s "$session" --fork --title "$title" --format json "$prompt")
+    # Fork, then move the fork into the worktree before its first turn. `opencode run --fork`
+    # keeps the source's location, so the fork's edits would land in the main checkout (seen live).
+    out=$(opencode api post "/api/session/$session/fork" --data '{}')
     new=$(printf '%s\n' "$out" | grep -o 'ses_[A-Za-z0-9]*' | grep -vxF -- "$session" | head -n 1 || true)
-    [ -n "$new" ] || { echo "fork-tab: no new session id in opencode output" >&2; exit 1; }
+    [ -n "$new" ] || { echo "fork-tab: no new session id in the fork response" >&2; exit 1; }
+    opencode api post "/api/session/$new/move" --data "{\"directory\":$(printf '%s' "$work" | python3 -I -c 'import json,sys;print(json.dumps(sys.stdin.read()))')}" >/dev/null ||
+      { echo "fork-tab: could not move $new to $work" >&2; exit 1; }
+    (cd "$work" && opencode run -s "$new" --title "$title" --format json "$prompt") >/dev/null
   fi
   inner="cd $(printf '%q' "$work") && opencode -s $new"
 else

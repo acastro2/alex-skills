@@ -46,7 +46,9 @@ test("inside a git repo, the dry run plans a worktree under ~/.worktrees/<repo>/
   const lines = r.stdout.split("\n");
   const worktree = `/.worktrees/${basename(repo)}/try-plan-b`;
   expect(lines.some((l) => l.includes("worktree add -b fork/try-plan-b") && l.includes(worktree))).toBe(true);
-  expect(r.stdout).toContain("opencode run -s ses_TEST --fork");
+  // Seen live 2026-11-25: `run --fork` kept the source's location; the fork must move into its worktree.
+  expect(lines.some((l) => l.includes("/move") && l.includes(worktree))).toBe(true);
+  expect(r.stdout).toContain("opencode api post /api/session/ses_TEST/fork");
   expect(lines.some((l) => /rex window new .*--focus=false/.test(l))).toBe(true);
   expect(existsSync(join(home, ".worktrees"))).toBe(false);
 });
@@ -58,6 +60,6 @@ test("outside a git repo, the dry run plans no worktree", () => {
   const r = dryRun(dir, home);
   expect(r.status).toBe(0);
   expect(r.stdout).not.toContain("worktree add");
-  expect(r.stdout).toContain("opencode run -s ses_TEST --fork");
+  expect(r.stdout).toContain("opencode api post /api/session/ses_TEST/fork");
   expect(r.stdout).toContain("--focus=false");
 });
