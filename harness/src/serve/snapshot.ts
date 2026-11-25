@@ -409,7 +409,10 @@ function pendingQuestions(db: Database, sessions: SessionRow[]): QuestionRow[] {
       s.id, EVENTS.asked,
     );
     if (!ask) continue;
-    const data = parse<{ question?: string; options?: (string | { label?: string })[] }>(ask.data_json, {});
+    // The core journals the tool input as `questions: [{question, options}]`; older rows and the seed use a flat shape.
+    type Q = { question?: string; options?: (string | { label?: string })[] };
+    const raw = parse<Q & { questions?: Q[] }>(ask.data_json, {});
+    const data: Q = Array.isArray(raw.questions) && raw.questions.length ? raw.questions[0] : raw;
     const options = (data.options ?? []).map((o) => (typeof o === "string" ? o : o.label ?? "")).filter(Boolean);
     out.push({
       id: String(ask.seq),
@@ -452,6 +455,18 @@ function worktreeRows(db: Database, now: number, slugs: Map<string, string | nul
   }));
 }
 
+// did_json from verify.ts is {commits: [{sha, subject}|string], diff_stat: string}; the seed is a string list.
+function didLines(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(String)
+  if (!v || typeof v !== "object") return []
+  const d = v as { commits?: unknown[]; diff_stat?: unknown }
+  const commits = (Array.isArray(d.commits) ? d.commits : []).map((c) =>
+    c && typeof c === "object" ? [((c as any).sha ?? "").toString().slice(0, 8), (c as any).subject ?? ""].join(" ").trim() : String(c),
+  )
+  const stat = typeof d.diff_stat === "string" && d.diff_stat.trim() ? d.diff_stat.trim().split("\n").slice(-1) : []
+  return [...commits, ...stat]
+}
+
 function bundleRows(db: Database): BundleRow[] {
   const rows = all<{
     id: string; worker_id: string | null; session_id: string | null; journal_seq: number | null; head_sha: string | null;
@@ -464,8 +479,14 @@ function bundleRows(db: Database): BundleRow[] {
      FROM bundles b LEFT JOIN sessions s ON s.id = b.session_id LEFT JOIN workers w ON w.id = b.worker_id
      LEFT JOIN journal j ON j.seq = b.journal_seq ORDER BY b.id DESC LIMIT 40`,
   );
-  const runs = (text: string | null): CommandRun[] =>
-    parse<Record<string, unknown>[]>(text, []).map((r) => ({
+  // verify.ts writes objects: works_json {claimed, ui_proof}, verified_json {clean, reruns, verdict}.
+  // The seed writes plain arrays. Accept both.
+  const list = (v: unknown, key: string): Record<string, unknown>[] => {
+    const x = v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>)[key] : v;
+    return Array.isArray(x) ? (x.filter((r) => r && typeof r === "object") as Record<string, unknown>[]) : [];
+  };
+  const runs = (text: string | null, key = "reruns"): CommandRun[] =>
+    list(parse<unknown>(text, []), key).map((r) => ({
       command: String(r.command ?? r.cmd ?? ""),
       exit: typeof r.exit === "number" ? r.exit : null,
       tail: typeof r.tail === "string" ? r.tail : typeof r.output === "string" ? r.output : null,
@@ -482,8 +503,8 @@ function bundleRows(db: Database): BundleRow[] {
     session_slug: sessionSlug(b.session_id, b.repo),
     repo: b.repo,
     worker_model: b.worker_model,
-    did: parse<unknown[]>(b.did_json, []).map(String),
-    works: runs(b.works_json),
+    did: didLines(parse<unknown>(b.did_json, [])),
+    works: runs(b.works_json, "claimed"),
     verified: runs(b.verified_json),
     gate: b.journal_seq ? { outcome: b.gate_outcome, reason: b.gate_reason } : null,
   }));

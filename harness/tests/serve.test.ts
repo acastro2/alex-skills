@@ -124,3 +124,37 @@ test("SSE sends a fresh snapshot after a journal row is appended", async () => {
   expect(second).not.toBeNull();
   expect(second.seq).toBeGreaterThan(first.seq);
 });
+
+// Seen live 2026-11-25: the dashboard read the seed's shapes, and the first real bundle broke the whole page.
+test("the snapshot reads rows written by the real modules: a verify bundle and a question", async () => {
+  const { openLedger } = await import("../src/ledger/db.ts");
+  const { verify } = await import("../src/proof/verify.ts");
+  const { decide, closeCore } = await import("../src/core.ts");
+  const { buildSnapshot } = await import("../src/serve/snapshot.ts");
+  const d = mkdtempSync(join(tmpdir(), "harness-real-"));
+  const prev = process.env.HARNESS_STATE_DIR;
+  process.env.HARNESS_STATE_DIR = join(d, "state");
+  try {
+    const repo = join(d, "repo");
+    const g = (...a: string[]) => Bun.spawnSync(["git", "-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", ...a]);
+    Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+    await Bun.write(join(repo, "a.txt"), "x\n");
+    g("add", "."); g("commit", "-qm", "init");
+    await Bun.write(join(repo, "a.txt"), "y\n");
+    g("commit", "-qam", "change a");
+    const db = openLedger();
+    const base = g("rev-parse", "HEAD~1").stdout.toString().trim();
+    await verify(db, { session: "s1", cwd: repo, commands: ["true"], baseSha: base });
+    await decide({ v: 1, event: "tool.before", tool: "claude", session: "s1", parentSession: null, cwd: repo, time: Date.now(), toolName: "askuserquestion", input: { questions: [{ question: "Pick one?", options: [{ label: "A" }, { label: "B" }] }] } });
+    const snap = buildSnapshot(db) as any;
+    const b = snap.views.bundles?.[0] ?? snap.bundles?.[0];
+    expect(b.verdict).toBe("green");
+    expect(b.did.some((l: string) => l.includes("change a"))).toBe(true);
+    expect(b.verified[0]).toMatchObject({ command: "true", exit: 0 });
+    closeCore();
+    db.close();
+  } finally {
+    if (prev === undefined) delete process.env.HARNESS_STATE_DIR; else process.env.HARNESS_STATE_DIR = prev;
+    rmSync(d, { recursive: true, force: true });
+  }
+});
