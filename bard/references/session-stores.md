@@ -25,9 +25,13 @@ already cost a sweep.
   session; `parent_id IS NULL` = main session, non-null = subagent) and
   `session_message` (`session_id`, `type`, `time_created` epoch-ms, `data` JSON). Select
   sessions that have `session_message.time_created` newer than `watermark`, not
-  `session_v2.time_created` alone, because sessions span days. Text lives in `data`: a
-  `user` row has `.text`; an `assistant` row has `.content[]`, keep only
-  `type=="text"` parts (drop `reasoning` and tool parts). Skip subagent sessions unless
+  `session_v2.time_created` alone, because sessions span days. User text lives in
+  `session_message.data` (a `user` row has `.text`). **Assistant text lives in
+  `session_part`**, not in `session_message`: select rows with `session_id = ?`,
+  `type = 'text'` and `time_created` newer than `watermark`, ordered by
+  `time_created, ordinal`, and read `data.text`. Drop `reasoning` and `tool` parts. On
+  2026-11-24 the assistant rows of `claude-agent` sessions had `content: []`, so a lane
+  that read only `session_message` saw Alex's side of 14 sessions and none of the replies. Skip subagent sessions unless
   the parent points at them, and skip `*-smoke`/`cctest` scratch directories. Skip sessions
   whose directory is under `~/.gather/`: those are gather's Slack runner sessions. Gather
   deletes them, so a leftover is mechanics, not work. The

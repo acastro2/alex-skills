@@ -573,6 +573,22 @@ obsidian sync:status vault=Alex   # repeat every 10 s, up to 2 min, until "statu
   because a stale vault gives a stale board), or run on the local copy. Never launch
   Obsidian yourself.
 
+**Headless host (Linux VM, no `obsidian` CLI).** The vault is synced by Obsidian
+Headless (`ob sync --continuous`), run as the systemd user service `obsidian-sync`
+(verified 2026-11-24). There is no `sync:status` there; the service journal is the status.
+
+```bash
+systemctl --user restart obsidian-sync.service   # Start sync: forces a fresh pull
+sleep 30; journalctl --user -u obsidian-sync.service --since "-2min" --no-pager | tail -15
+```
+
+- `Connection successful. Detecting changes...` then `Fully synced` → start the run.
+- Restarting the service is allowed here: Alex asked for it (2026-11-24), and it is the
+  only way to force a pull. It is not the banned `obsidian reload`.
+- End sync: wait about 30 s after the last write, then read the journal again. Expect
+  `Upload complete <file>` for each file written, then `Fully synced`. Report that line.
+- Service not active, or no `Fully synced` within 2 min → STOP and ask, as above.
+
 ### End sync (after the writes)
 
 ```bash
