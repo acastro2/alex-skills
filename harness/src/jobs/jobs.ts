@@ -2,6 +2,9 @@ import type { Database } from "bun:sqlite"
 import { append, prune } from "../ledger/journal.ts"
 import { checkConflicts } from "../waker/conflicts.ts"
 import { wakerTick } from "../waker/waker.ts"
+import { runCanary } from "./canary.ts"
+import { runEvals } from "./evals.ts"
+import { runMiner } from "./miner.ts"
 
 export interface JobDef {
   name: string
@@ -18,27 +21,6 @@ export interface JobStatus {
 }
 
 const DAY = 24 * 3600_000
-
-// D57, D63, D66: the parent configures the command later, e.g. HARNESS_JOB_CORRECTION_MINER="bun run ...".
-function envJob(db: Database, name: string, schedule: string): JobDef {
-  return {
-    name,
-    schedule,
-    run: async () => {
-      const cmd = process.env[`HARNESS_JOB_${name.toUpperCase().replace(/-/g, "_")}`]
-      if (!cmd) {
-        append(db, { session_id: null, event: "job.skipped", reason: "not configured", data: { job: name } })
-        return "skipped: not configured"
-      }
-      const p = Bun.spawn(["sh", "-c", cmd], { stdout: "pipe", stderr: "pipe" })
-      const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()])
-      const code = await p.exited
-      const last = (code === 0 ? out : err || out).trim().split("\n").pop()?.slice(0, 200) ?? ""
-      if (code !== 0) throw new Error(`exit ${code}: ${last}`)
-      return `ok: ${last}`
-    },
-  }
-}
 
 export function builtinJobs(db: Database): JobDef[] {
   return [
@@ -64,9 +46,9 @@ export function builtinJobs(db: Database): JobDef[] {
         return "ok"
       },
     },
-    envJob(db, "correction-miner", "0 9 * * 1"),
-    envJob(db, "canary", "0 10 * * 1"),
-    envJob(db, "new-model-evals", "0 * * * *"),
+    { name: "correction-miner", schedule: "0 9 * * 1", run: () => runMiner(db) }, // D57
+    { name: "canary", schedule: "0 10 * * 1", run: () => runCanary(db) }, // D63
+    { name: "new-model-evals", schedule: "0 * * * *", run: () => runEvals(db) }, // D66
   ]
 }
 

@@ -7,10 +7,11 @@ const RULE = "page-port"
 const MESSAGE = "The harness page is Alex's. Agents read state through the `harness_status` MCP tool."
 
 // Programs that open a TCP connection. `opencode api` is not in the list: it talks to OpenCode, not the page.
-const CLIENTS = new Set([
-  "curl", "wget", "nc", "ncat", "netcat", "socat", "telnet", "http", "https", "httpie", "xh",
-  "bun", "node", "deno", "python", "python3", "ruby", "perl", "php",
-])
+const CLIENTS = new Set(["curl", "wget", "nc", "ncat", "netcat", "socat", "telnet", "http", "https", "httpie", "xh"])
+// An interpreter counts only when its code makes a network call. A script that merely contains the
+// page's URL as text (an edit to a doc) is not a connection (seen live 2026-11-25).
+const INTERPRETERS = new Set(["bun", "node", "deno", "python", "python3", "ruby", "perl", "php"])
+const NET_CALL = /fetch\(|urlopen|urllib\.request|requests\.|http\.client|httpx|aiohttp|socket\.|net\.connect|http\.get|https\.get|Net::HTTP|open-uri|IO::Socket|LWP|file_get_contents\(\s*['"]https?:|Bun\.connect|WebSocket/
 
 const ports = (): string[] => [...new Set([process.env.HARNESS_PORT?.trim() || "", "4317", "4316"].filter((p) => /^\d+$/.test(p)))]
 
@@ -26,7 +27,9 @@ export function guardPagePort(env: Env): Out | null {
     const command = String(ev.input?.command ?? "")
     if (!command.trim()) return null
     // shortcut: the whole line is tested once a client program or /dev/tcp shows up. No per-argument parsing.
-    const client = parse(command).programs.some((p) => CLIENTS.has(p)) || command.includes("/dev/tcp/")
+    const progs = parse(command).programs
+    const client = progs.some((p) => CLIENTS.has(p)) || command.includes("/dev/tcp/") ||
+      (progs.some((p) => INTERPRETERS.has(p)) && NET_CALL.test(command))
     return client && loopbackPort(command) ? hit(env, RULE, MESSAGE) : null
   }
   if (isBrowseTool(ev.toolName)) {

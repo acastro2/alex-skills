@@ -150,6 +150,8 @@ describe("page-port (D61)", () => {
     "opencode api get /openapi.json",
     "grep 127.0.0.1:4317 notes.txt",
     "echo hi",
+    // Seen live 2026-11-25: a script that only edits a doc naming the page URL was denied.
+    "python3 -I - <<'EOF'\ns = 'page on https://localhost:4317'\nopen('x.md', 'w').write(s)\nEOF",
   ])("allows: %s", async (cmd) => {
     expect((await decide(sh(cmd))).outcome).not.toBe("deny")
   })

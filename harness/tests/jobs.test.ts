@@ -56,18 +56,6 @@ describe("jobs", () => {
       jobs.stop()
     }
   })
-
-  test("an unconfigured env job journals job.skipped; a configured one runs its command", async () => {
-    const jobs = startJobs(db)
-    try {
-      expect(await jobs.runNow("canary")).toBe("skipped: not configured")
-      expect((db.query("select reason from journal where event = 'job.skipped'").get() as { reason: string }).reason).toBe("not configured")
-      process.env.HARNESS_JOB_CANARY = "echo done"
-      expect(await jobs.runNow("canary")).toBe("ok: done")
-    } finally {
-      jobs.stop()
-    }
-  })
 })
 
 describe("conflict watch (D79 to D82)", () => {
