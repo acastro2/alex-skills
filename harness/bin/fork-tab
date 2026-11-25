@@ -26,6 +26,18 @@ case $tool in
   claude) session=${session:-${CLAUDE_SESSION_ID:-}} ;;
   *) echo "fork-tab: --tool must be opencode or claude" >&2; exit 2 ;;
 esac
+# An OpenCode command's shell block gets no OPENCODE_SESSION_ID (seen live 2026-11-25). The caller is
+# the session in this directory that is running a turn right now (busy after its last idle).
+if [ -z "$session" ] && [ "$tool" = opencode ] && command -v opencode >/dev/null 2>&1; then
+  session=$(opencode api get "/api/session?directory=$(printf '%s' "$PWD" | python3 -I -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.stdin.read()))')&limit=20" 2>/dev/null |
+    python3 -I -c '
+import json, sys
+d = json.load(sys.stdin); d = d.get("data", d)
+rows = d if isinstance(d, list) else d.get("items", [])
+busy = [s for s in rows if not s.get("parentID") and (s.get("time", {}).get("busy") or 0) > (s.get("time", {}).get("idle") or 0)]
+busy.sort(key=lambda s: s["time"]["busy"], reverse=True)
+print(busy[0]["id"] if busy else "")' 2>/dev/null || true)
+fi
 [ -n "$session" ] || { echo "fork-tab: no session id: pass --session or run inside a session" >&2; exit 2; }
 
 if [ -z "$title" ]; then
