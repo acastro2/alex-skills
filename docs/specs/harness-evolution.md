@@ -22,6 +22,24 @@ Two facts make prose rules weaker than they look:
 - OpenCode `cli.json` sets `session.permissions: "autoaccept"`. Every `ask` rule is approved automatically, so only `deny` is a fence.
 - In both tools, a deny rule matches the command text only. `git -C . push`, `/usr/bin/git push` and `bash -c '...'` get past a `git push` rule. The Claude Code docs say deny rules are not a security boundary. A hook that parses the full command is the real fence.
 
+Alex also spends his time steering, not building. In the same 6 days, 334 of his 1,202 top-level prompts (28%) only told the agent to take an obvious next step, and 584 (49%) were 6 words or fewer. The top kinds, from keyword matches on the OpenCode store and Claude Code `history.jsonl` (approximate counts):
+
+| Prompt | Count | What it means |
+| --- | --- | --- |
+| "merged", "both merged", "approved", "sent" | 82 short ones, 102 in all | Alex acts as the agent's GitHub webhook |
+| `/mcp`, `/model`, `/resume`, `/reload-skills` | 55 | Harness upkeep |
+| A screenshot pasted as feedback | 41 | Alex does the UI check by hand |
+| "link?", "links" | 36 | The links rule leaks |
+| "commit and push" | 32 | The agent stops before the obvious step |
+| "continue", "do it", "yes", "ok" | 31, plus 35 automatic "Continue." | The agent stops with todos open |
+| "so what now?", "did it return?" | 17 | No view of the state |
+| "CI failing", "merge conflict", "same error" | 17 | Alex relays CI to the agent |
+| "nudge it, faster" | 12 | Alex watches the workers |
+| "it's already merged", "already sent" | 9 | The agent reports old state as current |
+| "you can, use browser control" | 1 here, likely more on the Mac | The agent gives up a task it can do in the browser |
+
+"Use the question tool" appears once in these 6 days. Either it happens on the Mac, or that rule already mostly works.
+
 The practice behind this is harness engineering: when an agent makes a mistake, add a fix in code so it cannot happen again ([Hashimoto](https://mitchellh.com/writing/my-ai-adoption-journey), [Böckeler](https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html), [OpenAI](https://openai.com/index/harness-engineering/)). A rule with no exceptions goes in a hook. A preference stays in prose.
 
 ## Shape
@@ -58,15 +76,20 @@ Why one script: two copies drift. Why thin adapters: each tool's hook API change
 | D5 | Recursive `rm` allowlist | Open. Proposal: the scratchpad, `~/.agents/skill-workspace`, and paths inside the current git repo that git tracks or ignores | |
 | D6 | Stop hook: warn or block on a stale `HANDOFF.md` | Open. Proposal: warn | A block can loop on a session that has nothing to record |
 | D7 | Repo lock for parallel sessions: warn or block | Open. Proposal: warn, and show the other session's ID | |
+| D8 | Where the steering fixes go | In this spec, as Phase 2 | Alex picked it, 2026-11-25 |
+| D9 | What the agent does when a watched PR merges | Resume the session and run the next planned step | Alex picked it, 2026-11-25. It is what he does by hand today when he types "merged". |
+| D10 | Stop hook cap | Open. Proposal: send the agent back at most 3 times per turn, then let it stop and say why | Stops a loop when a check is wrong |
 
-## Phase 0. Prove the two unverified facts
+## Phase 0. Prove the unverified facts
 
-Do this first. The design depends on both, and the docs do not answer them.
+Do this first. The design depends on these facts, and the docs do not answer them.
 
 | Fact | Test | Done when |
 | --- | --- | --- |
 | OpenCode `permission.hook("evaluate")` with `effect = "deny"` stops a `shell` call, under `autoaccept` | A scratch plugin denies `echo HARNESS-PROBE`, and a session runs it | The command does not run, and the agent sees the reason |
 | A per-call subagent `model` overrides the agent's frontmatter `model` | Call `general` with a `model` that differs from its frontmatter, then read `session_v2.model` | The row shows the per-call model |
+| An automation or a background wait can wake an idle session (OpenCode `automation` `send`, Claude Code `Monitor` or a background shell) | Start a 1-minute watch that sends `HARNESS-WAKE`, then let the session go idle | The session resumes and answers with no prompt from Alex |
+| The OpenCode V2 event for a session that goes idle, for the Stop hook | Log every `session.hook` event name in a scratch plugin for one turn | The name is recorded in this spec |
 
 If the first fails, the OpenCode adapter uses `tool.hook("execute.before")` to replace the command with one that fails with the reason. Test that the same way. If both fail, stop and bring it to Alex.
 
@@ -96,7 +119,58 @@ Done when:
 - `pytest harness/tests` passes. It has one case per rule, plus the bypass forms (`git -C . push --force`, `bash -c "rm -rf ~/x"`, `/usr/bin/gh pr merge 1`).
 - A live probe in each tool shows a denied `rm -rf <scratch outside allowlist>` with the reason, and an allowed merge on a test repo after `MERGE-OK`. The test repo is a throwaway under `~/.agents/skill-workspace/`.
 
-## Phase 2. Worker spawn hook
+## Phase 2. Steering: PR watcher and Stop hook
+
+This phase gives Alex his time back. The PR watcher and the Stop hook remove about 230 of the 334 steering prompts.
+
+```mermaid
+flowchart LR
+  A[Agent opens PR] --> W[PR watcher]
+  W -->|merged / approved| R[Resume session:<br/>next planned step]
+  W -->|CI red / conflict| F[Resume with<br/>failing check logs]
+  R --> S{Stop hook}
+  F --> S
+  S -->|todos left, uncommitted,<br/>no link, no screenshot| R
+  S -->|clean| Y[Alex: only real decisions]
+```
+
+**PR watcher.** It also keeps state fresh: the agent reads PR state from the watcher's last poll, not from its memory of the conversation. When an agent runs `gh pr create` or pushes to a PR branch, a `PostToolUse` / `execute.after` hook registers the PR with the session ID. A watcher polls `gh pr view <n> --json state,reviewDecision,mergeable,statusCheckRollup` every 2 minutes and wakes the session on a change:
+
+| Change | What the session gets |
+| --- | --- |
+| Merged (D9) | "PR #n merged. Run the next planned step." The next step comes from the todo list or `HANDOFF.md`. |
+| Approved | "PR #n approved. Merge needs Alex's token." The agent never merges by itself. |
+| A check failed | The failed job name and the last 80 log lines (`gh run view --log-failed`) |
+| Conflict | "PR #n has a conflict with its base. Rebase and re-run the acceptance commands." |
+
+- OpenCode: one `automation` with an `every` trigger and a `code` action. It returns `send: { prompt }` to the session that opened the PR, and `done: true` once the PR is closed or merged and the next step has started.
+- Claude Code: a background `Monitor` or a `gh pr checks --watch` background shell that ends the wait. Check in Phase 0 which one wakes an idle session. If neither can, use a Rex or Herdr notification, and Alex types one word.
+
+**Stop hook.** When the agent tries to end its turn, `stop_check.py` reads the turn and sends it back (Claude Code: `Stop` exit 2 with the reason; OpenCode: the session idle event, then a prompt into the session). It sends the agent back for these reasons:
+
+| Check | Sends back when | Prompts it removes |
+| --- | --- | --- |
+| Commit | The repo has verified changes that this session made, and they are not committed and pushed. Never other sessions' files. | 32 "commit and push" |
+| Links | The turn ran `git push`, `gh pr create`, a ticket or comment create, or a page publish, and the reply has no URL for it | 36 "link?" |
+| Continue | The todo list has a pending item and the reply does not ask Alex anything | 31 "continue", 35 automatic "Continue." |
+| UI proof | The turn changed UI files and has no `browse` screenshot after the last change | most of the 41 screenshots |
+| State | The reply does not end with what is done, what is running, and the next step | 17 "what now?" |
+| Handoff | The repo has a `HANDOFF.md` that is older than this session's last commit (D6) | the handoff reminders |
+| Processes | A process this session started is still running and is not named in the reply | the server scavenger hunt |
+| Stale state | The reply says a PR is open, a review is waiting, or something waits for Alex, and the turn did not check it live (`gh pr view`, the ticket, the inbox) after the last time Alex spoke | 9 "it's already merged", "already sent" |
+| False "can't" | The reply says the agent cannot do something, or asks Alex to do it by hand, and the task is in a browser while `browse` is connected. Only login, 2FA, a passkey, a captcha or a payment confirmation go to Alex, through `handoff`. | "you can, use browser control" |
+
+The cap (D10) stops a loop: after 3 send-backs in one turn, the hook lets the agent stop and say which check failed.
+
+**Upkeep.** Pin model and effort in each agent's frontmatter and in `settings.json`, so `/model` and `/effort` stop being needed at session start. Reload skills when a file in `~/.agents/skills` changes. Claude Code has a `FileChanged` hook event, and the existing `sync-agents-skills.sh` is the start.
+
+Done when:
+- A test PR on a throwaway repo goes from opened to merged, and the session resumes with no prompt from Alex.
+- A failed check comes back as logs in the session.
+- `pytest harness/tests` has one case per Stop check, plus the cap.
+- After one week of use, a re-run of the prompt count shows the steering share down from 28%.
+
+## Phase 3. Worker spawn hook
 
 On every `subagent` call (OpenCode) and `Agent`/`Task` call (Claude Code):
 
@@ -107,7 +181,7 @@ Claude Code allows the prompt change through `updatedInput`. For OpenCode, test 
 
 Done when: a subagent call with no `model` is denied in both tools, and a worker's first message shows the contract.
 
-## Phase 3. `verify_worker.py`
+## Phase 4. `verify_worker.py`
 
 One command replaces the manual loop that ran in 74 sessions:
 
@@ -126,32 +200,33 @@ Add a `tool.hook("execute.after")` / `PostToolUse` on the subagent tool that pri
 
 Done when: run on a seeded repo, it catches a worker that edited a test (red), and passes a clean worker (green).
 
-## Phase 4. Small fixes, no hook needed
+## Phase 5. Small fixes, no hook needed
 
 - **acastro2 pushes:** set `credential.https://github.com/acastro2.helper` in the global git config, so pushes to acastro2 repos use that account's token. This removes the 250 hand-typed helpers. The command goes in mac-bootstrap, not in a skill.
 - **Broken symlinks:** `~/.claude/commands/ub-mode.md` and `~/.config/opencode/commands/ub-mode.md` point at `/Users/acastro/...`. Make them relative, or create them from mac-bootstrap per host.
 
 Done when: `git push` in `alex-skills` works with no `-c credential.helper`, and both `ub-mode` links resolve on Linux and on the Mac.
 
-## Phase 5. Stop hook and parallel sessions
+## Phase 6. Parallel sessions and workers
 
-- **Stop:** warn when the repo has a `HANDOFF.md` older than the last commit of this session, or when a process this session started is still running. Claude Code: `Stop` hook. OpenCode: the session idle event (check the V2 name in Phase 0).
 - **Lock:** on session start, write `.git/harness-lock/<session_id>` with the PID and the start time. Warn when another live session holds a lock in the same repo, and name it.
 - **Done signal:** when a background worker finishes, send one Rex or Herdr notification. This answers "did the task return?" without polling.
 
-Done when: two sessions in one repo see each other's ID, and a finished worker shows a notification.
+- **Watchdog:** when a background worker runs 10 minutes with no new tool call, send it the nudge Alex types today ("stop exploring, run the acceptance commands once, return"). This removes the 12 "nudge it, faster" prompts.
 
-## Phase 6. Cut the prose
+Done when: two sessions in one repo see each other's ID, a finished worker shows a notification, and a stalled worker gets one nudge without Alex.
+
+## Phase 7. Cut the prose
 
 For each rule now enforced in code, cut the "what" from `AGENTS.md` and `CLAUDE.md`, and keep one line of why plus a pointer to the guard. Target: both files under 70 lines. Why: OpenAI keeps its AGENTS.md at about 100 lines, and every enforced rule left in prose is context the model reads for nothing.
 
 Done when: the line counts drop, and a short eval shows no rule loss. Run the `coding` worker eval and one merge-attempt eval before and after the cut.
 
-## Phase 7. Prune by eval
+## Phase 8. Prune by eval
 
 Anthropic's point: every harness part encodes a limit of the model, and a newer model can make it dead weight ([article](https://claude.com/resources/articles/harnessing-claudes-intelligence)). So the harness gets the same test as a skill.
 
-- For each prose rule left after Phase 6, run one eval with the rule and one without it, on the current model.
+- For each prose rule left after Phase 7, run one eval with the rule and one without it, on the current model.
 - Remove each rule that changes nothing. Keep the eval, so the next model change re-runs it.
 - Count the MCP tools loaded in a session. Tools sit in the cached prefix, so a long or changing list costs cache hits and attention. Move rarely used servers behind Code Mode search.
 - Test Claude Code auto mode (a second model judges each shell command) as a backstop behind `guard.py`. It does not replace the guard: it is a judgment, and the guard rules have no exceptions.
