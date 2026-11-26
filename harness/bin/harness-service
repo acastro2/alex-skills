@@ -55,6 +55,12 @@ EOF
         echo "no change: $plist"; exit 0
       fi
       launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
+      # bootout returns before launchd drops the job; a bootstrap then fails with
+      # "5: Input/output error" (seen live 2026-11-26). Wait up to 10 s for it to go.
+      for _ in $(seq 1 50); do
+        launchctl print "gui/$(id -u)/$label" >/dev/null 2>&1 || break
+        sleep 0.2
+      done
       printf '%s\n' "$want" > "$plist"
       launchctl bootstrap "gui/$(id -u)" "$plist"
       echo "installed: $plist ($scheme://localhost:$port)" ;;
