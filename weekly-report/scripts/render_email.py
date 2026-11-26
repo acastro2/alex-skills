@@ -18,6 +18,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 from string import Template
 from urllib.parse import urlparse
@@ -26,6 +27,9 @@ from zoneinfo import ZoneInfo
 TZ = ZoneInfo("America/Chicago")
 ASSETS = Path(__file__).resolve().parents[1] / "assets" / "email"
 MAX_DECISIONS, MAX_DONE, MAX_NEXT, MAX_IDEAS = 5, 7, 5, 3
+MAX_IN_FLIGHT, MAX_IN_FLIGHT_LINES = 3, 3
+MAX_SHIPPED, MAX_FEATURES, MAX_REPO_BARS, MAX_JIRA_ROWS = 8, 10, 10, 10
+TONES = ("hi", "plain", "dashed")
 DAY_BAR_MAX, MIN_BAR = 72, 2
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
@@ -156,10 +160,111 @@ class Email:
                                   waiting=waiting))
         return self.fill("blocked", rows="\n".join(rows))
 
+    def in_flight(self, items: list, diagrams_url: str | None) -> str:
+        cards = []
+        for i, item in enumerate(items):
+            lines = "\n".join(self.fill("in_flight_line", text=esc(t)) for t in item["lines"])
+            link = self.link(item, f"in_flight[{i}]")
+            diagram = self.diagram(item["diagram"]) if item.get("diagram") else ""
+            cards.append(self.fill("in_flight_item", title=esc(item["title"]), lines=lines, diagram=diagram,
+                                   link=self.fill("in_flight_link", link=link.strip()) if link else ""))
+        diagrams = ""
+        if diagrams_url:
+            link = self.link({"url": diagrams_url, "ref": "deep dive"}, "diagrams_url")
+            diagrams = "\n" + self.fill("in_flight_diagrams", link=link)
+        return self.fill("in_flight", rows="\n".join(cards), diagrams=diagrams)
+
+    def diagram(self, rows: list) -> str:
+        out = []
+        for row in rows:
+            cells = [self.fill("diagram_arrow", arrow=esc(cell["arrow"])) if "arrow" in cell
+                     else self.fill(f"diagram_box_{cell.get('tone') or 'plain'}", label=esc(cell["label"]))
+                     for cell in row]
+            out.append(self.fill("diagram_row", cells="\n".join(cells)))
+        return self.fill("diagram", rows="\n".join(out))
+
+    def shipped(self, themes: list) -> str:
+        cards = []
+        for t, group in enumerate(themes):
+            features = []
+            for f, feature in enumerate(group["features"]):
+                where = f"shipped[{t}].features[{f}]"
+                refs = " &middot; ".join(self.link(r, f"{where}.refs[{k}]").strip()
+                                         for k, r in enumerate(feature["refs"]))
+                features.append(self.fill("shipped_feature", text=esc(feature["text"]), refs=refs))
+            cards.append(self.fill("shipped_card", theme=esc(group["theme"].upper()),
+                                   headline=esc(group["headline"]), features="\n".join(features)))
+        return self.fill("shipped", cards="\n".join(cards))
+
+    def stats(self, who: str, facts: dict) -> str:
+        """The numbers behind Shipped: the author's merged and open PRs, the team's, and the top repos."""
+        github, team = facts.get("github"), facts.get("team")
+        authored = github.get("authored") if isinstance(github, dict) else None
+        prs = team.get("prs") if isinstance(team, dict) else None
+        merged = None if authored is None else [p for p in authored if p.get("state") == "merged"]
+        repos = Counter(str(p.get("repo") or "").rsplit("/", 1)[-1] for p in merged or [])
+        by_others = None if prs is None else sum(1 for p in prs.get("merged", []) if not p.get("mine"))
+        opened = None if authored is None else sum(1 for p in authored if p.get("state") == "open")
+
+        def shown(n: int | None) -> object:
+            return NOT_FETCHED if n is None else n
+
+        capped = (self.fill("stat_warn") if isinstance(github, dict)
+                  and any(str(t).startswith("authored") for t in github.get("truncated") or []) else "")
+        team_capped = self.fill("stat_warn") if prs and prs.get("truncated") else ""
+        name = esc(who)
+        cells = [
+            self.fill("stat", value=shown(None if merged is None else len(merged)), label=f"PRs merged by {name}",
+                      warn=capped, sub="at least; lower bound" if capped else "this week"),
+            self.fill("stat", value=shown(None if merged is None else len(repos)), label="Repositories touched",
+                      warn="", sub=f"by {name}'s merged PRs"),
+            self.fill("stat", value=shown(by_others), label="PRs merged by the rest of the team",
+                      warn=team_capped, sub="at least; lower bound" if team_capped else "this week"),
+            self.fill("stat", value=shown(opened), label=f"{name}'s PRs still open",
+                      warn="", sub="in review or in progress"),
+        ]
+        top = sorted(repos.items(), key=lambda kv: (-kv[1], kv[0]))[:MAX_REPO_BARS]
+        bars = []
+        for k, (repo, count) in enumerate(top):
+            width = max(1, share(count, top[0][1], 100))
+            rest = self.fill("flow_rest", w=100 - width) if width < 100 else ""
+            bars.append(self.fill("repo_bar_hi" if k == 0 else "repo_bar", name=esc(repo), w=width,
+                                  rest=rest, count=count))
+        section = ("\n" + self.fill("repo_section", from_name=esc(who.upper()), rows="\n".join(bars))
+                   if bars else "")
+        return self.fill("stats", first="".join(cells[:2]), second="".join(cells[2:]), repos=section)
+
+    def jira(self, jira: dict | None, team: dict) -> str:
+        """Moved and new tickets. Empty when there is no Jira data, or both lists are empty."""
+        if jira is None:
+            return ""
+        moved = moved_items(jira, team)
+
+        def card(title: str, items: list, marker: str, with_status: bool) -> str:
+            rows = []
+            for i, item in enumerate(items[:MAX_JIRA_ROWS]):
+                where = f"facts: jira {title} [{i}]"
+                status = self.fill("jira_status", status=esc(text_field(item, "status", where))) if with_status else ""
+                rows.append(self.fill("jira_item", marker=marker, key=esc(text_field(item, "key", where)),
+                                      summary=esc(text_field(item, "summary", where)), status=status))
+            if len(items) > MAX_JIRA_ROWS:
+                rows.append(self.fill("jira_more", count=len(items) - MAX_JIRA_ROWS))
+            return self.fill("jira_card", title=esc(title), rows="\n".join(rows))
+
+        created = [t for t in jira.get("created", []) if not t.get("bulk")]
+        cards = []
+        if moved is None:
+            cards.append(self.fill("jira_unfetched"))
+        elif moved:
+            cards.append(card("Moved this week", moved, "&#9679;", True))
+        if created:
+            cards.append(card("New", created, "&#9675;", False))
+        return self.fill("jira", cards="\n".join(cards)) if cards else ""
+
     def ideas(self, items: list) -> str:
         return self.fill("ideas", rows="\n".join(self.fill("ideas_item", text=esc(t)) for t in items))
 
-    def team(self, report: dict, team: dict, window: list[dt.date]) -> str:
+    def team(self, report: dict, team: dict, window: list[dt.date], bare_zero_days: bool = False) -> str:
         prs, jira = team.get("prs"), team.get("jira")
         days = [window[0] + dt.timedelta(days=i) for i in range(5)]
         merged = [p.get("closed") for p in (prs or {}).get("merged", [])]
@@ -167,8 +272,9 @@ class Email:
         total, peak = sum(counts), max(counts)
         shown = (lambda n: n) if prs is not None else (lambda n: NOT_FETCHED)
         busiest = counts.index(peak) if peak else -1
-        bars = [self.fill("day_bar_busy" if i == busiest else "day_bar", count=shown(n),
-                          h=share(n, peak, DAY_BAR_MAX) if n else MIN_BAR) for i, n in enumerate(counts)]
+        bars = [self.fill("day_bar_none", count=shown(n)) if bare_zero_days and not n
+                else self.fill("day_bar_busy" if i == busiest else "day_bar", count=shown(n),
+                               h=share(n, peak, DAY_BAR_MAX) if n else MIN_BAR) for i, n in enumerate(counts)]
         labels = [self.fill("day_label_busy" if i == busiest else "day_label", name=d.strftime("%a"))
                   for i, d in enumerate(days)]
         if prs is None:
@@ -227,10 +333,79 @@ class Email:
                          range=range_text, notes=notes)
 
 
+def blank(value: object) -> bool:
+    return not isinstance(value, str) or not value.strip()
+
+
+def check_diagram(rows: object, where: str) -> None:
+    if not isinstance(rows, list) or not rows:
+        raise ReportError(f"{where}: must be a non-empty list of rows")
+    for r, row in enumerate(rows):
+        if not isinstance(row, list) or not row:
+            raise ReportError(f"{where}[{r}]: a row must be a non-empty list of cells")
+        for c, cell in enumerate(row):
+            if not isinstance(cell, dict):
+                raise ReportError(f"{where}[{r}][{c}]: a cell must be an object")
+            if "arrow" in cell:
+                ok = not blank(cell["arrow"])
+            else:
+                ok = not blank(cell.get("label")) and cell.get("tone") in (None, *TONES)
+            if not ok:
+                raise ReportError(f"{where}[{r}][{c}]: a cell needs a non-blank 'label' "
+                                  f"(tone one of {', '.join(TONES)}) or an 'arrow'")
+
+
+def moved_items(jira: dict, team: dict) -> list | None:
+    """The moved tickets from the facts, or None when the collector did not fetch them."""
+    moved = jira["moved"] if "moved" in jira else team.get("jira_moved")
+    if moved is None:
+        return None
+    items = moved.get("items") if isinstance(moved, dict) else moved
+    if not isinstance(items, list) or not all(isinstance(t, dict) for t in items):
+        raise ReportError("facts: jira moved must be a list of tickets, or {items: [...]}")
+    for i, item in enumerate(items):
+        for key in ("key", "summary", "status"):
+            text_field(item, key, f"facts: jira moved [{i}]")
+    return items
+
+
+def shipped_of(report: dict) -> list | None:
+    """The shipped themes, or None when the report has none: [] counts as absent."""
+    shipped = report.get("shipped")
+    return None if shipped is None or shipped == [] else shipped
+
+
+def check_shipped(themes: object) -> None:
+    if not isinstance(themes, list) or not 1 <= len(themes) <= MAX_SHIPPED:
+        raise ReportError(f"shipped: must be a list of 1 to {MAX_SHIPPED} themes")
+    for t, group in enumerate(themes):
+        where = f"shipped[{t}]"
+        if not isinstance(group, dict):
+            raise ReportError(f"{where}: must be an object")
+        for key in ("theme", "headline"):
+            text_field(group, key, where)
+        features = group.get("features")
+        if not isinstance(features, list) or not 1 <= len(features) <= MAX_FEATURES:
+            raise ReportError(f"{where}: 'features' must be 1 to {MAX_FEATURES} items")
+        for f, feature in enumerate(features):
+            there = f"{where}.features[{f}]"
+            if not isinstance(feature, dict):
+                raise ReportError(f"{there}: must be an object")
+            text_field(feature, "text", there)
+            refs = feature.get("refs")
+            if not isinstance(refs, list) or not refs:
+                raise ReportError(f"{there}: needs at least one ref")
+            for r, ref in enumerate(refs):
+                if not isinstance(ref, dict) or blank(ref.get("ref")) or blank(ref.get("url")):
+                    raise ReportError(f"{there}.refs[{r}]: needs 'ref' and 'url'")
+
+
 def check(report: dict, facts: dict) -> None:
     for key in ("from", "preview"):
         text_field(report, key, "report")
     for key in ("decisions", "done", "next"):
+        if key == "done" and shipped_of(report) is not None and report.get(key) is None:
+            continue
         if not isinstance(report.get(key), list):
             raise ReportError(f"report: missing '{key}' list")
     for key in ("week", "manager", "collected_at"):
@@ -246,8 +421,33 @@ def check(report: dict, facts: dict) -> None:
     ideas = report.get("ideas")
     if ideas is not None and not (isinstance(ideas, list) and all(isinstance(i, str) and i.strip() for i in ideas)):
         raise ReportError("ideas: must be a list of non-blank strings")
+    flight = report.get("in_flight")
+    if flight is not None:
+        if not isinstance(flight, list):
+            raise ReportError("in_flight: must be a list")
+        if len(flight) > MAX_IN_FLIGHT:
+            raise ReportError(f"in_flight: at most {MAX_IN_FLIGHT} items, got {len(flight)}")
+        for i, item in enumerate(flight):
+            where = f"in_flight[{i}]"
+            if not isinstance(item, dict):
+                raise ReportError(f"{where}: must be an object")
+            if not isinstance(item.get("title"), str) or not item["title"].strip():
+                raise ReportError(f"{where}: missing 'title'")
+            lines = item.get("lines")
+            if (not isinstance(lines, list) or not 1 <= len(lines) <= MAX_IN_FLIGHT_LINES
+                    or not all(isinstance(t, str) and t.strip() for t in lines)):
+                raise ReportError(f"{where}: 'lines' must be 1 to {MAX_IN_FLIGHT_LINES} non-blank strings")
+            for key in ("url", "ref"):
+                if item.get(key) is not None and not isinstance(item[key], str):
+                    raise ReportError(f"{where}: '{key}' must be a string")
+            if item.get("diagram") is not None:
+                check_diagram(item["diagram"], f"{where}.diagram")
+    if report.get("diagrams_url") is not None and not isinstance(report["diagrams_url"], str):
+        raise ReportError("in_flight: 'diagrams_url' must be a string")
+    if shipped_of(report) is not None:
+        check_shipped(report["shipped"])
     limits = (("decisions", len(report["decisions"]), MAX_DECISIONS),
-              ("done", sum(len(g.get("items") or []) for g in report["done"]), MAX_DONE),
+              ("done", sum(len(g.get("items") or []) for g in report.get("done") or []), MAX_DONE),
               ("next", len(report["next"]), MAX_NEXT),
               ("ideas", len(ideas or []), MAX_IDEAS))
     for key, size, limit in limits:
@@ -265,9 +465,13 @@ def render(report: dict, facts: dict, template: str = "light") -> str:
         card, code = email.decision(n, item)
         cards.append(card)
         codes.append(code)
-    done_count = sum(len(g.get("items") or []) for g in report["done"])
+    shipped = shipped_of(report)
+    done = report.get("done") or []
+    done_count = (sum(len(g["features"]) for g in shipped) if shipped
+                  else sum(len(g.get("items") or []) for g in done))
     blocked = report.get("blocked") or []
 
+    done_section = email.done(done)  # built even when Shipped replaces it, so a bad done still fails
     intro = (email.fill("decisions_codes", codes=esc(" ".join(codes))) if codes
              else email.fill("decisions_none"))
     sections = [
@@ -275,8 +479,10 @@ def render(report: dict, facts: dict, template: str = "light") -> str:
                    from_name=esc(report["from"]), manager=esc(facts["manager"]),
                    n_decisions=len(cards), n_done=done_count, n_blocked=len(blocked)),
         email.fill("decisions_head", intro=intro), *cards,
-        email.done(report["done"]),
+        *([email.stats(report["from"], facts), email.shipped(shipped)] if shipped else [done_section]),
     ]
+    if report.get("in_flight"):
+        sections.append(email.in_flight(report["in_flight"], report.get("diagrams_url")))
     if report["next"]:
         sections.append(email.fill("next", rows="\n".join(
             email.fill("next_item", text=esc(t)) for t in report["next"])))
@@ -286,7 +492,10 @@ def render(report: dict, facts: dict, template: str = "light") -> str:
         sections.append(email.ideas(report["ideas"]))
     team = facts.get("team")
     if team is not None:
-        sections.append(email.team(report, team, [first, last]))
+        jira = email.jira(team.get("jira"), team) if shipped else ""
+        if jira:
+            sections.append(jira)
+        sections.append(email.team(report, team, [first, last], bare_zero_days=bool(shipped)))
     sections.append(email.footer(facts, team, range_text))
     out = email.fill("frame", style=email.block("dark_style"), preview=esc(report["preview"]),
                      content="\n".join(sections))

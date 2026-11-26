@@ -16,6 +16,28 @@ project = <jira_project> AND (resolved >= "<mon-1>" AND resolved < "<fri+2>"
 The span is one day wider on each side on purpose. JQL runs in the Jira profile's time
 zone, and the collector trims to Chicago Mon-Fri. A date-only `<= <fri>` would drop Friday.
 
+## Second query: status moves
+
+Run a second query for tickets that changed status, and save it like the others:
+
+```text
+project = <jira_project> AND status CHANGED DURING ("<mon>", "<sat>") ORDER BY updated DESC
+```
+
+The time-zone edge is approximate: JQL runs in the Jira profile's time zone.
+
+Pass its pages with `--jira-moved`. The collector adds `team.jira.moved`. The email's
+Jira card shows "Moved this week", not only resolved.
+
+**Why:** a week with 7 moves and 1 close read as "1 done".
+
+## Page shape
+
+A saved page must be `{"issues": {"totalCount": N, "nodes": [...]}}`. Each node needs
+`webUrl` and `resolutiondate`: use view `full`, or list those fields. An inline result shaped
+`{"data": {"issues": [...]}}` must be reshaped first. If not, the collector reports
+"unreadable page".
+
 ## Paging: even pages, so each page is saved to a file
 
 1. Run the query once with `searchResultMode` `count`. Only this call, or the first page,

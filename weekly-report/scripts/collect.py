@@ -222,6 +222,33 @@ def find_bulk_runs(resolutions: list[tuple[str, dt.datetime]]) -> list[list[tupl
     return [run for run in runs if len(run) >= BULK_MIN]
 
 
+def jira_node(node: dict, me: str | None) -> dict:
+    """One search node as a row: the fields both Jira parsers share."""
+    f = node["fields"]
+    assignee = f.get("assignee")
+    return {
+        "key": node["key"], "summary": f["summary"], "type": f["issuetype"]["name"],
+        "status": f["status"]["name"], "assignee": assignee["displayName"] if assignee else None,
+        "url": node["webUrl"], "created": chicago_day(f["created"]),
+        "resolved": chicago_day(f.get("resolutiondate")),
+        "mine": bool(assignee) and bool(me) and assignee.get("accountId") == me}
+
+
+def parse_jira_moved(pages: list[str]) -> dict:
+    """Merge saved status-move search pages (`status CHANGED AFTER`) into one row per key, in
+    first-seen order, with the status it has now. The JQL is the window, so no date filter here."""
+    items: dict[str, dict] = {}
+    total = 0
+    for text in pages:
+        data = json.loads(text)
+        me = data.get("context", {}).get("atlassianAccountId")
+        total = max(total, data["issues"].get("totalCount", 0))  # only the first page has it
+        for node in data["issues"]["nodes"]:
+            row = jira_node(node, me)
+            items.setdefault(row["key"], {k: row[k] for k in ("key", "summary", "status", "assignee", "url", "mine")})
+    return {"items": list(items.values()), "missing": max(0, total - len(items))}
+
+
 def parse_jira(pages: list[str], window: tuple[dt.date, dt.date]) -> dict:
     """Merge saved `searchJiraIssuesUsingJql` pages into resolved, created and bug lists. `missing`
     counts issues the search reported but the pages did not carry, so a skipped page shows."""
@@ -233,16 +260,9 @@ def parse_jira(pages: list[str], window: tuple[dt.date, dt.date]) -> dict:
         me = data.get("context", {}).get("atlassianAccountId")
         total = max(total, data["issues"].get("totalCount", 0))  # only the first page has it
         for node in data["issues"]["nodes"]:
-            f = node["fields"]
-            assignee = f.get("assignee")
-            if f.get("resolutiondate"):
-                moments.setdefault(node["key"], dt.datetime.fromisoformat(f["resolutiondate"]))
-            issues.setdefault(node["key"], {
-                "key": node["key"], "summary": f["summary"], "type": f["issuetype"]["name"],
-                "status": f["status"]["name"], "assignee": assignee["displayName"] if assignee else None,
-                "url": node["webUrl"], "created": chicago_day(f["created"]),
-                "resolved": chicago_day(f.get("resolutiondate")),
-                "mine": bool(assignee) and bool(me) and assignee.get("accountId") == me})
+            if node["fields"].get("resolutiondate"):
+                moments.setdefault(node["key"], dt.datetime.fromisoformat(node["fields"]["resolutiondate"]))
+            issues.setdefault(node["key"], jira_node(node, me))
     def inside(day: dt.date | None) -> bool:
         return day is not None and in_window(day, window)
     items = list(issues.values())
@@ -316,7 +336,7 @@ def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: a
             prs_error = str(exc)
             gaps.append(f"github: {prs_error}")
     # A broken paste file must cost only its own source, never Alex's own facts.
-    jira = slack = None
+    jira = slack = moved = None
     if not args.jira:
         gaps.append("jira: not fetched")
     else:
@@ -327,6 +347,19 @@ def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: a
         else:
             if jira["missing"] > 0:
                 gaps.append(f"jira: {jira['missing']} issues missing (pass every page; bulk flags are unreliable)")
+    jira_moved = None
+    if args.jira_moved:
+        try:
+            moved = parse_jira_moved([p.read_text() for p in args.jira_moved])
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            gaps.append(f"jira moved: unreadable page ({type(exc).__name__}: {exc})"[:300])
+        else:
+            if moved["missing"] > 0:
+                gaps.append(f"jira moved: {moved['missing']} issues missing (pass every page)")
+            if jira is None:
+                jira_moved = moved
+            else:
+                jira["moved"] = moved
     if args.slack:
         try:
             slack = parse_slack(args.slack.read_text())
@@ -341,7 +374,8 @@ def team_facts(team: dict, window: tuple[dt.date, dt.date], facts: dict, args: a
             if slack is None:
                 gaps.append("slack: not fetched")
     gaps.append("datadog: not fetched")
-    return {"name": team.get("name"), "prs": prs, "prs_error": prs_error, "jira": jira, "slack": slack, "gaps": gaps}
+    return {"name": team.get("name"), "prs": prs, "prs_error": prs_error, "jira": jira, "jira_moved": jira_moved,
+            "slack": slack, "gaps": gaps}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -350,6 +384,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--date", type=dt.date.fromisoformat, default=None, help="any day in the week; default today")
     ap.add_argument("--no-github", action="store_true")
     ap.add_argument("--jira", type=Path, action="append", help="saved Jira search page; repeat per page")
+    ap.add_argument("--jira-moved", type=Path, action="append",
+                    help="saved Jira status-move search page; repeat per page")
     ap.add_argument("--slack", type=Path, help="saved Slack reads, JSON; default: gather's slack_team files")
     args = ap.parse_args(argv)
 

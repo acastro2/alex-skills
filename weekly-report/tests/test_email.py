@@ -307,3 +307,157 @@ def test_malformed_ideas_are_refused(value) -> None:
 def test_idea_text_is_escaped() -> None:
     out = render(report={**REPORT, "ideas": ['<b>x</b> & "y"']})
     assert "<b>x</b>" not in out and "&lt;b&gt;" in out
+
+
+IN_FLIGHT = [
+    {"title": "Gateway", "lines": ["Replaces the old gateway with one policy-checked service.",
+                                        "One route switch, gated by a parity test."],
+     "url": "https://example.invalid/pr/7", "ref": "hub#7"},
+    {"title": "Catalog", "lines": ["One catalog for every tool."],
+     "url": "https://example.invalid/pr/8", "ref": "lib#8"},
+]
+
+
+def test_in_flight_renders_after_done_and_before_next() -> None:
+    report = {**REPORT, "in_flight": IN_FLIGHT, "diagrams_url": "https://example.invalid/deep-dive"}
+    out = render(report=report)
+    words = text(out)
+    assert "In flight" in words
+    for item in IN_FLIGHT:
+        assert item["title"] in words and item["ref"] in words and item["url"] in out
+        for line in item["lines"]:
+            assert line in words
+    assert "https://example.invalid/deep-dive" in out
+    assert words.index("Done") < words.index("In flight") < words.index("Next")
+
+
+def test_no_in_flight_hides_the_section() -> None:
+    for report in ({**REPORT, "in_flight": []}, {k: v for k, v in REPORT.items() if k != "in_flight"}):
+        assert "In flight" not in text(render(report=report))
+
+
+def test_more_than_three_in_flight_items_is_refused() -> None:
+    with pytest.raises(render_email.ReportError, match="in_flight"):
+        render(report={**REPORT, "in_flight": IN_FLIGHT * 2})
+
+
+def test_more_than_three_lines_in_one_in_flight_item_is_refused() -> None:
+    item = {**IN_FLIGHT[0], "lines": ["a", "b", "c", "d"]}
+    with pytest.raises(render_email.ReportError, match="in_flight"):
+        render(report={**REPORT, "in_flight": [item]})
+
+
+@pytest.mark.parametrize("value", ["none", [{"title": "x"}], [{"title": "", "lines": ["a"]}]])
+def test_malformed_in_flight_is_refused(value) -> None:
+    with pytest.raises(render_email.ReportError, match="in_flight"):
+        render(report={**REPORT, "in_flight": value})
+
+
+def test_in_flight_text_is_escaped() -> None:
+    item = {"title": "<b>x</b>", "lines": ['& "y"']}
+    out = render(report={**REPORT, "in_flight": [item]})
+    assert "<b>x</b>" not in out and "&lt;b&gt;" in out
+
+
+# The combined weekly email (Alex, 2026-11-25): the deep dive merged into the email. Features,
+# not PR titles; repo bars from the facts; In flight diagrams as table boxes (Outlook drops SVG).
+def merged(repo: str, n: int) -> dict:
+    return {"repo": f"org/{repo}", "number": n, "title": f"feat: internal title {n}", "state": "merged",
+            "url": f"https://github.com/org/{repo}/pull/{n}", "closed": "2026-11-11"}
+
+
+SHIPPED = [{"theme": "Production", "headline": "Production runs like Development.",
+            "features": [{"text": "Teams ship to production the same way as development",
+                          "refs": [{"ref": "hub#1", "url": "https://github.com/org/hub/pull/1"}]}]}]
+DIAGRAM = [[{"label": "Skill authors"}, {"arrow": "→"}, {"label": "One catalog", "tone": "hi"},
+            {"arrow": "→"}, {"label": "Cursor"}]]
+
+
+def combined_facts() -> dict:
+    facts = copy.deepcopy(FACTS)
+    facts["github"]["authored"] = [merged("hub", 1), merged("hub", 2), merged("canon", 3)]
+    facts["team"]["jira"]["moved"] = {"items": [{"key": "K-9", "summary": "moved thing", "status": "In Progress",
+                                                  "assignee": "Kim", "url": "https://j/browse/K-9", "mine": False}],
+                                      "missing": 0}
+    return facts
+
+
+def combined_report() -> dict:
+    return {**REPORT, "shipped": SHIPPED,
+            "in_flight": [{"title": "Catalog", "lines": ["Publish once."], "diagram": DIAGRAM}]}
+
+
+def test_shipped_renders_features_with_refs_never_pr_titles() -> None:
+    out = render(report=combined_report(), facts=combined_facts())
+    words = text(out)
+    assert "Shipped this week" in words and "Production runs like Development." in words
+    assert "Teams ship to production the same way as development" in words
+    assert "https://github.com/org/hub/pull/1" in out and "hub#1" in words
+    assert "internal title" not in out
+
+
+def test_repo_bars_come_from_the_facts() -> None:
+    words = text(render(report=combined_report(), facts=combined_facts()))
+    assert "hub 2" in words and "canon 1" in words
+
+
+def test_in_flight_diagram_is_a_table_of_boxes_not_svg() -> None:
+    out = render(report=combined_report(), facts=combined_facts())
+    words = text(out)
+    for label in ("Skill authors", "One catalog", "Cursor", "→"):
+        assert label in words
+    assert "<svg" not in out.lower() and "<img" not in out.lower()
+
+
+def test_jira_moves_show_when_the_facts_have_them() -> None:
+    words = text(render(report=combined_report(), facts=combined_facts()))
+    assert "Moved this week" in words and "K-9" in words and "In Progress" in words
+
+
+def test_no_shipped_hides_the_section() -> None:
+    assert "Shipped this week" not in text(render())
+
+
+@pytest.mark.parametrize("value", ["none", [{"theme": "x", "headline": "y", "features": []}],
+                                   [{"theme": "x", "headline": "y", "features": [{"text": "t", "refs": []}]}]])
+def test_malformed_shipped_is_refused(value) -> None:
+    with pytest.raises(render_email.ReportError, match="shipped"):
+        render(report={**REPORT, "shipped": value}, facts=combined_facts())
+
+
+def test_malformed_diagram_is_refused() -> None:
+    report = combined_report()
+    report["in_flight"][0]["diagram"] = [[{"nope": 1}]]
+    with pytest.raises(render_email.ReportError, match="in_flight"):
+        render(report=report, facts=combined_facts())
+
+
+def test_shipped_without_done_renders_and_counts_features_in_the_header() -> None:
+    report = {k: v for k, v in combined_report().items() if k != "done"}
+    words = text(render(report=report, facts=combined_facts()))
+    assert "1 done" in words and "Shipped this week" in words
+
+
+def test_new_tickets_show_when_nothing_moved() -> None:
+    facts = combined_facts()
+    facts["team"]["jira"]["moved"] = {"items": [], "missing": 0}
+    words = text(render(report=combined_report(), facts=facts))
+    created = FACTS["team"]["jira"]["created"]
+    assert created and created[0]["key"] in words
+
+
+def test_moves_not_fetched_is_said_not_hidden() -> None:
+    facts = combined_facts()
+    del facts["team"]["jira"]["moved"]
+    assert "Moved this week: not fetched" in text(render(report=combined_report(), facts=facts))
+
+
+def test_malformed_moves_are_a_facts_error() -> None:
+    facts = combined_facts()
+    facts["team"]["jira"]["moved"] = {"items": ["str"], "missing": 0}
+    with pytest.raises(render_email.ReportError, match="facts"):
+        render(report=combined_report(), facts=facts)
+
+
+def test_empty_shipped_is_treated_as_absent() -> None:
+    assert "Shipped this week" not in text(render(report={**REPORT, "shipped": []}, facts=combined_facts()))

@@ -252,3 +252,22 @@ def test_no_gather_files_is_still_slack_not_fetched(tmp_path: Path, capsys, monk
     monkeypatch.setattr(collect, "GATHER_ROOT", tmp_path / "empty")
     assert collect.main(["--vault", str(vault), "--date", "2026-11-11", "--no-github"]) == 0
     assert "slack: not fetched" in json.loads(capsys.readouterr().out)["team"]["gaps"]
+
+
+# Status moves: a second Jira page, `status CHANGED AFTER <mon-1>`. Without it, a week where
+# tickets moved but few closed reads as "1 done" (seen live 2026-11-25: 7 moves, 1 resolved).
+def test_jira_moved_lists_each_ticket_once_with_its_current_status() -> None:
+    nodes = [issue("K-1", "Story", "2026-10-01T09:00:00.000-0500", None),
+             issue("K-2", "Bug", "2026-10-02T09:00:00.000-0500", "2026-11-10T09:00:00.000-0600")]
+    nodes[1]["fields"]["status"] = {"name": "Done"}
+    out = collect.parse_jira_moved([page(nodes, total=2, more=False), page(nodes[:1], total=2, more=False)])
+    assert [m["key"] for m in out["items"]] == ["K-1", "K-2"]
+    assert out["items"][1]["status"] == "Done"
+    assert out["items"][0]["url"].endswith("K-1")
+    assert set(out["items"][0]) >= {"key", "summary", "status", "assignee", "url", "mine"}
+    assert out["missing"] == 0
+
+
+def test_jira_moved_reports_missing_when_a_page_was_not_passed() -> None:
+    nodes = [issue("K-1", "Story", "2026-10-01T09:00:00.000-0500", None)]
+    assert collect.parse_jira_moved([page(nodes, total=3, more=True)])["missing"] == 2

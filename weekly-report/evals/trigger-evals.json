@@ -62,5 +62,17 @@
  {
   "query": "reply to Greg's email about the vendor contract",
   "should_trigger": false
+ },
+ {
+  "query": "build this week's recap email for my manager with shipped features, what is still in flight with diagrams, and the Jira moves",
+  "should_trigger": true
+ },
+ {
+  "query": "turn my weekly report into the email with the in-flight cards and the decision for my boss",
+  "should_trigger": true
+ },
+ {
+  "query": "draw an architecture diagram of an API gateway as an HTML page",
+  "should_trigger": false
  }
 ]

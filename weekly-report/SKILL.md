@@ -40,7 +40,7 @@ graph LR
   F -->|yes| J
   B --> J[Jira search pages, gather slack_team]
   J --> C[collect.py: facts for Mon-Fri, me + team]
-  C --> D[draft: Decisions · Done · Next · Blocked · Ideas · Team]
+  C --> D[draft: Decisions · Shipped · In flight · Next · Blocked · Ideas · Team]
   D --> E[vault Reports/Weekly/YYYY-Www.md + chat copy]
   E --> M[render_email.py: designed email, Outlook draft]
 ```
@@ -59,7 +59,9 @@ graph LR
    cannot call MCP tools.
    - **Jira.** Follow [references/team-jira.md](references/team-jira.md): count first, then
      even pages, so each page is saved to a file the script can read. A short page comes
-     back inline, and a skipped page silently skews the bulk flags.
+     back inline, and a skipped page silently skews the bulk flags. Run the second query
+     for status moves too, and pass it with `--jira-moved`. A week with 7 moves and 1 close
+     read as "1 done".
    - **Slack.** Team Slack comes from gather's `slack_team` source. Run
      `gather.py run --sources slack_team` before the collector. Its channels come from
      `slack_team_channels` in `~/.config/gather.json`. The hand paste in
@@ -116,14 +118,16 @@ graph LR
    - `gaps` names every source not fetched or not complete. Each one is one line in the
      chat summary; a gap is never an empty week. `datadog: not fetched` stays until the
      Datadog connector is logged in and proven.
-6. **Decisions needed.** Candidates: open board lines, this week's notes, and the manager's mail where the next step
-   is the manager's call: approval, budget, priority between two bets, a hire, a policy fight
-   he must own. Ask Jev one `noul` per candidate: "Does `item` need a decision or approval that
-   only the user's manager can give?" (`state` is a redacted line, roles not names, per
-   `../jev/SKILL.md`). ≥ 0.80 goes in; ≤ 0.20 stays out; between, decide from the full evidence
-   and say `Jev unsure (0.xx) → model: …` in the chat summary, never in the report. Each
-   decision is one line: the ask, the options if there are two, and your recommendation.
-   None is a valid answer; write "None this week."
+6. **Decisions needed.** Build candidates from the open board lines owed to the manager,
+   unowned tickets, and spend choices, then this week's notes and the manager's mail where
+   the next step is the manager's call: approval, budget, priority between two bets, a hire,
+   a policy fight he must own. Send each to Jev as one `noul`: "Does `item` need a decision
+   or approval that only the user's manager can give?" (`state` is a redacted line, roles
+   not names, per `../jev/SKILL.md`). ≥ 0.80 goes in; ≤ 0.20 stays out. The unsure middle
+   goes to Alex through the question tool, never into a silent "None this week."
+   Why: the first pass said none, and Alex asked "no decisions for him?". Each decision is
+   one line: the ask, the options if there are two, and your recommendation. Write "None
+   this week." only when no candidate survives.
 7. **Draft** in Alex's comms register ([alex-voice](../alex-voice/SKILL.md)): short, point
    first, plain words. One screen.
 
@@ -138,8 +142,13 @@ graph LR
    ## Decisions needed
    - <ask> — <options>; I recommend <x> because <why>.
 
-   ## Done
-   - <outcome first, then what> ([PR](url))
+   ## Shipped (by theme)
+   - **<theme>: <headline>**
+     - <feature: what a person can now do> ([PR](url))
+
+   ## In flight
+   - **<title>**
+     - <feature line: what it will let a person do>
 
    ## Next
    - <the next step, from This week / This month>
@@ -154,9 +163,13 @@ graph LR
    - <what moved, outcome first> ([PR](url) / [ticket](url) / [thread](url))
    ```
 
-   - **Done** is outcomes, grouped by theme, at most 7 bullets. Merged PRs and `board.done`
+   - **Shipped** is features, grouped by theme with a headline each: what a person can now do,
+     never a PR title. PRs are small evidence links after the line (Alex, 2026-11-25:
+     "these PRs don't mean anything"). Merged PRs and `board.done`
      lines are proof; an open PR is "in review", never "shipped". A Bard `decision` note can
-     be a Done line ("agreed X with Y").
+     be a Shipped line ("agreed X with Y").
+   - **In flight** is ongoing work, at most 3 items, each a title and 1 to 3 feature lines.
+     Never a list of components. Omit the section when empty.
    - **Next** comes from the `🔥 This week` and `📅 This month` lines, at most 5.
    - **Blocked** is only real blockers: `⏳ Waiting on others` lines and 🔺 risks. Omit the
      section when empty.
@@ -173,21 +186,30 @@ graph LR
    that needs rotating", not the token). Nothing from an excluded heading (Alex's personal
    items). No customer data. People by first name only, and only when the line needs them.
    A line you cannot back with a board line, note, ticket, thread, or PR does not go in:
-   empty beats soft.
+   empty beats soft. On any page the team or manager can open, also drop live weaknesses
+   and tool plumbing gaps; see [references/email.md](references/email.md).
 9. **Write** `report_path` from the facts (`<vault>/Reports/Weekly/<week>.md`). If the file
    exists, show what changed and ask before you overwrite it. Then print the report body in
    chat for Alex to paste. Never post it anywhere: sending it is Alex's click.
-10. **Email draft.** Write the same words as `~/.weekly-report/report-<week>.json` (schema in
-    [references/email.md](references/email.md)), then run
-    `python3 ~/.agents/skills/weekly-report/scripts/render_email.py --report <that file> --facts <facts file> --out <vault>/Reports/Weekly/<week>.email.html --draft`.
+10. **Render and review.** Write `~/.weekly-report/report-<week>.json` (schema in
+    [references/email.md](references/email.md)). It carries the same content as the report
+    plus diagram rows. Render it without `--draft`:
+    `python3 ~/.agents/skills/weekly-report/scripts/render_email.py --report <that file> --facts <facts file> --out <vault>/Reports/Weekly/<week>.email.html`.
     It computes every number and chart from the facts, so never put a count in the report
-    file. `--draft` opens an Outlook draft on the Mac as the end of the run; Alex sends it.
+    file. The email is the full report: write `shipped` and `in_flight` as features, with a
+    diagram for each big in-flight item. In flight sits between Shipped and Next. Content
+    rules: [references/email.md](references/email.md). Then review: screen the email for live
+    weaknesses and tool plumbing gaps, run the `reviewer` skill on it, and check sections
+    against each other. Fix the report file and render again until it is clean.
+    Exit 2 names what is wrong: a `report:` or field error means fix the report file, a
+    `facts:` error means run the collector again, never edit the script.
+11. **Email draft.** Render again with `--draft`. It opens an Outlook draft on the Mac as the
+    end of the run; Alex sends it.
     **Never send the email** (Alex, 2026-11-13): no `send` command, no connector send or reply
     tool, no recipient filled in for him. The run ends with the draft open for Alex to review;
-    sending is always his click.
-    Exit 2 names what is wrong: a `report:` or field error means fix the report file, a
-    `facts:` error means run the collector again, never edit the script. Not at the Mac
-    (no Outlook to drive): drop `--draft` and say the HTML file is waiting.
+    sending is always his click. Never paste a web page into Outlook; use the draft step.
+    Not at the Mac (no Outlook to drive): drop `--draft` and say the HTML file is waiting. On
+    the Mac, open it as a draft with `render_email.open_draft(<path>, <subject>)`.
 
 ## Limits
 
