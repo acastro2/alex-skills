@@ -122,7 +122,7 @@ function changeRows(ctx: Ctx, rows: ChangeRow[]): HTMLElement[] {
     const rollKey = `rollback:${c.id}`;
     const selected = ctx.route.id === c.id;
     const until = c.status === "pending" ? grantUntil(applyKey, c.granted) : null;
-    const open = ctx.ui.expanded.has(key) || selected || (c.status === "pending" && until === null && !c.superseded);
+    const open = ctx.ui.expanded.has(key) || selected || (until === null && ctx.snap.attention.some((a) => a.view === "changes" && a.id === c.id));
     const [tone, text] = until !== null ? (["green", "approved"] as [Tone, string]) : STATUS[c.status];
     body.push(
       h(

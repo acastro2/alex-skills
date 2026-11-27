@@ -76,8 +76,7 @@ const root = h(
 // ---------------------------------------------------------------- needs you
 
 function paintNeeds(ctx: Ctx): void {
-  const done = new Set(ctx.snap.views.changes.filter((c) => c.superseded || grantUntil(`apply:${c.id}`, c.granted) !== null).map((c) => c.id));
-  const list = signals(ctx).filter((s) => !(s.view === "changes" && s.id && done.has(s.id)));
+  const list = signals(ctx);
   const questions = new Map(ctx.snap.views.inbox.map((q) => [String(q.seq), q]));
   const ready = ctx.snap.pr_watches.filter((w) => w.state?.toUpperCase() === "OPEN" && w.review === "APPROVED" && !w.failed.length && w.pr !== null && w.session_id);
   const grantedUntil = (w: (typeof ready)[number]) => grantUntil(`merge:${w.pr}:${w.session_id}`, w.granted);

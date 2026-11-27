@@ -3,7 +3,8 @@
 import { clear, h, icon, timeEl } from "../dom.ts";
 import type { Ctx, ViewName } from "../ctx.ts";
 import { hashFor } from "../ctx.ts";
-import { chip, empty, type Tone } from "../parts.ts";
+import { chip, empty, grantUntil } from "../parts.ts";
+import type { AttentionItem } from "../../../src/serve/snapshot.ts";
 
 declare global {
   interface Window {
@@ -108,25 +109,9 @@ function placeholderMount(el: HTMLElement, state: unknown, opts: MountOpts): Mou
   return { update: (next) => placeholderMount(el, next, opts) };
 }
 
-interface Signal {
-  tone: Tone;
-  view: ViewName;
-  id: string | null;
-  what: string;
-  detail: string;
-  at: number | null;
-}
-
-export function signals(ctx: Ctx): Signal[] {
-  const out: Signal[] = [];
-  const v = ctx.snap.views;
-  for (const q of v.inbox) out.push({ tone: "amber", view: "inbox", id: String(q.seq), what: "Question waiting", detail: `${q.session_slug}: ${q.text}`, at: q.asked_at });
-  for (const s of v.sessions) if (s.stuck) out.push({ tone: "amber", view: "sessions", id: s.id, what: "Stuck", detail: `${s.slug} after ${s.nudges} nudges`, at: s.last_event_at });
-  for (const w of v.worktrees) if (w.sync_state === "conflict") out.push({ tone: "red", view: "worktrees", id: w.id, what: "Conflict", detail: `${w.branch ?? w.path}: ${w.conflict_files.length} file${w.conflict_files.length === 1 ? "" : "s"}${w.owner_session_id ? "" : ", no owner"}`, at: w.synced_at });
-  for (const b of v.bundles) if (b.verdict === "red") out.push({ tone: "red", view: "bundles", id: b.id, what: "Red proof bundle", detail: `${b.head_sha?.slice(0, 8) ?? "no sha"}: ${b.summary ?? "no summary"}`, at: b.time });
-  for (const c of v.changes) if (c.status === "pending") out.push({ tone: "amber", view: "changes", id: c.id, what: "Harness change waiting", detail: `${c.sha.slice(0, 8)} asked by ${c.session_slug ?? "unknown"}`, at: c.created_at });
-  for (const j of v.jobs) if (j.result === "failed") out.push({ tone: "red", view: "jobs", id: j.name, what: "Job failed", detail: `${j.name}: ${j.last_result ?? ""}`, at: j.last_run_at });
-  return out;
+/** What needs Alex: the server's attention list, minus a change whose fresh grant tap the snapshot has not confirmed yet. */
+export function signals(ctx: Ctx): AttentionItem[] {
+  return ctx.snap.attention.filter((a) => !(a.view === "changes" && grantUntil(`apply:${a.id}`, null) !== null));
 }
 
 function signalList(ctx: Ctx): HTMLElement {

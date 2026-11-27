@@ -267,6 +267,15 @@ export interface PrWatchRow {
   polled_at: number | null;
 }
 
+export interface AttentionItem {
+  view: ViewId;
+  id: string;
+  tone: "amber" | "red";
+  what: string;
+  detail: string;
+  at: number | null;
+}
+
 export interface Snapshot {
   at: number;
   pr_watches: PrWatchRow[];
@@ -275,6 +284,8 @@ export interface Snapshot {
   harness: { on: boolean; changed_at: number | null };
   counts: Record<ViewId, number>;
   alerts: Record<ViewId, number>;
+  /** The one list of what needs Alex. The rail, tab title, dashboard and office read it; nothing re-derives it. */
+  attention: AttentionItem[];
   ledger: LedgerSnapshot;
   views: {
     inbox: QuestionRow[];
@@ -678,7 +689,9 @@ function changeRows(db: Database, slugs: Map<string, string | null>, now: number
   const grants = new Map(
     all<{ request_id: string; until: number }>(
       db,
-      "SELECT request_id, MAX(expires_at) AS until FROM tokens WHERE kind = 'harness' AND request_id IS NOT NULL AND used_at IS NULL AND expires_at > ? GROUP BY request_id",
+      `SELECT t.request_id, MAX(t.expires_at) AS until FROM tokens t
+       JOIN journal j ON j.seq = t.grant_seq AND j.event = 'grant' AND json_extract(j.data_json, '$.token_id') = t.id
+       WHERE t.kind = 'harness' AND t.request_id IS NOT NULL AND t.used_at IS NULL AND t.expires_at > ? GROUP BY t.request_id`,
       now,
     ).map((g) => [g.request_id, g.until]),
   );
@@ -734,7 +747,9 @@ function prWatchRows(db: Database, now: number, slugs: Map<string, string | null
   const grants = new Map(
     all<{ pr: number; session_id: string; until: number }>(
       db,
-      "SELECT pr, session_id, MAX(expires_at) AS until FROM tokens WHERE kind = 'merge' AND pr IS NOT NULL AND session_id IS NOT NULL AND used_at IS NULL AND expires_at > ? GROUP BY pr, session_id",
+      `SELECT t.pr, t.session_id, MAX(t.expires_at) AS until FROM tokens t
+       JOIN journal j ON j.seq = t.grant_seq AND j.event = 'grant' AND json_extract(j.data_json, '$.token_id') = t.id
+       WHERE t.kind = 'merge' AND t.pr IS NOT NULL AND t.session_id IS NOT NULL AND t.used_at IS NULL AND t.expires_at > ? GROUP BY t.pr, t.session_id`,
       now,
     ).map((g) => [`${g.pr}:${g.session_id}`, g.until]),
   );
@@ -878,6 +893,15 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
   );
 
   const live = sessions.filter((s) => s.state !== "ended");
+  const attention: AttentionItem[] = [];
+  for (const q of inbox) attention.push({ view: "inbox", id: String(q.seq), tone: "amber", what: "Question waiting", detail: `${q.session_slug}: ${q.text}`, at: q.asked_at });
+  for (const x of live) if (x.stuck) attention.push({ view: "sessions", id: x.id, tone: "amber", what: "Stuck", detail: `${x.slug} after ${x.nudges} nudges`, at: x.last_event_at });
+  for (const w of worktrees) if (w.sync_state === "conflict") attention.push({ view: "worktrees", id: w.id, tone: "red", what: "Conflict", detail: `${w.branch ?? w.path}: ${w.conflict_files.length} file${w.conflict_files.length === 1 ? "" : "s"}${w.owner_session_id ? "" : ", no owner"}`, at: w.synced_at });
+  for (const b of bundles) if (b.verdict === "red") attention.push({ view: "bundles", id: b.id, tone: "red", what: "Red proof bundle", detail: `${b.head_sha?.slice(0, 8) ?? "no sha"}: ${b.summary ?? "no summary"}`, at: b.time });
+  for (const c of changes) if (c.status === "pending" && !c.superseded && !c.granted) attention.push({ view: "changes", id: c.id, tone: "amber", what: "Harness change waiting", detail: `${c.sha.slice(0, 8)} asked by ${c.session_slug ?? "unknown"}`, at: c.created_at });
+  for (const j of jobs) if (j.result === "failed") attention.push({ view: "jobs", id: j.name, tone: "red", what: "Job failed", detail: `${j.name}: ${j.last_result ?? ""}`, at: j.last_run_at });
+  const alerts: Record<ViewId, number> = { inbox: 0, sessions: 0, worktrees: 0, bundles: 0, rules: 0, journal: 0, changes: 0, jobs: 0 };
+  for (const a of attention) alerts[a.view]++;
   const counts: Record<ViewId, number> = {
     inbox: inbox.length,
     sessions: live.length,
@@ -885,18 +909,8 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
     bundles: bundles.length,
     rules: rules.length,
     journal: hourCount,
-    changes: changes.filter((c) => c.status === "pending" && !c.superseded && !c.granted).length,
+    changes: alerts.changes,
     jobs: jobs.length,
-  };
-  const alerts: Record<ViewId, number> = {
-    inbox: inbox.length,
-    sessions: live.filter((s) => s.stuck).length,
-    worktrees: worktrees.filter((w) => w.sync_state === "conflict").length,
-    bundles: bundles.filter((b) => b.verdict === "red").length,
-    rules: 0,
-    journal: 0,
-    changes: counts.changes,
-    jobs: jobs.filter((j) => j.result === "failed").length,
   };
 
   const ledger: LedgerSnapshot = {
@@ -926,6 +940,7 @@ export function buildSnapshot(db: Database, now = Date.now()): Snapshot {
     harness,
     counts,
     alerts,
+    attention,
     ledger,
     views: {
       inbox,
