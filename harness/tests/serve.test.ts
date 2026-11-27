@@ -87,13 +87,17 @@ test("a harness change with a live unused grant has granted set; an applied one 
 
   // A second connection, as the real MCP process does: the server's cache sees it through PRAGMA data_version.
   const writer = new Database(join(dir, "ledger.db"), { readwrite: true });
-  const until = Date.now() + 28 * 60_000;
-  writer.query("INSERT INTO tokens (id, kind, session_id, request_id, expires_at) VALUES (?,?,?,?,?)").run("01TESTGRANTLIVE", "harness", null, pending.id, until);
+  // A grant counts only through its journal row (D70), so make it the real way.
+  const { command } = await import("../src/ledger/authority.ts");
+  const p = pending as C & { sha: string; digest: string };
+  const g = command(writer, { channel: "page", session: "page", isRootSession: true, text: `HARNESS-OK ${p.sha.slice(0, 8)} ${p.digest.slice(0, 8)}` });
+  expect(g.kind).toBe("grant");
+  const until = (writer.query("SELECT expires_at FROM tokens WHERE id = ?").get((g as { tokenId: string }).tokenId) as { expires_at: number }).expires_at;
   writer.query("INSERT INTO tokens (id, kind, session_id, request_id, expires_at) VALUES (?,?,?,?,?)").run("01TESTGRANTSPENT", "harness", null, applied.id, until);
   const after = (await (await get("/api/snapshot")).json()).views.changes as C[];
   expect(after.find((c) => c.id === pending.id)!.granted).toEqual({ until });
   expect(after.find((c) => c.id === applied.id)!.granted).toBeNull();
-  writer.query("DELETE FROM tokens WHERE id IN ('01TESTGRANTLIVE','01TESTGRANTSPENT')").run();
+  writer.query("DELETE FROM tokens WHERE id IN (?, '01TESTGRANTSPENT')").run((g as { tokenId: string }).tokenId);
   writer.close();
 });
 
@@ -273,4 +277,35 @@ test("the session cookie is named per port, so two pages on localhost do not sha
   } finally {
     rmSync(d, { recursive: true, force: true });
   }
+});
+
+// Architecture #2 (review 2026-11-27): one attention list in the snapshot decides "needs Alex"; the badge,
+// tab title, dashboard and office figure only read it. A grant counts only with its journal row (D70).
+test("the snapshot's attention list holds what needs Alex, and a granted or forged-grant change behaves right", async () => {
+  const { command } = await import("../src/ledger/authority.ts");
+  type C = { id: string; sha: string; digest: string; status: string; superseded: boolean; granted: { until: number } | null };
+  type A = { view: string; id: string; tone: string; what: string };
+  const snap1 = await (await get("/api/snapshot")).json();
+  const pending = (snap1.views.changes as C[]).find((c) => c.status === "pending" && !c.superseded)!;
+  const att1 = snap1.attention as A[];
+  expect(att1.some((a) => a.view === "changes" && a.id === pending.id && a.tone === "amber")).toBe(true);
+  expect(snap1.counts.changes).toBe(att1.filter((a) => a.view === "changes").length);
+  for (const a of att1) expect(typeof a.what).toBe("string");
+
+  // A forged token (bare insert, no journal grant row) neither grants nor clears the change.
+  const writer = new Database(join(dir, "ledger.db"), { readwrite: true });
+  writer.query("INSERT INTO tokens (id, kind, session_id, request_id, expires_at) VALUES (?,?,?,?,?)").run("01FORGEDPAGE", "harness", null, pending.id, Date.now() + 60_000);
+  const snap2 = await (await get("/api/snapshot")).json();
+  expect((snap2.views.changes as C[]).find((c) => c.id === pending.id)!.granted).toBeNull();
+  expect((snap2.attention as A[]).some((a) => a.id === pending.id)).toBe(true);
+
+  // A real grant clears it from attention and shows as granted.
+  const r = command(writer, { channel: "page", session: "page", isRootSession: true, text: `HARNESS-OK ${pending.sha.slice(0, 8)} ${pending.digest.slice(0, 8)}` });
+  expect(r.kind).toBe("grant");
+  const snap3 = await (await get("/api/snapshot")).json();
+  expect((snap3.views.changes as C[]).find((c) => c.id === pending.id)!.granted).not.toBeNull();
+  expect((snap3.attention as A[]).some((a) => a.id === pending.id)).toBe(false);
+  expect(snap3.counts.changes).toBe((snap3.attention as A[]).filter((a) => a.view === "changes").length);
+  writer.query("DELETE FROM tokens WHERE id = '01FORGEDPAGE'").run();
+  writer.close();
 });
