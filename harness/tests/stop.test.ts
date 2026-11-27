@@ -172,3 +172,17 @@ describe("stop-false-cant", () => {
     expect("cant" in judged()).toBe(true)
   })
 })
+
+// Seen live 2026-11-27: a scratch HTML report in the temp folder was treated as product UI.
+describe("stop-ui-proof", () => {
+  const write = (path: string) => decide(ev({ toolName: "write", input: { path }, output: "ok" }))
+  test("a UI file in the repo needs a screenshot; a scratch file in a temp folder does not", async () => {
+    await prompt()
+    await write("/tmp/claude-502/proj/sess/scratchpad/report.html")
+    expect((await stop("Report written.")).ruleId).not.toBe("stop-ui-proof")
+
+    await prompt()
+    await write("/home/u/repo/ui/app/app.css")
+    expect((await stop("Styles changed.")).ruleId).toBe("stop-ui-proof")
+  })
+})

@@ -24,11 +24,14 @@ function scratchDirs(env: Env): string[] {
   for (const r of rows) {
     const p = JSON.parse(r.data_json).path
     if (typeof p !== "string") continue
-    const root = roots.find((r) => p.startsWith(`${r}/`))
+    // Claude Code's temp folder /tmp/claude-<uid>/<project>/<session>/ is shared by every session: the
+    // session folder is the scratch unit, never claude-<uid> itself (seen live 2026-11-27: 586 MB, mine 1 MB).
+    const cc = p.match(/^(\/tmp\/claude-\d+\/[^/]+)\//)?.[1]
+    const root = cc ?? roots.find((r) => p.startsWith(`${r}/`))
     const first = root ? p.slice(root.length + 1).split("/")[0] : ""
     if (root && first) tops.add(join(root, first))
   }
-  return [...tops].filter((d) => existsSync(d) && !roots.includes(d))
+  return [...tops].filter((d) => existsSync(d) && !roots.includes(d) && !/^\/tmp\/claude-\d+(\/[^/]+)?$/.test(d))
 }
 
 const sizeMb = (dir: string): number => {

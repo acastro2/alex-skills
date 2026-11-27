@@ -161,6 +161,23 @@ describe("stop-cleanup", () => {
     }
   })
 
+  // Seen live 2026-11-27: /tmp/claude-<uid> holds every Claude Code session's scratch; only this session's folder counts.
+  test("in Claude Code's shared temp folder only the session's own folder counts", async () => {
+    process.env.HARNESS_SCRATCH_LIMIT_MB = "1"
+    const cc = `/tmp/claude-${9000 + Math.floor(Math.random() * 999)}`
+    try {
+      mkdirSync(join(cc, "proj", "other"), { recursive: true })
+      mkdirSync(join(cc, "proj", "mine"), { recursive: true })
+      writeFileSync(join(cc, "proj", "other", "big.bin"), Buffer.alloc(3 * 1024 * 1024, 1))
+      writeFileSync(join(cc, "proj", "mine", "small.txt"), "x")
+      await prompt()
+      await decide(ev({ toolName: "write", input: { path: join(cc, "proj", "mine", "small.txt") }, output: "ok" }))
+      expect((await stop("Wrote a small file.")).ruleId).not.toBe("stop-cleanup")
+    } finally {
+      rmSync(cc, { recursive: true, force: true })
+    }
+  })
+
   test("sends back when a removed worktree of this session is still on disk", async () => {
     const wt = mkdtempSync(join(tmpdir(), "harness-p5-wt-"))
     try {

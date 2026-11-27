@@ -14,6 +14,7 @@ const UNSURE_LOW = 0.2
 const JUDGE_TIMEOUT_MS = 2000 // the adapters time the core out at 2.5 s, so Jev gets less than the 3 s of D27
 
 const UI_FILE = /\.(html|css|tsx|vue|svelte)$/i
+const SCRATCH = /^\/tmp\/|^\/(private\/)?var\/folders\// // Linux and macOS temp folders
 const PUSH_OR_CREATE = /\bgit\s+(-C\s+\S+\s+)?push\b|\bgh\s+(pr|issue)\s+create\b/
 const MCP_CREATE = /^mcp:[^:]+:\w*(create|publish)\w*(issue|page|content|ticket|comment|pull|pr)\b|^mcp:[^:]+:\w*add\w*comment/i
 const LIVE_CHECK = /\bgh\s+(pr|issue|run)\s+(view|list|checks|status)\b|\bgh\s+api\b/
@@ -65,7 +66,8 @@ function linksCheck(rows: ToolRow[], reply: string): Check | null {
 const hasOpenTodo = (env: Env) => latestTodos(env.db, env.ev.session).some((t) => t.status === "pending" || t.status === "in_progress")
 
 function uiProofCheck(rows: ToolRow[]): Check | null {
-  const ui = rows.filter((r) => isEdit(r.data) && UI_FILE.test(r.data.path))
+  // A file in a temp folder is a scratch artifact (a report, a mock), not the product's UI (seen live 2026-11-27).
+  const ui = rows.filter((r) => isEdit(r.data) && UI_FILE.test(r.data.path) && !SCRATCH.test(String(r.data.path)))
   if (!ui.length) return null
   const last = ui[ui.length - 1].seq
   const shot = rows.some((r) => r.seq > last && isBrowseTool(r.data.tool) && /screenshot/i.test(String(r.data.tool)))
