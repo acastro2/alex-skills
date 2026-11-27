@@ -119,3 +119,49 @@ describe("stable bun path", () => {
     expect(plugin).not.toContain("/installs/bun/1.4.5/")
   })
 })
+
+// Found live 2026-11-27: mcpSteps() only checked that "harness" was registered, so the first apply froze
+// OpenCode's MCP server at an old pinned copy (applied/63f09f80…) on the versioned bun path, and every
+// later MCP fix (fresh-process apply, integrity) never reached it. A stale registration must be replaced.
+describe("MCP registration follows the install", () => {
+  test("a stale claude entry is removed and re-added; a stale opencode entry is rewritten in place", async () => {
+    const { mcpSteps } = await import("../src/install.ts")
+    const oc = join(dir, "opencode.jsonc")
+    writeFileSync(
+      oc,
+      `{\n  // my comment stays\n  "mcp": {\n    "harness": {\n      "type": "local",\n      "command": [\n        "/old/mise/installs/bun/1.4.5/bin/bun",\n        "/old/applied/63f09f80/harness/src/mcp/agent.ts"\n      ]\n    }\n  }\n}\n`,
+    )
+    const ran: string[] = []
+    const fake = (argv: string[]) => {
+      ran.push(argv.join(" "))
+      if (argv.join(" ") === "claude mcp get harness")
+        return { code: 0, out: "harness:\n  Command: /old/mise/installs/bun/1.4.5/bin/bun\n  Args: /old/applied/63f09f80/harness/src/mcp/agent.ts\n" }
+      if (argv.join(" ") === "opencode mcp list") return { code: 0, out: "✓ harness       connected\n" }
+      return { code: 0, out: "" }
+    }
+    const opts = {
+      dryRun: false, uninstall: false, claudeSettings: settings, opencodePlugins: plugins, opencodeConfig: oc,
+      bun: "/state/bin/bun", root: "/state/applied/NEW/harness", mcp: true, mcpProject: null,
+    }
+    mcpSteps(opts as never, fake)
+    expect(ran.some((c) => c.startsWith("claude mcp remove"))).toBe(true)
+    expect(ran.some((c) => c.startsWith("claude mcp add-json") && c.includes("/state/applied/NEW/harness/src/mcp/agent.ts") && c.includes("/state/bin/bun"))).toBe(true)
+    const text = readFileSync(oc, "utf8")
+    expect(text).toContain("// my comment stays")
+    expect(text).toContain('"/state/bin/bun"')
+    expect(text).toContain('"/state/applied/NEW/harness/src/mcp/agent.ts"')
+    expect(text).not.toContain("63f09f80")
+
+    // Current entries are left alone.
+    ran.length = 0
+    const current = (argv: string[]) => {
+      ran.push(argv.join(" "))
+      if (argv.join(" ") === "claude mcp get harness")
+        return { code: 0, out: "harness:\n  Command: /state/bin/bun\n  Args: /state/applied/NEW/harness/src/mcp/agent.ts\n" }
+      return { code: 0, out: "✓ harness       connected\n" }
+    }
+    const steps = mcpSteps(opts as never, current)
+    expect(ran.some((c) => c.startsWith("claude mcp remove") || c.startsWith("claude mcp add"))).toBe(false)
+    expect(steps.filter((s) => s.startsWith("no change"))).toHaveLength(2)
+  })
+})
