@@ -73,6 +73,14 @@ POLICY: dict[str, Policy] = {
     # mcp-builder is copied from anthropics/skills and refreshed from it: a local restyle is
     # undone by the next pull, so the style rules skip it.
     "mcp-builder": Policy(upstream=frozenset({"SKILL.md", "reference/"})),
+    # cad and fea are copied from earthtojake/text-to-cad and refreshed from it: a local restyle
+    # is undone by the next pull, so the style rules skip them. cad's prose names example
+    # project files (a user's own src/ and chassis/ scripts) that never exist in this repo.
+    "cad": Policy(
+        upstream=frozenset({"SKILL.md", "references/"}),
+        external_paths=frozenset({"src/bracket.py", "src/enclosure.py", "chassis/frame.py"}),
+    ),
+    "fea": Policy(upstream=frozenset({"SKILL.md", "references/"})),
     # archeologist points at the m365 CLI reference, which lives in the m365 skill, and
     # ships its Jev gates as a reference loaded alone.
     "archeologist": Policy(
