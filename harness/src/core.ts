@@ -21,7 +21,10 @@ import { allow, isBrowseTool, q1, toolData, type Env, type Out } from "./policie
 import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { guardWorktree } from "./policies/worktree.ts"
 import { takeInbox } from "./waker/deliver.ts"
+import { resolve } from "node:path"
+import { parse } from "./shell/parse.ts"
 import { writeLive } from "./worktree/handoff.ts"
+import { land, spawnGit } from "./worktree/lifecycle.ts"
 import { ALLOW, type Decision, type HarnessEvent } from "./types.ts"
 
 const LIVE_MS = 30 * 60_000
@@ -45,6 +48,64 @@ export function closeCore(): void {
     handle?.db.close()
   } catch {}
   handle = null
+}
+
+// D7, D22, D40: a successful push to the default branch from inside an active worktree lands it.
+// Returns the git push's target dir when the command pushes to main, else null.
+function pushToMain(command: string, cwd: string): string | null {
+  let defaultBranch: string | null = null
+  for (const a of parse(command).commands) {
+    if (a[0] !== "git") continue
+    let dir = cwd
+    let i = 1
+    for (; i < a.length; i++) {
+      if (a[i] === "-C" && a[i + 1] !== undefined) dir = resolve(dir, a[++i]!)
+      else if (a[i] === "-c" || a[i] === "--git-dir" || a[i] === "--work-tree") i++
+      else if (!a[i]!.startsWith("-")) break
+    }
+    if (a[i] !== "push") continue
+    const pos: string[] = []
+    for (i++; i < a.length; i++) {
+      const w = a[i]!
+      if (w === "--repo" || w === "-o" || w === "--push-option" || w === "--receive-pack" || w === "--exec") i++
+      else if (!w.startsWith("-")) pos.push(w)
+    }
+    defaultBranch ??= gitOut(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], dir)?.replace(/^origin\//, "") ?? null
+    const mains = new Set(["main", "master", ...(defaultBranch ? [defaultBranch] : [])])
+    const hit = pos.slice(1).some((r) => mains.has(r.replace(/^\+/, "").split(":").pop()!.replace(/^refs\/heads\//, "")))
+    if (hit) return dir
+  }
+  return null
+}
+
+const gitOut = (args: string[], cwd: string): string | null => {
+  const r = spawnGit(args, cwd)
+  return r.ok && r.out ? r.out : null
+}
+
+function landOnPush(env: Env): void {
+  const { db, ev } = env
+  if (ev.toolName !== "shell" || ev.failed) return
+  const command = String((ev.input as any)?.command ?? "")
+  if (!/\bpush\b/.test(command)) return
+  try {
+    const dir = pushToMain(command, ev.cwd)
+    if (!dir) return
+    const w = q1<{ id: string; path: string }>(
+      db,
+      "select id, path from worktrees where state = 'active' and (path = ? or substr(?, 1, length(path) + 1) = path || '/') order by length(path) desc limit 1",
+      dir,
+      dir,
+    )
+    if (!w) return
+    const sha = gitOut(["rev-parse", "HEAD"], w.path)
+    if (!sha) throw new Error(`no HEAD in ${w.path}`)
+    land(db, { worktreeId: w.id, pushedSha: sha })
+  } catch (e: any) {
+    try {
+      append(db, { session_id: ev.session, event: "land.failed", reason: String(e?.message ?? e).slice(0, 500) })
+    } catch {}
+  }
 }
 
 function ensureSession(db: Database, ev: HarnessEvent): void {
@@ -197,6 +258,7 @@ async function route(env: Env, off: boolean): Promise<Out> {
       try {
         registerShellProcesses(env)
       } catch {} // a failed lookup must never block the tool call
+      landOnPush(env)
       if (!worker) return o
       const context = joinContext([o.decision.context, worker.context])
       return { ...o, decision: { ...o.decision, outcome: "modify", context }, data: { ...(o.data ?? {}), workerId: worker.workerId, ...workerStartData(env, worker.workerId) } }

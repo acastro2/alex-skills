@@ -128,7 +128,7 @@ export function request(db: Database, o: { session: string; sha: string; cwd?: s
   ].join("\n")
 
   const digest = sha256(review)
-  const requestId = requestApply(db, { session: o.session, sha: o.sha, digest })
+  const requestId = requestApply(db, { session: o.session, sha: o.sha, digest, review })
   setMeta(db, `request_repo:${requestId}`, repo)
   return { requestId, sha8: o.sha.slice(0, 8), digest8: digest.slice(0, 8), review }
 }

@@ -25,11 +25,11 @@ export const RULES: Rule[] = [
   rule("recursive-delete", "tool.before", "destructive", "1"),
   rule("merge-in-shell", "tool.before", "destructive", "1"),
   rule("destructive-git", "tool.before", "destructive", "1"),
-  rule("push-gate", "tool.before", "worker", "3", "advise"), // log-only until verify works (D44)
+  rule("push-gate", "tool.before", "worker", "3"), // enforce by default (review 2026-11-27, D44)
   rule("ledger-write", "tool.before", "authority", "1"),
   rule("harness-self", "tool.before", "authority", "1"),
   rule("harness-config-write", "tool.before", "authority", "1"),
-  rule("main-checkout-write", "tool.before", "worktree", "5", "advise"),
+  rule("main-checkout-write", "tool.before", "worktree", "5"),
   rule("mcp-session", "tool.before", "mcp", "3"),
   rule("stop-commit", "stop", "stop", "2"),
   rule("stop-links", "stop", "stop", "2"),
@@ -67,12 +67,25 @@ function known(id: string): Rule {
 }
 
 export function seed(db: Database): void {
+  const stored = new Map(
+    (db.query("select id, mode, default_mode from rules").all() as { id: string; mode: string; default_mode: string }[]).map((r) => [r.id, r]),
+  )
+  const stale = (r: Rule) => {
+    const s = stored.get(r.id)
+    return !s || (s.mode === s.default_mode && s.default_mode !== r.default_mode)
+  }
+  if (!RULES.some(stale)) return // the common start: nothing to write
   const now = Date.now()
   const ins = db.query(
     "insert or ignore into rules(id, event, module, mode, default_mode, ships_in, wrong_today, updated_at) values(?, ?, ?, ?, ?, ?, 0, ?)",
   )
+  // A raised default reaches a rule Alex never changed (mode == default_mode); a mode he set is kept.
+  const raise = db.query("update rules set mode = ?, default_mode = ?, updated_at = ? where id = ? and mode = default_mode and default_mode != ?")
   db.transaction(() => {
-    for (const r of RULES) ins.run(r.id, r.event, r.module, r.default_mode, r.default_mode, r.ships_in, now)
+    for (const r of RULES) {
+      ins.run(r.id, r.event, r.module, r.default_mode, r.default_mode, r.ships_in, now)
+      raise.run(r.default_mode, r.default_mode, now, r.id, r.default_mode)
+    }
   }).immediate()
 }
 

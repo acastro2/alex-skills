@@ -122,6 +122,7 @@ test("a raised default upgrades rules Alex never changed, and keeps the ones he 
   const d = mkdtempSync(join(tmpdir(), "harness-seed-"))
   const db = openLedger(join(d, "ledger.db"))
   try {
+    seedRules(db) // openLedger does not seed
     db.query("update rules set mode = 'advise', default_mode = 'advise' where id in ('push-gate', 'main-checkout-write')").run()
     db.query("update rules set mode = 'off' where id = 'main-checkout-write'").run() // Alex turned it off
     seedRules(db)

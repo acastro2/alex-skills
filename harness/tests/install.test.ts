@@ -25,7 +25,8 @@ beforeEach(() => {
 async function install(...flags: string[]) {
   const p = Bun.spawn(
     [process.execPath, "src/install.ts", ...flags, "--claude-settings", settings, "--opencode-plugins", plugins],
-    { cwd: ROOT, stdout: "pipe", stderr: "pipe" },
+    // Own state dir: install.ts now writes the stable bun link there, never into the real ~/.local/state.
+    { cwd: ROOT, stdout: "pipe", stderr: "pipe", env: { ...process.env, HARNESS_STATE_DIR: join(dir, "state") } },
   )
   const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited])
   expect(code, stderr).toBe(0)

@@ -1,7 +1,7 @@
 // Writes the harness hook entries (manifest.ts) into Claude Code settings and the OpenCode plugin dir.
 // Usage: bun src/install.ts [--dry-run] [--dev] [--uninstall] [--claude-settings <path>] [--opencode-plugins <dir>] [--bun <path>]
 //        [--no-mcp] [--mcp-project <dir>]
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync, copyFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { HARNESS_ID_FLAG, MANIFEST, type ManifestEntry } from "./manifest.ts"
@@ -127,9 +127,45 @@ function readText(path: string): string {
   return existsSync(path) ? readFileSync(path, "utf8") : ""
 }
 
-export function run(opts: Options): { report: string; changed: boolean } {
+/** Same rule as src/ledger/db.ts. */
+function stateDir(): string {
+  return process.env.HARNESS_STATE_DIR ?? join(homedir(), ".local", "state", "harness")
+}
+
+/**
+ * Hooks run `<stateDir>/bin/bun`, a symlink to the real binary. A versioned path (mise, brew) vanishes on upgrade,
+ * the hook exits 127, Claude Code treats that as non-blocking, and every guard turns off silently.
+ */
+function ensureStableBun(opts: Options): { stable: string; line: string } {
+  const stable = join(stateDir(), "bin", "bun")
+  let target: string
+  try {
+    target = realpathSync(opts.bun) // follows the stable link too, so a self-loop cannot form
+  } catch {
+    return { stable, line: `warning: --bun ${opts.bun} does not resolve; stable bun link left as is` }
+  }
+  let current: string | null = null
+  try {
+    current = readlinkSync(stable)
+  } catch {}
+  if (current === target) return { stable, line: `no change: ${stable}` }
+  if (opts.dryRun) return { stable, line: `would link: ${stable} -> ${target}` }
+  mkdirSync(dirname(stable), { recursive: true })
+  rmSync(stable, { force: true })
+  symlinkSync(target, stable)
+  return { stable, line: `linked: ${stable} -> ${target}` }
+}
+
+export function run(inOpts: Options): { report: string; changed: boolean } {
   const lines: string[] = []
   let changed = false
+  const stable = join(stateDir(), "bin", "bun")
+  const opts: Options = { ...inOpts, bun: stable }
+  if (!inOpts.uninstall) {
+    const line = ensureStableBun(inOpts).line // uninstall leaves the link alone
+    lines.push(line)
+    if (/^(linked|would link):/.test(line)) changed = true
+  }
 
   // Claude settings
   const oldText = readText(opts.claudeSettings)

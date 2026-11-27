@@ -23,6 +23,9 @@ export function scrub(text: string): string {
 
 export interface JournalRow {
   session_id: string | null
+  // Store prompt_text as given. Only for text whose hash must match (the harness review: its 40-hex shas
+  // looked like secrets to scrub(), so the stored review no longer matched its digest).
+  verbatim?: boolean
   turn?: number | null
   event: string
   rule_id?: string | null
@@ -80,7 +83,7 @@ export function append(db: Database, row: JournalRow): number {
     rule_id: row.rule_id ?? null,
     outcome: row.outcome ?? null,
     reason: row.reason ?? null,
-    prompt_text: row.prompt_text == null ? null : scrub(row.prompt_text),
+    prompt_text: row.prompt_text == null ? null : row.verbatim ? row.prompt_text : scrub(row.prompt_text),
     args_hash: row.args === undefined ? null : sha256(typeof row.args === "string" ? row.args : JSON.stringify(row.args)),
     output_hash: row.output == null ? null : sha256(row.output),
     data_json: row.data === undefined ? null : JSON.stringify(row.data),

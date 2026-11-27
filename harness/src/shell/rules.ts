@@ -89,7 +89,10 @@ function targetDenied(raw: string, ctx: ShellCtx, cwd: string | null = ctx.cwd):
   if (p === null) return true
   const repo = ctx.repoRoot ? path.resolve(ctx.repoRoot) : null
   if (repo && (p === repo || inside(p, repo + "/.git"))) return true
-  if (ctx.allowRoots.some((r) => inside(p, path.resolve(r)))) return false
+  // The allow root itself is never a delete target (`rm -rf /tmp`); a glob (`/tmp/*`) only reaches inside it.
+  const e = expand(raw, ctx)
+  const globbed = globPrefix(e) !== e
+  if (ctx.allowRoots.some((r) => inside(p, path.resolve(r)) && (globbed || p !== path.resolve(r)))) return false
   if (repo && inside(p, repo) && ctx.isTrackedOrIgnored?.(p)) return false
   return true
 }
@@ -194,13 +197,22 @@ function destructiveGit(P: Parsed): boolean {
         return true
       case "push":
         if (
-          before.some((a) => a === "--force" || a.startsWith("--force-") || /^-[A-Za-z]*f[A-Za-z]*$/.test(a)) ||
-          rest.some((a) => a.length > 1 && a[0] === "+")
+          before.some(
+            (a) =>
+              a === "--force" || a.startsWith("--force-") || a === "--mirror" || a === "--delete" || /^-[A-Za-z]*[fd][A-Za-z]*$/.test(a),
+          ) ||
+          rest.some((a) => a.length > 1 && (a[0] === "+" || a[0] === ":"))
         )
           return true
         break
       case "checkout":
-        if (rest.includes(".")) return true
+        if (rest.includes(".") || before.includes("--force") || hasShort(before, "f")) return true
+        break
+      case "switch":
+        if (before.some((a) => a === "--force" || a === "--discard-changes") || hasShort(before, "f")) return true
+        break
+      case "stash":
+        if (rest[0] === "clear") return true
         break
       case "restore": {
         if (!rest.includes(".")) break
@@ -267,12 +279,16 @@ function harnessSelf(P: Parsed, line: string, ctx: ShellCtx): boolean {
       )
         return true
     }
-    if (prog === "opencode" && args[0] === "run") agentCli = true
-    if (prog === "claude" && (args.includes("--print") || hasShort(args, "p"))) agentCli = true
+    if (prog === "opencode" && (args[0] === "run" || args[0] === "api")) agentCli = true
+    if ((prog === "claude" || prog === "cursor-agent") && (args.includes("--print") || hasShort(args, "p"))) agentCli = true
+    if (prog === "codex" && args.includes("exec")) agentCli = true
   }
-  // A grant word anywhere in the line, so `echo MERGE-OK 3 | claude -p` is caught too.
-  return agentCli && /MERGE-OK|HARNESS-OK/.test(line)
+  // A grant or kill-switch phrase anywhere in the line, so `echo MERGE-OK 3 | claude -p` is caught too.
+  // Same phrases as command() in ledger/authority.ts (its regexes are private).
+  return agentCli && AUTHORITY_PHRASE.test(line)
 }
+
+const AUTHORITY_PHRASE = /MERGE-OK|HARNESS-OK|\bharness (?:off|on|wrong|rollback)\b/
 
 // ---- ledger-write and harness-config-write ----
 
@@ -283,6 +299,7 @@ const CODE_FLAGS = set("-c", "-e", "-p", "-E", "--eval", "--print", "eval")
 interface Target {
   path: string
   dirs: Dirs
+  db?: boolean // the database argument of a sqlite3 CLI
 }
 
 interface Writes {
@@ -316,7 +333,7 @@ function writes(P: Parsed): Writes {
     } else if (INTERP_CODE.test(prog) && args.some((a) => CODE_FLAGS.has(a))) {
       code.push(...args)
     }
-    for (const t of targets) all.push({ path: t, dirs: P.dirs[n] })
+    targets.forEach((t, k) => all.push({ path: t, dirs: P.dirs[n], db: (prog === "sqlite3" || prog === "sqlite") && k === 0 }))
   }
   return { targets: all, code }
 }
@@ -328,11 +345,19 @@ const resolveWrite = (t: Target, ctx: ShellCtx) => resolveTarget(t.path, ctx, ef
 const WRITE_CODE = /open\([^)]*,\s*['"][^'"]*[wax+]|\.write(?:_text|_bytes|File|FileSync)?\(|Bun\.write|json\.dump\(|appendFile|unlink|rmSync|\brename|shutil\.|os\.(?:remove|replace)|truncate|writelines/
 const writesCode = (code: string[]) => WRITE_CODE.test(code.join("\n"))
 
+// Any sqlite library call on the ledger is a write route, even a read-looking one: the same call runs `delete`.
+const SQLITE_API = /\bDatabase\(|sqlite3\.connect|\.exec\(|\.execute\(|\.run\(/
+const NAMES_LEDGER = /\.local\/state\/harness|ledger\.db/
+
 function ledgerWrite(W: Writes, ctx: ShellCtx): boolean {
   if (W.code.some((s) => s.includes(".local/state/harness")) && writesCode(W.code)) return true
+  const code = W.code.join("\n")
+  if (NAMES_LEDGER.test(code) && SQLITE_API.test(code)) return true
   return W.targets.some((t) => {
     const p = resolveWrite(t, ctx)
-    return p !== null && isLedgerPath(p, ctx.home)
+    // An unresolved sqlite3 path ($VAR, $(...)) that names harness or ledger.db is denied.
+    if (p === null) return !!t.db && /harness|ledger\.db/.test(t.path)
+    return isLedgerPath(p, ctx.home)
   })
 }
 

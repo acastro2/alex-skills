@@ -101,7 +101,9 @@ export function buildPlan(db: Database, action: ActionName, rawArgs: unknown): P
       const req = id ? (db.query("SELECT sha, digest, state FROM requests WHERE id = ?").get(id) as { sha: string; digest: string; state: string } | null) : null;
       if (!id || !req) return bad("Unknown harness request.");
       if (req.state !== "open") return bad("That request is not open.");
-      return plan(`HARNESS-OK ${req.sha.slice(0, 8)} ${req.digest.slice(0, 8)}`, { request_id: id });
+      // The passkey args digest binds the tap to the review shown, so the tap must name its full digest.
+      if (a.digest !== req.digest) return bad("The digest does not match this request's review. Reload the page and read the review again.");
+      return plan(`HARNESS-OK ${req.sha.slice(0, 8)} ${req.digest.slice(0, 8)}`, { request_id: id, digest: req.digest });
     }
     case "rollback": {
       const id = str(a.request_id, 64);

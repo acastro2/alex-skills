@@ -4,6 +4,7 @@ import { mode } from "../ledger/registry.ts"
 import { ulid } from "../ledger/ulid.ts"
 import { endSessionProcesses } from "../policies/processes.ts"
 import { ABORT_AFTER_MS, THROTTLE_MS, abortRequest, nudgedRecently, recordStale, staleText, staleWorkers } from "../policies/staleworker.ts"
+import { land, spawnGit } from "../worktree/lifecycle.ts"
 import { deliver as realDeliver, run, type Deliver, type Runner } from "./deliver.ts"
 
 const WATCH_TTL_MS = 24 * 3600_000
@@ -92,6 +93,27 @@ function sessionTool(db: Database, id: string): "claude" | "opencode" {
   return s?.tool === "opencode" ? "opencode" : "claude"
 }
 
+// D7: a merged PR whose head branch is a registered active worktree of that repo lands the worktree.
+// A failure is journaled and never stops the poll.
+function landMerged(db: Database, repo: string, branch: string, sha: string): void {
+  try {
+    const rows = db.query("select id, repo, session_id from worktrees where state = 'active' and branch = ?").all(branch) as {
+      id: string
+      repo: string
+      session_id: string | null
+    }[]
+    for (const w of rows) {
+      const url = spawnGit(["remote", "get-url", "origin"], w.repo)
+      if (!url.ok || !url.out.toLowerCase().includes(repo.toLowerCase())) continue
+      try {
+        land(db, { worktreeId: w.id, pushedSha: sha })
+      } catch (e: any) {
+        append(db, { session_id: w.session_id, event: "land.failed", reason: String(e?.message ?? e).slice(0, 500) })
+      }
+    }
+  } catch {}
+}
+
 async function pollPrs(db: Database, gh: Runner, send: Deliver, now: number): Promise<void> {
   const rows = db
     .query("select id, session_id, target, last_state from watches where kind = 'pr' and expires_at > ?")
@@ -102,9 +124,9 @@ async function pollPrs(db: Database, gh: Runner, send: Deliver, now: number): Pr
     const m = /^(.+)#(\d+)$/.exec(w.target)
     if (!m) continue
     const [, repo, n] = m as unknown as [string, string, string]
-    const r = await gh(["gh", "pr", "view", n, "--repo", repo, "--json", "state,reviewDecision,mergeable,statusCheckRollup,headRefOid"])
+    const r = await gh(["gh", "pr", "view", n, "--repo", repo, "--json", "state,reviewDecision,mergeable,statusCheckRollup,headRefOid,headRefName"])
     if (r.code !== 0) continue
-    const j = JSON.parse(r.stdout) as { state: string; reviewDecision?: string; mergeable?: string; statusCheckRollup?: Check[]; headRefOid?: string }
+    const j = JSON.parse(r.stdout) as { state: string; reviewDecision?: string; mergeable?: string; statusCheckRollup?: Check[]; headRefOid?: string; headRefName?: string }
     const checks = failedChecks(j.statusCheckRollup)
     const cur: PrState = {
       state: j.state,
@@ -114,6 +136,7 @@ async function pollPrs(db: Database, gh: Runner, send: Deliver, now: number): Pr
       head: j.headRefOid ?? "",
     }
     if (cur.state !== "OPEN") cur.done = true
+    if (cur.state === "MERGED" && prev.state !== "MERGED" && j.headRefName) landMerged(db, repo, j.headRefName, cur.head)
     let next: string | null = null
     if (cur.state === "MERGED" && w.session_id) {
       const step = db

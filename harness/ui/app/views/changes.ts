@@ -139,7 +139,7 @@ function changeRows(ctx: Ctx, rows: ChangeRow[]): HTMLElement[] {
           c.status === "pending"
             ? until !== null
               ? grantChip("harness", until, ctx.now)
-              : btn("Approve with passkey", { tone: "primary", icon: "key", busy: ctx.ui.pending.has(applyKey), onClick: () => void tap(ctx, applyKey, "apply", { request_id: c.id }, "Approved for 30 minutes. The change applies when the session runs `harness apply`.") })
+              : btn("Approve with passkey", { tone: "primary", icon: "key", busy: ctx.ui.pending.has(applyKey), onClick: () => void tap(ctx, applyKey, "apply", { request_id: c.id, digest: c.digest }, "Approved for 30 minutes. The change applies when the session runs `harness apply`.") })
             : c.status === "applied"
               ? btn("Roll back with passkey", { icon: "key", busy: ctx.ui.pending.has(rollKey), onClick: () => void ctx.act(rollKey, "rollback", { request_id: c.id }, "Rollback requested.") })
               : null,

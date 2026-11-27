@@ -9,6 +9,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { isOff } from "../ledger/authority.ts"
 import { requestRun, status as jobsStatus } from "../jobs/jobs.ts"
 import { openLedger } from "../ledger/db.ts"
+import { integrity } from "../ledger/integrity.ts"
 import { verifyChain } from "../ledger/journal.ts"
 import { RULES, mode, seed } from "../ledger/registry.ts"
 import { keepProcess, workstreamUpdate, worktreeNew } from "../worktree/lifecycle.ts"
@@ -175,7 +176,7 @@ const TOOLS: Tool[] = [
   {
     name: "harness_status",
     description:
-      "Read the harness state: kill switch, mode of each rule, open grants, live sessions, and whether the journal hash chain is intact (chainOk).",
+      "Read the harness state: kill switch, mode of each rule, open grants, live sessions, whether the journal hash chain is intact (chainOk), and integrity: tokens with no journal grant row and bundles that fail their digest check.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     run: (_a, c) => {
@@ -189,6 +190,7 @@ const TOOLS: Tool[] = [
         liveSessions: count("select count(*) as n from sessions where ended_at is null"),
         chainOk: chain.ok,
         ...(chain.ok ? {} : { badSeq: chain.badSeq }),
+        integrity: integrity(c.db),
       }
     },
   },

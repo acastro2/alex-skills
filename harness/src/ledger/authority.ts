@@ -93,17 +93,20 @@ export function command(db: Database, ch: Channel): Command {
 }
 
 // Merge tokens bind to the session that typed them and, when given, the PR. Harness tokens bind to the request.
+// A token counts only when its grant_seq points at the journal 'grant' row that names it (D70). A row inserted
+// behind the guard's back has no such journal row, so it is never honoured.
 export function holds(
   db: Database,
   q: { kind: "merge" | "harness"; session: string; pr?: number; requestId?: string; now?: number },
 ): string | null {
   const row = db
     .query(
-      `select id from tokens
-       where kind = ? and used_at is null and expires_at > ?
-         and (? is null or pr = ?)
-         and (case when ? is null then session_id = ? else request_id = ? end)
-       order by id desc limit 1`,
+      `select t.id from tokens t
+       join journal j on j.seq = t.grant_seq and j.event = 'grant' and json_extract(j.data_json, '$.token_id') = t.id
+       where t.kind = ? and t.used_at is null and t.expires_at > ?
+         and (? is null or t.pr = ?)
+         and (case when ? is null then t.session_id = ? else t.request_id = ? end)
+       order by t.id desc limit 1`,
     )
     .get(q.kind, q.now ?? Date.now(), q.pr ?? null, q.pr ?? null, q.requestId ?? null, q.session, q.requestId ?? null) as {
     id: string
@@ -119,7 +122,8 @@ export function consume(db: Database, tokenId: string, now: number = Date.now())
   )
 }
 
-export function requestApply(db: Database, r: { session: string; sha: string; digest: string }): string {
+// The full review text goes on the journal row that review_seq points at, so the page can show what the digest covers.
+export function requestApply(db: Database, r: { session: string; sha: string; digest: string; review?: string }): string {
   return db
     .transaction(() => {
       upsertSession(db, { id: r.session, tool: "unknown" })
@@ -128,6 +132,8 @@ export function requestApply(db: Database, r: { session: string; sha: string; di
       const seq = append(db, {
         session_id: r.session,
         event: "harness.request",
+        prompt_text: r.review,
+        verbatim: true,
         data: { request_id: id, sha: r.sha, digest: r.digest },
         time: now,
       })
