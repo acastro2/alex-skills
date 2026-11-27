@@ -311,7 +311,9 @@ export function mcpSteps(opts: Options, run: Runner = sh): string[] {
       const cmd = /^\s*Command:\s*(.+?)\s*$/m.exec(have.out)?.[1]
       const args = /^\s*Args:\s*(.*?)\s*$/m.exec(have.out)?.[1]
       stale = cmd !== undefined && args !== undefined && (cmd !== server[0] || args !== server.slice(1).join(" "))
-    } else if (!opts.uninstall && present && c.tool === "opencode" && !opts.mcpProject) {
+    } else if (!opts.uninstall && c.tool === "opencode" && !opts.mcpProject) {
+      // The config file decides, not `opencode mcp list`: the list connects to every server and can come back
+      // without "harness" (seen live: a review planned a duplicate `mcp add` for an entry that existed).
       const step = opencodeConfigStep(opts, server)
       if (step !== "absent") {
         out.push(step)

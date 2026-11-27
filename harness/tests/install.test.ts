@@ -165,3 +165,18 @@ describe("MCP registration follows the install", () => {
     expect(steps.filter((s) => s.startsWith("no change"))).toHaveLength(2)
   })
 })
+
+test("the opencode config decides even when `opencode mcp list` comes back without harness", async () => {
+  const { mcpSteps } = await import("../src/install.ts")
+  const oc = join(dir, "opencode.jsonc")
+  writeFileSync(oc, `{\n  "mcp": {\n    "harness": {\n      "type": "local",\n      "command": ["/old/bun", "/old/agent.ts"]\n    }\n  }\n}\n`)
+  const ran: string[] = []
+  const fake = (argv: string[]) => {
+    ran.push(argv.join(" "))
+    return argv[0] === "claude" ? { code: 1, out: "" } : { code: 0, out: "" } // a slow list that lists nothing
+  }
+  const opts = { dryRun: false, uninstall: false, claudeSettings: settings, opencodePlugins: plugins, opencodeConfig: oc, bun: "/s/bun", root: "/s/h", mcp: true, mcpProject: null }
+  mcpSteps(opts as never, fake)
+  expect(ran.some((c) => c.startsWith("opencode mcp add"))).toBe(false)
+  expect(readFileSync(oc, "utf8")).toContain('"/s/h/src/mcp/agent.ts"')
+})
