@@ -461,3 +461,35 @@ def test_malformed_moves_are_a_facts_error() -> None:
 
 def test_empty_shipped_is_treated_as_absent() -> None:
     assert "Shipped this week" not in text(render(report={**REPORT, "shipped": []}, facts=combined_facts()))
+
+
+# Impeccable audit, 2026-11-27: the 880 px card had no phone layout, section titles were <p>,
+# and the lighter repo bar became a hollow outline in dark mode.
+def test_phone_rule_lets_the_card_fill_a_narrow_screen() -> None:
+    head = render(report=combined_report(), facts=combined_facts()).split("</head>", 1)[0]
+    rule = re.search(r"@media[^{]*max-width:\s*(\d+)px[^{]*\{(.*)", head, re.S)
+    assert rule and int(rule.group(1)) <= 700
+    assert "bt-card" in rule.group(2) and "100%" in rule.group(2)
+
+
+def test_stat_and_bar_cells_stack_on_a_phone() -> None:
+    out = render(report=combined_report(), facts=combined_facts())
+    head = out.split("</head>", 1)[0]
+    assert 'class="bt-stack' in out or "bt-stack" in out
+    assert re.search(r"bt-stack[^}]*display:\s*block", head)
+
+
+def test_section_titles_are_real_headings() -> None:
+    out = render(report=combined_report(), facts=combined_facts())
+    titles = re.findall(r"<h([23])[^>]*>(.*?)</h\1>", out, re.S)
+    names = {re.sub(r"<[^>]+>", "", t).strip() for _, t in titles}
+    for name in ("Decisions needed", "Shipped this week", "In flight", "Next", "Blocked"):
+        assert name in names, name
+    assert all("margin:0" in h.replace(" ", "") for h in re.findall(r"<h[23][^>]*>", out))
+
+
+def test_lighter_repo_bar_keeps_a_fill_in_dark_mode() -> None:
+    head = render(report=combined_report(), facts=combined_facts()).split("</head>", 1)[0]
+    dark = head[head.index("prefers-color-scheme: dark"):]
+    rule = re.search(r'\[class~="bt-bar"\][^{]*\{([^}]*)\}', dark)
+    assert rule and "transparent" not in rule.group(1)

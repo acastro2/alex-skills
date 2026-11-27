@@ -39,7 +39,11 @@ $content
 <!-- @block dark_style -->
 <style>
 :root{color-scheme:light dark;supported-color-schemes:light dark;}
-table,td,p,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;}
+table,td,p,h2,h3,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;}
+@media only screen and (max-width:600px){
+[class~="bt-card"],.bt-card{width:100% !important;}
+[class~="bt-stack"],.bt-stack{display:block !important;width:100% !important;}
+}
 @media (prefers-color-scheme: dark){
 [class~="bt-page"]{background-color:transparent !important;background-image:none !important;}
 [class~="bt-card"]{background-color:#050505 !important;background-image:none !important;border:1px solid #66727E !important;}
@@ -58,7 +62,7 @@ table,td,p,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont
 [class~="bt-pick"]{background-color:transparent !important;background-image:none !important;border:1px solid #5FD3B3 !important;}
 [class~="bt-panel"]{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
 [class~="bt-bar-hi"]{background-color:#5FD3B3 !important;background-image:none !important;}
-[class~="bt-bar"]{background-color:transparent !important;background-image:none !important;border:1px solid #4FB39A !important;}
+[class~="bt-bar"]{background-color:#2F7D6A !important;background-image:none !important;border:1px solid #4FB39A !important;}
 [class~="bt-bar-bug"]{background-color:transparent !important;background-image:none !important;border:1px solid #8C98A4 !important;}
 [class~="bt-axis"]{border-color:#66727E !important;}
 [class~="bt-amb"]{background-color:transparent !important;background-image:none !important;border-color:#7A4A12 !important;border-left-color:#F59E0B !important;}
@@ -89,7 +93,7 @@ table,td,p,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont
 [data-ogsb] .bt-pick{background-color:transparent !important;background-image:none !important;border:1px solid #5FD3B3 !important;}
 [data-ogsb] .bt-panel{background-color:#050505 !important;background-image:none !important;border-color:#66727E !important;}
 [data-ogsb] .bt-bar-hi{background-color:#5FD3B3 !important;background-image:none !important;}
-[data-ogsb] .bt-bar{background-color:transparent !important;background-image:none !important;border:1px solid #4FB39A !important;}
+[data-ogsb] .bt-bar{background-color:#2F7D6A !important;background-image:none !important;border:1px solid #4FB39A !important;}
 [data-ogsb] .bt-bar-bug{background-color:transparent !important;background-image:none !important;border:1px solid #8C98A4 !important;}
 [data-ogsb] .bt-axis{border-color:#66727E !important;}
 [data-ogsb] .bt-amb{background-color:transparent !important;background-image:none !important;border-color:#7A4A12 !important;border-left-color:#F59E0B !important;}
@@ -110,7 +114,7 @@ table,td,p,a,span,strong{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont
 
 <!-- @block decisions_head -->
 <tr><td style="padding:24px 28px 4px 28px;">
-<p class="bt-tp" style="margin:0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Decisions needed</p>
+<h2 class="bt-tp" style="margin:0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Decisions needed</h2>
 $intro
 </td></tr>
 
@@ -159,7 +163,7 @@ $options
 
 <!-- @block done -->
 <tr><td style="padding:28px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Done <span class="bt-tm" style="font-size:14px;font-weight:400;color:#5A6570;">&nbsp;$count</span></p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Done <span class="bt-tm" style="font-size:14px;font-weight:400;color:#5A6570;">&nbsp;$count</span></h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $rows
 </table>
@@ -179,14 +183,14 @@ $rows
 
 <!-- @block in_flight -->
 <tr><td style="padding:24px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">In flight</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">In flight</h2>
 $rows$diagrams
 </td></tr>
 
 <!-- @block in_flight_item -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFF7ED" class="bt-amb" style="background-color:#FFF7ED;border:1px solid #F5C58A;border-left:3px solid #B45309;margin:0 0 10px 0;">
 <tr><td style="padding:12px 16px 12px 16px;">
-<p class="bt-ambt" style="margin:0 0 6px 0;font-size:16px;line-height:22px;font-weight:700;color:#B45309;">$title</p>
+<h3 class="bt-ambt" style="margin:0 0 6px 0;font-size:16px;line-height:22px;font-weight:700;color:#B45309;">$title</h3>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $lines
 </table>$diagram$link
@@ -210,23 +214,23 @@ $cells
 </tr>
 
 <!-- @block diagram_box_plain -->
-<td valign="middle" align="center" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFE" class="bt-card" style="background-color:#FFFFFE;border:1px solid #5A6570;"><tr><td align="center" class="bt-tp" style="padding:8px 6px;font-size:13px;line-height:18px;font-weight:600;color:#1A2430;">$label</td></tr></table></td>
+<td valign="middle" align="center" class="bt-stack" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFE" class="bt-card" style="background-color:#FFFFFE;border:1px solid #5A6570;"><tr><td align="center" class="bt-tp" style="padding:8px 6px;font-size:13px;line-height:18px;font-weight:600;color:#1A2430;">$label</td></tr></table></td>
 
 <!-- @block diagram_box_hi -->
-<td valign="middle" align="center" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFE" class="bt-hi" style="background-color:#FFFFFE;border:2px solid #B45309;"><tr><td align="center" class="bt-tp" style="padding:7px 6px;font-size:13px;line-height:18px;font-weight:700;color:#1A2430;">$label</td></tr></table></td>
+<td valign="middle" align="center" class="bt-stack" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFE" class="bt-hi" style="background-color:#FFFFFE;border:2px solid #B45309;"><tr><td align="center" class="bt-tp" style="padding:7px 6px;font-size:13px;line-height:18px;font-weight:700;color:#1A2430;">$label</td></tr></table></td>
 
 <!-- @block diagram_box_dashed -->
-<td valign="middle" align="center" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F7F9" class="bt-box bt-panel" style="background-color:#F6F7F9;border:1px dashed #3D4752;"><tr><td align="center" class="bt-tp" style="padding:8px 6px;font-size:13px;line-height:18px;font-weight:600;color:#1A2430;">$label</td></tr></table></td>
+<td valign="middle" align="center" class="bt-stack" style="padding:3px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F7F9" class="bt-box bt-panel" style="background-color:#F6F7F9;border:1px dashed #3D4752;"><tr><td align="center" class="bt-tp" style="padding:8px 6px;font-size:13px;line-height:18px;font-weight:600;color:#1A2430;">$label</td></tr></table></td>
 
 <!-- @block diagram_arrow -->
-<td width="18" valign="middle" align="center" class="bt-ambt" style="padding:0;font-size:16px;line-height:22px;color:#B45309;">$arrow</td>
+<td width="18" valign="middle" align="center" class="bt-ambt bt-stack" style="padding:0;font-size:16px;line-height:22px;color:#B45309;">$arrow</td>
 
 <!-- @block in_flight_diagrams -->
 <p class="bt-ts" style="margin:4px 0 0 0;font-size:14px;line-height:21px;color:#3D4752;">Diagrams and the walkthrough:$link</p>
 
 <!-- @block next -->
 <tr><td style="padding:24px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Next</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Next</h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $rows
 </table>
@@ -237,7 +241,7 @@ $rows
 
 <!-- @block blocked -->
 <tr><td style="padding:24px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Blocked</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Blocked</h2>
 $rows
 </td></tr>
 
@@ -251,7 +255,7 @@ $rows
 
 <!-- @block ideas -->
 <tr><td style="padding:24px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Ideas (backlog, not committed)</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Ideas (backlog, not committed)</h2>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $rows
 </table>
@@ -262,14 +266,14 @@ $rows
 
 <!-- @block shipped -->
 <tr><td style="padding:28px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Shipped this week</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Shipped this week</h2>
 $cards
 </td></tr>
 
 <!-- @block shipped_card -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bt-box" style="border:1px solid #D5DBE1;margin:0 0 10px 0;">
 <tr><td style="padding:12px 16px 0 16px;">
-<p class="bt-tm" style="margin:0 0 6px 0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">$theme</p>
+<h3 class="bt-tm" style="margin:0 0 6px 0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">$theme</h3>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="18" valign="top" class="bt-sig" style="font-size:15px;line-height:22px;color:#0B6E5A;">&#9679;</td><td valign="top" class="bt-tp" style="font-size:15px;line-height:22px;font-weight:600;color:#1A2430;">$headline</td></tr></table>
 </td></tr>
 <tr><td style="padding:10px 16px 8px 16px;">
@@ -296,7 +300,7 @@ $features
 </td></tr>
 
 <!-- @block stat -->
-<td width="50%" valign="top" style="padding:0 10px 16px 0;"><p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$value</p><p class="bt-tm" style="margin:0;font-size:13px;line-height:18px;font-weight:700;color:#5A6570;">$label</p><p class="bt-tm" style="margin:0;font-size:13px;line-height:18px;color:#5A6570;">$warn$sub</p></td>
+<td width="50%" valign="top" class="bt-stack" style="padding:0 10px 16px 0;"><p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$value</p><p class="bt-tm" style="margin:0;font-size:13px;line-height:18px;font-weight:700;color:#5A6570;">$label</p><p class="bt-tm" style="margin:0;font-size:13px;line-height:18px;color:#5A6570;">$warn$sub</p></td>
 
 <!-- @block stat_warn -->
 <span class="bt-tm" style="color:#5A6570;">&#9888;&#xFE0E;</span>
@@ -305,7 +309,7 @@ $features
 
 <tr><td style="padding:6px 28px 22px 28px;">
 <p class="bt-tm" style="margin:0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">$from_name &middot; MERGED PRS</p>
-<p class="bt-tp" style="margin:4px 0 8px 0;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">Where the merged PRs landed</p>
+<h3 class="bt-tp" style="margin:0 0 8px 0;padding-top:4px;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">Where the merged PRs landed</h3>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $rows
 </table>
@@ -319,13 +323,13 @@ $rows
 
 <!-- @block jira -->
 <tr><td style="padding:24px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Jira</p>
+<h2 class="bt-tp" style="margin:0 0 8px 0;font-size:18px;line-height:24px;font-weight:700;color:#1A2430;">Jira</h2>
 $cards
 </td></tr>
 
 <!-- @block jira_card -->
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bt-box" style="border:1px solid #D5DBE1;margin:0 0 10px 0;"><tr><td style="padding:12px 16px 10px 16px;">
-<p class="bt-tm" style="margin:0 0 6px 0;font-size:12px;line-height:16px;font-weight:700;text-transform:uppercase;color:#5A6570;">$title</p>
+<h3 class="bt-tm" style="margin:0 0 6px 0;font-size:12px;line-height:16px;font-weight:700;text-transform:uppercase;color:#5A6570;">$title</h3>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $rows
 </table>
@@ -347,13 +351,13 @@ $rows
 <tr><td style="padding:28px 0 0 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F6F7F9" class="bt-panel" style="background-color:#F6F7F9;border-top:1px solid #E2E6EA;">
 <tr><td style="padding:22px 28px 6px 28px;">
-<p class="bt-tm" style="margin:0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">TEAM &middot; $team_name</p>
-<p class="bt-tp" style="margin:4px 0 0 0;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">$chart_takeaway</p>
+<h2 class="bt-tm" style="margin:0;font-size:12px;line-height:16px;font-weight:700;color:#5A6570;">TEAM &middot; $team_name</h2>
+<h3 class="bt-tp" style="margin:0;padding-top:4px;font-size:16px;line-height:22px;font-weight:700;color:#1A2430;">$chart_takeaway</h3>
 </td></tr>
 
 <tr><td style="padding:10px 28px 0 28px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-<td width="58%" valign="bottom">
+<td width="58%" valign="bottom" class="bt-stack">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 $day_bars
 </tr>
@@ -362,7 +366,7 @@ $day_labels
 </tr></table>
 <p class="bt-tm" style="margin:6px 0 0 0;font-size:12px;line-height:16px;color:#5A6570;">PRs merged per day</p>
 </td>
-<td width="42%" valign="bottom" style="padding-left:20px;">
+<td width="42%" valign="bottom" class="bt-stack" style="padding-left:20px;">
 <p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$prs_merged</p>
 <p class="bt-tm" style="margin:0 0 10px 0;font-size:13px;line-height:18px;color:#5A6570;">PRs merged</p>
 <p class="bt-tp" style="margin:0;font-size:30px;line-height:34px;font-weight:800;color:#1A2430;">$prs_in_review</p>
@@ -372,7 +376,7 @@ $day_labels
 </td></tr>
 
 <tr><td style="padding:22px 28px 0 28px;">
-<p class="bt-tp" style="margin:0 0 8px 0;font-size:14px;line-height:20px;font-weight:700;color:#1A2430;">$flow_takeaway</p>
+<h3 class="bt-tp" style="margin:0 0 8px 0;font-size:14px;line-height:20px;font-weight:700;color:#1A2430;">$flow_takeaway</h3>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 $flow_rows
 </table>$bulk_note

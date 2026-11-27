@@ -105,6 +105,12 @@ What each Outlook does in dark mode (swatch emails, 2026-11-13, Outlook 16.115 a
 The card is filled, not transparent, because the dark CSS can fire over a light pane. Light
 text on a transparent card there is unreadable.
 
+The card is 880 px. Under 600 px a head `@media` rule makes the card 100% wide and stacks every
+`bt-stack` cell (stats, team columns, diagram boxes). Section titles are `h2`/`h3` with
+`margin:0`, so screen readers can jump between sections. In dark mode the lighter bar is a dim
+teal fill (`#2F7D6A`), not an outline, so the busiest bar still stands out. Why: the 2026-11-27
+Impeccable audit found ~7 px text on phones, no headings, and a hollow bar.
+
 Not verified: phones, and classic Outlook for Windows (it ignores all of this and
 recolors on its own). Check a new template by self-sending one copy and opening it in
 each reader; test what a client does with a swatch email of known colors before you
