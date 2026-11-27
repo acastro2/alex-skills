@@ -90,3 +90,31 @@ describe("install", () => {
     expect(existsSync(join(plugins, "harness.ts"))).toBe(false)
   })
 })
+
+// Review 2026-11-27 (Blocker): hooks ran a versioned mise path (…/installs/bun/1.4.5/bin/bun). A `mise upgrade`
+// removes it, Claude Code treats exit 127 as non-blocking, and every guard turns off silently.
+describe("stable bun path", () => {
+  test("hook commands run a stable bun link under the state dir, never the versioned path", async () => {
+    const state = mkdtempSync(join(tmpdir(), "harness-state-"))
+    const fakeBun = join(dir, "mise", "installs", "bun", "1.4.5", "bin", "bun")
+    Bun.spawnSync(["mkdir", "-p", join(fakeBun, "..")])
+    Bun.spawnSync(["ln", "-s", process.execPath, fakeBun])
+    const p = Bun.spawn(
+      [process.execPath, "src/install.ts", "--no-mcp", "--bun", fakeBun, "--claude-settings", settings, "--opencode-plugins", plugins],
+      { cwd: ROOT, stdout: "pipe", stderr: "pipe", env: { ...process.env, HARNESS_STATE_DIR: state } },
+    )
+    const [, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited])
+    expect(code, stderr).toBe(0)
+    const stable = join(state, "bin", "bun")
+    const cmds = harnessCommands(read())
+    expect(cmds.length).toBeGreaterThan(0)
+    for (const c of cmds) {
+      expect(c.startsWith(`${stable} `)).toBe(true)
+      expect(c).not.toContain("/installs/bun/1.4.5/")
+    }
+    expect(existsSync(stable)).toBe(true)
+    // The OpenCode plugin must not pin the versioned path either.
+    const plugin = readdirSync(plugins).map((f) => readFileSync(join(plugins, f), "utf8")).join("\n")
+    expect(plugin).not.toContain("/installs/bun/1.4.5/")
+  })
+})

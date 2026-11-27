@@ -94,18 +94,17 @@ describe("MCP session binding", () => {
 })
 
 describe("push-gate", () => {
-  test("git push with no bundle is allowed and journaled as advise by default, denied when enforced", async () => {
+  // Review 2026-11-27: verify works live, so the gate enforces by default (Phase 3: "A push with no bundle is denied").
+  test("git push with no bundle is denied by default, and only journaled when set to advise", async () => {
     const r = repo()
     const push = () => decide(ev({ toolName: "shell", input: { command: "git push origin main", cwd: r }, cwd: r }))
-    expect((await push()).outcome).toBe("allow")
-    expect(rows("select outcome, reason from journal where rule_id = 'push-gate'")).toEqual([
-      { outcome: "advise", reason: expect.stringContaining("Verify first") },
-    ])
-
-    setMode(db, "push-gate", "enforce")
     const d = await push()
     expect(d.outcome).toBe("deny")
     expect(d.ruleId).toBe("push-gate")
+
+    setMode(db, "push-gate", "advise")
+    expect((await push()).outcome).toBe("allow")
+    expect(rows("select outcome from journal where rule_id = 'push-gate' and outcome = 'advise'")).toHaveLength(1)
   })
 })
 

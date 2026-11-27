@@ -238,3 +238,19 @@ describe("merge_pr (D26, D35)", () => {
     expect(events("merge.failed")).toHaveLength(1)
   })
 })
+
+// Review 2026-11-27 (Blocker): land() had no production caller, so worktrees never landed (D7, D22, D40).
+describe("land is wired into the hook path", () => {
+  test("a push to main from a worktree, seen by decide(), lands the worktree", async () => {
+    const { decide, closeCore } = await import("../src/core.ts")
+    const w = worktreeNew(db, { session: "s1", repoCwd: main, name: "wired" })
+    const sha = pushFrom(w.path)
+    const ev = (over: Record<string, unknown>) =>
+      ({ v: 1, tool: "claude", session: "s1", parentSession: null, cwd: w.path, time: Date.now(), ...over }) as never
+    await decide(ev({ event: "prompt", prompt: "ship it" }))
+    await decide(ev({ event: "tool.after", toolName: "shell", input: { command: "git push -q origin HEAD:main", cwd: w.path }, output: "ok" }))
+    closeCore()
+    expect(db.query("select state from worktrees where id = ?").get(w.id)).toEqual({ state: "removed" })
+    expect(git(main, "rev-parse", "HEAD")).toBe(sha)
+  })
+})

@@ -249,3 +249,28 @@ describe("checkShell", () => {
     expect(checkShell(line, c)).toBeNull()
   })
 })
+
+// Review 2026-11-27 (Blocker): an agent could grant itself authority, and some destructive forms slipped through.
+describe("self-grant routes and guard holes", () => {
+  const L = `${home}/.local/state/harness/ledger.db`
+  const deny: [string, string][] = [
+    [`bun -e 'import {Database} from "bun:sqlite"; new Database("${L}").exec("delete from tokens")'`, "ledger-write"],
+    [`python3 -c 'import sqlite3; sqlite3.connect("${L}").execute("delete from tokens")'`, "ledger-write"],
+    [`d=${home}/.local/state; sqlite3 $d/harness/ledger.db "delete from tokens"`, "ledger-write"],
+    [`claude -p "harness off"`, "harness-self"],
+    [`opencode run "harness wrong"`, "harness-self"],
+    [`cursor-agent -p "HARNESS-OK 01ABC"`, "harness-self"],
+    [`rm -rf /tmp`, "recursive-delete"],
+    [`git push origin :main`, "destructive-git"],
+    [`git push --mirror origin`, "destructive-git"],
+    [`git checkout -f`, "destructive-git"],
+    [`git stash clear`, "destructive-git"],
+  ]
+  for (const [line, rule] of deny)
+    test(`denies ${rule}: ${line.replace(home, "~").slice(0, 60)}`, () => {
+      expect(checkShell(line, ctx)?.ruleId).toBe(rule)
+    })
+  // The fix must not block normal work.
+  for (const line of [`sqlite3 /tmp/scratch.db "select 1"`, `claude -p "summarise this file"`, `rm -rf /tmp/build-123`, `git push origin feat`, `git checkout main`])
+    test(`still allows: ${line}`, () => expect(checkShell(line, ctx)).toBeNull())
+})

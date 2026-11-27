@@ -114,3 +114,21 @@ describe("registry", () => {
     expect(mode(db, "stop-commit")).toBe("advise")
   })
 })
+
+// Review 2026-11-27: push-gate and main-checkout-write now enforce by default (D7, Phase 3). A ledger seeded
+// with the old advise default moves to enforce; a mode Alex changed himself is kept.
+import { seed as seedRules, mode as ruleMode } from "../src/ledger/registry.ts"
+test("a raised default upgrades rules Alex never changed, and keeps the ones he did", () => {
+  const d = mkdtempSync(join(tmpdir(), "harness-seed-"))
+  const db = openLedger(join(d, "ledger.db"))
+  try {
+    db.query("update rules set mode = 'advise', default_mode = 'advise' where id in ('push-gate', 'main-checkout-write')").run()
+    db.query("update rules set mode = 'off' where id = 'main-checkout-write'").run() // Alex turned it off
+    seedRules(db)
+    expect(ruleMode(db, "push-gate")).toBe("enforce")
+    expect(ruleMode(db, "main-checkout-write")).toBe("off")
+  } finally {
+    db.close()
+    rmSync(d, { recursive: true, force: true })
+  }
+})

@@ -193,3 +193,25 @@ describe("rollback", () => {
     expect(verifyChain(db).ok).toBe(true)
   })
 })
+
+// Review 2026-11-27 (Blocker): the review was never journaled, so the page showed "No review text" and Alex
+// approved a digest he could not check. The page tap must also carry the digest it approves.
+describe("review binding", () => {
+  test("the review text is journaled under review_seq and its sha256 is the request digest", () => {
+    const r = request(db, { session: "root", sha: sha1, cwd: repo })
+    const row = db
+      .query("select j.prompt_text as review, q.digest from requests q join journal j on j.seq = q.review_seq where q.id = ?")
+      .get(r.requestId) as { review: string | null; digest: string }
+    expect(row.review).toBe(r.review)
+    expect(createHash("sha256").update(row.review!).digest("hex")).toBe(row.digest)
+  })
+
+  test("a page apply tap must name the digest of the review shown; a wrong one is refused", async () => {
+    const { runAction } = await import("../src/serve/actions.ts")
+    const r = request(db, { session: "root", sha: sha1, cwd: repo })
+    const digest = (db.query("select digest from requests where id = ?").get(r.requestId) as { digest: string }).digest
+    expect((await runAction(db, "apply", { request_id: r.requestId, digest: "0".repeat(64) })).status).not.toBe(200)
+    expect((await runAction(db, "apply", { request_id: r.requestId })).status).not.toBe(200)
+    expect((await runAction(db, "apply", { request_id: r.requestId, digest })).status).toBe(200)
+  })
+})
