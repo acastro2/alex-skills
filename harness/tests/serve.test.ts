@@ -17,7 +17,7 @@ beforeAll(async () => {
   const path = seedLedger(dir);
   db = new Database(path, { readwrite: true });
   server = await startServer({ db, port: 0 });
-  cookie = `harness_session=${server.app.auth.mintSession().token}`;
+  cookie = `harness_session_${new URL(server.url).port}=${server.app.auth.mintSession().token}`; // named per port
 });
 
 afterAll(() => {
@@ -252,5 +252,25 @@ test("a snapshot carries `resources` with its series when a provider is set, and
   } finally {
     withRes.stop();
     without.stop();
+  }
+});
+
+// Seen live 2026-11-27: cookies ignore the port, so the Mac page (4316) and the VM page (4317) shared one cookie.
+test("the session cookie is named per port, so two pages on localhost do not share it", async () => {
+  const { openLedger } = await import("../src/ledger/db.ts");
+  const { Auth } = await import("../src/serve/auth.ts");
+  const d = mkdtempSync(join(tmpdir(), "harness-port-"));
+  try {
+    const db = openLedger(join(d, "ledger.db"));
+    const auth = new Auth(db, () => 1_000_000);
+    const { token } = auth.mintSession();
+    const mac = new Request("https://localhost:4316/");
+    expect(auth.cookieHeader(token, undefined, mac)).toStartWith(`harness_session_4316=${token};`);
+    const at = (port: number, name: string) => new Request(`https://localhost:${port}/`, { headers: { cookie: `${name}=${token}` } });
+    expect(auth.session(at(4316, "harness_session_4316"))).not.toBeNull();
+    expect(auth.session(at(4317, "harness_session_4316"))).toBeNull(); // the other page's cookie is not this page's
+    db.close();
+  } finally {
+    rmSync(d, { recursive: true, force: true });
   }
 });

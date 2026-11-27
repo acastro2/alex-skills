@@ -24,6 +24,12 @@ const tokenKey = (t: string) => `page_session:${createHash("sha256").update(t).d
 const CHALLENGE_MS = 2 * 60_000;
 export const RP_ID = "localhost";
 export const COOKIE = "harness_session";
+// Cookies ignore the port, so two harness pages on localhost (Mac 4316, VM 4317) shared one cookie and a
+// sign-in on one signed the other out (seen live 2026-11-27). The name carries the port.
+export const cookieName = (req?: Request): string => {
+  const port = req ? new URL(req.url).port : ""
+  return port ? `${COOKIE}_${port}` : COOKIE
+}
 
 /** Actions that need a fresh passkey assertion. Anything else needs only the session. */
 export const FRESH_ACTIONS = new Set(["merge", "apply", "off", "on", "rollback"]);
@@ -105,9 +111,10 @@ export class Auth {
 
   session(req: Request): { token: string; until: number } | null {
     const raw = req.headers.get("cookie") ?? "";
-    const m = raw.split(/;\s*/).find((c) => c.startsWith(`${COOKIE}=`));
+    const name = cookieName(req);
+    const m = raw.split(/;\s*/).find((c) => c.startsWith(`${name}=`));
     if (!m) return null;
-    const t = m.slice(COOKIE.length + 1);
+    const t = m.slice(name.length + 1);
     if (!t) return null;
     const rec = this.load(t);
     const now = this.clock();
@@ -145,8 +152,8 @@ export class Auth {
     }
   }
 
-  cookieHeader(t: string, maxAgeMs = SESSION_MAX_MS): string {
-    return `${COOKIE}=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(maxAgeMs / 1000)}`;
+  cookieHeader(t: string, maxAgeMs = SESSION_MAX_MS, req?: Request): string {
+    return `${cookieName(req)}=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(maxAgeMs / 1000)}`;
   }
 
   private put(c: Challenge): string {

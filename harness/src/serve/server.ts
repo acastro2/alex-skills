@@ -244,7 +244,7 @@ export function createApp(opts: AppOptions): App {
         if (!origin) return json({ error: "Bad origin." }, 403);
         const body = await readJson(req);
         const done = (r: { token: string; until: number }) =>
-          json({ ok: true, until: r.until }, 200, { "Set-Cookie": auth.cookieHeader(r.token) });
+          json({ ok: true, until: r.until }, 200, { "Set-Cookie": auth.cookieHeader(r.token, undefined, req) });
         switch (path) {
           case "/api/auth/register/options":
             return json(await auth.registrationOptions());
@@ -256,7 +256,7 @@ export function createApp(opts: AppOptions): App {
             return done(await auth.verifyLogin(origin, body.challengeId as string, body.response));
           case "/api/auth/logout":
             auth.endSession(req);
-            return json({ ok: true }, 200, { "Set-Cookie": auth.cookieHeader("", 0) });
+            return json({ ok: true }, 200, { "Set-Cookie": auth.cookieHeader("", 0, req) });
           case "/api/auth/challenge": {
             if (!auth.session(req)) return json({ error: "Sign in first." }, 401);
             const action = String(body.action ?? "");
