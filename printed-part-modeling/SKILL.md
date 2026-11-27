@@ -1,6 +1,6 @@
 ---
 name: printed-part-modeling
-description: Design, adapt, or repair 3D-printable parts as parametric code. Use for new physical parts, remixes of STL/3MF/OBJ/STEP models, or fitting a part to real measurements, even when printing is not named. Verify the exported mesh. For measurement-only tasks use mesh-measure; general printer, filament, or slicer advice alone does not trigger this skill.
+description: Design, adapt, or repair 3D-printable parts as parametric code, and take them to the printer. Use for new physical parts, remixes of STL/3MF/OBJ/STEP models, or fitting a part to real measurements, even when printing is not named. Also use to slice or prepare prints in Bambu Studio (CLI or GUI), build Bambu projects with many plates, set the build plate, create filament presets for third-party brands, or plan a multi-plate build with fit coupons. Verify the exported mesh and the sliced G-code. For measurement-only tasks use mesh-measure; general printing advice with no file, preset or project to touch does not trigger this skill.
 ---
 
 # Modelling printed parts
@@ -33,6 +33,7 @@ format assumes.
 5. **Verify by measuring the exported mesh.**
 6. **Render it and look at it.**
 7. **Iterate by changing parameters,** never by editing the mesh.
+8. **Slice and check the G-code,** then hand the sliced project to the user, who presses Print.
 
 Steps 4 and 5 are what make later changes cheap. Skipping them feels faster on
 the first version and is much slower by the third.
@@ -161,6 +162,17 @@ Two things to hold onto while iterating:
   `references/fit-and-strength.md` for the quick estimates that make this
   concrete rather than hand-wavy.
 
+## 8. Slice, check, hand off
+
+A model that slices is not a print that works. Bambu Studio's CLI silently drops what its GUI applies: it
+resolves neither preset `inherits` nor the `include` G-code templates (no AMS load, no plate detection), and it
+defaults to Cool Plate at 35 C. Flatten presets, set the plate type, then read each plate's G-code back.
+`references/bambu-studio.md` has the commands, the checks, the GUI routines and the filament-preset route the
+AMS can use. Never press Print: that is the user's step.
+
+For a build over several plates or days, order the plates so the riskiest unproven fit prints first and
+shortest, and start with fit coupons: `references/print-campaign.md`.
+
 ## Design rules of thumb
 
 Detail lives in the references; the headlines:
@@ -168,6 +180,8 @@ Detail lives in the references; the headlines:
 - **Clearance:** 0.1–0.2 mm for a snug fit, 0.0 to −0.1 mm of interference for a press
   fit, 0.3–0.5 mm for parts that must slide,
   1–2.5 mm of float for a guide that only needs to stop something swinging.
+  For a sliding joint, print a coupon first: on a P2S with PLA a 45 deg dovetail slid
+  best at 0.25 mm per flank. Put the clearance on one side of the joint only.
 - **Walls:** at least 1 mm of material around any hole; 1.2–2 mm for a structural
   wall; a thin sheet spanning a gap is fine as a tie and poor as a beam.
 - **Fasteners:** clearance hole ≈ screw major diameter + 0.4 mm. A countersink
@@ -182,5 +196,7 @@ Detail lives in the references; the headlines:
 - `references/toolchain.md` — trimesh/manifold3d/shapely recipes and the sharp edges
 - `references/fit-and-strength.md` — clearances, fastener tables, load-path estimates
 - `references/print-orientation.md` — layer direction, supports, first-layer adhesion
+- `references/bambu-studio.md` — Bambu Studio CLI and GUI, preset flattening, plate type, G-code checks, custom filaments, MCP status
+- `references/print-campaign.md` — multi-plate builds: fail-fast plate order, fit coupons, weight and infill, hand-off
 - `scripts/build_template.py` — copyable parametric build script
 - `../mesh-measure/SKILL.md` — measuring real geometry and verifying your output
