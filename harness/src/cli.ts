@@ -143,16 +143,25 @@ function approve(db: Database, prefix: string | undefined): string {
 function mergeOk(db: Database, args: string[]): string {
   const i = args.indexOf("--session")
   const session = i >= 0 ? args[i + 1] : undefined
-  const pr = args.find((a, k) => k !== i && k !== i + 1 && /^\d+$/.test(a))
-  if (!pr || !session) throw new Exit(1, "usage: harness merge-ok <pr> --session <id>")
+  const prs = args.filter((a, k) => k !== i && k !== i + 1 && /^\d+$/.test(a))
+  if (!prs.length || !session) throw new Exit(1, "usage: harness merge-ok <pr>... --session <id>")
+  if (prs.length > 10) throw new Exit(1, "At most 10 PRs per approval.")
   if (!db.query("select 1 from sessions where id = ?").get(session)) throw new Exit(1, `Unknown session ${session}.`)
-  gate(`\nMerge PR #${pr} for session ${session}.\n\n`, pr, `the PR number (${pr})`, `Approve merge of PR ${pr}`)
-  const out = command(db, { channel: "cli", session, isRootSession: true, text: `MERGE-OK ${pr}` })
+  const list = prs.join(" ")
+  const many = prs.length > 1
+  const label = many ? `the PR numbers (${list})` : `the PR number (${list})`
+  gate(
+    `\nMerge ${many ? "PRs" : "PR"} ${prs.map((p) => `#${p}`).join(", ")} for session ${session}.\n\n`,
+    list,
+    label,
+    `Approve merge of PR ${list}`,
+  )
+  const out = command(db, { channel: "cli", session, isRootSession: true, text: `MERGE-OK ${list}` })
   if (out.kind !== "grant") throw new Exit(1, "The authority module did not accept this approval. Nothing granted.")
-  return `Merge of PR #${pr} approved for 30 minutes, bound to session ${session} (token ${out.tokenId}).\n`
+  return `Merge of ${many ? "PRs" : "PR"} ${prs.map((p) => `#${p}`).join(", ")} approved for 30 minutes, bound to session ${session} (token ${out.tokenId}).\n`
 }
 
-const USAGE = "usage: harness requests | approve <sha8> | merge-ok <pr> --session <id>\n"
+const USAGE = "usage: harness requests | approve <sha8> | merge-ok <pr>... --session <id>\n"
 
 export function main(argv: string[]): number {
   const [verb, ...rest] = argv

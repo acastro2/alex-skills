@@ -290,7 +290,11 @@ describe("Phase 7 injections", () => {
     const d = await decide(sh(cmd, { event: "tool.after", output: "done" }))
     expect(d.context).toBe("Outward change: put its direct URL in your reply.")
     expect(rows("inject-links")).toHaveLength(1)
-    expect((await decide(sh(cmd, { event: "tool.after", output: "done" }))).context).toBeUndefined()
+    // The links text comes once. A second `gh pr create` gets the one-PR-per-job text instead (Alex, 2026-11-28).
+    const again = (await decide(sh(cmd, { event: "tool.after", output: "done" }))).context
+    if (cmd.startsWith("gh pr create")) expect(again).toContain("One PR per job")
+    else expect(again).toBeUndefined()
+    expect(rows("inject-links")).toHaveLength(1)
   })
 
   test("inject-links fires for an Atlassian create, not for a read or a failed push", async () => {

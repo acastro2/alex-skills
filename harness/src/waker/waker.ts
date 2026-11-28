@@ -241,7 +241,7 @@ async function staleWorkerWake(db: Database, send: Deliver, runCmd: Runner, now:
       })
       if (r.code === 0) {
         db.query("update sessions set ended_at = ? where id = ? and ended_at is null").run(now, w.session)
-        await endSessionProcesses(db, w.session, now)
+        await endSessionProcesses(db, w.session, now, false) // the waker is a daemon: its parent is not an agent
       }
       continue
     }

@@ -43,6 +43,8 @@ export const RULES: Rule[] = [
   rule("stop-handoff-protocol", "stop", "stop", "5"),
   rule("stop-stale-state", "stop", "stop", "2"),
   rule("stop-false-cant", "stop", "stop", "2"),
+  rule("stop-piecemeal", "stop", "stop", "9", "advise"), // Alex 2026-11-28: no piecemeal steps
+  rule("stop-resources", "stop", "stop", "9", "advise"), // Alex 2026-11-28: watch CPU, memory, leftover processes
   rule("spawn-model", "tool.before", "worker", "3"),
   rule("spawn-acceptance", "tool.before", "worker", "3"),
   rule("egress", "tool.before", "egress", "9", "advise"), // advisory only (D62)
@@ -51,6 +53,7 @@ export const RULES: Rule[] = [
   rule("inject-ui", "tool.before", "inject", "7", "inject"),
   rule("inject-coding", "tool.before", "inject", "7", "inject"),
   rule("inject-links", "tool.after", "inject", "7", "inject"),
+  rule("inject-pr-batch", "tool.after", "inject", "7", "inject"),
   rule("routing-hint", "prompt", "judgment", "2", "inject"),
   rule("nudge-drift", "tool.after", "worker", "3", "inject"),
   rule("nudge-wrapup", "tool.after", "worker", "3", "inject"),

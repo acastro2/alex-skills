@@ -6,6 +6,7 @@ import { readFileSync, readlinkSync, realpathSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { basename, sep } from "node:path"
 import { append, scrub } from "../ledger/journal.ts"
+import { agentPid, descendants, keptPids, sampleProcesses, selfAndAncestors } from "./resources.ts"
 import { git, q1, shortArg, type Env } from "./util.ts"
 
 const RECENT_MS = 120_000 // a registered process must have started this close to the tool call
@@ -13,6 +14,7 @@ const WINDOW_MARGIN_MS = 1000 // a silent background process may start this long
 const START_TOL_MS = 1500 // two reads of one process's start time differ by clock jitter and, on macOS, whole seconds
 export const KILL_GRACE_MS = 1500 // spec says 2 s; the adapters time the core out at 2.5 s, so SIGKILL must come earlier
 
+const SWEEP_GRACE_MS = 500
 const BG_CMD = /\b(nohup|setsid|disown)\b|(?<![&>|])&(?![&>])/
 const BG_OUT = /running in background|started in background|moved to background/i
 const LISTEN = [
@@ -274,8 +276,9 @@ export function processCheck(env: Env, reply: string): { id: string; message: st
   }
 }
 
-// session.end: SIGTERM each unkept process of the session, SIGKILL what is left after the grace time.
-export async function endSessionProcesses(db: Database, session: string, time: number): Promise<number[]> {
+// session.end: SIGTERM each unkept process of the session, SIGKILL what is left after the grace time. Then sweep the
+// agent's leftover children; a caller that ends a session from outside its agent (the waker) passes sweep = false.
+export async function endSessionProcesses(db: Database, session: string, time: number, sweep = true): Promise<number[]> {
   const todo = liveRows(db, session, time)
   const kill: ProcRow[] = []
   for (const { row, mine } of todo) {
@@ -305,6 +308,38 @@ export async function endSessionProcesses(db: Database, session: string, time: n
     db.query("update processes set ended_at = ? where id = ?").run(time, r.id)
     append(db, { session_id: session, time, event: "process.killed", data: { pid: r.pid, port: r.port, signal } })
     killed.push(r.pid)
+  }
+  if (sweep) killed.push(...(await sweepAgentChildren(db, session, time)))
+  return killed
+}
+
+// session.end sweep: what is left below the agent process (hung shells, grep, tail from tool runs). Never the agent,
+// the hook or its callers, a kept process, or anything below one. The hook's parent may be claude itself.
+async function sweepAgentChildren(db: Database, session: string, time: number): Promise<number[]> {
+  const all = sampleProcesses()
+  const agent = agentPid(all)
+  if (agent <= 1) return []
+  const skip = new Set([...selfAndAncestors(all), ...keptPids(db, all), agent])
+  const targets = [...descendants(all, agent)].filter((p) => !skip.has(p))
+  for (const pid of targets) {
+    try {
+      process.kill(pid, "SIGTERM")
+    } catch {}
+  }
+  const deadline = Date.now() + SWEEP_GRACE_MS
+  while (targets.some((p) => procInfo(p)) && Date.now() < deadline) await Bun.sleep(50)
+  const killed: number[] = []
+  for (const pid of targets) {
+    let signal = "SIGTERM"
+    if (procInfo(pid)) {
+      signal = "SIGKILL"
+      try {
+        process.kill(pid, "SIGKILL")
+      } catch {}
+    }
+    const comm = all.find((s) => s.pid === pid)?.comm ?? null
+    append(db, { session_id: session, time, event: "process.killed", data: { pid, comm, signal, via: "sweep", agent } })
+    killed.push(pid)
   }
   return killed
 }

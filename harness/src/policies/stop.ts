@@ -6,6 +6,7 @@ import { mode } from "../ledger/registry.ts"
 import { scrub } from "../ledger/journal.ts"
 import { cleanupCheck, handoffProtocolCheck } from "./cleanup.ts"
 import { processCheck } from "./processes.ts"
+import { overLimit } from "./resources.ts"
 import { allow, git, hit, isBrowseTool, latestTodos, q1, toolRows, type Env, type Out, type ToolRow } from "./util.ts"
 
 export const SENDBACK_CAP = 5
@@ -110,6 +111,17 @@ function handoffCheck(env: Env, rows: ToolRow[]): Check | null {
   return stale ? { id: "stop-handoff", message: "Update your workstream entry with `workstream_update`: state and next steps." } : null
 }
 
+// stop-resources: this session's live processes over the idle, memory or CPU limit, one kill line each.
+function resourcesCheck(env: Env): Check | null {
+  const over = overLimit(env.db, env.ev.session)
+  if (!over.length) return null
+  return {
+    id: "stop-resources",
+    message: `Processes over the limits. Kill them, or keep one with \`keep_process\` if Alex asked:\n${over.slice(0, 10).map((o) => o.line).join("\n")}`,
+    data: { resources: over.slice(0, 10).map((o) => ({ pid: o.pid, program: o.program, rssMb: o.rssMb, cpu: o.cpu, ageS: o.ageS })) },
+  }
+}
+
 // ---- judgment checks: fallbacks are strict, so Jev being down never adds send-backs ----
 
 const tail = (s: string, n: number) => s.slice(-n)
@@ -123,7 +135,27 @@ const CANT = /\b(i can(?:no|')t|cannot|can't|unable to|you(?:'ll| will)? (?:need
 const BROWSER = /\b(browser|web ?page|website|portal|dashboard|tab|click|ui)\b/i
 const HUMAN_ONLY = /\b(log ?in|sign[- ]?in|2fa|passkey|captcha|payment|password)\b/i
 
+// The closing plan of a reply: the text after the last "Next:", else from the first "Then I". Null when there is none.
+function planOf(reply: string): string | null {
+  const t = tail(reply, 900)
+  const next = [...t.matchAll(/\bnext\s*:/gi)].pop()
+  if (next) return t.slice(next.index! + next[0].length).trim()
+  const then = /\bthen,? i\b/i.exec(t)
+  return then ? t.slice(then.index).trim() : null
+}
+
+// Strict fallback: only "I <own-work verb>" with no question in the plan. Alex's steps ("you merge", MERGE-OK) never match.
+const OWN_STEP =
+  /\b(?:i|i'll|i will)\s+(?:then\s+)?(?:update|fix|write|add|open|run|validate|implement|create|commit|push|edit|change|build|refactor|rewrite|test|re-?run|approve|log|document|check|review)\b/i
+
 const QUESTIONS: Record<string, Question> = {
+  piecemeal: {
+    q: "Does the closing plan of the `reply` (after \"Next:\" or \"Then I\") contain work the agent can run itself (code, tests, PR updates, validation, writing a log, approving in a tool), rather than only steps that belong to Alex (merge or MERGE-OK, prod apply, passkey or 2FA, a decision or a question)?",
+    fallback: (s) => {
+      const plan = planOf(field(s, "Reply"))
+      return plan && !plan.includes("?") && OWN_STEP.test(plan) ? 1 : 0
+    },
+  },
   asks: { q: "Does the `reply` ask the user a question or wait on them?", fallback: (s) => (ASKS.test(field(s, "Reply")) ? 1 : 0) },
   footer: {
     q: "Does the `reply` end by saying what is done, what is running, and the next step?",
@@ -173,6 +205,7 @@ export async function stopChecks(env: Env): Promise<Out> {
   if (on("stop-ui-proof")) add(uiProofCheck(rows))
   if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, rows, reply))
   if (on("stop-handoff")) add(handoffCheck(env, rows))
+  if (on("stop-resources")) add(resourcesCheck(env))
   if (on("stop-processes")) add(processCheck(env, reply))
   if (on("stop-cleanup")) add(cleanupCheck(env))
   if (on("stop-handoff-protocol")) add(handoffProtocolCheck(env))
@@ -188,6 +221,7 @@ export async function stopChecks(env: Env): Promise<Out> {
   const alexOnly = /\b(passkey|pass key|sign[ -]?in|log[ -]?in|2fa|two-factor|captcha|payment|touch id)\b/i.test(reply)
   const triedHandoff = rows.some((r) => /handoff/i.test(String(r.data.tool ?? "")))
   if (on("stop-false-cant") && usesBrowse(env) && !alexOnly && !triedHandoff) want.push("cant")
+  if (on("stop-piecemeal") && planOf(reply)) want.push("piecemeal")
   if (want.length) {
     const summary = scrub(
       [
@@ -200,6 +234,10 @@ export async function stopChecks(env: Env): Promise<Out> {
     if (want.some((k) => ans[k].source === "fallback")) data.jev = "jev-unavailable"
     data.judged = Object.fromEntries(want.map((k) => [k, ans[k].value]))
     const v = (k: string) => ans[k]?.value
+    if (want.includes("piecemeal") && v("piecemeal") >= THRESHOLD) {
+      const steps = (planOf(reply) ?? "").replace(/\s+/g, " ").slice(0, 300)
+      add({ id: "stop-piecemeal", message: `Do these now, they are yours: ${steps}. Only Alex's steps may end a turn.` })
+    }
     if (want.includes("asks") && v("asks") <= UNSURE_LOW) {
       add({ id: "stop-continue", message: "The todo list still has open items and your reply asks nothing. Continue with the next item, or ask Alex what you need." })
     }

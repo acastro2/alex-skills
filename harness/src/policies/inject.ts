@@ -48,6 +48,29 @@ function isOutward(env: Env): boolean {
   return ATLASSIAN.test(ev.toolName ?? "")
 }
 
+const PR_BATCH_TEXT =
+  "One PR per job: push the next steps to the PR you already opened (one commit per step), and open a new PR only for a different job."
+
+const isCreate = (c: string[]): boolean => c[0] === "gh" && c.includes("pr") && c.includes("create")
+
+function isPrCreate(env: Env): boolean {
+  return parse(String(env.ev.input?.command ?? "")).commands.some(isCreate)
+}
+
+// An earlier, successful `gh pr create` by this session. The current call is not in the journal yet.
+function openedPrBefore(env: Env): boolean {
+  const rows = env.db
+    .query(
+      `select data_json from journal where session_id = ? and event = 'tool.after'
+         and data_json like '%"tool":"shell"%' and data_json like '%gh pr create%'`,
+    )
+    .all(env.ev.session) as { data_json: string }[]
+  return rows.some((r) => {
+    const d = JSON.parse(r.data_json)
+    return d.tool === "shell" && !d.failed && parse(String(d.arg ?? "")).commands.some(isCreate)
+  })
+}
+
 // Which injections this call earns. Each rule shows up once per session.
 export function injections(env: Env): Injection[] {
   const { ev, db } = env
@@ -67,6 +90,11 @@ export function injections(env: Env): Injection[] {
     if (CODE_FILE.test(path) && !codingLoaded(env)) want("inject-coding", CODING_TEXT)
   } else if (ev.event === "tool.after" && !ev.failed && isOutward(env)) {
     want("inject-links", LINKS_TEXT)
+    // Not once per session: every extra `gh pr create` is told.
+    if (ev.toolName === "shell" && isPrCreate(env) && openedPrBefore(env)) {
+      const m = mode(db, "inject-pr-batch")
+      if (m !== "off") out.push({ ruleId: "inject-pr-batch", text: PR_BATCH_TEXT, advise: m === "advise" })
+    }
   }
   return out
 }

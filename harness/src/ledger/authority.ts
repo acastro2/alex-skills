@@ -19,7 +19,7 @@ export interface Channel {
 }
 
 const NONE: Command = { kind: "none" }
-const MERGE_OK = /^MERGE-OK (\d+)$/
+const MERGE_OK = /^MERGE-OK (\d+(?: \d+){0,9})$/
 const HARNESS_OK = /^HARNESS-OK ([0-9a-f]{8}) ([0-9a-f]{8})$/
 const SWITCH = /^harness (off|on|wrong|rollback)$/
 const ON_RULE = /^harness on ([a-z][a-z0-9-]*)$/
@@ -33,24 +33,29 @@ function grant(
   ch: Channel,
   line: string,
   now: number,
-  g: { kind: "merge" | "harness"; pr?: number; requestId?: string },
+  g: { kind: "merge" | "harness"; prs?: number[]; requestId?: string },
 ): Command {
   return db
     .transaction((): Command => {
       upsertSession(db, { id: ch.session, tool: "unknown" })
-      const tokenId = ulid(now)
-      const seq = append(db, {
-        session_id: ch.session,
-        event: "grant",
-        outcome: "allow",
-        prompt_text: line,
-        data: { kind: g.kind, token_id: tokenId, pr: g.pr ?? null, request_id: g.requestId ?? null, channel: ch.channel },
-        time: now,
-      })
-      db.query(
-        "insert into tokens(id, kind, session_id, grant_seq, request_id, pr, expires_at) values(?, ?, ?, ?, ?, ?, ?)",
-      ).run(tokenId, g.kind, ch.session, seq, g.requestId ?? null, g.pr ?? null, now + GRANT_TTL_MS)
-      return { kind: "grant", grant: g.kind, tokenId }
+      // One token and one journal grant row per PR (D70). A harness grant has one token and no PR.
+      let first = ""
+      for (const pr of g.prs?.length ? g.prs : [null]) {
+        const tokenId = ulid(now)
+        first ||= tokenId
+        const seq = append(db, {
+          session_id: ch.session,
+          event: "grant",
+          outcome: "allow",
+          prompt_text: line,
+          data: { kind: g.kind, token_id: tokenId, pr, request_id: g.requestId ?? null, channel: ch.channel },
+          time: now,
+        })
+        db.query(
+          "insert into tokens(id, kind, session_id, grant_seq, request_id, pr, expires_at) values(?, ?, ?, ?, ?, ?, ?)",
+        ).run(tokenId, g.kind, ch.session, seq, g.requestId ?? null, pr, now + GRANT_TTL_MS)
+      }
+      return { kind: "grant", grant: g.kind, tokenId: first }
     })
     .immediate()
 }
@@ -70,7 +75,7 @@ export function command(db: Database, ch: Channel): Command {
   const line = ch.text.split(/\r?\n/, 1)[0].trim()
 
   const merge = MERGE_OK.exec(line)
-  if (merge) return grant(db, ch, line, now, { kind: "merge", pr: Number(merge[1]) })
+  if (merge) return grant(db, ch, line, now, { kind: "merge", prs: merge[1].split(" ").map(Number) })
 
   const harness = HARNESS_OK.exec(line)
   if (harness) {
