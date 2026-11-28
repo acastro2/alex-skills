@@ -254,3 +254,22 @@ describe("land is wired into the hook path", () => {
     expect(git(main, "rev-parse", "HEAD")).toBe(sha)
   })
 })
+
+// Ledger audit 2026-11-28: 20 worktrees active, 3 ever landed. A worktree whose branch reached main another
+// way (a merged PR, a push from elsewhere) must land on the waker's tick; an unmerged one stays.
+describe("waker lands merged worktrees", () => {
+  test("merged into origin/main: landed; not merged: still active", async () => {
+    const { wakerTick } = await import("../src/waker/waker.ts")
+    const merged = worktreeNew(db, { session: "s1", repoCwd: main, name: "merged" })
+    pushFrom(merged.path) // reaches origin/main without land()
+    const open = worktreeNew(db, { session: "s1", repoCwd: main, name: "open" })
+    writeFileSync(join(open.path, "wip.txt"), "wip\n")
+    git(open.path, "add", ".")
+    git(open.path, "commit", "-q", "-m", "wip")
+    const gh = async () => ({ code: 1, stdout: "", stderr: "" })
+    await wakerTick(db, { gh, deliver: async () => {} } as never)
+    const state = (id: string) => (db.query("select state from worktrees where id = ?").get(id) as { state: string }).state
+    expect(state(merged.id)).toBe("removed")
+    expect(state(open.id)).toBe("active")
+  })
+})

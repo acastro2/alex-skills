@@ -241,4 +241,14 @@ describe("only apply changes a stored rule mode", () => {
     expect(apply(db, { requestId: r.requestId, cwd: repo })).toMatchObject({ ok: true })
     expect(stored()).toEqual({ mode: "enforce", default_mode: "enforce" })
   }, 30_000)
+
+// Ledger audit 2026-11-28: 9 requests stayed open for days; a newer one never closed the old ones.
+test("a newer request for the same repo supersedes the older open ones, journaled", () => {
+  const r1 = request(db, { session: "root", sha: sha1, cwd: repo })
+  const r2 = request(db, { session: "root", sha: sha2, cwd: repo })
+  const st = (id: string) => (db.query("select state from requests where id = ?").get(id) as { state: string }).state
+  expect(st(r1.requestId)).toBe("superseded")
+  expect(st(r2.requestId)).toBe("open")
+  const j = db.query("select data_json from journal where event = 'harness.superseded'").all() as { data_json: string }[]
+  expect(j.map((x) => JSON.parse(x.data_json))).toEqual([expect.objectContaining({ request_id: r1.requestId, by: r2.requestId })])
 })
