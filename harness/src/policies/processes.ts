@@ -160,7 +160,10 @@ function silentBackground(ev: Env["ev"], input: Record<string, unknown>): Map<nu
   const since = ev.time - WINDOW_MARGIN_MS
 
   const ports = listeners()
-  const candidates = new Set([...ports.keys(), ...descendantsOf([process.pid, process.ppid])])
+  // Children of this process and of a verified agent only: an unverified parent may be PID 1 or systemd --user,
+  // whose descendants are every process of the user (sweep incident 2026-11-28).
+  const agent = agentPid(sampleProcesses())
+  const candidates = new Set([...ports.keys(), ...descendantsOf(agent > 1 ? [process.pid, agent] : [process.pid])])
   for (const pid of candidates) {
     if (pid <= 1 || pid === process.pid || pid === process.ppid) continue
     const start = startTimeMs(pid)

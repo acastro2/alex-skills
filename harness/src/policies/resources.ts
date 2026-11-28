@@ -52,15 +52,19 @@ function ps(age: "etimes" | "etime"): Sample[] | null {
 // Every process on the machine. Linux has etimes; macOS only etime.
 export const sampleProcesses = (): Sample[] => ps("etimes") ?? ps("etime") ?? []
 
-const SHELLS = /^-?(sh|bash|zsh|dash|fish|ksh|tcsh|csh)$/
+// Only these are agents. Anything else (systemd --user, launchd, init, a shell, tmux) is the parent of an orphan
+// or of a hook run by hand, and its children are other people's work.
+const AGENT = /^(claude|opencode)$/
+const commOf = (all: Sample[], pid: number) => all.find((s) => s.pid === pid)?.comm.split("/").pop() ?? ""
 
-// The agent process (claude, opencode): HARNESS_AGENT_PID, else the hook's parent. A plain shell is no agent:
-// a hook run by hand from a terminal must not touch that terminal's other jobs. 0 means no agent.
+// The agent process: HARNESS_AGENT_PID, else the hook's parent when it is claude or opencode. 0 means no agent.
+// Incident 2026-11-28: an orphaned `bun test` had systemd --user as its parent, and the sweep killed the user
+// session. The in-process OpenCode server hosts many sessions, so it is never the agent of one session.
 export function agentPid(all: Sample[]): number {
   const n = Number(process.env.HARNESS_AGENT_PID)
   if (Number.isInteger(n) && n > 1) return n
-  const comm = all.find((s) => s.pid === process.ppid)?.comm.split("/").pop() ?? ""
-  return process.ppid > 1 && !SHELLS.test(comm) ? process.ppid : 0
+  if (AGENT.test(commOf(all, process.pid))) return 0 // in-process (the OpenCode plugin)
+  return process.ppid > 1 && AGENT.test(commOf(all, process.ppid)) ? process.ppid : 0
 }
 
 // Everything below root, root excluded.
