@@ -53,6 +53,7 @@ export async function runVerify(db: Database, workerId: string, cwdArg?: string)
       baseSha: w.base_sha ?? undefined,
       testGlobs: TEST_GLOBS,
       workerId: w.id,
+      snapshot: true,
     })
     text = summaryOf(w.id, b)
     outcome = b.verdict

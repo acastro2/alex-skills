@@ -13,8 +13,15 @@ export const CONTRACT = [
 ].join("\n")
 
 // A worker told to change nothing (a review, a read) has no acceptance commands to prove.
-export const isReadOnly = (prompt: string) =>
-  /\bread[- ]only\b|\bchange nothing\b|\bdo not (?:edit|change|write)\b|\bno (?:file )?(?:edits|writes|changes)\b/i.test(prompt)
+// The harness's own CONTRACT lines ("Do not edit it.") do not count: only the task's words decide.
+const CONTRACT_LINES = new Set(CONTRACT.split("\n").map((l) => l.trim()))
+export const isReadOnly = (prompt: string) => {
+  const task = prompt
+    .split(/\r?\n/)
+    .filter((l) => !CONTRACT_LINES.has(l.trim()))
+    .join("\n")
+  return /\bread[- ]only\b|\bchange nothing\b|\bdo not (?:edit|change|write)\b|\bno (?:file )?(?:edits|writes|changes)\b/i.test(task)
+}
 
 export const isGeneral = (agent: unknown) => agent === "general" || agent === "general-purpose"
 

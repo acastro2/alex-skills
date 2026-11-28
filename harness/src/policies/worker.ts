@@ -1,11 +1,14 @@
 // Worker lifecycle (Phase 3, D17): a workers row when a general subagent is spawned,
 // and a detached background verify when its call returns.
-import { basename, join } from "node:path"
+import type { Database } from "bun:sqlite"
+import { existsSync } from "node:fs"
+import { basename, dirname, isAbsolute, join } from "node:path"
 import { ulid } from "../ledger/ulid.ts"
 import { upsertSession } from "../ledger/journal.ts"
 import { pushGate } from "../proof/gate.ts"
 import { git, hit, q1, type Env, type Out } from "./util.ts"
 import { isGeneral, isReadOnly } from "./spawn.ts"
+import { agentOf } from "./staleworker.ts"
 
 export const TEST_GLOBS = ["tests/**", "**/*.test.*", "**/test_*.py"]
 
@@ -100,11 +103,18 @@ export function startVerify(env: Env): { context: string; workerId: string } | n
     const mine = parseAcceptance(String(i.prompt ?? ""))
     const row = pending.find((w) => w.acceptance === JSON.stringify(mine)) ?? pending[0]
     if (!row) return null
-    // A background subagent (OpenCode always, Claude Code with run_in_background) returns at launch.
-    // Track its session; the verify starts when that session stops (verifyFinishedWorker).
+    // A background subagent (OpenCode always, Claude Code with run_in_background or an async launch) returns
+    // at launch. Track its session or agent id; the verify starts when it stops (verifyFinishedWorker).
+    // Claude's launch reply is {"isAsync":true,"status":"async_launched","agentId":...}; a finished
+    // foreground Agent also names an agentId, but says "completed".
     const out = String(ev.output ?? "")
     const child = /sessionID:\s*(ses[\w-]+)/.exec(out)?.[1] ?? /agentId:\s*([\w-]+)/.exec(out)?.[1]
-    if (child && (/in the background/i.test(out) || i.run_in_background === true)) {
+    const launched =
+      /in the background/i.test(out) ||
+      i.run_in_background === true ||
+      /async_launched|"isAsync"\s*:\s*true/.test(out) ||
+      (/^agentId:/m.test(out) && !/"status"\s*:\s*"completed"/.test(out))
+    if (child && launched) {
       upsertSession(db, { id: child, tool: ev.tool, parent_session_id: ev.session, cwd: String(i.cwd ?? ev.cwd) })
       db.query("update workers set worker_session_id = ? where id = ?").run(child, row.id)
       return { workerId: row.id, context: `Harness: worker ${row.id} is tracked. Its verify runs when it finishes, and the verdict arrives as a message.` }
@@ -128,23 +138,51 @@ function spawnVerify(workerId: string, cwd: string): void {
     p.unref()
 }
 
+// Where the worker's work lives: its registered worktree, else the git toplevel of the newest file it
+// wrote, else the session's cwd. `agent` set: a Claude subagent, whose rows sit in the parent's session
+// and carry data.agent_id.
+function workerCwd(db: Database, session: string, agent: string | undefined, worktree: string | null, fallback: string | null): string | null {
+  if (worktree) return worktree
+  const rows = db
+    .query(
+      `select data_json from journal
+       where session_id = ? and event like 'tool.%' and json_extract(data_json, '$.tool') in ('edit', 'write')
+         and json_extract(data_json, '$.path') is not null ${agent ? "and json_extract(data_json, '$.agent_id') = ?" : ""}
+       order by seq desc limit 50`,
+    )
+    .all(...(agent ? [session, agent] : [session])) as { data_json: string }[]
+  for (const r of rows) {
+    const path = JSON.parse(r.data_json).path
+    if (typeof path !== "string" || !isAbsolute(path)) continue
+    let dir = dirname(path)
+    while (!existsSync(dir) && dirname(dir) !== dir) dir = dirname(dir)
+    const top = git(["rev-parse", "--show-toplevel"], dir)
+    if (top.ok && top.out) return top.out
+  }
+  return fallback
+}
+
 // stop of a tracked background worker: verify what it did this round. A round with no tool calls
-// since the last verify (a plain reply) is skipped.
+// since the last verify (a plain reply) is skipped. A Claude subagent's stop carries the parent's session
+// and the agent id: only that id names the worker, so the parent's own stop never matches.
 export function verifyFinishedWorker(env: Env): string | null {
   const { db, ev } = env
   try {
-    const row = q1<{ id: string; last_activity: number | null; cwd: string | null }>(
+    const agent = agentOf(ev)
+    const row = q1<{ id: string; last_activity: number | null; worktree: string | null; cwd: string | null }>(
       db,
-      `select w.id, w.last_activity, coalesce(t.path, s.cwd) cwd from workers w
+      `select w.id, w.last_activity, t.path worktree, s.cwd from workers w
        left join worktrees t on t.id = w.worktree_id left join sessions s on s.id = w.worker_session_id
        where w.worker_session_id = ? order by w.id desc limit 1`,
-      ev.session,
+      agent ?? ev.session,
     )
     if (!row) return null
-    const busy = q1<{ n: number }>(db, "select count(*) n from journal where session_id = ? and event like 'tool.%' and time > ?", ev.session, row.last_activity ?? 0)
+    const busy = agent
+      ? q1<{ n: number }>(db, "select count(*) n from journal where session_id = ? and json_extract(data_json, '$.agent_id') = ? and event like 'tool.%' and time > ?", ev.session, agent, row.last_activity ?? 0)
+      : q1<{ n: number }>(db, "select count(*) n from journal where session_id = ? and event like 'tool.%' and time > ?", ev.session, row.last_activity ?? 0)
     if (!busy?.n) return null
     db.query("update workers set last_activity = ? where id = ?").run(ev.time, row.id)
-    spawnVerify(row.id, row.cwd ?? ev.cwd ?? process.cwd())
+    spawnVerify(row.id, workerCwd(db, ev.session, agent, row.worktree, row.cwd) ?? ev.cwd ?? process.cwd())
     return row.id
   } catch {
     return null

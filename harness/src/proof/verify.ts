@@ -21,6 +21,8 @@ export interface VerifyOpts {
   uiProof?: string[]
   summary?: string
   knownGaps?: string
+  // A dirty tree is verified as a snapshot commit of the working tree (workers do not commit). Off: a dirty tree is partial.
+  snapshot?: boolean
 }
 
 export function git(cwd: string, ...args: string[]): { code: number; out: string; err: string } {
@@ -131,11 +133,39 @@ function store(
   }
 }
 
+// A commit of the working tree on top of HEAD, built in a temporary index so the checkout, its index and
+// its refs stay as they are. The commit is unreferenced; git prunes it later.
+function snapshotCommit(cwd: string): string {
+  const tmp = mkdtempSync(join(tmpdir(), "harness-snap-"))
+  try {
+    const env = {
+      ...process.env,
+      GIT_INDEX_FILE: join(tmp, "index"),
+      GIT_AUTHOR_NAME: "harness",
+      GIT_AUTHOR_EMAIL: "harness@localhost",
+      GIT_COMMITTER_NAME: "harness",
+      GIT_COMMITTER_EMAIL: "harness@localhost",
+    }
+    const run = (...args: string[]) => {
+      const p = Bun.spawnSync(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" })
+      if (p.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${p.stderr.toString().trim()}`)
+      return p.stdout.toString().trim()
+    }
+    run("read-tree", "HEAD")
+    run("add", "-A")
+    const tree = run("write-tree")
+    return run("commit-tree", tree, "-p", "HEAD", "-m", "harness snapshot of uncommitted work")
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
 export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
-  const head = gitOk(o.cwd, "rev-parse", "HEAD").trim()
   const base = o.baseSha
   if (base) gitOk(o.cwd, "rev-parse", "--verify", `${base}^{commit}`)
   const clean = gitOk(o.cwd, "status", "--porcelain").trim() === ""
+  const snapshot = !clean && o.snapshot === true
+  const head = snapshot ? snapshotCommit(o.cwd) : gitOk(o.cwd, "rev-parse", "HEAD").trim()
 
   const changed = base ? lines(gitOk(o.cwd, "diff", "--name-only", `${base}..${head}`)) : []
   const did: Record<string, any> = {
@@ -145,9 +175,10 @@ export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
     diff_stat: base ? gitOk(o.cwd, "diff", "--stat", `${base}..${head}`).trim() : "",
     test_hashes: {} as Record<string, { base: string | null; head: string | null }>,
     tests_changed: [] as string[],
+    ...(snapshot ? { snapshot: true } : {}),
   }
 
-  if (!clean) return store(db, o, head, "partial", did, { clean, reruns: [], verdict: "partial", reason: "uncommitted changes" })
+  if (!clean && !snapshot) return store(db, o, head, "partial", did, { clean, reruns: [], verdict: "partial", reason: "uncommitted changes" })
   if (changed.length && changed.every((f) => f.endsWith(".md")))
     return store(db, o, head, "green", did, { clean, reruns: [], verdict: "green", reason: "docs only" })
 
