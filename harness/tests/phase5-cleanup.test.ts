@@ -286,3 +286,20 @@ describe("stop-handoff-protocol", () => {
     }
   })
 })
+
+// Combined-branch run 2026-11-28: a background call in /tmp claimed other tests' leftover processes.
+test("a background call whose folder is a shared root (/tmp, $HOME) claims nothing", async () => {
+  const spawnedHere: { kill: () => void }[] = []
+  const t0 = Date.now()
+  const p = Bun.spawn([process.execPath, "-e", "Bun.serve({ port: 0, fetch: () => new Response('ok') }); setInterval(() => {}, 1e6)"], { cwd: "/tmp", stdio: ["ignore", "ignore", "ignore"] })
+  spawnedHere.push({ kill: () => p.kill("SIGKILL") })
+  try {
+    await Bun.sleep(400)
+    await prompt()
+    await decide(ev({ toolName: "shell", cwd: "/tmp", time: t0, input: { command: "bun server.ts", cwd: "/tmp", run_in_background: true }, output: "" }))
+    const pids = (db.query("select pid from processes where session_id = 's1'").all() as { pid: number }[]).map((x) => x.pid)
+    expect(pids).not.toContain(p.pid)
+  } finally {
+    for (const s of spawnedHere) s.kill()
+  }
+})

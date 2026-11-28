@@ -3,6 +3,7 @@
 import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
 import { readFileSync, readlinkSync, realpathSync } from "node:fs"
+import { homedir, tmpdir } from "node:os"
 import { basename, sep } from "node:path"
 import { append, scrub } from "../ledger/journal.ts"
 import { git, q1, shortArg, type Env } from "./util.ts"
@@ -148,7 +149,10 @@ function silentBackground(ev: Env["ev"], input: Record<string, unknown>): Map<nu
   const callCwd = String(input.cwd ?? ev.cwd ?? "")
   if (!callCwd) return found
   const top = git(["rev-parse", "--show-toplevel"], callCwd)
-  const roots = [callCwd, top.ok ? top.out : ""].map((p) => (p ? real(p) : null)).filter((p): p is string => !!p && p !== sep)
+  // A shared folder (/, a temp root, $HOME) is no session's folder: under it, one session would claim another's
+  // processes (seen in the combined test run: a /tmp call claimed leftovers of other tests).
+  const shared = new Set([sep, "/tmp", "/private/tmp", tmpdir(), process.env.TMPDIR ?? "", homedir()].map((p) => (p ? (real(p.replace(/\/+$/, "") || sep) ?? p) : "")))
+  const roots = [callCwd, top.ok ? top.out : ""].map((p) => (p ? real(p) : null)).filter((p): p is string => !!p && !shared.has(p))
   if (!roots.length) return found
   const inside = (cwd: string) => roots.some((r) => cwd === r || cwd.startsWith(r + sep))
   const since = ev.time - WINDOW_MARGIN_MS
