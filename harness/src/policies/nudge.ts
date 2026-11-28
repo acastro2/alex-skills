@@ -2,7 +2,8 @@
 import { mode } from "../ledger/registry.ts"
 import { judge } from "../judgment.ts"
 import { addWatch } from "../waker/waker.ts"
-import { allow, firstLine, latestTodos, q1, shortArg, toolData, toolRows, type Env, type Out } from "./util.ts"
+import { toolKind, turnOf } from "../turn.ts"
+import { allow, firstLine, latestTodos, q1, shortArg, toolData, type Env, type Out } from "./util.ts"
 
 const DRIFT_EVERY = 20
 const NUDGE_CAP = 5
@@ -42,10 +43,10 @@ function budgetMs(env: Env): number {
 export async function afterTool(env: Env): Promise<Out> {
   const { db, ev, turn } = env
   const base = toolData(ev)
-  const tool = String(ev.toolName ?? "")
+  const kind = toolKind(ev.toolName)
 
   // gh pr create: watch the new PR so the waker can wake this session.
-  if (tool === "shell" && !ev.failed && /\bgh\s+pr\s+create\b/.test(String(ev.input?.command ?? ""))) {
+  if (kind === "shell" && !ev.failed && /\bgh\s+pr\s+create\b/.test(String(ev.input?.command ?? ""))) {
     const m = PR_URL.exec(ev.output ?? "")
     if (m) {
       const target = `${m[1]}#${m[2]}`
@@ -55,7 +56,7 @@ export async function afterTool(env: Env): Promise<Out> {
   }
 
   // A question tool call that got its answer.
-  if (tool === "question" || tool === "askuserquestion") {
+  if (kind === "question") {
     const last = q1<{ event: string }>(
       db,
       "select event from journal where session_id = ? and event in ('question.asked', 'question.answered') order by seq desc limit 1",
@@ -77,7 +78,7 @@ export async function afterTool(env: Env): Promise<Out> {
   // Drift: every 20th tool call in the turn.
   const dm = mode(db, "nudge-drift")
   if (dm === "off") return allow({ data: base })
-  const rows = toolRows(db, ev.session, turn)
+  const rows = turnOf(db, ev.session, turn).calls
   if ((rows.length + 1) % DRIFT_EVERY !== 0) return allow({ data: base })
   const goal = goalOf(env)
   if (!goal) return allow({ data: base })

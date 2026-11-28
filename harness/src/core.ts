@@ -17,9 +17,10 @@ import { handlePrompt } from "./policies/prompt.ts"
 import { guardSpawn } from "./policies/spawn.ts"
 import { agentData, agentOf, endWorkerProcesses, lastProcId, staleInjections, workerStartData } from "./policies/staleworker.ts"
 import { stopChecks } from "./policies/stop.ts"
-import { allow, isBrowseTool, q1, toolData, type Env, type Out } from "./policies/util.ts"
+import { allow, q1, toolData, type Env, type Out } from "./policies/util.ts"
 import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { guardWorktree } from "./policies/worktree.ts"
+import { toolKind } from "./turn.ts"
 import { takeInbox } from "./waker/deliver.ts"
 import { resolve } from "node:path"
 import { parse } from "./shell/parse.ts"
@@ -28,7 +29,6 @@ import { land, spawnGit } from "./worktree/lifecycle.ts"
 import { ALLOW, type Decision, type HarnessEvent } from "./types.ts"
 
 const LIVE_MS = 30 * 60_000
-const isQuestion = (t?: string) => t === "question" || t === "askuserquestion"
 
 let handle: { key: string; db: Database } | null = null
 
@@ -85,7 +85,7 @@ const gitOut = (args: string[], cwd: string): string | null => {
 
 function landOnPush(env: Env): void {
   const { db, ev } = env
-  if (ev.toolName !== "shell" || ev.failed) return
+  if (toolKind(ev.toolName) !== "shell" || ev.failed) return
   const command = String((ev.input as any)?.command ?? "")
   if (!/\bpush\b/.test(command)) return
   try {
@@ -229,31 +229,31 @@ async function route(env: Env, off: boolean): Promise<Out> {
       return allow(killed.length ? { data: { killed } } : {})
     }
     case "tool.before": {
-      const name = ev.toolName
+      const kind = toolKind(ev.toolName)
       const base = toolData(ev)
-      if (isQuestion(name)) {
+      if (kind === "question") {
         const qs = (ev.input as any)?.questions ?? ev.input ?? {}
         return allow({ event: "question.asked", data: { ...base, questions: qs } })
       }
       let o: Out | null = null
       if (!off) {
-        if (name === "shell") {
+        if (kind === "shell") {
           o = chain(() => guardShell(env), () => guardPagePort(env), () => guardPush(env), () => guardWorktree(env), () => guardEgress(env))
         }
-        else if (name === "edit" || name === "write") o = chain(() => guardPath(env), () => guardWorktree(env))
-        else if (name === "subagent") {
+        else if (kind === "edit") o = chain(() => guardPath(env), () => guardWorktree(env))
+        else if (kind === "subagent") {
           o = guardSpawn(env)
           if (o?.decision.outcome !== "deny") recordWorker(env)
-        } else if (name?.startsWith("mcp:harness:")) o = guardMcp(env)
-        else if (isBrowseTool(name)) o = guardPagePort(env)
-        else if (name === "webfetch" || name?.startsWith("mcp:")) o = guardEgress(env)
+        } else if (kind === "harness") o = guardMcp(env)
+        else if (kind === "browse") o = guardPagePort(env)
+        else if (kind === "fetch" || kind === "mcp" || kind === "external-write") o = guardEgress(env)
       }
       return { ...(o ?? allow()), data: { ...base, ...(o?.data ?? {}) } }
     }
     case "tool.after": {
       if (off) return allow({ data: toolData(ev) })
       // The verify starts first: it is quick, and afterTool may wait on a judgment call.
-      const worker = ev.toolName === "subagent" ? startVerify(env) : null
+      const worker = toolKind(ev.toolName) === "subagent" ? startVerify(env) : null
       const o = await afterTool(env)
       try {
         registerShellProcesses(env)

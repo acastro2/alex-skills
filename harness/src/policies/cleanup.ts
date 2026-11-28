@@ -2,7 +2,8 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
-import { git, q1, toolRows, type Env } from "./util.ts"
+import { turnOf, type Turn } from "../turn.ts"
+import { git, type Env } from "./util.ts"
 
 interface Found {
   id: string
@@ -17,13 +18,10 @@ function scratchDirs(env: Env): string[] {
   // Longest root first, one match per path: OpenCode's tmpdir is /tmp/opencode, so under the plain /tmp root
   // a file in it made the whole shared /tmp/opencode count as one session's scratch (seen live: 505 MB).
   const roots = [...new Set([tmpdir(), process.env.TMPDIR?.replace(/\/+$/, ""), "/tmp"].filter(Boolean) as string[])].sort((a, b) => b.length - a.length)
-  const rows = env.db
-    .query("select data_json from journal where session_id = ? and event = 'tool.after' and data_json like '%\"path\"%'")
-    .all(env.ev.session) as { data_json: string }[]
   const tops = new Set<string>()
-  for (const r of rows) {
-    const p = JSON.parse(r.data_json).path
-    if (typeof p !== "string") continue
+  for (const c of turnOf(env.db, env.ev.session, "all").calls) {
+    const p = c.path
+    if (c.event !== "tool.after" || p === undefined) continue
     // Claude Code's temp folder /tmp/claude-<uid>/<project>/<session>/ is shared by every session: the
     // session folder is the scratch unit, never claude-<uid> itself (seen live 2026-11-27: 586 MB, mine 1 MB).
     const cc = p.match(/^(\/tmp\/claude-\d+\/[^/]+)\//)?.[1]
@@ -96,12 +94,10 @@ function liveStateLines(env: Env, text: string, added: Set<string>): string[] {
   return hits
 }
 
-export function handoffProtocolCheck(env: Env): Found | null {
-  const rows = toolRows(env.db, env.ev.session, env.turn)
-  const paths = [...new Set(rows.filter((r) => (r.data.tool === "edit" || r.data.tool === "write") && !r.data.failed && typeof r.data.path === "string").map((r) => r.data.path as string))]
-  const since = q1<{ t: number | null }>(env.db, "select min(time) as t from journal where session_id = ? and turn = ?", env.ev.session, env.turn)?.t ?? env.ev.time
+export function handoffProtocolCheck(env: Env, turn: Turn = turnOf(env.db, env.ev.session, env.turn)): Found | null {
+  const since = turn.startedAt ?? env.ev.time
 
-  for (const path of paths) {
+  for (const path of turn.edited) {
     if (!/(^|\/)HANDOFF\.md$/.test(path) || !existsSync(path)) continue
     const dir = dirname(path)
     const top = git(["rev-parse", "--show-toplevel"], dir)

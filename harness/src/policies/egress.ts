@@ -2,6 +2,7 @@
 // Advisory only: it never denies. The journal row is event egress.warning, which the egress view reads.
 import { mode } from "../ledger/registry.ts"
 import { parse } from "../shell/parse.ts"
+import { toolKind } from "../turn.ts"
 import type { Env, Out } from "./util.ts"
 
 const RULE = "egress"
@@ -89,20 +90,19 @@ function hostsOf(argv: string[]): string[] {
   return found
 }
 
-const isFetchTool = (name?: string) => name === "webfetch" || (!!name?.startsWith("mcp:") && /fetch/i.test(name.split(":").slice(2).join(":")))
-
 export function guardEgress(env: Env): Out | null {
   const { ev } = env
   let hosts: string[] = []
   let text = ""
-  if (ev.toolName === "shell") {
+  const kind = toolKind(ev.toolName)
+  if (kind === "shell") {
     text = String(ev.input?.command ?? "")
     if (!text.trim()) return null
     const cmds = parse(text).commands.filter((c) => NET.has(c[0]) || (c[0] === "gh" && c[1] === "api"))
     if (!cmds.length) return null
     hosts = cmds.flatMap(hostsOf)
     if (!hosts.length) hosts = ["an unknown host"]
-  } else if (isFetchTool(ev.toolName)) {
+  } else if (kind === "fetch") {
     text = JSON.stringify(ev.input ?? {})
     hosts = urlHosts(text)
     if (!hosts.length) return null

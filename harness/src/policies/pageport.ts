@@ -1,7 +1,8 @@
 // tool.before: agents may not reach the harness page (D61). They read state through the `harness_status` MCP tool.
 // Only tool.before events come here, so the harness's own process and `harness serve` are never checked.
 import { parse } from "../shell/parse.ts"
-import { hit, isBrowseTool, type Env, type Out } from "./util.ts"
+import { toolKind } from "../turn.ts"
+import { hit, type Env, type Out } from "./util.ts"
 
 const RULE = "page-port"
 const MESSAGE = "The harness page is Alex's. Agents read state through the `harness_status` MCP tool."
@@ -26,7 +27,7 @@ function loopbackPort(text: string): boolean {
 
 export function guardPagePort(env: Env): Out | null {
   const { ev } = env
-  if (ev.toolName === "shell") {
+  if (toolKind(ev.toolName) === "shell") {
     const command = String(ev.input?.command ?? "")
     if (!command.trim()) return null
     // shortcut: the whole line is tested once a client program or /dev/tcp shows up. No per-argument parsing.
@@ -35,10 +36,10 @@ export function guardPagePort(env: Env): Out | null {
       (progs.some((p) => INTERPRETERS.has(p)) && NET_CALL.test(command))
     return client && loopbackPort(command) ? hit(env, RULE, MESSAGE) : null
   }
-  if (isBrowseTool(ev.toolName)) {
+  if (toolKind(ev.toolName) === "browse") {
     // Looking is allowed: an agent must screenshot its own UI work (stop-ui-proof). Acting is not: a
     // click, fill or eval on Alex's signed-in tab is Alex's. Every grant still needs his fresh passkey tap.
-    const name = String(ev.toolName).replace(/^mcp:browse:|^browse_/, "")
+    const name = String(ev.toolName).replace(/^mcp:browse:/, "")
     if (READ_ONLY_BROWSE.has(name)) return null
     return loopbackPort(JSON.stringify(ev.input ?? {})) ? hit(env, RULE, MESSAGE) : null
   }

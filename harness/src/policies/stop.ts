@@ -7,7 +7,8 @@ import { scrub } from "../ledger/journal.ts"
 import { cleanupCheck, handoffProtocolCheck } from "./cleanup.ts"
 import { processCheck } from "./processes.ts"
 import { overLimit } from "./resources.ts"
-import { allow, git, hit, isBrowseTool, latestTodos, q1, toolRows, type Env, type Out, type ToolRow } from "./util.ts"
+import { turnOf, type Call, type Turn } from "../turn.ts"
+import { allow, git, hit, latestTodos, q1, type Env, type Out } from "./util.ts"
 
 export const SENDBACK_CAP = 5
 const THRESHOLD = 0.8
@@ -27,21 +28,15 @@ interface Check {
   data?: Record<string, unknown>
 }
 
-const isEdit = (d: Record<string, any>) => (d.tool === "edit" || d.tool === "write") && typeof d.path === "string" && !d.failed
-
-function editedPaths(rows: ToolRow[]): string[] {
-  return [...new Set(rows.filter((r) => isEdit(r.data)).map((r) => r.data.path as string))]
-}
-
 function existingDir(p: string): string | null {
   let d = dirname(p)
   while (d && d !== "/" && !existsSync(d)) d = dirname(d)
   return existsSync(d) ? d : null
 }
 
-function commitCheck(rows: ToolRow[]): Check | null {
+function commitCheck(paths: string[]): Check | null {
   const dirty: string[] = []
-  for (const p of editedPaths(rows)) {
+  for (const p of paths) {
     const dir = existingDir(p)
     if (!dir) continue
     const st = git(["status", "--porcelain", "--", p], dir)
@@ -55,34 +50,29 @@ function commitCheck(rows: ToolRow[]): Check | null {
   }
 }
 
-function linksCheck(rows: ToolRow[], reply: string): Check | null {
+function linksCheck(calls: Call[], reply: string): Check | null {
   if (/https?:\/\//.test(reply)) return null
-  const did = rows.filter((r) => !r.data.failed).some((r) => {
-    const t = String(r.data.tool ?? "")
-    return (t === "shell" && PUSH_OR_CREATE.test(String(r.data.arg ?? ""))) || MCP_CREATE.test(t)
-  })
+  const did = calls.filter((c) => !c.failed).some((c) => (c.kind === "shell" && PUSH_OR_CREATE.test(c.arg)) || MCP_CREATE.test(c.tool))
   return did ? { id: "stop-links", message: "This turn pushed or created something but the reply has no URL. Add the direct link to each change." } : null
 }
 
 const hasOpenTodo = (env: Env) => latestTodos(env.db, env.ev.session).some((t) => t.status === "pending" || t.status === "in_progress")
 
-function uiProofCheck(rows: ToolRow[]): Check | null {
+function uiProofCheck(calls: Call[]): Check | null {
   // A file in a temp folder is a scratch artifact (a report, a mock), not the product's UI (seen live 2026-11-27).
-  const ui = rows.filter((r) => isEdit(r.data) && UI_FILE.test(r.data.path) && !SCRATCH.test(String(r.data.path)))
+  const ui = calls.filter((c) => c.kind === "edit" && !c.failed && c.path !== undefined && UI_FILE.test(c.path) && !SCRATCH.test(c.path))
   if (!ui.length) return null
-  const last = ui[ui.length - 1].seq
-  const shot = rows.some((r) => r.seq > last && isBrowseTool(r.data.tool) && /screenshot/i.test(String(r.data.tool)))
-  return shot
-    ? null
-    : { id: "stop-ui-proof", message: `UI files changed (${ui[ui.length - 1].data.path}) with no browse screenshot after the last edit. Take one and show it.` }
+  const last = ui[ui.length - 1]
+  const shot = calls.some((c) => c.seq > last.seq && c.kind === "browse" && /screenshot/i.test(c.tool))
+  return shot ? null : { id: "stop-ui-proof", message: `UI files changed (${last.path}) with no browse screenshot after the last edit. Take one and show it.` }
 }
 
 const DONE_CLAIM = /\b(done|fixed|works|working|complete|implemented)\b/i
 const GIT_COMMIT = /\bgit\s+(?:-C\s+\S+\s+)?commit\b/
 
 // D47: a "done" claim after a code edit needs a green bundle from this turn.
-function proofCheck(env: Env, rows: ToolRow[], reply: string): Check | null {
-  if (!rows.some((r) => isEdit(r.data) && !/\.md$/i.test(r.data.path))) return null
+function proofCheck(env: Env, edited: string[], reply: string): Check | null {
+  if (!edited.some((p) => !/\.md$/i.test(p))) return null
   if (!DONE_CLAIM.test(reply)) return null
   const green = q1(
     env.db,
@@ -96,18 +86,14 @@ function proofCheck(env: Env, rows: ToolRow[], reply: string): Check | null {
 }
 
 // D6, D38: a commit after the workstream entry was last touched means the handoff is stale.
-function handoffCheck(env: Env, rows: ToolRow[]): Check | null {
+function handoffCheck(env: Env, calls: Call[]): Check | null {
   const ws = q1<{ t: number | null }>(
     env.db,
     "select max(updated_at) as t from workstreams where owner_session_id = ? and coalesce(state, '') != 'done'",
     env.ev.session,
   )
   if (ws?.t == null) return null
-  const stale = rows.some((r) => {
-    if (r.data.tool !== "shell" || r.data.failed || !GIT_COMMIT.test(String(r.data.arg ?? ""))) return false
-    const at = q1<{ time: number }>(env.db, "select time from journal where seq = ?", r.seq)?.time ?? 0
-    return at > ws.t!
-  })
+  const stale = calls.some((c) => c.kind === "shell" && !c.failed && GIT_COMMIT.test(c.arg) && c.time > ws.t!)
   return stale ? { id: "stop-handoff", message: "Update your workstream entry with `workstream_update`: state and next steps." } : null
 }
 
@@ -174,19 +160,14 @@ const QUESTIONS: Record<string, Question> = {
   },
 }
 
-function usesBrowse(env: Env): boolean {
-  if (process.env.HARNESS_BROWSE === "1") return true
-  const r = q1(env.db, `select 1 as x from journal where session_id = ? and data_json like '%"tool":"mcp:browse:%' limit 1`, env.ev.session)
-  return !!r
-}
+const usesBrowse = (turn: Turn): boolean => process.env.HARNESS_BROWSE === "1" || turn.browsed
 
 export async function stopChecks(env: Env): Promise<Out> {
   const { db, ev, turn } = env
   const reply = ev.reply ?? ""
-  const rows = toolRows(db, ev.session, turn)
+  const t = turnOf(db, ev.session, turn)
   const data: Record<string, unknown> = { reply: reply.slice(0, 4000) }
-  const live = (r: ToolRow) => (r.data.tool === "shell" && LIVE_CHECK.test(String(r.data.arg ?? ""))) || MCP_LIVE.test(String(r.data.tool ?? ""))
-  const checkedLive = rows.some(live)
+  const checkedLive = t.calls.some((c) => (c.kind === "shell" && LIVE_CHECK.test(c.arg)) || MCP_LIVE.test(c.tool))
 
   const on = (id: string) => mode(db, id) !== "off"
   const fired: Check[] = []
@@ -199,16 +180,15 @@ export async function stopChecks(env: Env): Promise<Out> {
     ? (env.db.query("select path from worktrees where session_id = ? and removed_at is null").all(env.ev.session) as { path: string }[]).map((w) => w.path)
     : []
   const inOwn = (p: string) => ownWt.some((w) => p === w || p.startsWith(`${w}/`))
-  const commitRows = worker ? rows.filter((r) => !isEdit(r.data) || inOwn(r.data.path)) : rows
-  if (on("stop-commit")) add(commitCheck(commitRows))
-  if (on("stop-links")) add(linksCheck(rows, reply))
-  if (on("stop-ui-proof")) add(uiProofCheck(rows))
-  if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, rows, reply))
-  if (on("stop-handoff")) add(handoffCheck(env, rows))
+  if (on("stop-commit")) add(commitCheck(worker ? t.edited.filter(inOwn) : t.edited))
+  if (on("stop-links")) add(linksCheck(t.calls, reply))
+  if (on("stop-ui-proof")) add(uiProofCheck(t.calls))
+  if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, t.edited, reply))
+  if (on("stop-handoff")) add(handoffCheck(env, t.calls))
   if (on("stop-resources")) add(resourcesCheck(env))
   if (on("stop-processes")) add(processCheck(env, reply))
   if (on("stop-cleanup")) add(cleanupCheck(env))
-  if (on("stop-handoff-protocol")) add(handoffProtocolCheck(env))
+  if (on("stop-handoff-protocol")) add(handoffProtocolCheck(env, t))
 
   // One Jev call carries every judgment this stop needs.
   const want: string[] = []
@@ -219,15 +199,14 @@ export async function stopChecks(env: Env): Promise<Out> {
   // A step that is a passkey, login, 2FA, captcha or payment is Alex's by the rule itself, and a turn that already
   // tried handoff did what the rule asks (seen live 2026-11-25: five false send-backs on passkey taps).
   const alexOnly = /\b(passkey|pass key|sign[ -]?in|log[ -]?in|2fa|two-factor|captcha|payment|touch id)\b/i.test(reply)
-  const triedHandoff = rows.some((r) => /handoff/i.test(String(r.data.tool ?? "")))
-  if (on("stop-false-cant") && usesBrowse(env) && !alexOnly && !triedHandoff) want.push("cant")
+  if (on("stop-false-cant") && usesBrowse(t) && !alexOnly && !t.triedHandoff) want.push("cant")
   if (on("stop-piecemeal") && planOf(reply)) want.push("piecemeal")
   if (want.length) {
     const summary = scrub(
       [
         `Reply: ${tail(reply, 900)}`,
         `Live checks: ${checkedLive ? "yes" : "none"}`,
-        `Tools this turn: ${[...new Set(rows.map((r) => r.data.tool))].slice(0, 12).join(", ") || "none"}`,
+        `Tools this turn: ${[...new Set(t.calls.map((c) => c.tool))].slice(0, 12).join(", ") || "none"}`,
       ].join("\n"),
     ).slice(0, 1500)
     const ans = await judge(Object.fromEntries(want.map((k) => [k, QUESTIONS[k]])), summary, { timeoutMs: JUDGE_TIMEOUT_MS })

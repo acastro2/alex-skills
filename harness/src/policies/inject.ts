@@ -5,6 +5,7 @@
 // Claude gets the edit rules on PreToolUse. OpenCode has no before-context channel, so it gets them on that call's tool.after.
 import { mode } from "../ledger/registry.ts"
 import { parse } from "../shell/parse.ts"
+import { toolKind } from "../turn.ts"
 import { q1, type Env } from "./util.ts"
 
 export interface Injection {
@@ -38,7 +39,7 @@ function codingLoaded(env: Env): boolean {
 
 function isOutward(env: Env): boolean {
   const { ev } = env
-  if (ev.toolName === "shell") {
+  if (toolKind(ev.toolName) === "shell") {
     return parse(String(ev.input?.command ?? "")).commands.some(
       (c) =>
         (c[0] === "git" && c.includes("push")) ||
@@ -81,7 +82,7 @@ export function injections(env: Env): Injection[] {
     if (m === "off" || fired(env, ruleId)) return
     out.push({ ruleId, text, advise: m === "advise" })
   }
-  const edits = ev.toolName === "edit" || ev.toolName === "write"
+  const edits = toolKind(ev.toolName) === "edit"
   // Claude: before the edit. OpenCode: after it.
   const editNow = ev.tool === "claude" ? ev.event === "tool.before" : ev.event === "tool.after"
   if (edits && editNow && !ev.failed) {
@@ -91,7 +92,7 @@ export function injections(env: Env): Injection[] {
   } else if (ev.event === "tool.after" && !ev.failed && isOutward(env)) {
     want("inject-links", LINKS_TEXT)
     // Not once per session: every extra `gh pr create` is told.
-    if (ev.toolName === "shell" && isPrCreate(env) && openedPrBefore(env)) {
+    if (toolKind(ev.toolName) === "shell" && isPrCreate(env) && openedPrBefore(env)) {
       const m = mode(db, "inject-pr-batch")
       if (m !== "off") out.push({ ruleId: "inject-pr-batch", text: PR_BATCH_TEXT, advise: m === "advise" })
     }

@@ -73,23 +73,6 @@ export function toolData(ev: HarnessEvent): Record<string, any> {
   return d
 }
 
-export interface ToolRow {
-  seq: number
-  data: Record<string, any>
-}
-
-// This session's tool rows for a turn (tool.after and the rows that replace it), oldest first.
-export function toolRows(db: Database, session: string, turn: number): ToolRow[] {
-  const rows = db
-    .query(
-      `select seq, data_json from journal
-       where session_id = ? and turn = ? and event in ('tool.after', 'nudge', 'stuck', 'question.answered')
-         and data_json is not null order by seq`,
-    )
-    .all(session, turn) as { seq: number; data_json: string }[]
-  return rows.map((r) => ({ seq: r.seq, data: JSON.parse(r.data_json) })).filter((r) => r.data.tool)
-}
-
 // Claude Code keeps todos with TaskCreate/TaskUpdate. The journal keeps each call's input in data.arg
 // (scrubbed, cut at 160 chars) but not the created task id, so ids are the creation order, 1-based.
 function tasksAfter(db: Database, session: string, afterSeq: number): { seq: number; todos: Todo[] } | null {
@@ -139,5 +122,3 @@ export function latestTodos(db: Database, session: string): Todo[] {
   if (tasks && (!r || tasks.seq > r.seq)) return tasks.todos
   return Array.isArray(written) ? written : []
 }
-
-export const isBrowseTool = (tool: unknown) => typeof tool === "string" && (tool.startsWith("mcp:browse:") || tool.startsWith("browse_"))
