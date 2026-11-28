@@ -186,3 +186,40 @@ describe("stop-ui-proof", () => {
     expect((await stop("Styles changed.")).ruleId).toBe("stop-ui-proof")
   })
 })
+
+// Ledger audit 2026-11-28: stop-cleanup sent the same agent back up to 4 times in one turn (153 send-backs
+// in 48 h). A rule sends back at most once a turn; after that it is journaled and the stop goes through.
+describe("send-back cap", () => {
+  test("the same stop rule sends back once per turn, then lets the stop through", async () => {
+    process.env.HARNESS_SCRATCH_LIMIT_MB = "1"
+    const { mkdtempSync, writeFileSync } = await import("node:fs")
+    const scratch = mkdtempSync(join(tmpdir(), "harness-cap-"))
+    try {
+      writeFileSync(join(scratch, "big.bin"), Buffer.alloc(2 * 1024 * 1024, 1))
+      const oc = (over: Partial<HarnessEvent>) => decide(ev({ tool: "opencode", ...over }))
+      await oc({ event: "prompt", prompt: "go" })
+      await oc({ toolName: "write", input: { path: join(scratch, "big.bin") }, output: "ok" })
+      expect((await oc({ event: "stop", reply: "Wrote scratch." })).ruleId).toBe("stop-cleanup")
+      const second = await decide(ev({ tool: "opencode", event: "stop", reply: "That folder is shared; not mine to delete." })) // OpenCode has no stop_hook_active
+      expect(second.outcome).not.toBe("deny")
+      expect(sendbacks()).toBe(1)
+      await oc({ event: "prompt", prompt: "again" }) // a new turn may send back again
+      expect((await oc({ event: "stop", reply: "Wrote scratch again." })).ruleId).toBe("stop-cleanup")
+    } finally {
+      rmSync(scratch, { recursive: true, force: true })
+      delete process.env.HARNESS_SCRATCH_LIMIT_MB
+    }
+  })
+})
+
+// A slow hook that fails open was invisible: nothing recorded how long decide() took.
+test("every journaled decision records how long decide() took, in ms", async () => {
+  await prompt()
+  await shellAfter("ls")
+  const rows = db.query("select event, json_extract(data_json, '$.ms') ms from journal where event in ('prompt', 'tool.after')").all() as { event: string; ms: number | null }[]
+  expect(rows.length).toBeGreaterThanOrEqual(2)
+  for (const r of rows) {
+    expect(typeof r.ms).toBe("number")
+    expect(r.ms!).toBeGreaterThanOrEqual(0)
+  }
+})
