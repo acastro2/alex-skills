@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
-import { join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { consume, holds, requestApply } from "../ledger/authority.ts"
 import { getMeta, setMeta } from "../ledger/db.ts"
 import { append, upsertSession } from "../ledger/journal.ts"
@@ -75,11 +75,20 @@ export interface RequestResult {
   review: string
 }
 
+// The folder of the repo's main checkout for any of its worktrees (the parent of the shared git dir).
+function mainRepo(path: string): string {
+  const common = git(path, "rev-parse", "--path-format=absolute", "--git-common-dir").out.trim()
+  if (!common) return path
+  return basename(common) === ".git" ? dirname(common) : common
+}
+
 export function request(db: Database, o: { session: string; sha: string; cwd?: string }): RequestResult {
   if (!/^[0-9a-f]{40}$/.test(o.sha)) throw new Error("sha must be 40 lowercase hex characters")
   const cwd = o.cwd ?? process.cwd()
-  const repo = git(cwd, "rev-parse", "--show-toplevel").out.trim()
-  if (!repo) throw new Error(`not a git repository: ${cwd}`)
+  const top = git(cwd, "rev-parse", "--show-toplevel").out.trim()
+  if (!top) throw new Error(`not a git repository: ${cwd}`)
+  // The main repo, not this worktree: worktrees come and go, and two worktrees of one repo are the same repo.
+  const repo = mainRepo(top)
   if (git(repo, "cat-file", "-e", `${o.sha}^{commit}`).code !== 0) throw new Error(`unknown commit: ${o.sha}`)
 
   // Review against what is installed now: a diff against main alone hides every commit since the last apply.
@@ -132,9 +141,12 @@ export function request(db: Database, o: { session: string; sha: string; cwd?: s
   const requestId = requestApply(db, { session: o.session, sha: o.sha, digest, review })
   setMeta(db, `request_repo:${requestId}`, repo)
   // A newer request for the same repo supersedes the older open ones; they can no longer be granted or applied.
-  const older = db.query("select id, session_id from requests where state = 'open' and id != ?").all(requestId) as { id: string; session_id: string | null }[]
+  // Same repo: the stored path resolves to this main repo, or the older commit is an ancestor of this one.
+  const older = db.query("select id, session_id, sha from requests where state = 'open' and id != ?").all(requestId) as { id: string; session_id: string | null; sha: string }[]
   for (const q of older) {
-    if (getMeta(db, `request_repo:${q.id}`) !== repo) continue
+    const stored = getMeta(db, `request_repo:${q.id}`)
+    const sameRepo = (stored !== null && existsSync(stored) && mainRepo(stored) === repo) || git(repo, "merge-base", "--is-ancestor", q.sha, o.sha).code === 0
+    if (!sameRepo) continue
     // A request Alex already approved keeps its grant; closing it would waste his approval.
     if (holds(db, { kind: "harness", session: q.session_id ?? "", requestId: q.id, now: Date.now() })) continue
     db.query("update requests set state = 'superseded' where id = ? and state = 'open'").run(q.id)

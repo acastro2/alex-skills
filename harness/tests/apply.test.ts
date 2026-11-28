@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { command } from "../src/ledger/authority.ts"
@@ -252,4 +252,19 @@ test("a newer request for the same repo supersedes the older open ones, journale
   expect(st(r2.requestId)).toBe("open")
   const j = db.query("select data_json from journal where event = 'harness.superseded'").all() as { data_json: string }[]
   expect(j.map((x) => JSON.parse(x.data_json))).toEqual([expect.objectContaining({ request_id: r1.requestId, by: r2.requestId })])
+})
+
+// Live 2026-11-28: requests made from different worktrees of one repo never superseded each other, because
+// the repo was keyed by the worktree folder. Key by the repo; an older open request whose commit is an
+// ancestor of the new one is superseded too. The stored path is the main repo, which outlives a worktree.
+test("a request from another worktree of the same repo supersedes, and records the main repo", () => {
+  const wt = join(dir, "wt")
+  g("worktree", "add", "-q", "-b", "other", wt, sha2)
+  const r1 = request(db, { session: "root", sha: sha1, cwd: repo })
+  const r2 = request(db, { session: "root", sha: sha2, cwd: wt })
+  const st = (id: string) => (db.query("select state from requests where id = ?").get(id) as { state: string }).state
+  expect(st(r1.requestId)).toBe("superseded")
+  expect(st(r2.requestId)).toBe("open")
+  const meta = db.query("select value from schema_meta where key = ?").get(`request_repo:${r2.requestId}`) as { value: string }
+  expect(realpathSync(meta.value)).toBe(realpathSync(repo))
 })
