@@ -311,3 +311,54 @@ describe("jobs_status and job_run_now", () => {
     }
   }, 20_000)
 })
+
+// Found live 2026-11-28 ("is it actually doing proof of work?"): no worker got a real re-run.
+describe("worker proof of work, as live", () => {
+  const task = (cwd: string, accept: string[]) => ({
+    prompt: `Add new.txt\nACCEPTANCE:\n${accept.map((c) => `- \`${c}\``).join("\n")}\n\n`,
+    model: "cursor/claude-sonnet-5-5",
+    agent: "general",
+    cwd,
+  })
+
+  // OpenCode: the guard makes the parent paste the full contract, whose line "Do not edit it." read as a
+  // read-only worker, so no worker row was written and nothing was ever re-verified.
+  test("an OpenCode spawn carrying the full contract is recorded and verified when the worker stops", async () => {
+    const { CONTRACT } = await import("../src/policies/spawn.ts")
+    const r = repo()
+    const input = { ...task(r, ["true"]), prompt: task(r, ["true"]).prompt + CONTRACT }
+    await decide(ev({ tool: "opencode", toolName: "subagent", input, cwd: r }))
+    expect(rows("select 1 from workers")).toHaveLength(1)
+    await decide(ev({ tool: "opencode", event: "tool.after", toolName: "subagent", input, output: "Working in the background (sessionID: ses_live1).", cwd: r }))
+    const child = (over: Partial<HarnessEvent>) => ev({ tool: "opencode", session: "ses_live1", parentSession: "s1", cwd: r, ...over })
+    await decide(child({ toolName: "shell", input: { command: "ls", cwd: r } }))
+    await decide(child({ event: "stop", reply: "done" }))
+    expect(await waitFor(() => rows("select 1 from journal where event = 'worker.verified'").length > 0, 20_000)).toBe(true)
+  }, 30_000)
+
+  // Claude Code: a background Agent (no run_in_background flag, JSON launch reply) was verified at launch, in the
+  // parent's dirty checkout, so every bundle was "partial: uncommitted changes" with 0 commands run.
+  test("a Claude background worker is verified at SubagentStop, in the worktree it wrote, with its uncommitted work", async () => {
+    const r = repo()
+    writeFileSync(join(r, "dirty.txt"), "the parent's own unfinished work\n") // the main checkout is dirty
+    const w = join(dir, "wt")
+    git(r, "worktree", "add", "-q", "-b", "lane", w)
+    const input = task(r, ["test -f new.txt", "true"])
+    await decide(ev({ toolName: "subagent", input, cwd: r }))
+    const launch = `{"isAsync":true,"status":"async_launched","agentId":"a1b2c3d4e5f60718"}\nagentId: a1b2c3d4e5f60718`
+    await decide(ev({ event: "tool.after", toolName: "subagent", input, output: launch, cwd: r }))
+    await Bun.sleep(300)
+    expect(rows("select 1 from journal where event = 'worker.verified'")).toHaveLength(0) // not at launch
+
+    // Inside a Claude subagent the hooks keep the parent's session_id and add agent_id.
+    const sub = (over: Partial<HarnessEvent>) => ev({ cwd: r, ...over, agentId: "a1b2c3d4e5f60718" } as never)
+    writeFileSync(join(w, "new.txt"), "work\n") // the worker leaves its work uncommitted
+    await decide(sub({ toolName: "write", input: { path: join(w, "new.txt") }, output: "ok" }))
+    await decide(sub({ event: "stop", reply: "STATUS: done" }))
+    expect(await waitFor(() => rows("select 1 from journal where event = 'worker.verified'").length > 0, 20_000)).toBe(true)
+    const [b] = rows("select verdict, verified_json from bundles where worker_id is not null")
+    const v = JSON.parse(b.verified_json)
+    expect(v.reruns.map((x: { command: string; exit: number }) => [x.command, x.exit])).toEqual([["test -f new.txt", 0], ["true", 0]])
+    expect(b.verdict).toBe("green")
+  }, 30_000)
+})
