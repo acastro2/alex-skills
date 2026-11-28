@@ -6,20 +6,16 @@ import { openLedger } from "./ledger/db.ts"
 import { append, upsertSession } from "./ledger/journal.ts"
 import { seed } from "./ledger/registry.ts"
 import { compactState } from "./policies/compact.ts"
-import { guardEgress } from "./policies/egress.ts"
-import { guardPath, guardShell, repoOf } from "./policies/guard.ts"
+import { repoOf } from "./policies/guard.ts"
 import { injections } from "./policies/inject.ts"
-import { guardMcp } from "./policies/mcp.ts"
 import { afterTool } from "./policies/nudge.ts"
-import { guardPagePort } from "./policies/pageport.ts"
 import { endSessionProcesses, keptProcessLine, registerShellProcesses } from "./policies/processes.ts"
 import { handlePrompt } from "./policies/prompt.ts"
-import { guardSpawn } from "./policies/spawn.ts"
 import { agentData, agentOf, endWorkerProcesses, lastProcId, staleInjections, workerStartData } from "./policies/staleworker.ts"
 import { stopChecks } from "./policies/stop.ts"
+import { guardsFor } from "./policies/table.ts"
 import { allow, q1, toolData, type Env, type Out } from "./policies/util.ts"
-import { guardPush, recordWorker, startVerify, verifyFinishedWorker } from "./policies/worker.ts"
-import { guardWorktree } from "./policies/worktree.ts"
+import { startVerify, verifyFinishedWorker } from "./policies/worker.ts"
 import { toolKind } from "./turn.ts"
 import { takeInbox } from "./waker/deliver.ts"
 import { resolve } from "node:path"
@@ -236,18 +232,7 @@ async function route(env: Env, off: boolean): Promise<Out> {
         return allow({ event: "question.asked", data: { ...base, questions: qs } })
       }
       let o: Out | null = null
-      if (!off) {
-        if (kind === "shell") {
-          o = chain(() => guardShell(env), () => guardPagePort(env), () => guardPush(env), () => guardWorktree(env), () => guardEgress(env))
-        }
-        else if (kind === "edit") o = chain(() => guardPath(env), () => guardWorktree(env))
-        else if (kind === "subagent") {
-          o = guardSpawn(env)
-          if (o?.decision.outcome !== "deny") recordWorker(env)
-        } else if (kind === "harness") o = guardMcp(env)
-        else if (kind === "browse") o = guardPagePort(env)
-        else if (kind === "fetch" || kind === "mcp" || kind === "external-write") o = guardEgress(env)
-      }
+      if (!off) o = chain(...guardsFor(kind).map((g) => () => g.run(env)))
       return { ...(o ?? allow()), data: { ...base, ...(o?.data ?? {}) } }
     }
     case "tool.after": {

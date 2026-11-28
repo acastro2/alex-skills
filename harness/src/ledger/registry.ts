@@ -11,6 +11,7 @@ export interface Rule {
   module: string
   default_mode: Mode
   ships_in: string // phase number from the spec
+  also?: string[] // other events the rule runs on (event is the main one; the page reads event)
 }
 
 const rule = (id: string, event: string, module: string, ships_in: string, default_mode: Mode = "enforce"): Rule => ({
@@ -20,6 +21,8 @@ const rule = (id: string, event: string, module: string, ships_in: string, defau
   default_mode,
   ships_in,
 })
+
+const also = (r: Rule, ...events: string[]): Rule => ({ ...r, also: events })
 
 export const RULES: Rule[] = [
   rule("recursive-delete", "tool.before", "destructive", "1"),
@@ -50,15 +53,15 @@ export const RULES: Rule[] = [
   rule("egress", "tool.before", "egress", "9", "advise"), // advisory only (D62)
   rule("page-port", "tool.before", "pageport", "9"), // agents never reach the page (D61)
   rule("compact-state", "session.start", "compact", "9", "inject"), // D65
-  rule("inject-ui", "tool.before", "inject", "7", "inject"),
-  rule("inject-coding", "tool.before", "inject", "7", "inject"),
+  also(rule("inject-ui", "tool.before", "inject", "7", "inject"), "tool.after"), // OpenCode injects after the edit
+  also(rule("inject-coding", "tool.before", "inject", "7", "inject"), "tool.after"),
   rule("inject-links", "tool.after", "inject", "7", "inject"),
   rule("inject-pr-batch", "tool.after", "inject", "7", "inject"),
   rule("routing-hint", "prompt", "judgment", "2", "inject"),
   rule("nudge-drift", "tool.after", "worker", "3", "inject"),
   rule("nudge-wrapup", "tool.after", "worker", "3", "inject"),
-  rule("nudge-stall", "stop", "waker", "3", "inject"),
-  rule("stale-worker", "tool.after", "staleworker", "5", "inject"),
+  also(rule("nudge-stall", "stop", "waker", "3", "inject"), "waker"), // the waker tick sends it
+  also(rule("stale-worker", "tool.after", "staleworker", "5", "inject"), "prompt", "waker"),
 ]
 
 const WRONG_LIMIT = 3

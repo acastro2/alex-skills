@@ -162,74 +162,114 @@ const QUESTIONS: Record<string, Question> = {
 
 const usesBrowse = (turn: Turn): boolean => process.env.HARNESS_BROWSE === "1" || turn.browsed
 
+// What a stop check sees. `data` is the journal data of this stop; the judgment entry adds what Jev said.
+export interface StopCtx {
+  env: Env
+  turn: Turn
+  reply: string
+  checkedLive: boolean
+  worker: boolean
+  ownWt: string[] // worktrees a worker owns (empty for a root session)
+  data: Record<string, unknown>
+}
+
+export interface StopCheck {
+  name: string
+  rules: string[] // the rule ids this check can emit
+  run(c: StopCtx): Check[] | Promise<Check[]>
+}
+
+const on = (env: Env, id: string) => mode(env.db, id) !== "off"
+
+// A check with one rule: it runs (and may cost a git call) only while its rule is not off.
+const single = (id: string, f: (c: StopCtx) => Check | null, when: (c: StopCtx) => boolean = () => true): StopCheck => ({
+  name: id,
+  rules: [id],
+  run: (c) => {
+    if (!on(c.env, id) || !when(c)) return []
+    const r = f(c)
+    return r ? [r] : []
+  },
+})
+
+// One Jev call carries every judgment this stop needs.
+async function judgments(c: StopCtx): Promise<Check[]> {
+  const { env, turn: t, reply, checkedLive, data } = c
+  const fired: Check[] = []
+  const add = (x: Check | null) => x && on(env, x.id) && fired.push(x)
+  const want: string[] = []
+  const needContinue = on(env, "stop-continue") && hasOpenTodo(env)
+  if (needContinue) want.push("asks")
+  if (on(env, "stop-state") && reply.length > 400) want.push("footer")
+  if (on(env, "stop-stale-state") && !checkedLive) want.push("stale")
+  // A step that is a passkey, login, 2FA, captcha or payment is Alex's by the rule itself, and a turn that already
+  // tried handoff did what the rule asks (seen live 2026-11-25: five false send-backs on passkey taps).
+  const alexOnly = /\b(passkey|pass key|sign[ -]?in|log[ -]?in|2fa|two-factor|captcha|payment|touch id)\b/i.test(reply)
+  if (on(env, "stop-false-cant") && usesBrowse(t) && !alexOnly && !t.triedHandoff) want.push("cant")
+  if (on(env, "stop-piecemeal") && planOf(reply)) want.push("piecemeal")
+  if (!want.length) return fired
+  const summary = scrub(
+    [
+      `Reply: ${tail(reply, 900)}`,
+      `Live checks: ${checkedLive ? "yes" : "none"}`,
+      `Tools this turn: ${[...new Set(t.calls.map((c) => c.tool))].slice(0, 12).join(", ") || "none"}`,
+    ].join("\n"),
+  ).slice(0, 1500)
+  const ans = await judge(Object.fromEntries(want.map((k) => [k, QUESTIONS[k]])), summary, { timeoutMs: JUDGE_TIMEOUT_MS })
+  if (want.some((k) => ans[k].source === "fallback")) data.jev = "jev-unavailable"
+  data.judged = Object.fromEntries(want.map((k) => [k, ans[k].value]))
+  const v = (k: string) => ans[k]?.value
+  if (want.includes("piecemeal") && v("piecemeal") >= THRESHOLD) {
+    const steps = (planOf(reply) ?? "").replace(/\s+/g, " ").slice(0, 300)
+    add({ id: "stop-piecemeal", message: `Do these now, they are yours: ${steps}. Only Alex's steps may end a turn.` })
+  }
+  if (want.includes("asks") && v("asks") <= UNSURE_LOW) {
+    add({ id: "stop-continue", message: "The todo list still has open items and your reply asks nothing. Continue with the next item, or ask Alex what you need." })
+  }
+  if (want.includes("footer") && v("footer") <= UNSURE_LOW) {
+    add({ id: "stop-state", message: "End the reply with what is done, what is running, and the next step." })
+  }
+  if (want.includes("stale") && v("stale") >= THRESHOLD) {
+    add({ id: "stop-stale-state", message: "You say something is still open or waiting, but you did not check it this turn. Check it live (gh pr view, the ticket, the inbox), then restate." })
+  }
+  if (want.includes("cant") && v("cant") >= THRESHOLD) {
+    add({ id: "stop-false-cant", message: "You say you cannot do this, or ask Alex to do it. Use browser control (`browse`). Only login, 2FA, passkey, captcha or payment go to Alex, through `handoff`." })
+  }
+  return fired
+}
+
+export const STOP_CHECKS: StopCheck[] = [
+  // A worker outside its own worktree may not commit (its contract); the parent commits, and the harness
+  // verifies the worker on its own. So these two checks apply to a worker only inside a worktree it owns.
+  single("stop-commit", (c) => {
+    const inOwn = (p: string) => c.ownWt.some((w) => p === w || p.startsWith(`${w}/`))
+    return commitCheck(c.worker ? c.turn.edited.filter(inOwn) : c.turn.edited)
+  }),
+  single("stop-links", (c) => linksCheck(c.turn.calls, c.reply)),
+  single("stop-ui-proof", (c) => uiProofCheck(c.turn.calls)),
+  single("stop-proof", (c) => proofCheck(c.env, c.turn.edited, c.reply), (c) => !c.worker || c.ownWt.length > 0),
+  single("stop-handoff", (c) => handoffCheck(c.env, c.turn.calls)),
+  single("stop-resources", (c) => resourcesCheck(c.env)),
+  single("stop-processes", (c) => processCheck(c.env, c.reply)),
+  single("stop-cleanup", (c) => cleanupCheck(c.env)),
+  single("stop-handoff-protocol", (c) => handoffProtocolCheck(c.env, c.turn)),
+  { name: "judgments", rules: ["stop-piecemeal", "stop-continue", "stop-state", "stop-stale-state", "stop-false-cant"], run: judgments },
+]
+
 export async function stopChecks(env: Env): Promise<Out> {
   const { db, ev, turn } = env
   const reply = ev.reply ?? ""
   const t = turnOf(db, ev.session, turn)
   const data: Record<string, unknown> = { reply: reply.slice(0, 4000) }
   const checkedLive = t.calls.some((c) => (c.kind === "shell" && LIVE_CHECK.test(c.arg)) || MCP_LIVE.test(c.tool))
-
-  const on = (id: string) => mode(db, id) !== "off"
-  const fired: Check[] = []
-  const add = (c: Check | null) => c && on(c.id) && fired.push(c)
-
-  // A worker outside its own worktree may not commit (its contract); the parent commits, and the harness
-  // verifies the worker on its own. So these two checks apply to a worker only inside a worktree it owns.
-  const worker = !!env.ev.parentSession
+  const worker = !!ev.parentSession
   const ownWt = worker
-    ? (env.db.query("select path from worktrees where session_id = ? and removed_at is null").all(env.ev.session) as { path: string }[]).map((w) => w.path)
+    ? (db.query("select path from worktrees where session_id = ? and removed_at is null").all(ev.session) as { path: string }[]).map((w) => w.path)
     : []
-  const inOwn = (p: string) => ownWt.some((w) => p === w || p.startsWith(`${w}/`))
-  if (on("stop-commit")) add(commitCheck(worker ? t.edited.filter(inOwn) : t.edited))
-  if (on("stop-links")) add(linksCheck(t.calls, reply))
-  if (on("stop-ui-proof")) add(uiProofCheck(t.calls))
-  if (on("stop-proof") && (!worker || ownWt.length)) add(proofCheck(env, t.edited, reply))
-  if (on("stop-handoff")) add(handoffCheck(env, t.calls))
-  if (on("stop-resources")) add(resourcesCheck(env))
-  if (on("stop-processes")) add(processCheck(env, reply))
-  if (on("stop-cleanup")) add(cleanupCheck(env))
-  if (on("stop-handoff-protocol")) add(handoffProtocolCheck(env, t))
+  const ctx: StopCtx = { env, turn: t, reply, checkedLive, worker, ownWt, data }
 
-  // One Jev call carries every judgment this stop needs.
-  const want: string[] = []
-  const needContinue = on("stop-continue") && hasOpenTodo(env)
-  if (needContinue) want.push("asks")
-  if (on("stop-state") && reply.length > 400) want.push("footer")
-  if (on("stop-stale-state") && !checkedLive) want.push("stale")
-  // A step that is a passkey, login, 2FA, captcha or payment is Alex's by the rule itself, and a turn that already
-  // tried handoff did what the rule asks (seen live 2026-11-25: five false send-backs on passkey taps).
-  const alexOnly = /\b(passkey|pass key|sign[ -]?in|log[ -]?in|2fa|two-factor|captcha|payment|touch id)\b/i.test(reply)
-  if (on("stop-false-cant") && usesBrowse(t) && !alexOnly && !t.triedHandoff) want.push("cant")
-  if (on("stop-piecemeal") && planOf(reply)) want.push("piecemeal")
-  if (want.length) {
-    const summary = scrub(
-      [
-        `Reply: ${tail(reply, 900)}`,
-        `Live checks: ${checkedLive ? "yes" : "none"}`,
-        `Tools this turn: ${[...new Set(t.calls.map((c) => c.tool))].slice(0, 12).join(", ") || "none"}`,
-      ].join("\n"),
-    ).slice(0, 1500)
-    const ans = await judge(Object.fromEntries(want.map((k) => [k, QUESTIONS[k]])), summary, { timeoutMs: JUDGE_TIMEOUT_MS })
-    if (want.some((k) => ans[k].source === "fallback")) data.jev = "jev-unavailable"
-    data.judged = Object.fromEntries(want.map((k) => [k, ans[k].value]))
-    const v = (k: string) => ans[k]?.value
-    if (want.includes("piecemeal") && v("piecemeal") >= THRESHOLD) {
-      const steps = (planOf(reply) ?? "").replace(/\s+/g, " ").slice(0, 300)
-      add({ id: "stop-piecemeal", message: `Do these now, they are yours: ${steps}. Only Alex's steps may end a turn.` })
-    }
-    if (want.includes("asks") && v("asks") <= UNSURE_LOW) {
-      add({ id: "stop-continue", message: "The todo list still has open items and your reply asks nothing. Continue with the next item, or ask Alex what you need." })
-    }
-    if (want.includes("footer") && v("footer") <= UNSURE_LOW) {
-      add({ id: "stop-state", message: "End the reply with what is done, what is running, and the next step." })
-    }
-    if (want.includes("stale") && v("stale") >= THRESHOLD) {
-      add({ id: "stop-stale-state", message: "You say something is still open or waiting, but you did not check it this turn. Check it live (gh pr view, the ticket, the inbox), then restate." })
-    }
-    if (want.includes("cant") && v("cant") >= THRESHOLD) {
-      add({ id: "stop-false-cant", message: "You say you cannot do this, or ask Alex to do it. Use browser control (`browse`). Only login, 2FA, passkey, captcha or payment go to Alex, through `handoff`." })
-    }
-  }
+  const fired: Check[] = []
+  for (const c of STOP_CHECKS) fired.push(...(await c.run(ctx)))
   if (!fired.length) return allow({ data })
 
   // stopActive: the agent was already sent back once. Do not repeat a check that fired last time.
