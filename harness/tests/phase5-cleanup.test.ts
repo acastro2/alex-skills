@@ -322,3 +322,27 @@ test("session.end kills leftover children of the agent process, not the agent it
     delete process.env.HARNESS_AGENT_PID
   }
 })
+
+// Incident 2026-11-28: an orphaned `bun test` had systemd --user (PID 916) as its parent; the session-end sweep
+// took it for the agent and killed the user session (OpenCode server, obsidian-sync, gpg-agent). A Claude hook
+// that outlives `claude` is reparented the same way. Only a claude or opencode process is ever an agent, and
+// the in-process OpenCode server (which hosts many sessions) never sweeps.
+test("only a claude or opencode parent counts as the agent; systemd, init and shells never do", async () => {
+  const { agentPid } = await import("../src/policies/resources.ts")
+  const saved = process.env.HARNESS_AGENT_PID
+  delete process.env.HARNESS_AGENT_PID
+  const s = (pid: number, comm: string) => ({ pid, ppid: 1, rssKb: 0, cpu: 0, ageS: 0, comm })
+  const as = (comm: string, self = "bun") => agentPid([s(process.ppid, comm), s(process.pid, self)])
+  try {
+    expect(as("systemd")).toBe(0)
+    expect(as("launchd")).toBe(0)
+    expect(as("init")).toBe(0)
+    expect(as("zsh")).toBe(0)
+    expect(as("tmux: server")).toBe(0)
+    expect(as("claude")).toBe(process.ppid)
+    expect(as("/home/u/.local/bin/claude")).toBe(process.ppid)
+    expect(as("claude", "opencode")).toBe(0) // in-process OpenCode server: never sweep
+  } finally {
+    if (saved !== undefined) process.env.HARNESS_AGENT_PID = saved
+  }
+})
