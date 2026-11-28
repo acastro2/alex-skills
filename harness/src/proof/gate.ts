@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite"
 import { resolve } from "node:path"
-import { parse } from "../shell/parse.ts"
+import { parse, type Dirs } from "../shell/parse.ts"
 import { bundleFor } from "./bundle.ts"
 import { git } from "./verify.ts"
 
@@ -16,10 +16,22 @@ interface Push {
 const GIT_OPT_WITH_ARG = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"])
 const PUSH_OPT_WITH_ARG = new Set(["--repo", "--receive-pack", "--exec", "-o", "--push-option"])
 
+// The folder a command runs in: cwd after the `cd`s the parser saw before it (P.dirs). A `cd` we cannot
+// resolve (variable, `cd -`) is skipped, so the answer stays the last folder we do know.
+export function cdDir(dirs: Dirs | undefined, cwd: string): string {
+  let dir = cwd
+  for (const d of dirs ?? []) {
+    if (d === null || /[$`]/.test(d)) continue
+    dir = resolve(dir, d === "~" || d.startsWith("~/") ? (process.env.HOME ?? "") + d.slice(1) : d)
+  }
+  return dir
+}
+
 function findPush(command: string, cwd: string): Push | null {
-  for (const a of parse(command).commands) {
+  const P = parse(command)
+  for (const [n, a] of P.commands.entries()) {
     if (a[0] !== "git") continue
-    let dir = cwd
+    let dir = cdDir(P.dirs[n], cwd)
     let i = 1
     for (; i < a.length; i++) {
       if (a[i] === "-C" && a[i + 1] !== undefined) dir = resolve(dir, a[++i])

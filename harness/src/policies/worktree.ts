@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { dirname, resolve, sep } from "node:path"
 import { mode } from "../ledger/registry.ts"
 import { parse } from "../shell/parse.ts"
+import { cdDir } from "../proof/gate.ts"
 import { register, worktreesRoot } from "../worktree/lifecycle.ts"
 import { allow, git, hit, q1, type Env, type Out } from "./util.ts"
 
@@ -21,6 +22,8 @@ function existingDir(p: string): string | null {
 // A clone under a temp or scratch folder is throwaway work, not a main checkout (seen live: 34 of 51 advise rows).
 function scratch(dir: string): boolean {
   const home = process.env.HOME ?? ""
+  // Claude Code's own folders: its scratchpad under /tmp/claude-<uid>/ and its memory under ~/.claude/projects/.
+  if (/^\/tmp\/claude-\d+(\/|$)/.test(dir) || (home && (dir === `${home}/.claude/projects` || dir.startsWith(`${home}/.claude/projects/`)))) return true
   const roots = (process.env.HARNESS_SCRATCH_ROOTS?.split(":") ?? [tmpdir(), "/tmp", process.env.TMPDIR, `${home}/.agents/skill-workspace`]).filter(Boolean) as string[]
   return roots.some((r) => dir === r || dir.startsWith(r.endsWith("/") ? r : `${r}/`))
 }
@@ -35,9 +38,10 @@ function inMainCheckout(dir: string): boolean {
 // Directories where this shell command runs git commit, checkout, merge or rebase.
 function gitWriteDirs(command: string, cwd: string): string[] {
   const dirs: string[] = []
-  for (const a of parse(command).commands) {
+  const P = parse(command)
+  for (const [n, a] of P.commands.entries()) {
     if (a[0] !== "git") continue
-    let dir = cwd
+    let dir = cdDir(P.dirs[n], cwd)
     let i = 1
     for (; i < a.length; i++) {
       if (a[i] === "-C" && a[i + 1] !== undefined) dir = resolve(dir, a[++i])
