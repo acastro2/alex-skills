@@ -303,3 +303,22 @@ test("a background call whose folder is a shared root (/tmp, $HOME) claims nothi
     for (const s of spawnedHere) s.kill()
   }
 })
+
+// Session-end sweep: the agent's own leftover children (hung zsh, grep, tail from tool runs) are killed when
+// the session ends. HARNESS_AGENT_PID stands in for the claude/opencode process in tests.
+test("session.end kills leftover children of the agent process, not the agent itself", async () => {
+  const agent = Bun.spawn(["sh", "-c", "sleep 300 & wait"], { stdio: ["ignore", "ignore", "ignore"] })
+  spawned.push({ pid: agent.pid, kill: () => agent.kill("SIGKILL") })
+  await Bun.sleep(300)
+  const kids = Bun.spawnSync(["pgrep", "-P", String(agent.pid)], { stdout: "pipe" }).stdout.toString().trim().split("\n").filter(Boolean).map(Number)
+  expect(kids.length).toBe(1)
+  process.env.HARNESS_AGENT_PID = String(agent.pid)
+  try {
+    await prompt()
+    await end()
+    expect(await gone(kids[0]!)).toBe(true)
+    expect(alive(agent.pid)).toBe(true)
+  } finally {
+    delete process.env.HARNESS_AGENT_PID
+  }
+})

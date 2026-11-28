@@ -222,3 +222,49 @@ test("every journaled decision records how long decide() took, in ms", async () 
     expect(r.ms!).toBeGreaterThanOrEqual(0)
   }
 })
+
+// Alex 2026-11-28 ("meal piece steps instead of complete ones"): a reply that ends with a Next: plan of the
+// agent's OWN work is sent back; only Alex's steps (merge, prod apply, passkey, a decision) may end a turn.
+describe("stop-piecemeal", () => {
+  const enforce = async () => (await import("../src/ledger/registry.ts")).setMode(db, "stop-piecemeal", "enforce")
+  test("a Next: plan of the agent's own steps is sent back once when enforced", async () => {
+    await prompt()
+    await enforce()
+    const d = await stop("MOP #826 is open.\n\nNext: I update the runbook, then I validate hypercare and write the log.")
+    expect(d.ruleId).toBe("stop-piecemeal")
+    expect(d.message).toMatch(/do (these|them) now/i)
+  })
+  test("a Next: step that is only Alex's ends the turn", async () => {
+    await prompt()
+    await enforce()
+    const d = await stop("Everything is built and verified.\n\nNext: you merge #826 (MERGE-OK 826).")
+    expect(d.ruleId).not.toBe("stop-piecemeal")
+  })
+  test("it starts in advise: journaled, not sent back", async () => {
+    await prompt()
+    const d = await stop("Done with step one.\n\nNext: I fix the tests and open the PR.")
+    expect(d.ruleId).not.toBe("stop-piecemeal")
+    expect(db.query("select count(*) n from journal where rule_id = 'stop-piecemeal' and outcome = 'advise'").get()).toEqual({ n: 1 })
+  })
+})
+
+// Alex 2026-11-28 (burn -n: 51 leftover agent processes, 1.7 GB): agents must watch CPU, memory and leftover
+// processes, not only disk. stop-resources lists this session's processes over the limits with kill lines.
+describe("stop-resources", () => {
+  test("a registered process past the idle limit is named with its kill line when enforced", async () => {
+    process.env.HARNESS_RESOURCE_IDLE_MIN = "0"
+    const { setMode } = await import("../src/ledger/registry.ts")
+    const p = Bun.spawn(["sleep", "300"], { stdio: ["ignore", "ignore", "ignore"] })
+    try {
+      await prompt()
+      setMode(db, "stop-resources", "enforce")
+      await decide(ev({ toolName: "shell", input: { command: "sleep 300 & echo PID: $!", cwd: "/tmp" }, output: `PID: ${p.pid}` }))
+      const d = await stop("Finished.")
+      expect(d.ruleId).toBe("stop-resources")
+      expect(d.message).toContain(`kill ${p.pid}`)
+    } finally {
+      p.kill("SIGKILL")
+      delete process.env.HARNESS_RESOURCE_IDLE_MIN
+    }
+  })
+})

@@ -88,3 +88,11 @@ describe("kill switch", () => {
     expect(isOff(db)).toBe(false)
   })
 })
+
+// Alex 2026-11-28: one MERGE-OK line may name several PRs, so agents need not stop at every PR.
+test("MERGE-OK with several PR numbers grants each of them", () => {
+  const r = command(db, { channel: "prompt", session: "s1", isRootSession: true, text: "MERGE-OK 826 827 828" })
+  expect(r.kind).toBe("grant")
+  for (const pr of [826, 827, 828]) expect(holds(db, { kind: "merge", session: "s1", pr })).not.toBeNull()
+  expect(holds(db, { kind: "merge", session: "s1", pr: 829 })).toBeNull()
+})

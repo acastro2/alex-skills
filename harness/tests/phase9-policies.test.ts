@@ -349,3 +349,11 @@ describe("Claude adapter", () => {
     expect(plain.stdout).toBeUndefined()
   })
 })
+
+// Alex 2026-11-28: one PR per job. A second `gh pr create` in a session that already opened one gets the rule.
+test("a second gh pr create in the session is told: one PR per job", async () => {
+  const sh = (command: string) => decide(ev({ event: "tool.after", toolName: "shell", input: { command, cwd: "/tmp" }, output: "https://github.com/o/r/pull/1" }))
+  await sh("gh pr create --title a --body b")
+  const second = await sh("gh pr create --title c --body d")
+  expect(second.context ?? "").toContain("One PR per job")
+})
