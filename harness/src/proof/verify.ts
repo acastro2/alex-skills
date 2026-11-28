@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
-import { closeSync, existsSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs"
+import { closeSync, existsSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 import { append, upsertSession } from "../ledger/journal.ts"
@@ -160,6 +160,14 @@ function snapshotCommit(cwd: string): string {
   }
 }
 
+const realOr = (p: string): string => {
+  try {
+    return realpathSync(p)
+  } catch {
+    return p
+  }
+}
+
 export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
   const base = o.baseSha
   if (base) gitOk(o.cwd, "rev-parse", "--verify", `${base}^{commit}`)
@@ -203,7 +211,12 @@ export async function verify(db: Database, o: VerifyOpts): Promise<Bundle> {
     const commands = [...o.commands]
     const committed = repoVerify(wt)
     if (committed && !commands.includes(committed)) commands.push(committed)
-    for (const c of commands) reruns.push(await runCommand(c, wt))
+    // A command that names the source folder (`cd <worktree> && bun test`) must run in this copy of the recorded sha,
+    // not in the live folder, which may change while it runs (seen live 2026-11-28). Longest path first.
+    const top = git(o.cwd, "rev-parse", "--show-toplevel").out.trim() || o.cwd
+    const homes = [...new Set([top, realOr(top)])].sort((a, b) => b.length - a.length)
+    const local = (c: string) => homes.reduce((s, h) => s.split(h).join(wt), c)
+    for (const c of commands) reruns.push({ ...(await runCommand(local(c), wt)), command: c })
   } finally {
     git(o.cwd, "worktree", "remove", "--force", wt)
     rmSync(tmp, { recursive: true, force: true })

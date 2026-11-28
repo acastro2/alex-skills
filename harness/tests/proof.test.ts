@@ -59,6 +59,19 @@ describe("verify", () => {
     expect(g(repo, "worktree", "list").split("\n")).toHaveLength(1)
   })
 
+  // Live 2026-11-28: a worker's acceptance command was `cd <its worktree> && bun test`. The `cd` walked out of
+  // the detached copy into the live folder, which had changed mid-run, so the bundle named one sha and tested
+  // another. A command that names the source folder runs in the detached copy of the recorded sha instead.
+  test("a command that cds into the source folder runs in the detached copy of the recorded sha", async () => {
+    const head = commit({ "a.txt": "a", ".gitignore": "late.txt\n" })
+    // The live folder moves on (an ignored file keeps the tree clean); the recorded sha has no late.txt.
+    writeFileSync(join(repo, "late.txt"), "added after the sha was recorded\n")
+    const b = await ver({ commands: [`cd ${repo} && test ! -f late.txt && test -f a.txt`] })
+    expect(b.headSha).toBe(head)
+    expect(b.verified.reruns[0]!.exit).toBe(0)
+    expect(b.verdict).toBe("green")
+  })
+
   test("a failing command gives red", async () => {
     commit({ "a.txt": "a" })
     const b = await ver({ commands: ["echo boom; exit 3"] })
