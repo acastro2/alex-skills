@@ -215,3 +215,30 @@ describe("review binding", () => {
     expect((await runAction(db, "apply", { request_id: r.requestId, digest })).status).toBe(200)
   })
 })
+
+// Ledger audit 2026-11-28: the MCP server and the hooks seed() on start and raised rule modes in the shared
+// ledger, so push-gate and main-checkout-write enforced live with no apply (D71). Only apply may raise a mode.
+describe("only apply changes a stored rule mode", () => {
+  const stored = () => db.query("select mode, default_mode from rules where id = 'push-gate'").get()
+  test("decide() and the MCP server leave an existing rules row alone; apply raises it", async () => {
+    const { seed } = await import("../src/ledger/registry.ts")
+    seed(db)
+    db.query("update rules set mode = 'advise', default_mode = 'advise' where id = 'push-gate'").run()
+
+    const { decide, closeCore } = await import("../src/core.ts")
+    await decide({ v: 1, event: "prompt", tool: "claude", session: "s1", parentSession: null, cwd: repo, time: Date.now(), prompt: "hi" })
+    closeCore()
+    expect(stored()).toEqual({ mode: "advise", default_mode: "advise" })
+
+    const mcp = Bun.spawn([process.execPath, join(ROOT, "src/mcp/agent.ts")], { stdin: "pipe", stdout: "pipe", stderr: "pipe", env: process.env })
+    await Bun.sleep(1500)
+    mcp.kill()
+    await mcp.exited
+    expect(stored()).toEqual({ mode: "advise", default_mode: "advise" })
+
+    const r = requestAndGrant(sha1)
+    expect(stored()).toEqual({ mode: "advise", default_mode: "advise" }) // a request changes nothing
+    expect(apply(db, { requestId: r.requestId, cwd: repo })).toMatchObject({ ok: true })
+    expect(stored()).toEqual({ mode: "enforce", default_mode: "enforce" })
+  }, 30_000)
+})
