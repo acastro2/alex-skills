@@ -10,7 +10,7 @@ interface Found {
   data?: Record<string, unknown>
 }
 
-const scratchLimitMb = () => Number(process.env.HARNESS_SCRATCH_LIMIT_MB) || 500
+const scratchLimitMb = () => Number(process.env.HARNESS_SCRATCH_LIMIT_MB) || 1024
 
 // Top-level entries under tmpdir() that this session's tool rows wrote to (rows carry data.path).
 function scratchDirs(env: Env): string[] {

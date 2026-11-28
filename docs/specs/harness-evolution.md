@@ -325,7 +325,7 @@ flowchart LR
 | Handoff | This session's `workstreams` entry was not updated since its last commit (D6, D38) | the handoff reminders | 5 |
 | Proof | The reply says "done", "fixed" or "works" with no green bundle in this turn for that change (D47) | claims that are not shown | 3 |
 | Processes | A process this session started is still running and is not named in the reply | the server scavenger hunt | 5 |
-| Cleanup | Scratch files for this session are over 500 MB, or a merged worktree of this session is still on disk (D22) | disk filling on the VM | 5 |
+| Cleanup | Scratch files for this session are over 1 GB, or a merged worktree of this session is still on disk (D22) | disk filling on the VM | 5 |
 | Handoff protocol | The committed `HANDOFF.md` is over 150 lines, or holds live workstream state that belongs in the ledger (D23) | handoffs that only grow | 5 |
 | Stale state | The reply says a PR is open, a review is waiting, or something waits for Alex, and the turn did not check it live (`gh pr view`, the ticket, the inbox) after the last time Alex spoke | 9 "it's already merged", "already sent" | 2 |
 | False "can't" | The reply says the agent cannot do something, or asks Alex to do it by hand, and the task is in a browser while `browse` is connected. Only login, 2FA, a passkey, a captcha or a payment confirmation go to Alex, through `handoff`. | "you can, use browser control" | 2 |
@@ -473,7 +473,7 @@ If the main checkout has uncommitted changes of its own (Alex editing by hand), 
 
 **Cleanup (D20, D22).**
 - On `session.end`, the core kills each process in `processes` for that session, unless it has the `keep` flag. An agent sets `keep` with the `keep_process` tool only for a server Alex asked to keep up, and the Stop check makes it name the process in the reply.
-- The Stop check sends the agent back when its scratch files are over 500 MB or a removed worktree is still on disk.
+- The Stop check sends the agent back when its scratch files are over 1 GB or a removed worktree is still on disk.
 
 Done when:
 - Two sessions in one repo each get a worktree, and each sees the other in `.harness/HANDOFF.live.md` at start.
@@ -639,7 +639,7 @@ All taken by Alex on 2026-11-25.
 | D19 | Waker | One watch per session, every 2 minutes, expires after 24 hours | An OpenCode automation can only wake the session that created it |
 | D20 | `session.end` | Kill the processes the session started, except the ones it registered with `keep` and named in its reply. Report the kept ones at the next start | The VM has little room for leftovers, and a server Alex asked for stays up only when it is named |
 | D21 | Worktree home | `~/.worktrees/<repo>/<name>` | Outside every repo, so OpenCode does not load a second copy of a skill, and one folder is easy to measure on the VM |
-| D22 | Cleanup | When a watched PR merges, the waker removes its worktree and local branch, only if the worktree is clean. The Stop check sends the agent back for unnamed running servers or scratch files over 500 MB | Disk on the VM stays bounded, and nothing with unsaved work is deleted |
+| D22 | Cleanup | When a watched PR merges, the waker removes its worktree and local branch, only if the worktree is clean. The Stop check sends the agent back for unnamed running servers or scratch files over 1 GB | Disk on the VM stays bounded, and nothing with unsaved work is deleted |
 | D23 | HANDOFF protocol | Agents coordinate through the `workstreams` table and the rendered `HANDOFF.live.md` (D38). The committed `HANDOFF.md` keeps only lasting context, 150 lines at most | Agents read who does what and where, and done work is removed, so the file stays current |
 | D24 | Rollout | Each rule is live from the day its phase ships it (Ships in). No shadow week. Exception: `push-gate` starts log-only until `verify` works (D44) | Alex wants the time savings at once. `harness wrong` (D28) is the safety valve |
 | D25 | Kill switch | `harness off` and `harness on`: one global flag in the ledger that only Alex can set | One command recovers every session if the core has a bug |
