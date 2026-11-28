@@ -123,6 +123,50 @@ describe("processes", () => {
   })
 })
 
+// Ledger audit 2026-11-28: 4,171 shell calls in 48 h, 0 processes registered. A background shell prints no
+// PID, and Claude's backgroundTaskId is not one. Find new listeners and children started in the call's window
+// whose cwd is in the session's folder, and store the start time so a reused PID is never killed.
+describe("silent background processes", () => {
+  const server = (cwd: string) => {
+    const p = Bun.spawn([process.execPath, "-e", "Bun.serve({ port: 0, fetch: () => new Response('ok') }); setInterval(() => {}, 1e6)"], {
+      cwd,
+      stdio: ["ignore", "ignore", "ignore"],
+    })
+    spawned.push({ pid: p.pid, kill: () => p.kill("SIGKILL") })
+    return p.pid
+  }
+  const claimed = () => (db.query("select pid, started_at from processes where session_id = 's1'").all() as { pid: number; started_at: number | null }[])
+
+  test("a silent background server is found by its new listener and cwd, and killed at session end", async () => {
+    const work = mkdtempSync(join(tmpdir(), "harness-bgsrv-"))
+    const t0 = Date.now()
+    const pid = server(work)
+    await Bun.sleep(400) // let it bind
+    await prompt()
+    await decide(ev({ toolName: "shell", cwd: work, time: t0, input: { command: "bun server.ts", cwd: work, run_in_background: true }, output: "backgroundTaskId: bq7x1" }))
+    const row = claimed().find((x) => x.pid === pid)
+    expect(row).toBeDefined()
+    expect(row!.started_at).toBeGreaterThan(0)
+    await end()
+    expect(await gone(pid)).toBe(true)
+  })
+
+  test("a process already running before the call, or outside the session's folder, is not claimed", async () => {
+    const work = mkdtempSync(join(tmpdir(), "harness-bgsrv-"))
+    const other = mkdtempSync(join(tmpdir(), "harness-other-"))
+    const old = server(work)
+    await Bun.sleep(1500)
+    const t0 = Date.now()
+    const elsewhere = server(other)
+    await Bun.sleep(400)
+    await prompt()
+    await decide(ev({ toolName: "shell", cwd: work, time: t0, input: { command: "bun server.ts", cwd: work, run_in_background: true }, output: "" }))
+    const pids = claimed().map((x) => x.pid)
+    expect(pids).not.toContain(old)
+    expect(pids).not.toContain(elsewhere)
+  })
+})
+
 describe("stop-cleanup", () => {
   test("sends back when scratch files written this session pass the limit", async () => {
     process.env.HARNESS_SCRATCH_LIMIT_MB = "1"
