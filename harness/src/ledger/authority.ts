@@ -11,7 +11,7 @@ export type Command =
   | { kind: "switch"; action: "off" | "on" | "wrong" | "on-rule" | "rollback"; arg?: string }
 
 export interface Channel {
-  channel: "prompt" | "page"
+  channel: "prompt" | "page" | "cli"
   session: string
   isRootSession: boolean
   text: string

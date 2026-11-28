@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Terminal approvals: `harness requests`, `harness approve <sha8>`, `harness merge-ok <pr> --session <id>`.
+# Run it yourself in a terminal. It refuses to run without one.
+set -euo pipefail
+
+SELF="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
+BUN="${BUN:-$(command -v bun || true)}"
+if [ -z "$BUN" ] && command -v mise >/dev/null 2>&1; then BUN="$(mise which bun 2>/dev/null || true)"; fi
+[ -n "$BUN" ] || { echo "harness: bun not found (set BUN)" >&2; exit 1; }
+exec "$BUN" "$DIR/../src/cli.ts" "$@"

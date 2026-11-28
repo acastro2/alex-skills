@@ -255,7 +255,8 @@ function mergeInShell(P: Parsed, ctx: ShellCtx): boolean {
 
 // ---- harness-self ----
 
-const SELF_VERBS = set("off", "on", "wrong", "rollback")
+// `approve` and `merge-ok` are the terminal approvals (src/cli.ts). `requests` is read-only and stays allowed.
+const SELF_VERBS = set("off", "on", "wrong", "rollback", "approve", "merge-ok")
 const ESCALATE = set("sudo", "su", "pkexec", "doas")
 const INTERPRETERS = /^(bun|bunx|node|nodejs|deno|tsx|ts-node|npx|sh|bash|zsh|python[\d.]*)$/
 
@@ -264,7 +265,7 @@ function harnessSelf(P: Parsed, line: string, ctx: ShellCtx): boolean {
   let agentCli = false
   for (const c of P.commands) {
     const [prog, ...args] = c
-    if (prog === "harness" && SELF_VERBS.has(args[0])) return true
+    if (/(^|\/)harness$/.test(prog) && SELF_VERBS.has(args[0])) return true // also the bin path
     if (prog === "harness-rollback" || prog === "install.ts") return true
     if (INTERPRETERS.test(prog)) {
       const cli = args.findIndex((a) => /(^|\/)cli\.ts$/.test(a))
