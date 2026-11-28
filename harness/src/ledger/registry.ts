@@ -66,27 +66,30 @@ function known(id: string): Rule {
   return r
 }
 
+// Inserts rows that are missing. Never updates a stored row, so any process may call it on start (D71).
 export function seed(db: Database): void {
-  const stored = new Map(
-    (db.query("select id, mode, default_mode from rules").all() as { id: string; mode: string; default_mode: string }[]).map((r) => [r.id, r]),
-  )
-  const stale = (r: Rule) => {
-    const s = stored.get(r.id)
-    return !s || (s.mode === s.default_mode && s.default_mode !== r.default_mode)
-  }
-  if (!RULES.some(stale)) return // the common start: nothing to write
+  const have = new Set((db.query("select id from rules").all() as { id: string }[]).map((r) => r.id))
+  const missing = RULES.filter((r) => !have.has(r.id))
+  if (!missing.length) return // the common start: nothing to write
   const now = Date.now()
   const ins = db.query(
     "insert or ignore into rules(id, event, module, mode, default_mode, ships_in, wrong_today, updated_at) values(?, ?, ?, ?, ?, ?, 0, ?)",
   )
-  // A raised default reaches a rule Alex never changed (mode == default_mode); a mode he set is kept.
-  const raise = db.query("update rules set mode = ?, default_mode = ?, updated_at = ? where id = ? and mode = default_mode and default_mode != ?")
   db.transaction(() => {
-    for (const r of RULES) {
-      ins.run(r.id, r.event, r.module, r.default_mode, r.default_mode, r.ships_in, now)
-      raise.run(r.default_mode, r.default_mode, now, r.id, r.default_mode)
-    }
+    for (const r of missing) ins.run(r.id, r.event, r.module, r.default_mode, r.default_mode, r.ships_in, now)
   }).immediate()
+}
+
+// Moves a rule Alex never changed (mode == default_mode) to the code default; a mode he set is kept.
+// Only apply() calls this: a changed live mode needs his tap (D71). Returns the ids it changed.
+export function raiseDefaults(db: Database): string[] {
+  const now = Date.now()
+  const raise = db.query("update rules set mode = ?, default_mode = ?, updated_at = ? where id = ? and mode = default_mode and default_mode != ?")
+  const changed: string[] = []
+  db.transaction(() => {
+    for (const r of RULES) if (raise.run(r.default_mode, r.default_mode, now, r.id, r.default_mode).changes === 1) changed.push(r.id)
+  }).immediate()
+  return changed
 }
 
 export function mode(db: Database, id: string): Mode {

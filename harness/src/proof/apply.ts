@@ -6,6 +6,7 @@ import { join } from "node:path"
 import { consume, holds, requestApply } from "../ledger/authority.ts"
 import { getMeta, setMeta } from "../ledger/db.ts"
 import { append, upsertSession } from "../ledger/journal.ts"
+import { raiseDefaults, seed } from "../ledger/registry.ts"
 import { ulid } from "../ledger/ulid.ts"
 import { git } from "./verify.ts"
 
@@ -196,6 +197,10 @@ export function apply(db: Database, o: { requestId: string; now?: number; cwd?: 
       time: now,
     })
   }).immediate()
+  // The install succeeded and the apply is recorded: only now may a stored rule mode move (D71).
+  seed(db)
+  const raised = raiseDefaults(db)
+  if (raised.length) append(db, { session_id: req.session_id, event: "rules.raised", data: { apply_id: applyId, rules: raised }, time: now })
   return { ok: true, sha: req.sha, applyId, dir }
 }
 
