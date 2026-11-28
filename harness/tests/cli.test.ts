@@ -62,7 +62,7 @@ test("approve on a terminal with the right digest grants, journaled as channel c
 })
 
 test("merge-ok on a terminal grants a merge token for that PR and session", () => {
-  db.query("insert into sessions(id, tool) values('s9', 'claude')").run()
+  db.query("insert into sessions(id, tool, started_at) values('s9', 'claude', 0)").run()
   const ok = withTty("merge-ok 42 --session s9", "42\n")
   expect(ok.exitCode).toBe(0)
   expect(db.query("select count(*) n from tokens where kind = 'merge' and pr = 42 and session_id = 's9'").get()).toEqual({ n: 1 })
