@@ -229,6 +229,31 @@ export async function stopChecks(env: Env): Promise<Out> {
     if (!todo.length) return allow({ data: { ...data, repeated: fired.map((c) => c.id) }, reason: `already sent back for: ${fired.map((c) => c.id).join(", ")}` })
   }
 
+  // OpenCode has no stop_hook_active: the journal says which rules already sent this agent back this turn.
+  // A rule sends back once per turn; the repeat is journaled as advise and the stop goes through.
+  const done = new Set<string>()
+  for (const r of db
+    .query("select rule_id, data_json from journal where session_id = ? and turn = ? and event = 'stop.sendback'")
+    .all(ev.session, turn) as { rule_id: string | null; data_json: string | null }[]) {
+    if (r.rule_id) done.add(r.rule_id)
+    try {
+      for (const id of JSON.parse(r.data_json ?? "{}").checks ?? []) done.add(id)
+    } catch {}
+  }
+  const again = todo.filter((c) => done.has(c.id))
+  if (again.length) {
+    todo = todo.filter((c) => !done.has(c.id))
+    data.sentBack = again.map((c) => c.id)
+    if (!todo.length) {
+      return allow({
+        ruleId: again[0].id,
+        outcome: "advise",
+        reason: `already sent back this turn: ${again.map((c) => `${c.id}: ${c.message}`).join(" | ")}`,
+        data: { ...data, advised: again.map((c) => c.id) },
+      })
+    }
+  }
+
   const sent = (q1<{ c: number }>(db, "select count(*) as c from sendbacks where session_id = ? and turn = ?", ev.session, turn) ?? { c: 0 }).c
   const ids = todo.map((c) => c.id)
   if (sent >= SENDBACK_CAP) {

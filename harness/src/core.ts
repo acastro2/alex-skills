@@ -272,6 +272,7 @@ async function route(env: Env, off: boolean): Promise<Out> {
 
 export async function decide(ev: HarnessEvent): Promise<Decision> {
   let db: Database | undefined
+  const t0 = performance.now()
   try {
     db = ledger()
     ensureSession(db, ev)
@@ -295,7 +296,8 @@ export async function decide(ev: HarnessEvent): Promise<Decision> {
     // A stop reply goes to the journal for the waker (data.reply, 4000 chars).
     const stopData = ev.event === "stop" ? { reply: (ev.reply ?? "").slice(0, 4000), ...(out.data ?? {}) } : out.data
     const tag = agentData(db, ev, procMark)
-    const data = Object.keys(tag).length ? { ...(stopData ?? {}), ...tag } : stopData
+    const tagged = Object.keys(tag).length ? { ...(stopData ?? {}), ...tag } : stopData
+    const data = { ...(tagged ?? {}), ms: Math.max(0, Math.round(performance.now() - t0)) }
     append(db, {
       session_id: ev.session,
       turn,
@@ -307,7 +309,7 @@ export async function decide(ev: HarnessEvent): Promise<Decision> {
       prompt_text: ev.event === "prompt" ? (ev.prompt ?? "") : undefined,
       args: ev.input,
       output: ev.output,
-      data: data && Object.keys(data).length ? data : undefined,
+      data,
     })
     for (const i of inj) {
       append(db, {

@@ -129,15 +129,14 @@ describe("stop-continue", () => {
 })
 
 describe("cap and repeat", () => {
-  test("the 6th send-back in a turn is not sent", async () => {
+  // Decided 2026-11-28 (ledger audit): one send-back per rule per turn replaces the old 5-repeat allowance.
+  test("a repeated rule is sent back once, then journaled as advise and the stop goes through", async () => {
     await prompt()
     await shellAfter("git push origin feature")
-    for (let i = 0; i < 5; i++) expect((await stop("Pushed.")).outcome).toBe("deny")
-    const sixth = await stop("Pushed.")
-    expect(sixth.outcome).toBe("allow")
-    expect(sendbacks()).toBe(5)
-    const last = db.query("select reason from journal where event = 'stop' order by seq desc limit 1").get() as { reason: string }
-    expect(last.reason).toContain("cap reached: stop-links")
+    expect((await stop("Pushed.")).outcome).toBe("deny")
+    const again = await stop("Pushed.")
+    expect(again.outcome).toBe("allow")
+    expect(sendbacks()).toBe(1)
   })
 
   test("stopActive with the check that fired last time does not send back twice", async () => {
