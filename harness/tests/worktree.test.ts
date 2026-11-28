@@ -273,3 +273,34 @@ describe("waker lands merged worktrees", () => {
     expect(state(open.id)).toBe("active")
   })
 })
+
+// Live 2026-11-28: four lane branches whose commits reached main as cherry-picks (re-split, with later edits on
+// top) stayed active for a day and flooded every session with conflict and overlap warnings. A worktree whose
+// branch has nothing missing from main (git cherry: no "+" commit) is done: the waker lands it.
+test("the waker lands a worktree whose every commit is on main by patch", async () => {
+  const { wakerTick } = await import("../src/waker/waker.ts")
+  const w = worktreeNew(db, { session: "s1", repoCwd: main, name: "picked" })
+  writeFileSync(join(w.path, "a.txt"), "a\n")
+  git(w.path, "add", ".")
+  git(w.path, "commit", "-q", "-m", "a")
+  const a = git(w.path, "rev-parse", "HEAD")
+  writeFileSync(join(w.path, "b.txt"), "b\n")
+  git(w.path, "add", ".")
+  git(w.path, "commit", "-q", "-m", "b")
+  const b = git(w.path, "rev-parse", "HEAD")
+  // main takes both by cherry-pick, with an unrelated commit between them, then edits on top
+  git(main, "cherry-pick", a)
+  writeFileSync(join(main, "c.txt"), "c\n")
+  git(main, "add", ".")
+  git(main, "commit", "-q", "-m", "c")
+  git(main, "cherry-pick", b)
+  git(main, "push", "-q", "origin", "main")
+  const open = worktreeNew(db, { session: "s1", repoCwd: main, name: "unpicked" })
+  writeFileSync(join(open.path, "d.txt"), "d\n")
+  git(open.path, "add", ".")
+  git(open.path, "commit", "-q", "-m", "d")
+  await wakerTick(db, { gh: async () => ({ code: 1, stdout: "", stderr: "" }), deliver: async () => {} } as never)
+  const state = (id: string) => (db.query("select state from worktrees where id = ?").get(id) as { state: string }).state
+  expect(state(w.id)).toBe("removed")
+  expect(state(open.id)).toBe("active")
+})

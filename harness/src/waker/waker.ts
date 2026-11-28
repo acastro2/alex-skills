@@ -283,7 +283,11 @@ function landMergedWorktrees(db: Database, now: number): void {
         if (spawnGit(["remote", "get-url", "origin"], w.repo).ok) spawnGit(["fetch", "-q", "origin"], w.repo)
         const sym = spawnGit(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], w.repo)
         const tip = sym.ok && sym.out ? sym.out : "origin/main"
-        if (!spawnGit(["merge-base", "--is-ancestor", head.out, tip], w.repo).ok) continue
+        // Merged as is, or every commit is on main by patch (cherry-picked, re-split): nothing is missing from main.
+        const merged = spawnGit(["merge-base", "--is-ancestor", head.out, tip], w.repo).ok
+        const cherry = merged ? null : spawnGit(["cherry", tip, head.out], w.repo)
+        const picked = !!cherry?.ok && !!cherry.out && !cherry.out.split("\n").some((l) => l.startsWith("+"))
+        if (!merged && !picked) continue
         try {
           land(db, { worktreeId: w.id, pushedSha: head.out })
         } catch (e: any) {
