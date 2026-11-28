@@ -58,7 +58,10 @@ export interface Todo {
 export function toolData(ev: HarnessEvent): Record<string, any> {
   const i = (ev.input ?? {}) as Record<string, any>
   const d: Record<string, any> = { tool: ev.toolName }
-  if (ev.toolName === "shell") d.arg = shortArg(String(i.command ?? ""), 600)
+  if (ev.toolName === "shell") {
+    d.arg = shortArg(String(i.command ?? ""), 600)
+    if (i.run_in_background === true) d.run_in_background = true
+  }
   else if (typeof i.path === "string") {
     d.path = i.path
     d.arg = i.path

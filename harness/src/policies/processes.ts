@@ -2,11 +2,14 @@
 // when one runs unnamed at stop, and kill the unkept ones at session.end.
 import type { Database } from "bun:sqlite"
 import { createHash } from "node:crypto"
-import { basename } from "node:path"
+import { readFileSync, readlinkSync, realpathSync } from "node:fs"
+import { basename, sep } from "node:path"
 import { append, scrub } from "../ledger/journal.ts"
-import { q1, shortArg, type Env } from "./util.ts"
+import { git, q1, shortArg, type Env } from "./util.ts"
 
 const RECENT_MS = 120_000 // a registered process must have started this close to the tool call
+const WINDOW_MARGIN_MS = 1000 // a silent background process may start this long before the call's time stamp
+const START_TOL_MS = 1500 // two reads of one process's start time differ by clock jitter and, on macOS, whole seconds
 export const KILL_GRACE_MS = 1500 // spec says 2 s; the adapters time the core out at 2.5 s, so SIGKILL must come earlier
 
 const BG_CMD = /\b(nohup|setsid|disown)\b|(?<![&>|])&(?![&>])/
@@ -29,6 +32,26 @@ export interface Proc {
   startMs: number
 }
 
+const isLinux = process.platform === "linux"
+
+// When the process started, in epoch ms, or null. Linux: /proc/<pid>/stat field 22 (ticks since boot, 100 per
+// second on every mainstream kernel) plus the boot time. macOS: `ps -o lstart=`, with whole-second resolution.
+export function startTimeMs(pid: number): number | null {
+  try {
+    if (isLinux) {
+      const stat = readFileSync(`/proc/${pid}/stat`, "utf8")
+      const ticks = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19]) // the name in field 2 may hold spaces
+      const uptime = Number(readFileSync("/proc/uptime", "utf8").split(" ")[0])
+      return Number.isFinite(ticks) && Number.isFinite(uptime) ? Math.round(Date.now() - uptime * 1000 + ticks * 10) : null
+    }
+    const r = Bun.spawnSync(["ps", "-o", "lstart=", "-p", String(pid)], { stdout: "pipe", stderr: "ignore" })
+    const t = Date.parse(r.stdout.toString().trim())
+    return Number.isNaN(t) ? null : t
+  } catch {
+    return null
+  }
+}
+
 // The live process behind a pid, or null: dead, zombie, or owned by someone else.
 export function procInfo(pid: number): Proc | null {
   if (!Number.isInteger(pid) || pid <= 1) return null
@@ -42,7 +65,7 @@ export function procInfo(pid: number): Proc | null {
     const m = /^\s*(\S+)\s+(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)\s+(.*)$/.exec(r.stdout.toString().split("\n")[0] ?? "")
     if (!m || m[1].startsWith("Z")) return null
     const secs = Number(m[2] ?? 0) * 86400 + Number(m[3] ?? 0) * 3600 + Number(m[4]) * 60 + Number(m[5])
-    return { cmd: m[6].trim(), startMs: Date.now() - secs * 1000 }
+    return { cmd: m[6].trim(), startMs: startTimeMs(pid) ?? Date.now() - secs * 1000 }
   } catch {
     return null
   }
@@ -64,6 +87,84 @@ export function pidsOnPort(port: number): number[] {
   return []
 }
 
+// The folder of a process: /proc/<pid>/cwd on Linux, lsof on macOS. Null when unreadable (another user's process).
+function cwdOf(pid: number): string | null {
+  try {
+    if (isLinux) return readlinkSync(`/proc/${pid}/cwd`)
+    const r = Bun.spawnSync(["lsof", "-a", "-p", String(pid), "-d", "cwd", "-Fn"], { stdout: "pipe", stderr: "ignore" })
+    return /^n(.+)$/m.exec(r.stdout.toString())?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+// Every TCP listener on the machine, with its port: one `ss` call (lsof on macOS).
+function listeners(): Map<number, number> {
+  const out = new Map<number, number>()
+  try {
+    if (isLinux) {
+      const r = Bun.spawnSync(["ss", "-ltnpH"], { stdout: "pipe", stderr: "ignore" })
+      for (const line of r.stdout.toString().split("\n")) {
+        const port = Number(/^\S+\s+\S+\s+\S+\s+\S*:(\d+)\s/.exec(line)?.[1])
+        for (const m of line.matchAll(/pid=(\d+)/g)) if (port && !out.has(Number(m[1]))) out.set(Number(m[1]), port)
+      }
+    } else {
+      const r = Bun.spawnSync(["lsof", "-nP", "-iTCP", "-sTCP:LISTEN", "-Fpn"], { stdout: "pipe", stderr: "ignore" })
+      let pid = 0
+      for (const line of r.stdout.toString().split("\n")) {
+        if (line.startsWith("p")) pid = Number(line.slice(1))
+        else if (line.startsWith("n") && pid && !out.has(pid)) out.set(pid, Number(/:(\d+)$/.exec(line)?.[1]))
+      }
+    }
+  } catch {}
+  return out
+}
+
+// Everything below the given pids in the process tree: one `ps` call.
+function descendantsOf(roots: number[]): Set<number> {
+  const kids = new Map<number, number[]>()
+  try {
+    const r = Bun.spawnSync(["ps", "-A", "-o", "pid=,ppid="], { stdout: "pipe", stderr: "ignore" })
+    for (const m of r.stdout.toString().matchAll(/^\s*(\d+)\s+(\d+)\s*$/gm)) kids.set(Number(m[2]), [...(kids.get(Number(m[2])) ?? []), Number(m[1])])
+  } catch {}
+  const seen = new Set<number>()
+  const todo = [...roots]
+  for (let p = todo.pop(); p !== undefined; p = todo.pop()) for (const k of kids.get(p) ?? []) if (!seen.has(k)) (seen.add(k), todo.push(k))
+  return seen
+}
+
+const real = (p: string): string | null => {
+  try {
+    return realpathSync(p)
+  } catch {
+    return null
+  }
+}
+
+// A background shell call prints no PID. Find what it left behind: processes that started in the call's window,
+// listen on a TCP port or descend from this agent, and run inside the session's folder (the call's cwd or its git toplevel).
+function silentBackground(ev: Env["ev"], input: Record<string, unknown>): Map<number, number | null> {
+  const found = new Map<number, number | null>()
+  const callCwd = String(input.cwd ?? ev.cwd ?? "")
+  if (!callCwd) return found
+  const top = git(["rev-parse", "--show-toplevel"], callCwd)
+  const roots = [callCwd, top.ok ? top.out : ""].map((p) => (p ? real(p) : null)).filter((p): p is string => !!p && p !== sep)
+  if (!roots.length) return found
+  const inside = (cwd: string) => roots.some((r) => cwd === r || cwd.startsWith(r + sep))
+  const since = ev.time - WINDOW_MARGIN_MS
+
+  const ports = listeners()
+  const candidates = new Set([...ports.keys(), ...descendantsOf([process.pid, process.ppid])])
+  for (const pid of candidates) {
+    if (pid <= 1 || pid === process.pid || pid === process.ppid) continue
+    const start = startTimeMs(pid)
+    if (start === null || start < since) continue
+    const cwd = cwdOf(pid)
+    if (cwd && inside(cwd)) found.set(pid, ports.get(pid) ?? null)
+  }
+  return found
+}
+
 const all = (re: RegExp, text: string): number[] => [...text.matchAll(re)].map((m) => Number(m[1])).filter((n) => n > 1)
 
 // tool.after of a shell call: record the background processes and listening servers it left behind.
@@ -83,6 +184,11 @@ export function registerShellProcesses(env: Env): void {
     if (command.includes("$!")) for (const pid of all(LONE_PID, out)) pids.set(pid, null)
   }
   for (const port of ports) for (const pid of pidsOnPort(port)) pids.set(pid, port)
+  if (input.run_in_background === true || input.background === true) {
+    try {
+      for (const [pid, port] of silentBackground(ev, input)) if (!pids.has(pid)) pids.set(pid, port)
+    } catch {} // never fail the hook
+  }
 
   for (const [pid, port] of pids) {
     if (pid === process.pid || pid === process.ppid) continue
@@ -96,7 +202,7 @@ export function registerShellProcesses(env: Env): void {
       port,
       info.startMs,
     )
-    append(db, { session_id: ev.session, turn: env.turn, time: ev.time, event: "process.registered", data: { pid, port, cmdHash: hash(info.cmd) } })
+    append(db, { session_id: ev.session, turn: env.turn, time: ev.time, event: "process.registered", data: { pid, port, cmdHash: hash(info.cmd), startMs: info.startMs } })
   }
 }
 
@@ -108,15 +214,15 @@ export interface ProcRow {
   keep: number | null
 }
 
-// Is the live process still the one we registered? A reused pid has another command line.
+// Is the live process still the one we registered? A reused pid has another command line and another start time.
 function same(db: Database, session: string, row: ProcRow, cur: Proc): boolean {
-  const rec = q1<{ h: string | null }>(
+  const rec = q1<{ h: string | null; s: number | null }>(
     db,
-    "select json_extract(data_json, '$.cmdHash') as h from journal where session_id = ? and event = 'process.registered' and json_extract(data_json, '$.pid') = ? order by seq desc limit 1",
+    "select json_extract(data_json, '$.cmdHash') as h, json_extract(data_json, '$.startMs') as s from journal where session_id = ? and event = 'process.registered' and json_extract(data_json, '$.pid') = ? order by seq desc limit 1",
     session,
     row.pid,
   )
-  if (rec?.h) return rec.h === hash(cur.cmd)
+  if (rec?.h) return rec.h === hash(cur.cmd) && (rec.s == null || Math.abs(cur.startMs - rec.s) <= START_TOL_MS)
   // keep_process made the row, so there is no record: accept when the stored command and the live one overlap.
   const stored = row.command ?? ""
   return !!stored && (cur.cmd.includes(stored) || stored.includes(cur.cmd) || stored.includes(basename(cur.cmd.split(/\s+/)[0])))
