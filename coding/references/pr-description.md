@@ -7,6 +7,10 @@ A PR description tells the reader what changed and why, so they understand the c
 
 Voice comes from `../alex-voice/SKILL.md`, docs register. This file owns the shape.
 
+## One PR per job
+
+One spec, ticket or MOP gets one PR, with one commit per step. Open it when the whole job is green, not after the first step. A step that a later step depends on goes in the same PR. A second PR is for a different job. Why: Alex reviews and merges each PR by hand, so five small PRs cost him five stops for one job.
+
 ## Scale to the PR
 
 Pick the size from the change, not from the line count alone. A 40-line change to a lease or a payment path is large; a 2,000-line rename is small.
