@@ -362,3 +362,44 @@ describe("worker proof of work, as live", () => {
     expect(b.verdict).toBe("green")
   }, 30_000)
 })
+
+// Ledger audit 2026-11-28: main-checkout-write and push-gate judged the session's cwd, not the folder a
+// command works in, so `cd <worktree> && git …` was denied as a main-checkout write, and Claude's scratch
+// and memory folders were denied too.
+describe("main-checkout-write and push-gate follow cd and workdir", () => {
+  test("a commit through `cd <worktree>` is not a main-checkout write; the same commit in main is", async () => {
+    process.env.HARNESS_SCRATCH_ROOTS = "/nonexistent-scratch"
+    setMode(db, "main-checkout-write", "enforce")
+    const r = repo()
+    const w = join(dir, "lane")
+    git(r, "worktree", "add", "-q", "-b", "lane", w)
+    const sh = (command: string, cwd = r) => decide(ev({ toolName: "shell", input: { command, cwd }, cwd: r }))
+    expect((await sh(`cd ${w} && git commit -qam x`)).outcome).not.toBe("deny")
+    expect((await sh(`git -C ${w} commit -qam x`)).outcome).not.toBe("deny")
+    expect((await sh("git commit -qam x", w)).outcome).not.toBe("deny") // OpenCode workdir
+    expect((await sh("git commit -qam x")).outcome).toBe("deny")
+    expect((await sh(`cd ${r} && git commit -qam x`, w)).outcome).toBe("deny")
+  })
+
+  test("Claude's scratch and memory folders are never the main checkout", async () => {
+    process.env.HARNESS_SCRATCH_ROOTS = "/nonexistent-scratch"
+    setMode(db, "main-checkout-write", "enforce")
+    const r = repo()
+    const edit = (path: string) => decide(ev({ toolName: "write", input: { path }, cwd: r }))
+    expect((await edit("/tmp/claude-502/-home-u-repo/sess/scratchpad/x.html")).outcome).not.toBe("deny")
+    expect((await edit(join(process.env.HOME ?? "/home/u", ".claude/projects/-home-u-repo/memory/MEMORY.md"))).outcome).not.toBe("deny")
+  })
+
+  test("push-gate checks the HEAD of the folder `cd` moves to", async () => {
+    setMode(db, "push-gate", "enforce")
+    const r = repo()
+    const w = join(dir, "lane2")
+    git(r, "worktree", "add", "-q", "-b", "lane2", w)
+    writeFileSync(join(w, "b.ts"), "export const b = 2\n")
+    git(w, "add", ".")
+    git(w, "commit", "-qm", "b")
+    await verify(db, { session: "s1", cwd: w, commands: ["true"] } as never) // green bundle for the worktree HEAD only
+    const d = await decide(ev({ toolName: "shell", input: { command: `cd ${w} && git push origin HEAD:main`, cwd: r }, cwd: r }))
+    expect(d.ruleId).not.toBe("push-gate")
+  })
+})
