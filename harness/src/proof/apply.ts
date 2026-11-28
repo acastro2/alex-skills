@@ -131,6 +131,15 @@ export function request(db: Database, o: { session: string; sha: string; cwd?: s
   const digest = sha256(review)
   const requestId = requestApply(db, { session: o.session, sha: o.sha, digest, review })
   setMeta(db, `request_repo:${requestId}`, repo)
+  // A newer request for the same repo supersedes the older open ones; they can no longer be granted or applied.
+  const older = db.query("select id, session_id from requests where state = 'open' and id != ?").all(requestId) as { id: string; session_id: string | null }[]
+  for (const q of older) {
+    if (getMeta(db, `request_repo:${q.id}`) !== repo) continue
+    // A request Alex already approved keeps its grant; closing it would waste his approval.
+    if (holds(db, { kind: "harness", session: q.session_id ?? "", requestId: q.id, now: Date.now() })) continue
+    db.query("update requests set state = 'superseded' where id = ? and state = 'open'").run(q.id)
+    append(db, { session_id: q.session_id, event: "harness.superseded", data: { request_id: q.id, by: requestId } })
+  }
   return { requestId, sha8: o.sha.slice(0, 8), digest8: digest.slice(0, 8), review }
 }
 

@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite"
+import { getMeta, setMeta } from "../ledger/db.ts"
 import { append } from "../ledger/journal.ts"
 import { mode } from "../ledger/registry.ts"
 import { ulid } from "../ledger/ulid.ts"
@@ -254,6 +255,45 @@ async function staleWorkerWake(db: Database, send: Deliver, runCmd: Runner, now:
   }
 }
 
+const LAND_CHECK_MS = 10 * 60_000
+
+// A worktree whose HEAD already sits in origin/<default> (merged PR, push from elsewhere) lands.
+// Fresh worktrees (branch never committed to) are skipped. Never throws.
+function landMergedWorktrees(db: Database, now: number): void {
+  try {
+    const rows = db.query("select id, repo, path, session_id, branch from worktrees where state = 'active'").all() as {
+      id: string
+      repo: string
+      path: string
+      session_id: string | null
+      branch: string | null
+    }[]
+    for (const w of rows) {
+      try {
+        const key = `land_check:${w.id}`
+        const last = Number(getMeta(db, key) ?? 0)
+        if (now - last < LAND_CHECK_MS) continue
+        setMeta(db, key, String(now))
+        const head = spawnGit(["rev-parse", "HEAD"], w.path)
+        if (!head.ok) continue
+        if (w.branch) {
+          const log = spawnGit(["reflog", "show", "--format=%gs", w.branch], w.repo)
+          if (!log.out.split("\n").some((l) => l && !l.startsWith("branch: Created"))) continue
+        }
+        if (spawnGit(["remote", "get-url", "origin"], w.repo).ok) spawnGit(["fetch", "-q", "origin"], w.repo)
+        const sym = spawnGit(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], w.repo)
+        const tip = sym.ok && sym.out ? sym.out : "origin/main"
+        if (!spawnGit(["merge-base", "--is-ancestor", head.out, tip], w.repo).ok) continue
+        try {
+          land(db, { worktreeId: w.id, pushedSha: head.out })
+        } catch (e: any) {
+          append(db, { session_id: w.session_id, event: "land.failed", reason: String(e?.message ?? e).slice(0, 500) })
+        }
+      } catch {}
+    }
+  } catch {}
+}
+
 export interface WakerOpts {
   every?: number
   deliver?: Deliver
@@ -269,6 +309,7 @@ export async function wakerTick(db: Database, opts: WakerOpts = {}): Promise<voi
   await pollPrs(db, gh, send, now)
   await stallNudges(db, send, now)
   await staleWorkerWake(db, send, opts.run ?? run, now)
+  landMergedWorktrees(db, now)
   db.query("delete from watches where expires_at <= ?").run(now)
 }
 
